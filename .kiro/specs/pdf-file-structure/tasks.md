@@ -86,7 +86,7 @@
   - _Requirements: 4.2, 5.1, 5.2, 5.3, 5.4, 8.2, 9.1_
   - _Boundary: XrefMerger_
 
-- [ ] 5.2 Parse supplied object streams into member indexes
+- [x] 5.2 Parse supplied object streams into member indexes
   - Given a resolved `/ObjStm` stream, validate direct non-negative `N` and `First`, decode the structural stream, and parse exactly `N` object-number and relative-offset pairs.
   - Extract generation-0 direct objects by supplied stream-member index, reject stream objects stored inside object streams, and return a cacheable member table for the caller.
   - Object stream parsing is complete when tests extract multiple members from one supplied stream, reject invalid indexes or stream members, and never assign non-zero generations to compressed objects.
