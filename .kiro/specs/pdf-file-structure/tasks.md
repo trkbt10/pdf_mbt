@@ -111,7 +111,7 @@
   - _Boundary: PdfFile_
 
 - [ ] 6. Validate samples, robustness, and public surface
-- [ ] 6.1 Validate synthetic traditional and incremental file flows
+- [x] 6.1 Validate synthetic traditional and incremental file flows
   - Open a synthetic minimal traditional-table PDF and load Catalog, Pages, Page, content stream, and metadata objects by identifier.
   - Open a synthetic incremental-update PDF with multiple sections and verify later entries win while deleted objects resolve to null.
   - The flow is complete when public API tests pass without document-structure interpretation and all resolved objects match the expected latest xref entries.
