@@ -61,7 +61,7 @@
   - _Requirements: 6.2, 6.3, 7.3, 7.8, 9.3_
   - _Boundary: StructuralStreamDecoder_
 
-- [ ] 4.2 Parse cross-reference streams
+- [x] 4.2 Parse cross-reference streams
   - Recognize indirect `/Type /XRef` streams at section offsets and validate required `Type`, `Size`, and `W` entries plus the optional `Index` default.
   - Decode multi-byte fields in big-endian order, support type 0, type 1, and type 2 entries, and default the entry type to in-use when `W[0]` is zero.
   - Xref stream parsing is complete when tests cover `W`, `Index`, big-endian decoding, type defaults, free entries, uncompressed entries, compressed entries, unsupported entry handling, and encrypted-stream rejection.
