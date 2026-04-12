@@ -1,15 +1,32 @@
 ///|
 struct ObjectParser {
+  cursor : @lexer.ByteCursor
   lexer : @lexer.Lexer
 }
 
 ///|
 pub fn ObjectParser::new(input : Bytes) -> ObjectParser {
-  ObjectParser::{ lexer: @lexer.Lexer::new(@lexer.ByteCursor::new(input)) }
+  let cursor = @lexer.ByteCursor::new(input)
+  ObjectParser::{ cursor, lexer: @lexer.Lexer::new(cursor) }
 }
 
 ///|
 pub fn ObjectParser::parse_object(
+  self : ObjectParser,
+) -> @objects.PdfObject raise @objects.PdfParseError {
+  self.lexer.skip_separators()
+  match self.cursor.peek() {
+    Some(b'(') =>
+      @objects.PdfObject::String(@lexer.read_literal_string(self.cursor))
+    Some(b'<') if self.cursor.peek_n(1) != Some(b'<') =>
+      @objects.PdfObject::String(@lexer.read_hex_string(self.cursor))
+    Some(b'/') => @objects.PdfObject::Name(@lexer.read_name(self.cursor))
+    _ => self.parse_ordinary_object()
+  }
+}
+
+///|
+fn ObjectParser::parse_ordinary_object(
   self : ObjectParser,
 ) -> @objects.PdfObject raise @objects.PdfParseError {
   match self.lexer.next_token() {
@@ -31,12 +48,9 @@ pub fn ObjectParser::parse_all_objects(
 ) -> Array[@objects.PdfObject] raise @objects.PdfParseError {
   let objects : Array[@objects.PdfObject] = []
   while true {
-    let token = self.lexer.peek_token()
-    match token {
-      EndOfInput(_) => {
-        self.lexer.next_token() |> ignore
-        break
-      }
+    self.lexer.skip_separators()
+    match self.cursor.peek() {
+      None => break
       _ => objects.push(self.parse_object())
     }
   }

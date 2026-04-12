@@ -66,7 +66,7 @@
   - _Requirements: 4.1, 4.2, 4.3, 5.1, 5.2, 5.3, 6.1, 6.2, 13.1_
   - _Boundary: ObjectParser_
 
-- [ ] 3.2 Parse string and name objects through the object parser
+- [x] 3.2 Parse string and name objects through the object parser
   - Dispatch literal strings, hexadecimal strings, and slash-prefixed names from object parsing without re-tokenizing their payload regions.
   - Convert decoded bytes into the shared object model so arrays, dictionaries, and later indirect objects can reuse the same value representation.
   - The integration is complete when public parser tests parse representative literal strings, hex strings, and names into exact byte values.
