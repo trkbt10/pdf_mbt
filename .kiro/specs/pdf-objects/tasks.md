@@ -140,7 +140,7 @@
   - _Depends: 5.3_
   - _Requirements: 13.2, 14.2, 16.1, 16.2, 16.3, 16.4, 16.5_
 
-- [ ] 6.2 Validate ISO-derived object fragments and cross-feature parser examples
+- [x] 6.2 Validate ISO-derived object fragments and cross-feature parser examples
   - Add object-fragment fixtures from the extracted ISO 7.2 and 7.3 examples without implementing full file traversal or cross-reference lookup.
   - Cover booleans, numbers, strings, names, arrays, dictionaries, streams, nulls, references, and indirect object definitions through public parser tests.
   - Example validation is complete when `moon test` passes for representative fragments and confirms exact parsed values and offsets where errors are expected.
