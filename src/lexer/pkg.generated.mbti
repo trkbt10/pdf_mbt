@@ -10,6 +10,15 @@ import {
 // Errors
 
 // Types and methods
+type ByteCursor
+pub fn ByteCursor::new(Bytes) -> Self
+pub fn ByteCursor::offset(Self) -> Int64
+pub fn ByteCursor::peek(Self) -> Byte?
+pub fn ByteCursor::peek_n(Self, Int) -> Byte?
+pub fn ByteCursor::read_byte(Self) -> Byte? raise @objects.PdfParseError
+pub fn ByteCursor::read_bytes(Self, Int64) -> Bytes raise @objects.PdfParseError
+pub fn ByteCursor::read_eol(Self) -> Bool
+pub fn ByteCursor::require_stream_eol(Self) -> Unit raise @objects.PdfParseError
 
 // Type aliases
 pub using @objects {type PdfName as LexedName}

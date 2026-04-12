@@ -20,7 +20,7 @@
   - _Requirements: 5.3, 6.3, 6.4, 11.2, 11.4, 12.3, 12.5, 16.5_
 
 - [ ] 2. Build lexical byte handling
-- [ ] 2.1 Implement byte cursor movement, offsets, EOL normalization, and raw byte reads
+- [x] 2.1 Implement byte cursor movement, offsets, EOL normalization, and raw byte reads
   - Track byte offsets for every read, peek, and end-of-input condition.
   - Normalize CR, LF, and CRLF as one EOL marker outside raw stream data while preserving exact raw reads for stream payloads.
   - The cursor is complete when unit tests show correct offsets for normal tokens, line continuations, unescaped string EOLs, stream EOL validation, and fixed-length raw reads.
