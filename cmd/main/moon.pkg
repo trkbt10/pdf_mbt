@@ -1,0 +1,7 @@
+// import {
+//   "trkbt10/pdf" @lib,
+// }
+
+options(
+  "is-main": true,
+)

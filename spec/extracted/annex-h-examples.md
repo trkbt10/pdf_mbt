@@ -1,0 +1,4899 @@
+# Annex H Example PDF files
+
+Source: ISO 32000-2:2020, pages 920-950
+
+
+--- Page 920 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+905 
+Annex H  
+(informative) 
+Example PDF files 
+H.1 General 
+This annex presents several examples showing the structure of actual PDF files: 
+• 
+A minimal file that can serve as a starting point for creating other PDF files (and that is the basis 
+of later examples) (see H.2, "Minimal PDF file") 
+• 
+A simple example that shows a text string, the classic "Hello World" (see H.3, "Simple text string 
+example") 
+• 
+A simple graphics example that draws lines and shapes (see H.4, "Simple graphics example") 
+• 
+A fragment of a PDF file that illustrates the structure of the page tree for a large document (see 
+H.5, "Page tree example") and, similarly, two fragments that illustrate the structure of an outline 
+hierarchy (see H.6, "Outline hierarchy example") 
+• 
+An example showing the structure of a PDF file as it is updated several times, illustrating multiple 
+body sections, cross-reference sections, and trailers (see H.7, "Updating example") 
+NOTE 1 
+The Length values of stream objects in the examples and the byte addresses in cross-reference 
+tables are not necessarily accurate. 
+• 
+An example showing various cases of structure elements in a tagged PDF (see H.8, "Structure 
+elements examples") 
+NOTE 2 
+The structure elements examples are based on the default standard structure namespace of  
+structure elements defined in ISO 32000-1, and  have not been updated to illustrate the use of 
+standard structure elements defined in the standard structure namespace for PDF 2.0  as defined 
+in this document. 
+H.2 Minimal PDF file 
+The example in this clause is a PDF file that does not draw anything; it is almost the minimum 
+acceptable PDF file. It is not strictly the minimum acceptable because it contains a page content stream 
+(Contents in the page object), and a metadata stream. These objects were included to make this file 
+useful as a starting point for creating other, more realistic PDF files. "Table H.1 — Objects in minimal 
+example" lists the objects in this example. 
+Table H.1 — Objects in minimal example 
+Object number 
+Object type 
+1 
+Catalog (document catalog) 
+2 
+Pages (page tree node) 
+3 
+Page (page object) 
+4 
+Content stream 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 921 ---
+
+ISO 32000-2:2020 
+906 
+© ISO 2020 – All rights reserved 
+Object number 
+Object type 
+5 
+Metadata (metadata stream) 
+ 
+When using the example in H.2, "Minimal PDF file" as a starting point for creating other files, 
+remember that the cross-reference table entries might need to have a trailing SPACE (see 7.5.4, "Cross-
+reference table"). 
+EXAMPLE 
+%PDF-2.0 
+…  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%at least four binary characters > 127 
+1 0 obj   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Catalog (root) object used to locate everything else 
+ 
+ 
+<</Type /Catalog 
+ 
+ 
+ 
+/Pages 2 0 R 
+ 
+ 
+ 
+/Metadata 5 0 R 
+ 
+ 
+>> 
+endobj 
+ 
+2 0 obj   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Pages catalog, containing a single page 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Kids [3 0 R] 
+ 
+ 
+>> 
+endobj 
+3 0 obj   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Page dictionary 
+ 
+ 
+<</Type /Page 
+ 
+ 
+ 
+/Parent 2 0 R 
+ 
+ 
+ 
+/MediaBox [0 0 612 792] 
+ 
+ 
+ 
+/Contents 4 0 R 
+ 
+ 
+>> 
+endobj 
+ 
+4 0 obj   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Page contents for page 1 
+ 
+ 
+<</Length … number of bytes in page marking operators … 
+ 
+ 
+>> 
+stream 
+… Page-marking operators … 
+endstream 
+endobj 
+ 
+5 0 obj  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Document metadata 
+ 
+ 
+<</Type /Metadata 
+ 
+ 
+ 
+/Subtype /XML 
+ 
+ 
+ 
+/Length … number of bytes in metadata …  
+ 
+ 
+>> 
+stream 
+<?xpacket begin="…UTF-8 value of U+FEFF (efbbbf) …" id="W5M0MpCehiHzreSzNTczkc9d"?> 
+<x:xmpmeta xmlns:x="adobe:ns:meta/"> 
+ 
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"> 
+ 
+ 
+<rdf:Description rdf:about="" xmlns:pdf="http://ns.adobe.com/pdf/1.3/"> 
+ 
+ 
+ 
+<pdf:Producer>… name of software which generates the PDF …</pdf:Producer> 
+ 
+ 
+</rdf:Description> 
+ 
+ 
+<rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/"> 
+ 
+ 
+ 
+<xmp:CreatorTool>… name of tool used to create the document …</xmp:CreatorTool> 
+ 
+ 
+ 
+<xmp:CreateDate>… timestamp, like 2012-12-25T12:34:56Z …</xmp:CreateDate> 
+ 
+ 
+ 
+<xmp:ModifyDate>… timestamp, like 2012-12-25T12:34:56Z …</xmp:ModifyDate> 
+ 
+ 
+</rdf:Description> 
+ 
+ 
+<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/"> 
+ 
+ 
+ 
+<dc:format>application/pdf</dc:format>  
+ 
+ 
+ 
+<dc:title><rdf:Alt> 
+ 
+ 
+ 
+ 
+<rdf:li xml:lang="x-default">… document title …</rdf:li> 
+ 
+ 
+ 
+ 
+</rdf:Alt></dc:title> 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 922 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+907 
+ 
+ 
+ 
+<dc:creator><rdf:Seq> 
+ 
+ 
+ 
+ 
+<rdf:li>… document author’s personal name …</rdf:li> 
+ 
+ 
+ 
+ 
+</rdf:Seq></dc:creator> 
+ 
+ 
+</rdf:Description> 
+ 
+ 
+<rdf:Description rdf:about="" xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/"> 
+ 
+ 
+ 
+<xmpMM:DocumentID>… unique GUID of document …</xmpMM:DocumentID> 
+ 
+ 
+ 
+<xmpMM:InstanceID>… GUID changed for each save …</xmpMM:InstanceID> 
+ 
+ 
+</rdf:Description> 
+ 
+</rdf:RDF> 
+</x:xmpmeta> 
+… white-space padding to permit in-place updating of metadata … 
+<?xpacket end="w"?> 
+endstream 
+endobj 
+ 
+%Cross reference and trailer 
+xref 
+0 7 
+… Note that the 10 digit byte offsets here must be recalculated by the software producing the PDF … 
+… and that the entries must each occupy 20 bytes including white-space … 
+0000000000 65535 f 
+0000000009 00000 n 
+… byte offset for object 2, exactly 10 digits … 00000 n 
+… byte offset for object 3, exactly 10 digits … 00000 n 
+0000000179 00000 n 
+0000000300 00000 n 
+… byte offset for object 6, exactly 10 digits … 00000 n 
+trailer <</Size 7 /Root 1 0 R>> 
+startxref 
+408 … needs to be the exact offset of the word xref from the start of the file. No comment allowed … 
+%%EOF 
+H.3 Simple text string example 
+The example in H.3, "Simple text string example" is the classic "Hello World" example built from the 
+preceding example. It shows a single line of text consisting of the string “Hello 32000-2 World”, 
+illustrating the use of fonts and several text-related PDF operators. The string is displayed in 24-point 
+Helvetica. 
+"Table H.2 — Objects in simple text string example" lists the objects in this example. 
+Table H.2 — Objects in simple text string example 
+Object number 
+Object type 
+1 
+Catalog (document catalog) 
+2 
+Pages (page tree node) 
+3 
+Page (page object) 
+4 
+Content stream 
+5 
+Font (Type 1 font) 
+6 
+Font (Type 1 font) 
+7 
+Metadata (metadata stream) 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 923 ---
+
+ISO 32000-2:2020 
+908 
+© ISO 2020 – All rights reserved 
+ 
+EXAMPLE 
+ 
+%PDF-2.0 
+…  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%at least four binary characters > 127 
+1 0 obj  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Catalog (root) object to locate everything else 
+ 
+ 
+ 
+<</Type /Catalog 
+ 
+ 
+ 
+/Pages 2 0 R 
+ 
+ 
+ 
+/Metadata 7 0 R 
+ 
+ 
+>> 
+endobj 
+ 
+2 0 obj  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Pages catalog, containing a single page 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Kids [3 0 R] 
+ 
+ 
+ 
+/Count 1 
+ 
+ 
+>> 
+endobj 
+ 
+3 0 obj  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Page dictionary 
+ 
+ 
+<</Type /Page 
+ 
+ 
+ 
+/Parent 2 0 R 
+ 
+ 
+ 
+/MediaBox [0 0 612 792] 
+ 
+ 
+ 
+/Contents 4 0 R 
+ 
+ 
+ 
+/Resources <</Font  <</F1 5 0 R 
+%Internal name, not font name 
+ 
+ 
+ 
+ 
+ 
+ 
+    /F2 6 0 R   
+ 
+%Internal name, not font name 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+>> 
+ 
+ 
+>> 
+ 
+>> 
+endobj 
+ 
+4 0 obj  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Page contents for page 1 
+ 
+ 
+<</Length … number of bytes in page marking operators … 
+ 
+ 
+>> 
+stream 
+ 
+ 
+%This content stream writes "Hello 32000-2 World" and shows a number of 
+ 
+%points of interest. 
+ 
+%- There is no font styling in PDF, italic (or bold) is a change of font 
+ 
+%- There is no automatic underlining in PDF, applications need to draw lines 
+ 
+%- Applications will usually need to do font position calculations 
+ 
+%- If extracting text, spaces are not always found in text strings, they 
+ 
+%may come from changes to position. 
+ 
+ 
+ 
+BT 
+ 
+ 
+/F1 24 Tf   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Choose font F1, 24 points 
+ 
+ 
+72 696 Td   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Set initial x,y and set line start 
+ 
+ 
+(Hello ) Tj  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Show "Hello " including extra space 
+ 
+ 
+/F2 24 Tf   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Choose font F2, 24 points 
+ 
+ 
+(32000-2) Tj   
+ 
+ 
+ 
+ 
+ 
+ 
+%Show "32000-2" 
+ 
+ 
+/F1 24 Tf   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Choose font F1, 24 points 
+ 
+ 
+156.1 0 Td   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Position after implied space, relative to line 
+start 
+ 
+ 
+(Wor) Tj  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Show "Wor" (implied space before is just 
+visual) 
+ 
+ 
+(ld) Tj  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Finish word with "ld" (notice no space added) 
+ 
+ET 
+ 
+ 
+%Underline "32000-2". Position must be calculated by generator 
+ 
+%including scaled per-font underline vertical offset 
+ 
+ 
+133.3 694.2 m   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Move to start of line position 
+ 
+221.4 694.2 l   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Set path to end of line position 
+ 
+1.2 w  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Set line width suitable for size of text 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 924 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+909 
+ 
+S   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Stroke path 
+endstream 
+endobj 
+ 
+5 0 obj   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Font dictionary (Helvetica) 
+ 
+ 
+<</Type /Font 
+ 
+ 
+ 
+/Subtype /Type1 
+ 
+ 
+ 
+/BaseFont /Helvetica 
+ 
+ 
+ 
+/Encoding /WinAnsiEncoding 
+ 
+ 
+ 
+/FirstChar … 
+ 
+ 
+ 
+/LastChar … 
+ 
+ 
+ 
+/Widths […] 
+ 
+ 
+ 
+/FontDescriptor … 
+ 
+ 
+>> 
+endobj 
+ 
+6 0 obj   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Font dictionary (Helvetica-Oblique) 
+ 
+ 
+<</Type /Font 
+ 
+ 
+ 
+/Subtype /Type1 
+ 
+ 
+ 
+/BaseFont /Helvetica-Oblique 
+ 
+ 
+ 
+/Encoding /WinAnsiEncoding 
+ 
+ 
+ 
+/FirstChar … 
+ 
+ 
+ 
+/LastChar … 
+ 
+ 
+ 
+/Widths […] 
+ 
+ 
+ 
+/FontDescriptor … 
+ 
+ 
+>> 
+endobj 
+ 
+7 0 obj   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Document metadata 
+ 
+ 
+<</Type /Metadata 
+ 
+ 
+ 
+/Subtype /XML 
+ 
+ 
+ 
+/Length … number of bytes in metadata … 
+ 
+ 
+>> 
+stream 
+<?xpacket begin="… UTF-8 value of U+FEFF (efbbbf) …" id="W5M0MpCehiHzreSzNTczkc9d"?> 
+… document metadata … 
+<?xpacket end="w"?> 
+endstream 
+endobj 
+ 
+xref 
+0 8 
+… Note that the 10 digit byte offsets here must be recalculated by the software producing the PDF … 
+… and that the entries must each occupy 20 bytes including white-space … 
+0000000000 65536 f 
+0000000017 00000 n 
+… byte offset for object 2, exactly 10 digits … 00000 n 
+… byte offset for object 3, exactly 10 digits … 00000 n 
+0000000848 00000 n 
+0000002452 00000 n 
+… byte offset for object 6, exactly 10 digits … 00000 n 
+0000003309 00000 n 
+trailer 
+ <</Size 8 /Root 1 0 R>> 
+startxref 
+… exact offset of the word xref from the start of the file … 
+%%EOF 
+H.4 Simple graphics example 
+The example in H.4, "Simple graphics example" draws a thin black line segment, a thick black dashed 
+line segment, a filled and stroked rectangle, and a filled and stroked cubic Bézier curve. "Table H.3 — 
+Objects in simple graphics example" lists the objects in this example, and "Figure H.1 — Output of the 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 925 ---
+
+ISO 32000-2:2020 
+910 
+© ISO 2020 – All rights reserved 
+following example" shows the resulting output. (Each shape has a red border, and the rectangle is filled 
+with light blue.) The colours, but not the black fill, are specified as calibrated colours, to increase colour 
+fidelity on a range of devices. To achieve this an ICCBased colour space is used, such as an embedded 
+sRGB profile. 
+Table H.3 — Objects in simple graphics example 
+Object number 
+Object type 
+1 
+Catalog (document catalog) 
+2 
+ICCBased profile stream 
+3 
+Pages (page tree node) 
+4 
+Page (page object) 
+5 
+Content stream 
+6 
+Metadata (metadata stream) 
+ 
+Figure H.1 — Output of the following example 
+EXAMPLE 
+ 
+%PDF-2.0 
+…  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%at least 4 binary characters > 127 
+ 
+1 0 obj   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Catalog (root) object used to locate everything 
+else 
+ 
+ 
+<</Type /Catalog 
+ 
+ 
+ 
+/Pages 3 0 R 
+ 
+ 
+ 
+/Metadata 6 0 R 
+ 
+ 
+>> 
+endobj 
+ 
+2 0 obj   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%ICCBased colour space profile stream dictionary 
+ 
+ 
+<</N 3 
+ 
+ 
+ 
+ 
+   
+ 
+ 
+ 
+%Number of components – 3 for an RGB 
+ 
+ 
+ 
+/Filter /FlateDecode  
+ 
+ 
+ 
+%Indicate filter (compression) used on profile 
+ 
+ 
+ 
+/Length … 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Length of compressed data (not of raw profile) 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Note that this kind of object does not use a 
+/Type key 
+ 
+ 
+>> 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 926 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+911 
+stream 
+… Flate compressed data of ICC profile for calibrated RGB colour space (raw binary) … 
+… For example, this could be the compressed sRGB profile … 
+endstream 
+endobj 
+ 
+3 0 obj   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Pages catalog, containing a single page 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Kids [4 0 R] 
+ 
+ 
+ 
+/Count 1 
+ 
+ 
+>> 
+endobj 
+ 
+4 0 obj   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Page dictionary 
+ 
+ 
+<</Type /Page 
+ 
+ 
+ 
+/Parent 3 0 R 
+ 
+ 
+ 
+/MediaBox  [0 0 612 792] 
+ 
+ 
+ 
+/Contents 5 0 R 
+ 
+ 
+ 
+/Resources 
+ 
+ 
+ 
+ <</ColorSpace 
+ 
+ 
+ 
+ 
+ 
+ <</MyCS [/ICCBased 2 0 R] %MyCS, arbitrary resource name for calibrated RGB 
+ 
+ 
+ 
+ 
+ 
+ >> 
+ 
+ 
+ 
+ >> 
+ 
+ 
+>> 
+endobj 
+ 
+5 0 obj %Page contents for page 1 
+ 
+ 
+<</Length … number of bytes in page marking operators …>> 
+stream 
+ 
+%Draw a line segment, using the default colour space, colour and line width. 
+ 
+%The initial colour space is DeviceGray and the initial colour is black. 
+ 
+%The initial line width is 1.0. 
+ 
+150 250 m 
+ 
+150 350 l 
+ 
+S 
+ 
+ 
+%Draw a thicker, dashed line segment. 
+ 
+q  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Save graphics state 
+ 
+4 w 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Set line width to 4 user space units 
+ 
+[4 6] 0 d 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Set dash pattern to 4 units on, 6 units off 
+ 
+150 250 m 
+ 
+400 250 l 
+ 
+S 
+ 
+Q  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Restore graphics state – undo w and d 
+ 
+ 
+%Select the calibrated RGB colour space for filling and stroking 
+ 
+/MyCS cs  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Arbitrary name in resource dictionary 
+ 
+/MyCS CS  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%leading to embedded calibrated RGB profile 
+stream 
+ 
+ 
+%Draw a rectangle with a 1-unit red border, filled with light blue. 
+ 
+1.0 0.0 0.0 SCN   
+ 
+ 
+ 
+ 
+ 
+ 
+%Red (in calibrated RGB) for stroke colour 
+ 
+0.5 0.75 1.0 scn   
+ 
+ 
+ 
+ 
+ 
+ 
+%Light blue (in calibrated RGB) for fill colour 
+ 
+200 300 50 75 re 
+ 
+B   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%fill/stroke with non-zero winding number rule 
+ 
+ 
+%Draw a curve filled with gray (DeviceGray, not calibrated RGB) and with a coloured border. 
+ 
+0.5 0.1 0.2 SCN 
+ 
+0.7 g  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%DeviceGray (uncalibrated); or 0.7 0.7 0.7 scn 
+for 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%a neutral (gray) in calibrated ICC-based RGB 
+ 
+300 300 m 
+ 
+300 400 400 400 400 300 c 
+ 
+b   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+% Close, fill, and stroke path using non-zero 
+winding  
+endstream 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 927 ---
+
+ISO 32000-2:2020 
+912 
+© ISO 2020 – All rights reserved 
+endobj 
+ 
+6 0 obj   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Document metadata 
+ 
+ 
+<</Type /Metadata 
+ 
+ 
+ 
+/Subtype /XML 
+ 
+ 
+ 
+/Length … number of bytes in metadata … 
+ 
+ 
+>> 
+stream 
+<?xpacket begin="… UTF-8 value of U+FEFF (efbbbf) …" id="W5M0MpCehiHzreSzNTczkc9d"?> 
+… document metadata … 
+<?xpacket end="w"?> 
+endstream 
+endobj 
+ 
+%Cross reference and trailer 
+xref 
+0 7 
+… Note that the 10 digit byte offsets here must be recalculated by the software producing the PDF … 
+… and that the entries must each occupy 20 bytes including white-space … 
+0000000000 65535 f 
+0000000009 00000 n 
+… byte offset for object 2, exactly 10 digits … 00000 n 
+… byte offset for object 3, exactly 10 digits … 00000 n 
+0000002179 00000 n 
+0000002300 00000 n 
+… byte offset for object 6, exactly 10 digits … 00000 n 
+trailer 
+<</Size 7 /Root 1 0 R>> 
+startxref 
+2503 … needs to be the exact byte address of the word xref … 
+%%EOF 
+H.5 Page tree example 
+The example in H.5, "Page tree example" is a fragment of a PDF file illustrating the structure of the page 
+tree for a large document. It contains the page tree nodes for a 62-page document. "Figure H.2 — Page 
+tree for the following example" shows the structure of this page tree. Numbers in the figure are object 
+numbers corresponding to the objects in the example. 
+ 
+Figure H.2 — Page tree for the following example 
+337
+335
+336
+4
+43
+77
+108
+139
+170
+201
+232
+263
+294
+325
+3
+16
+21
+26
+31
+37
+42
+48
+53
+58
+63
+70
+76
+82
+87
+92
+97
+102
+107
+113
+118
+123
+128
+133
+138
+144
+149
+154
+159
+164
+169
+175
+180
+185
+190
+195
+200
+206
+211
+216
+221
+226
+231
+237
+242
+247
+252
+257
+262
+268
+273
+278
+283
+288
+293
+299
+304
+309
+314
+319
+324
+330
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 928 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+913 
+EXAMPLE 
+337 0 obj 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Kids [335 0 R 
+ 
+ 
+ 
+ 
+ 
+336 0 R 
+ 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+ 
+/Count 62 
+ 
+ 
+>> 
+endobj 
+ 
+335 0 obj 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Parent 337 0 R 
+ 
+ 
+ 
+/Kids [4 0 R 
+ 
+ 
+ 
+ 
+ 
+43 0 R 
+ 
+ 
+ 
+ 
+ 
+77 0 R 
+ 
+ 
+ 
+ 
+ 
+108 0 R 
+ 
+ 
+ 
+ 
+ 
+139 0 R 
+ 
+ 
+ 
+ 
+ 
+170 0 R 
+ 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+ 
+/Count 36 
+ 
+ 
+>> 
+endobj 
+ 
+336 0 obj 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Parent 337 0 R 
+ 
+ 
+ 
+/Kids [201 0 R 
+ 
+ 
+ 
+ 
+ 
+232 0 R 
+ 
+ 
+ 
+ 
+ 
+263 0 R 
+ 
+ 
+ 
+ 
+ 
+294 0 R 
+ 
+ 
+ 
+ 
+ 
+325 0 R 
+ 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+ 
+/Count 26 
+ 
+ 
+>> 
+endobj 
+ 
+4 0 obj 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Parent 335 0 R 
+ 
+ 
+ 
+/Kids [3 0 R 
+ 
+ 
+ 
+ 
+ 
+16 0 R 
+ 
+ 
+ 
+ 
+ 
+21 0 R 
+ 
+ 
+ 
+ 
+ 
+26 0 R 
+ 
+ 
+ 
+ 
+ 
+31 0 R 
+ 
+ 
+ 
+ 
+ 
+37 0 R 
+ 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+ 
+/Count 6 
+ 
+ 
+>> 
+endobj 
+ 
+43 0 obj 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Parent 335 0 R 
+ 
+ 
+ 
+/Kids [42 0 R 
+ 
+ 
+ 
+ 
+ 
+48 0 R 
+ 
+ 
+ 
+ 
+ 
+53 0 R 
+ 
+ 
+ 
+ 
+ 
+58 0 R 
+ 
+ 
+ 
+ 
+ 
+63 0 R 
+ 
+ 
+ 
+ 
+ 
+70 0 R 
+ 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+ 
+/Count 6 
+ 
+ 
+>> 
+endobj 
+ 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 929 ---
+
+ISO 32000-2:2020 
+914 
+© ISO 2020 – All rights reserved 
+77 0 obj 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Parent 335 0 R 
+ 
+ 
+ 
+/Kids [76 0 R 
+ 
+ 
+ 
+ 
+ 
+82 0 R 
+ 
+ 
+ 
+ 
+ 
+87 0 R 
+ 
+ 
+ 
+ 
+ 
+92 0 R 
+ 
+ 
+ 
+ 
+ 
+97 0 R 
+ 
+ 
+ 
+ 
+ 
+102 0 R 
+ 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+ 
+/Count 6 
+ 
+ 
+>> 
+endobj 
+ 
+108 0 obj 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Parent 335 0 R 
+ 
+ 
+ 
+/Kids [107 0 R 
+ 
+ 
+ 
+ 
+ 
+113 0 R 
+ 
+ 
+ 
+ 
+ 
+118 0 R 
+ 
+ 
+ 
+ 
+ 
+123 0 R 
+ 
+ 
+ 
+ 
+ 
+128 0 R 
+ 
+ 
+ 
+ 
+ 
+133 0 R 
+ 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+ 
+/Count 6 
+ 
+ 
+>> 
+endobj 
+ 
+139 0 obj 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Parent 335 0 R 
+ 
+ 
+ 
+/Kids [138 0 R 
+ 
+ 
+ 
+ 
+ 
+144 0 R 
+ 
+ 
+ 
+ 
+ 
+149 0 R 
+ 
+ 
+ 
+ 
+ 
+154 0 R 
+ 
+ 
+ 
+ 
+ 
+159 0 R 
+ 
+ 
+ 
+ 
+ 
+164 0 R 
+ 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+ 
+/Count 6 
+ 
+ 
+>> 
+endobj 
+ 
+170 0 obj 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Parent 335 0 R 
+ 
+ 
+ 
+/Kids [169 0 R 
+ 
+ 
+ 
+ 
+ 
+175 0 R 
+ 
+ 
+ 
+ 
+ 
+180 0 R 
+ 
+ 
+ 
+ 
+ 
+185 0 R 
+ 
+ 
+ 
+ 
+ 
+190 0 R 
+ 
+ 
+ 
+ 
+ 
+195 0 R 
+ 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+ 
+/Count 6 
+ 
+ 
+>> 
+endobj 
+ 
+201 0 obj 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Parent 336 0 R 
+ 
+ 
+ 
+/Kids [200 0 R 
+ 
+ 
+ 
+ 
+ 
+206 0 R 
+ 
+ 
+ 
+ 
+ 
+211 0 R 
+ 
+ 
+ 
+ 
+ 
+216 0 R 
+ 
+ 
+ 
+ 
+ 
+221 0 R 
+ 
+ 
+ 
+ 
+ 
+226 0 R 
+ 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+ 
+/Count 6 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 930 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+915 
+ 
+ 
+>> 
+endobj 
+ 
+232 0 obj 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Parent 336 0 R 
+ 
+ 
+ 
+/Kids [231 0 R 
+ 
+ 
+ 
+ 
+ 
+237 0 R 
+ 
+ 
+ 
+ 
+ 
+242 0 R 
+ 
+ 
+ 
+ 
+ 
+247 0 R 
+ 
+ 
+ 
+ 
+ 
+252 0 R 
+ 
+ 
+ 
+ 
+ 
+257 0 R 
+ 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+ 
+/Count 6 
+ 
+ 
+>> 
+endobj 
+ 
+263 0 obj 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Parent 336 0 R 
+ 
+ 
+ 
+/Kids [262 0 R 
+ 
+ 
+ 
+ 
+ 
+268 0 R 
+ 
+ 
+ 
+ 
+ 
+273 0 R 
+ 
+ 
+ 
+ 
+ 
+278 0 R 
+ 
+ 
+ 
+ 
+ 
+283 0 R 
+ 
+ 
+ 
+ 
+ 
+288 0 R 
+ 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+ 
+/Count 6 
+ 
+ 
+>> 
+endobj 
+ 
+294 0 obj 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Parent 336 0 R 
+ 
+ 
+ 
+/Kids [293 0 R 
+ 
+ 
+ 
+ 
+ 
+299 0 R 
+ 
+ 
+ 
+ 
+ 
+304 0 R 
+ 
+ 
+ 
+ 
+ 
+309 0 R 
+ 
+ 
+ 
+ 
+ 
+314 0 R 
+ 
+ 
+ 
+ 
+ 
+319 0 R 
+ 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+ 
+/Count 6 
+ 
+ 
+>> 
+endobj 
+ 
+325 0 obj 
+ 
+ 
+<</Type /Pages 
+ 
+ 
+ 
+/Parent 336 0 R 
+ 
+ 
+ 
+/Kids [324 0 R 
+ 
+ 
+ 
+ 
+ 
+330 0 R 
+ 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+ 
+/Count 2 
+ 
+ 
+>> 
+endobj 
+H.6 Outline hierarchy example 
+This section from a PDF file illustrates the structure of an outline hierarchy with six items. Example 1 
+in H.6, "Outline hierarchy example" shows the outline with all items open, as illustrated in "Figure H.3 
+— Document outline as displayed in Example 1". 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 931 ---
+
+ISO 32000-2:2020 
+916 
+© ISO 2020 – All rights reserved 
+ 
+Figure H.3 — Document outline as displayed in Example 1 
+EXAMPLE 1 
+21 0 obj 
+ 
+ 
+<</Type /Outlines 
+ 
+ 
+ 
+/First 22 0 R 
+ 
+ 
+ 
+/Last 29 0 R 
+ 
+ 
+ 
+/Count 6 
+ 
+ 
+>> 
+endobj 
+ 
+22 0 obj 
+ 
+ 
+<</Title ( Document ) 
+ 
+ 
+ 
+/Parent 21 0 R 
+ 
+ 
+ 
+/Next 29 0 R 
+ 
+ 
+ 
+/First 25 0 R 
+ 
+ 
+ 
+/Last 28 0 R 
+ 
+ 
+ 
+/Count 4 
+ 
+ 
+ 
+/Dest [3 0 R /XYZ 0 792 0] 
+ 
+ 
+>> 
+endobj 
+ 
+25 0 obj 
+ 
+ 
+<</Title ( Section 1 ) 
+ 
+ 
+ 
+/Parent 22 0 R 
+ 
+ 
+ 
+/Next 26 0 R 
+ 
+ 
+ 
+/Dest [3 0 R /XYZ null 701 null] 
+ 
+ 
+>> 
+endobj 
+ 
+26 0 obj 
+ 
+ 
+<</Title ( Section 2 ) 
+ 
+ 
+ 
+/Parent 22 0 R 
+ 
+ 
+ 
+/Prev 25 0 R 
+ 
+ 
+ 
+/Next 28 0 R 
+ 
+ 
+ 
+/First 27 0 R 
+ 
+ 
+ 
+/Last 27 0 R 
+ 
+ 
+ 
+/Count 1 
+ 
+ 
+ 
+/Dest [3 0 R /XYZ null 680 null] 
+ 
+ 
+>> 
+endobj 
+ 
+27 0 obj 
+ 
+ 
+<</Title ( Subsection 1 ) 
+ 
+ 
+ 
+/Parent 26 0 R 
+ 
+ 
+ 
+/Dest [3 0 R /XYZ null 670 null] 
+ 
+ 
+>> 
+endobj 
+ 
+ 
+Document
+Section 1
+Section 2
+Subsection 1
+Section 3
+Summary
+On-screen appearance
+Object
+number
+Count
+22
+25
+26
+27
+28
+29
+4
+0
+1
+0
+0
+0
+6
+21
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 932 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+917 
+28 0 obj 
+ 
+ 
+<</Title ( Section 3 ) 
+ 
+ 
+ 
+/Parent 22 0 R 
+ 
+ 
+ 
+/Prev 26 0 R 
+ 
+ 
+ 
+/Dest [7 0 R /XYZ null 500 null] 
+ 
+ 
+>> 
+endobj 
+ 
+29 0 obj 
+ 
+ 
+<</Title ( Summary ) 
+ 
+ 
+ 
+/Parent 21 0 R 
+ 
+ 
+ 
+/Prev 22 0 R 
+ 
+ 
+ 
+/Dest [8 0 R /XYZ null 199 null] 
+ 
+ 
+>> 
+endobj 
+ 
+Example 2 in H.6, "Outline hierarchy example" is the same as Example 1, except that one of the outline 
+items has been closed in the display. The outline appears as shown in "Figure H.4 — Document outline 
+as displayed in Example 2". 
+ 
+Figure H.4 — Document outline as displayed in Example 2 
+EXAMPLE 2 
+21 0 obj 
+ 
+ 
+<</Type /Outlines 
+ 
+ 
+ 
+/First 22 0 R 
+ 
+ 
+ 
+/Last 29 0 R 
+ 
+ 
+ 
+/Count 5 
+ 
+ 
+>> 
+endobj 
+ 
+22 0 obj 
+ 
+ 
+<</Title (Document) 
+ 
+ 
+ 
+/Parent 21 0 R 
+ 
+ 
+ 
+/Next 29 0 R 
+ 
+ 
+ 
+/First 25 0 R 
+ 
+ 
+ 
+/Last 28 0 R 
+ 
+ 
+ 
+/Count 3 
+ 
+ 
+ 
+/Dest [3 0 R /XYZ 0 792 0] 
+ 
+ 
+>> 
+endobj 
+ 
+25 0 obj 
+ 
+ 
+<</Title (Section 1) 
+ 
+ 
+ 
+/Parent 22 0 R 
+ 
+ 
+ 
+/Next 26 0 R 
+ 
+ 
+ 
+/Dest [3 0 R /XYZ null 701 null] 
+ 
+ 
+>> 
+endobj 
+ 
+On-screen appearance
+Object
+number
+Count
+Document
+Section 1
+Section 2
+Section 3
+Summary
+22
+25
+26
+28
+29
+3
+0
+0
+0
+5
+21
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 933 ---
+
+ISO 32000-2:2020 
+918 
+© ISO 2020 – All rights reserved 
+26 0 obj 
+ 
+ 
+<</Title (Section 2) 
+ 
+ 
+ 
+/Parent 22 0 R 
+ 
+ 
+ 
+/Prev 25 0 R 
+ 
+ 
+ 
+/Next 28 0 R 
+ 
+ 
+ 
+/First 27 0 R 
+ 
+ 
+ 
+/Last 27 0 R 
+ 
+ 
+ 
+/Count -1 
+ 
+ 
+ 
+/Dest [3 0 R /XYZ null 680 null] 
+ 
+ 
+>> 
+endobj 
+ 
+27 0 obj 
+ 
+ 
+<</Title (Subsection 1) 
+ 
+ 
+ 
+/Parent 26 0 R 
+ 
+ 
+ 
+/Dest [3 0 R /XYZ null 670 null] 
+ 
+ 
+>> 
+endobj 
+ 
+28 0 obj 
+ 
+ 
+<</Title (Section 3) 
+ 
+ 
+ 
+/Parent 22 0 R 
+ 
+ 
+ 
+/Prev 26 0 R 
+ 
+ 
+ 
+/Dest [7 0 R /XYZ null 500 null] 
+ 
+ 
+>> 
+endobj 
+ 
+29 0 obj 
+ 
+ 
+<</Title (Summary) 
+ 
+ 
+ 
+/Parent 21 0 R 
+ 
+ 
+ 
+/Prev 22 0 R 
+ 
+ 
+ 
+/Dest [8 0 R /XYZ null 199 null] 
+ 
+ 
+>> 
+endobj 
+H.7 Updating example 
+H.7.1 General 
+This example shows the structure of a PDF file as it is updated several times; it illustrates multiple 
+body sections, cross-reference sections, and trailers. In addition, it shows that once an object has been 
+assigned an object identifier, it keeps that identifier until the object is deleted, even if the object is 
+altered. Finally, the example illustrates the reuse of cross-reference entries for objects that have been 
+deleted, along with the incrementing of the generation number after an object has been deleted. 
+The original file is the example in H.2, "Minimal PDF file". The updates are divided into four stages, 
+with the file saved after each stage: 
+a) Four text annotations are added. 
+b) The text of one of the annotations is altered.  
+c) Two of the text annotations are deleted.  
+d) Three text annotations are added.  
+The following subclauses show the segments added to the file at each stage. Throughout this example, 
+objects are referred to by their object identifiers, which are made up of the object number and the 
+generation number, rather than simply by their object numbers as in earlier examples. This is 
+necessary because the example reuses object numbers; therefore, the objects they denote are not 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 934 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+919 
+unique. 
+NOTE 
+The tables in these subclauses show only those objects that are modified during the updating 
+process. Objects from H.2, "Minimal PDF file" that are not altered during the update are not 
+shown. 
+H.7.2 Stage 1: Add four text annotations 
+Four text annotations are added to the initial file and the file is saved. "Table H.4 — Object usage after 
+adding four text annotations" lists the objects involved in this update. 
+Table H.4 — Object usage after adding four text annotations 
+Object identifier 
+Object type 
+4 0 
+Page (page object) 
+7 0 
+Annotation array 
+8 0 
+Annot (annotation dictionary) 
+9 0 
+Annot (annotation dictionary) 
+10 0 
+Annot (annotation dictionary) 
+11 0 
+Annot (annotation dictionary) 
+ 
+The example in H.7.2, "Stage 1: Add four text annotations" shows the lines added to the file by this 
+update. The page object is updated because an Annots entry has been added to it. Note that the file’s 
+trailer now contains a Prev entry, which points to the original cross-reference section in the file, while 
+the startxref value at the end of the trailer points to the cross-reference section added by the update. 
+EXAMPLE 
+ 
+4 0 obj 
+ 
+ 
+<</Type /Page 
+ 
+ 
+ 
+/Parent 3 0 R 
+ 
+ 
+ 
+/MediaBox [0 0 612 792] 
+ 
+ 
+ 
+/Contents 5 0 R 
+ 
+ 
+/Annots 7 0 R 
+>> 
+endobj 
+ 
+7 0 obj 
+ 
+ 
+ 
+[8 0 R 
+ 
+ 
+ 
+9 0 R 
+ 
+ 
+ 
+10 0 R 
+ 
+ 
+ 
+11 0 R 
+ 
+ 
+ 
+] 
+endobj 
+ 
+8 0 obj 
+ 
+ 
+<</Type /Annot 
+ 
+ 
+ 
+/Subtype /Text 
+ 
+ 
+ 
+/Rect [44 616 162 735] 
+ 
+ 
+ 
+/Contents (Text #1) 
+ 
+ 
+ 
+/Open true 
+ 
+ 
+>> 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 935 ---
+
+ISO 32000-2:2020 
+920 
+© ISO 2020 – All rights reserved 
+endobj 
+ 
+9 0 obj 
+ 
+ 
+<</Type /Annot 
+ 
+ 
+ 
+/Subtype /Text 
+ 
+ 
+ 
+/Rect [224 668 457 735] 
+ 
+ 
+ 
+/Contents (Text #2) 
+ 
+ 
+ 
+/Open false 
+ 
+ 
+>> 
+endobj 
+ 
+10 0 obj 
+ 
+ 
+<</Type /Annot 
+ 
+ 
+ 
+/Subtype /Text 
+ 
+ 
+ 
+/Rect [239 393 328 622] 
+ 
+ 
+ 
+/Contents (Text #3) 
+ 
+ 
+ 
+/Open true 
+ 
+ 
+>> 
+endobj 
+ 
+11 0 obj 
+ 
+ 
+<</Type /Annot 
+ 
+ 
+ 
+/Subtype /Text 
+ 
+ 
+ 
+/Rect [34 398 225 575] 
+ 
+ 
+ 
+/Contents (Text #4) 
+ 
+ 
+ 
+/Open false 
+ 
+ 
+>> 
+endobj 
+ 
+xref 
+0 1 
+0000000000 65535 f 
+4 1 
+0000000632 00000 n 
+7 5 
+0000000810 00000 n 
+0000000883 00000 n 
+0000001024 00000 n 
+0000001167 00000 n 
+0000001309 00000 n 
+trailer 
+ 
+ 
+<</Size 12 
+ 
+ 
+ 
+/Root 1 0 R 
+ 
+ 
+ 
+/Prev 408 
+ 
+ 
+>> 
+startxref 
+1452 
+%%EOF 
+ 
+H.7.3 Stage 2: Modify text of one annotation 
+One text annotation is modified and the file is saved. The example in, H.7.3, "Stage 2: Modify text of one 
+annotation" shows the lines added to the file by this update. Note that the file now contains two copies 
+of the object with identifier 10 0 (the text annotation that was modified) and that the added cross-
+reference section points to the more recent version of the object. This added cross-reference section 
+contains one subsection, which contains only an entry for the object that was modified. In addition, the 
+Prev entry in the file’s trailer has been updated to point to the cross-reference section added in the 
+previous stage, while the startxref value at the end of the trailer points to the newly added cross-
+reference section. 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 936 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+921 
+Table H.5 — Object usage after modifying text of one annotation 
+Object identifier 
+Object type 
+10 0 
+Annot (annotation dictionary) 
+ 
+EXAMPLE 
+10 0 obj 
+ 
+ 
+ <</Type /Annot 
+ 
+ 
+ 
+/Subtype /Text 
+ 
+ 
+ 
+/Rect [239 393 328 622] 
+ 
+ 
+ 
+/Contents ( Modified Text #3 ) 
+ 
+ 
+ 
+/Open true 
+ 
+ 
+>> 
+endobj 
+ 
+xref 
+0 1 
+0000000000 65535 f 
+10 1 
+0000001703 00000 n 
+trailer 
+ 
+ 
+ <</Size 12 
+ 
+ 
+ 
+/Root 1 0 R 
+ 
+ 
+ 
+/Prev 1452 
+ 
+ 
+>> 
+startxref 
+1855 
+%%EOF 
+ 
+H.7.4 Stage 3: Delete two annotations 
+Two text annotations are deleted and the file is saved. "Table H.6 — Object usage after deleting two 
+text annotations" lists the objects updated. 
+Table H.6 — Object usage after deleting two text annotations 
+Object identifier 
+Object type 
+7 0 
+Annotation array 
+8 0 
+Free 
+9 0 
+Free 
+ 
+The Annots array is the only object that is written in this update. It is updated because it now contains 
+two annotations fewer. 
+The example in, H.7.4, "Stage 3: Delete two annotations" shows the lines added when the file was 
+saved. Note that objects with identifiers 8 0 and 9 0 have been deleted, as can be seen from the fact that 
+their entries in the cross-reference section end with the keyword f. 
+ 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 937 ---
+
+ISO 32000-2:2020 
+922 
+© ISO 2020 – All rights reserved 
+EXAMPLE 
+7 0 obj 
+ 
+ 
+ 
+[10 0 R 
+ 
+ 
+ 
+11 0 R 
+ 
+ 
+ 
+] 
+endobj 
+ 
+xref 
+0 1 
+0000000008 65535 f 
+7 3 
+0000001978 00000 n 
+0000000009 00001 f 
+0000000000 00001 f 
+trailer 
+ 
+<</Size 12 
+ 
+ 
+/Root 1 0 R 
+ 
+ 
+/Prev 1855 
+ 
+>> 
+startxref 
+2027 
+%%EOF 
+ 
+The cross-reference section added at this stage contains four entries, representing object number 0, 
+the Annots array, and the two deleted text annotations. 
+The cross-reference entry for object number 0 is updated because it is the head of the linked list of free 
+entries and points to the entry for the newly freed object number 8. The entry for object number 8 
+points to the entry for object number 9 (the next free entry), while the entry for object number 9 is the 
+last free entry in the cross-reference table, indicated by the fact that it points back to object number 0. 
+The entries for the two deleted text annotations are marked as free and as having generation numbers 
+of 1, which are used for any objects that reuse these object numbers. Keep in mind that, although the 
+two objects have been deleted, they are still present in the file. It is the cross-reference table that 
+records the fact that they have been deleted. 
+The Prev entry in the trailer has again been updated so that it points to the cross-reference section 
+added at the previous stage, and the startxref value points to the newly added cross-reference section. 
+H.7.5 Stage 4: Add three annotations and update metadata 
+Finally, three new text annotations are added to the PDF file, and the PDF file’s metadata is updated 
+with minimal necessary changes. When updating any PDF, it is recommended to update the embedded 
+XML of the metadata, preserving all tags not directly updated. "Table H.7 — Object usage after adding 
+three text annotations" lists the objects involved in this update. 
+Table H.7 — Object usage after adding three text annotations 
+Object identifier 
+Object type 
+6 0 
+Metadata (metadata stream) 
+7 0 
+Annotation array 
+8 1 
+Annot (annotation dictionary) 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 938 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+923 
+Object identifier 
+Object type 
+9 1 
+Annot (annotation dictionary) 
+12 0 
+Annot (annotation dictionary) 
+ 
+Object numbers 8 and 9, which were used for the two annotations deleted in the previous stage, have 
+been reused; however, the new objects have been given a generation number of 1. In addition, the third 
+text annotation added has been assigned the previously unused object identifier of 12 0. 
+The example in, H.7.5, "Stage 4: Add three annotations and update metadata" shows the lines added to 
+the file by this update. The added cross-reference section contains six entries, corresponding to object 
+number 0, the Metadata stream, the Annots array, and the three annotations added. The entry for 
+object number 0 is updated because the previously free entries for object numbers 8 and 9 have been 
+reused. The entry for object number 0 now shows that the cross-reference table has no free entries. 
+The Annots array is updated to reflect the addition of the three text annotations. 
+EXAMPLE 
+ 
+7 0 obj 
+ 
+ 
+ 
+[10 0 R 
+ 
+ 
+ 
+11 0 R 
+ 
+ 
+ 
+8 1 R 
+ 
+ 
+ 
+9 1 R 
+ 
+ 
+ 
+12 0 R 
+ 
+ 
+ 
+] 
+endobj 
+ 
+8 1 obj 
+ 
+ 
+<</Type /Annot 
+ 
+ 
+ 
+/Subtype /Text 
+ 
+ 
+ 
+/Rect [58 657 172 742] 
+ 
+ 
+ 
+/Contents (New Text #1) 
+ 
+ 
+ 
+/Open true 
+ 
+ 
+>> 
+endobj 
+ 
+9 1 obj 
+ 
+ 
+<</Type /Annot 
+ 
+ 
+ 
+/Subtype /Text 
+ 
+ 
+ 
+/Rect [389 459 570 537] 
+ 
+ 
+ 
+/Contents (New Text #2) 
+ 
+ 
+ 
+/Open false 
+ 
+ 
+>> 
+endobj 
+ 
+12 0 obj 
+ 
+ 
+<</Type /Annot 
+ 
+ 
+ 
+/Subtype /Text 
+ 
+ 
+ 
+/Rect [44 253 473 337] 
+ 
+ 
+ 
+/Contents (New Text #3\203a longer text annotation which we will continue \ 
+ 
+ 
+ 
+ 
+onto a second line) 
+ 
+ 
+ 
+/Open true 
+ 
+ 
+>> 
+endobj 
+ 
+ 
+ 
+ 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 939 ---
+
+ISO 32000-2:2020 
+924 
+© ISO 2020 – All rights reserved 
+6 0 obj   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Metadata streams 
+ 
+ 
+<</Type /Metadata 
+ 
+ 
+ 
+/Subtype /XML 
+ 
+ 
+ 
+/Length … number of bytes in updated metadata … 
+ 
+ 
+>> 
+stream 
+%In this Metadata, "preserved" items are left unaltered, and not updated to reflect possibly 
+%different software or a different author. Updating software needs to be able to parse the XMP 
+%in any valid format and preserve all content which is not to be updated, even that with 
+%unfamiliar tags. In this example some reordering of tags has taken place. Note further that 
+%after incremental update there can be multiple XMP packets 
+<?xpacket begin="… UTF-8 value of U+FEFF (efbbbf) …" id="W5M0MpCehiHzreSzNTczkc9d"?> 
+<x:xmpmeta xmlns:x="adobe:ns:meta/"> 
+ 
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"> 
+ 
+ 
+<rdf:Description rdf:about="" xmlns:pdf="http://ns.adobe.com/pdf/1.3/"> 
+ 
+ 
+ 
+<pdf:Producer>…  name of software which generated the PDF (preserved) …</pdf:Producer> 
+ 
+ 
+</rdf:Description> 
+ 
+ 
+<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/"> 
+ 
+ 
+ 
+<dc:format>application/pdf</dc:format> 
+ 
+ 
+ 
+<dc:title><rdf:Alt> 
+ 
+ 
+ 
+ 
+ 
+<rdf:li xml:lang="x-default">… document title (preserved) …</rdf:li> 
+ 
+ 
+ 
+ 
+</rdf:Alt></dc:title> 
+ 
+ 
+ 
+<dc:creator><rdf:Seq> 
+ 
+ 
+ 
+ 
+ 
+<rdf:li>… document author’s personal name (preserved) …</rdf:li> 
+ 
+ 
+ 
+ 
+</rdf:Seq></dc:creator> 
+ 
+ 
+</rdf:Description> 
+ 
+ 
+<rdf:Description rdf:about="" xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/"> 
+ 
+ 
+ 
+<xmpMM:DocumentID>… unique GUID of document (preserved) …</xmpMM:DocumentID> 
+ 
+ 
+ 
+<xmpMM:InstanceID>… GUID changed for each save (updated) …</xmpMM:InstanceID> 
+ 
+ 
+</rdf:Description> 
+ 
+ 
+<rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/"> 
+ 
+ 
+ 
+<xmp:CreatorTool>… name of tool used to create the document (preserved) …</xmp:CreatorTool> 
+ 
+ 
+ 
+<xmp:CreateDate>… timestamp, like 2012-12-25T12:34:56Z (preserved) …</xmp:CreateDate> 
+ 
+ 
+ 
+<xmp:ModifyDate>… timestamp, like 2012-12-27T14:36:06Z (updated) …</xmp:ModifyDate> 
+ 
+ 
+</rdf:Description> 
+ 
+</rdf:RDF> 
+</x:xmpmeta> 
+… white-space padding to permit in-place updating of metadata … 
+… Note that applications which fully understand PDF updating do not usually update in-place … 
+<?xpacket end="w"?> 
+endstream 
+endobj 
+ 
+xref 
+0 1 
+0000000000 65535 f 
+6 4 
+0000002814 00000 n 
+… address where new object 7 is written … 00000 n 
+0000002302 00001 n 
+0000002447 00001 n 
+12 1 
+0000002594 00000 n 
+trailer 
+ 
+<< /Size 13 
+ 
+ 
+/Root 1 0 R 
+ 
+ 
+/Prev 2027 
+ 
+>> 
+startxref 
+3114 
+%%EOF 
+The annotation with object identifier 12 0 illustrates splitting a long text string across multiple lines, as 
+well as the technique for including nonstandard characters in a string. In this case, the character is an 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 940 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+925 
+ellipsis (…), which is character code 203 (octal) in PDFDocEncoding, the encoding used for text 
+annotations. 
+As in previous updates, the trailer’s Prev entry and startxref value have been updated. 
+H.8 Structure elements examples 
+H.8.1 General 
+H.8, "Structure elements examples" presents various examples illustrating how structure elements are 
+used. 
+H.8.2 Table of Contents 
+The structure element’s structure type entry (S) may have values that establish hierarchical 
+relationships between entries in a table of contents. The TOCI value specifies an individual member of 
+a table of contents. The TOC value specifies a list made up of other table of contents items that are 
+individual members of the table of contents and/or lists of table of contents items. (The trailing 
+character in TOCI is an upper case "i".) 
+"Figure H.5 — Table of contents" shows the table of contents described by the example in, H.8.2, "Table 
+of Contents". 
+ 
+Figure H.5 — Table of contents 
+"Figure H.6 — Association between content and marked-content identifiers" illustrates the association 
+between marked-content identifiers (MCID) and content. This illustration includes part of the stream 
+object so you can see how the MCID entries are associated with the content in the table of contents. 
+TABLE OF CONTENTS
+1. Chapter One  3
+     1.2 Section A
+4
+     1.3 Section B
+5
+2. Chapter Two   6
+3. Chapter Two   7
+     3.1 Section A
+8
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+Goto errata
+
+--- Page 941 ---
+
+ISO 32000-2:2020 
+926 
+© ISO 2020 – All rights reserved 
+ 
+Figure H.6 — Association between content and marked-content identifiers 
+"Figure H.7 — Hierarchy of structure elements and relationship with marked-content" shows how the 
+relationships of the structure elements and their use of the TOC and TOCI structure types represent 
+the structure of a table of contents.  
+TA BLE O F CONTENTS
+1. Chapter One . . . . . . . . . 3
+1.1 Section A . . . . . . . . 4
+1.2 Section B . . . . . . . . 5
+2. Chapter Two . . . . . . . . . 6
+3. Chapter Three . . . . . . . . 7
+3.1 Section A . . . . . . . . 8
+/P <</MCID 1>> BD C
+BT T* (TA BLE OF CONTENTS) Tj ET
+EMC
+/Lbl <</MCID  11>> BDC
+BT T* (1. ) Tj ET EMC
+/Reference <</MCID 12>> BDC
+BT (Chapter One ) Tj ET EMC
+/N onStruct <</MCID  13>> BD C
+BT (. . . . . . . . . ) Tj ET EMC
+/Reference <</MCID 14>> /BDC
+BT (3 ) Tj ET EMC
+/Lbl <</MCID  21>> BDC
+BT T* (1.1 ) Tj ET EMC
+/Reference <</MCID 22>> BDC
+BT (Section A ) Tj ET EMC
+/N onStruct <</MCID  23>> BD C
+BT (. . . . . . . . ) Tj ET EMC
+/Reference <</MCID 24>> /BDC
+BT (4 ) Tj ET EMC
+1
+11
+1 2
+1 3
+14
+21
+22
+2 3
+2 4
+Contents of the stream object (partial)
+Association of marked content
+identifiers (at right) to content
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+Goto errata
+
+--- Page 942 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+927 
+ 
+Figure H.7 — Hierarchy of structure elements and relationship with marked-content 
+EXAMPLE 
+4 0 obj 
+ 
+ 
+<</Type /Page 
+ 
+ 
+ 
+/Contents 5 0 R 
+ 
+ 
+>> 
+ 
+5 0 obj 
+ 
+ 
+<</Length 6 0 R>> 
+ 
+stream 
+ 
+ 
+ 
+/P <</MCID 1>> BDC 
+ 
+ 
+ 
+ 
+BT T* (TABLE OF CONTENTS) Tj ET EMC 
+ 
+ 
+ 
+/Lbl <</MCID 11>> BDC  
+ 
+ 
+ 
+ 
+BT T* (1. ) Tj ET EMC 
+ 
+ 
+ 
+/Reference <</MCID 12>> BDC  
+ 
+ 
+ 
+ 
+BT (Chapter One ) Tj ET EMC 
+ 
+ 
+ 
+/NonStruct <</MCID 13>> BDC  
+ 
+ 
+ 
+ 
+BT (. . . . . . . . . ) Tj ET EMC 
+ 
+ 
+ 
+/Reference <</MCID 14>> /BDC  
+ 
+ 
+ 
+ 
+BT (3 ) Tj ET EMC 
+ 
+ 
+ 
+/Lbl <</MCID 21>> BDC  
+ 
+ 
+ 
+ 
+BT T* (1.1 ) Tj ET EMC 
+ 
+ 
+ 
+/Reference <</MCID 22>> BDC  
+ 
+ 
+ 
+ 
+BT (Section A ) Tj ET EMC 
+ 
+ 
+ 
+/NonStruct <</MCID 23>> BDC 
+ 
+ 
+ 
+ 
+BT (. . . . . . . . ) Tj ET EMC 
+TABLE OF CONTENTS
+………….
+.
+Chapter One
+1.
+3
+4
+………
+Section A
+1.1
+1
+11
+12
+13
+14
+21
+22
+23
+24
+5
+………
+Section B
+1.2
+31
+32
+33
+34
+………
+Chapter Two
+2.
+6
+41
+42
+43
+44
+………
+Chapter Three
+3.
+7
+51
+52
+53
+54
+8
+………
+Section A
+3.1
+61
+62
+63
+64
+Marked content
+Structure elements
+201
+211
+301
+214
+215
+302
+/S /Cap-
+/S /
+/S /TOC
+/S /
+/S /
+/S /TOC
+212
+213
+/S /
+/S /
+216
+/S /
+400
+/S /TOC
+101 → 1
+111 → 11
+121 → 21
+131 → 31
+141 → 41
+151 → 51
+161 → 61
+112 → 12
+122 → 22
+132 → 32
+142 → 42
+152 → 52
+162 → 62
+113 → 13
+123 → 23
+133 → 33
+143 → 43
+153 → 53
+163 → 63
+114 → 14
+124 → 24
+134 → 34
+144 → 44
+154 → 54
+164 → 64
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+Goto errata
+
+--- Page 943 ---
+
+ISO 32000-2:2020 
+928 
+© ISO 2020 – All rights reserved 
+ 
+ 
+ 
+/Reference <</MCID 24>> /BDC 
+ 
+ 
+ 
+ 
+BT (4 ) Tj ET EMC 
+ 
+ 
+ 
+/Lbl <</MCID 31>> BDC  
+ 
+ 
+ 
+ 
+BT T* (1.2 ) Tj ET EMC 
+ 
+ 
+ 
+/Reference <</MCID 32>> BDC  
+ 
+ 
+ 
+ 
+BT (Section B ) Tj ET EMC 
+ 
+ 
+ 
+/NonStruct <</MCID 33>> BDC  
+ 
+ 
+ 
+ 
+BT (. . . . . . . . ) Tj ET EMC 
+ 
+ 
+ 
+/Reference <</MCID 34>> /BDC  
+ 
+ 
+ 
+ 
+BT (5 ) Tj ET EMC 
+ 
+ 
+ 
+/Lbl <</MCID 41>> BDC  
+ 
+ 
+ 
+ 
+BT T* (2. ) Tj ET EMC 
+ 
+ 
+ 
+/Reference <</MCID 42>> BDC  
+ 
+ 
+ 
+ 
+BT (Chapter Two ) Tj ET EMC 
+ 
+ 
+ 
+/NonStruct <</MCID 43>> BDC  
+ 
+ 
+ 
+BT (. . . . . . . . . ) Tj ET EMC 
+ 
+ 
+ 
+/Reference <</MCID 44>> /BDC  
+ 
+ 
+ 
+ 
+BT (6 ) Tj ET EMC 
+ 
+ 
+ 
+/Lbl <</MCID 51>> BDC  
+ 
+ 
+ 
+ 
+BT T* (3. ) Tj ET EMC 
+ 
+ 
+ 
+/Reference <</MCID 52>> BDC 
+ 
+ 
+ 
+ 
+BT (Chapter Three ) Tj ET EMC 
+ 
+ 
+ 
+/NonStruct <</MCID 53>> BDC  
+ 
+ 
+ 
+ 
+BT (. . . . . . . . ) Tj ET EMC 
+ 
+ 
+ 
+/Reference <</MCID 54>> /BDC  
+ 
+ 
+ 
+ 
+BT (7 ) Tj ET EMC 
+ 
+ 
+ 
+/Lbl <</MCID 61>> BDC  
+ 
+ 
+ 
+ 
+BT T* (3.1 ) Tj ET EM 
+ 
+ 
+ 
+/Reference <</MCID 62>> BDC  
+ 
+ 
+ 
+ 
+BT (Section A ) Tj ET EM 
+ 
+ 
+ 
+/NonStruct <</MCID 63>> BDC  
+ 
+ 
+ 
+ 
+BT (. . . . . . . . ) Tj ET EM 
+ 
+ 
+ 
+/Reference <</MCID 64>> /BDC  
+ 
+ 
+ 
+ 
+BT (8 ) Tj ET EMC 
+endstream 
+endobj 
+ 
+101 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /P 
+ 
+ 
+ 
+/P 201 0 R 
+ 
+ 
+ 
+/Pg 4 0 R 
+ 
+ 
+ 
+/K 1 
+ 
+ 
+>> 
+endobj 
+ 
+111 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /Lbl 
+ 
+ 
+ 
+/P 211 0 R 
+ 
+ 
+ 
+/Pg 4 0 R 
+ 
+ 
+ 
+/K 11 
+ 
+ 
+>> 
+endobj 
+ 
+112 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /Reference 
+ 
+ 
+ 
+/P 211 0 R 
+ 
+ 
+ 
+/Pg 4 0 R 
+ 
+ 
+ 
+/K 12 
+ 
+ 
+>> 
+endobj 
+ 
+ 
+ 
+ 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 944 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+929 
+113 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /NonStruct 
+ 
+ 
+ 
+/P 211 0 R 
+ 
+ 
+ 
+/Pg 4 0 R 
+ 
+ 
+ 
+/K 13 
+ 
+ 
+>> 
+endobj 
+ 
+114 0 obj 
+ 
+ 
+</Type /StructElem 
+ 
+ 
+ 
+/S /Reference 
+ 
+ 
+ 
+/P 211 0 R 
+ 
+ 
+ 
+/Pg 4 0 R 
+ 
+ 
+ 
+/K 14 
+ 
+ 
+>> 
+endobj 
+… objects 121-124, 131-134, 141-144, 151-154 and 161-164 referencing MCIDs 21-24, 31-34, 41-
+44, …  
+… 51-54, and 61-64 are omitted in the interest of space. …  
+ 
+201 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /Caption 
+ 
+ 
+ 
+/P 400 0 R 
+ 
+ 
+ 
+/K [101 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+211 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /TOCI 
+ 
+ 
+ 
+/P 400 0 R 
+ 
+ 
+ 
+/K [111 0 R 112 0 R 113 0 R 114 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+212 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /TOCI 
+ 
+ 
+ 
+/P 301 0 R 
+ 
+ 
+ 
+/K [121 0 R 122 0 R 123 0 R 124 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+213 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /TOCI 
+ 
+ 
+ 
+/P 301 0 R 
+ 
+ 
+ 
+/K [131 0 R 132 0 R 133 0 R 134 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+214 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /TOCI 
+ 
+ 
+ 
+/P 400 0 R 
+ 
+ 
+ 
+/K [141 0 R 142 0 R 143 0 R 144 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+215 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /TOCI 
+ 
+ 
+ 
+/P 400 0 R 
+ 
+ 
+ 
+/K [151 0 R 152 0 R 153 0 R 154 0 R] 
+ 
+ 
+>> 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 945 ---
+
+ISO 32000-2:2020 
+930 
+© ISO 2020 – All rights reserved 
+endobj 
+ 
+216 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /TOCI 
+ 
+ 
+ 
+/P 302 0 R 
+ 
+ 
+ 
+/K [161 0 R 162 0 R 163 0 R 164 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+301 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /TOC 
+ 
+ 
+ 
+/P 400 0 R 
+ 
+ 
+ 
+/K [212 0 R 213 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+302 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /TOC 
+ 
+ 
+ 
+/P 400 0 R 
+ 
+ 
+ 
+/K [216 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+400 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S TOC 
+ 
+ 
+ 
+/K [201 0 R 211 0 R 301 0 R 214 0 R 215 0 R 302 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+H.8.3 Hierarchical lists 
+The structure element’s structure type entry (S) may have values that establish hierarchical 
+relationships between entries in a list. The LI value specifies an individual list entry. The L value 
+specifies a list made up of individual list entries and/or lists of list entries. The trailing character in LI 
+is an upper case "i". 
+"Figure H.8 — List" shows the list described by the example in H.8.3, "Hierarchical lists". 
+ 
+Figure H.8 — List 
+INDEX
+1. Cats
+a. Lions
+b. Tigers
+2. Bears
+3. Canines
+a. Wolves
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 946 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+931 
+"Figure H.9 — Hierarchy of structure elements and relationship with marked-content" shows how the 
+relationships of the structure elements and their use of the L and LI structure types defines the 
+structure of a list as well as the relationship between the structure elements and marked-content. 
+ 
+Figure H.9 — Hierarchy of structure elements and relationship with marked-content 
+EXAMPLE 
+4 0 obj 
+ 
+ 
+<</Type /Page 
+ 
+ 
+ 
+/Contents 5 0 R 
+ 
+ 
+>> 
+endobj 
+ 
+5 0 obj 
+ 
+ 
+<</Length 6 0 R>> 
+ 
+ 
+stream 
+ 
+ 
+ 
+/P <</MCID 1>> BDC 
+ 
+ 
+ 
+ 
+BT T* (INDEX) Tj ET EMC 
+ 
+ 
+ 
+/Lbl <</MCID 11>> BDC  
+ 
+ 
+ 
+ 
+BT T* (1. ) Tj ET EMC 
+ 
+ 
+ 
+/LBody <</MCID 12>> /BDC  
+ 
+ 
+ 
+ 
+BT (Cats ) Tj ET EMC 
+ 
+ 
+ 
+/Lbl <</MCID 21>> BDC  
+ 
+ 
+ 
+ 
+BT T* (a. ) Tj ET EMC 
+ 
+ 
+ 
+/LBody <</MCID 22>> /BDC  
+ 
+ 
+ 
+ 
+BT (Lions ) Tj ET EMC 
+ 
+ 
+ 
+/Lbl <</MCID 31>> BDC  
+ 
+ 
+ 
+ 
+BT T* (b. ) Tj ET EMC 
+ 
+ 
+ 
+/LBody <</MCID 32>>  
+ 
+ 
+ 
+ 
+/BDC BT (Tigers ) Tj ET EMC 
+ 
+ 
+ 
+/Lbl <</MCID 41>> BDC  
+ 
+ 
+ 
+ 
+BT T* (2. ) Tj ET EMC 
+ 
+ 
+ 
+/LBody <</MCID 42>> /BDC 
+ 
+ 
+ 
+ 
+BT (Bears ) Tj ET EMC 
+ 
+ 
+ 
+/Lbl <</MCID 51>> BDC  
+ 
+ 
+ 
+ 
+BT T* (3. ) Tj ET EM 
+INDEX
+Cats
+1.
+Lions
+a.
+1
+11
+12
+21
+22
+Tigers
+b.
+31
+32
+Bears
+2.
+41
+42
+Canines
+3.
+51
+52
+Wolves
+a.
+61
+62
+Marked content
+Structure elements
+201
+211
+301
+214
+215
+302
+/S /Cap-
+/S /LI
+/S /L
+/S /LI
+/S /LI
+/S /L
+212
+213
+/S /LI
+/S /LI
+216
+/S /LI
+400
+/S /L
+101 → 1
+111 → 11
+121 → 21
+131 → 31
+141 → 41
+151 → 51
+161 → 61
+112 → 12
+122 → 22
+132 → 32
+142 → 42
+152 → 52
+162 → 62
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+Goto errata
+
+--- Page 947 ---
+
+ISO 32000-2:2020 
+932 
+© ISO 2020 – All rights reserved 
+ 
+ 
+ 
+/LBody <</MCID 52>> /BDC  
+ 
+ 
+ 
+ 
+BT (Canines ) Tj ET EMC 
+ 
+ 
+ 
+/Lbl <</MCID 61>> BDC  
+ 
+ 
+ 
+ 
+BT T* (a. ) Tj ET EM 
+ 
+ 
+ 
+/LBody <</MCID 62>> /BDC  
+ 
+ 
+ 
+ 
+BT (Wolves ) Tj ET EMC 
+endstream 
+endobj 
+ 
+101 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /P 
+ 
+ 
+ 
+/P 201 0 R 
+ 
+ 
+ 
+/Pg 4 0 R 
+ 
+ 
+ 
+/K 1 
+ 
+ 
+>> 
+endobj 
+ 
+111 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /Lbl 
+ 
+ 
+ 
+/P 211 0 R 
+ 
+ 
+ 
+/Pg 4 0 R 
+ 
+ 
+ 
+/K 11 
+ 
+ 
+>> 
+endobj 
+ 
+112 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /LBody 
+ 
+ 
+ 
+/P 211 0 R 
+ 
+ 
+ 
+/Pg 4 0 R 
+ 
+ 
+ 
+/K 12 
+ 
+ 
+>> 
+endobj 
+ 
+%objects 121-122, 131-132, 141-142, 151-152 and 161-162 referencing MCIDs 21-22, 31-32, 41-42, 
+51-52, and 61-62 are omitted in the interest of space. 
+ 
+201 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /Caption 
+ 
+ 
+ 
+/P 400 0 R 
+ 
+ 
+ 
+/K [101 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+211 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /LI 
+ 
+ 
+ 
+/P 400 0 R 
+ 
+ 
+ 
+/K [111 0 R 112 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+212 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /LI 
+ 
+ 
+ 
+/P 301 0 R 
+ 
+ 
+ 
+/K [121 0 R 122 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+ 
+ 
+ 
+ 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 948 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+933 
+213 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /LI 
+ 
+ 
+ 
+/P 301 0 R 
+ 
+ 
+ 
+/K [131 0 R 132 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+214 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /LI 
+ 
+ 
+ 
+/P 400 0 R 
+ 
+ 
+ 
+/K [141 0 R 142 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+215 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /LI 
+ 
+ 
+ 
+/P 400 0 R 
+ 
+ 
+ 
+/K [151 0 R 152 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+216 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /LI 
+ 
+ 
+ 
+/P 302 0 R 
+ 
+ 
+ 
+/K [161 0 R 162 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+301 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /L 
+ 
+ 
+ 
+/P 400 0 R 
+ 
+ 
+ 
+/K [212 0 R 213 0 R] 
+ 
+ 
+>> 
+ 
+302 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /L 
+ 
+ 
+ 
+/P 400 0 R 
+ 
+ 
+ 
+/K [216 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+400 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /L 
+ 
+ 
+ 
+/K [201 0 R 211 0 R 301 0 R 214 0 R 215 0 R 302 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+H.8.4 Example of Sub standard structure type 
+This example demonstrates the use of the Sub standard structure type 14.8.4.6, "Sub-block level 
+structure type" for lines in a stanza of a children’s poem, where the stanza uses the P structure type, 
+containing four lines each enclosed by a structure element of subtype Sub. 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 949 ---
+
+ISO 32000-2:2020 
+934 
+© ISO 2020 – All rights reserved 
+EXAMPLE 
+4 0 obj 
+ 
+ 
+<</Type /Page 
+ 
+ 
+ 
+/Contents 5 0 R 
+ 
+ 
+>> 
+ 
+5 0 obj 
+ 
+ 
+<</Length 6 0 R>> 
+stream 
+ 
+ 
+ 
+/H1 <</MCID 1>> BDC 
+ 
+ 
+ 
+ 
+BT T* (Abzählreim) Tj ET EMC 
+ 
+ 
+ 
+/Sub <</MCID 2>> BDC  
+ 
+ 
+ 
+ 
+BT (Ene mene miste) Tj ET EMC 
+ 
+ 
+ 
+/Sub <</MCID 3>> /BDC  
+ 
+ 
+ 
+ 
+BT (Es rappelt in der Kiste) Tj ET EMC 
+ 
+ 
+ 
+/Sub <</MCID 4>> BDC  
+ 
+ 
+ 
+ 
+BT T* (Ene mene muh) Tj ET EMC 
+ 
+ 
+ 
+/Sub <</MCID 5>> BDC  
+ 
+ 
+ 
+ 
+BT (Und raus bist Du!) Tj ET EMC 
+endstream 
+endobj 
+ 
+101 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /H1 
+ 
+ 
+ 
+/P 201 0 R 
+ 
+ 
+ 
+/Pg 4 0 R 
+ 
+ 
+ 
+/K 1 
+ 
+ 
+>> 
+endobj 
+ 
+111 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /P 
+ 
+ 
+ 
+/P 201 0 R 
+ 
+ 
+ 
+/Pg 4 0 R 
+ 
+ 
+ 
+/K [112 0 R 113 0 R 114 0 R 115 0 R] 
+ 
+ 
+>> 
+endobj 
+ 
+112 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /Sub 
+ 
+ 
+ 
+/P 201 0 R 
+ 
+ 
+ 
+/Pg 4 0 R 
+ 
+ 
+ 
+/K 2 
+ 
+ 
+>> 
+endobj 
+ 
+113 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /Sub 
+ 
+ 
+ 
+/P 201 0 R 
+ 
+ 
+ 
+/Pg 4 0 R 
+ 
+ 
+ 
+/K 3 
+ 
+ 
+>> 
+endobj 
+ 
+114 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /Sub 
+ 
+ 
+ 
+/P 201 0 R 
+ 
+ 
+ 
+/Pg 4 0 R 
+ 
+ 
+ 
+/K 4 
+ 
+ 
+>> 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
+
+--- Page 950 ---
+
+ISO 32000-2:2020(E) 
+© ISO 2020 – All rights reserved 
+935 
+endobj 
+ 
+115 0 obj 
+ 
+ 
+<</Type /StructElem 
+ 
+ 
+ 
+/S /Sub 
+ 
+ 
+ 
+/P 201 0 R 
+ 
+ 
+ 
+/Pg 4 0 R 
+ 
+ 
+ 
+/K 5 
+ 
+ 
+>> 
+endobj 
+ 
+201 0 obj 
+ 
+… StructTreeRoot …  
+endobj 
+ 
+ 
+Sold by the PDF Association to    19169 | April 12, 2026 |
+Single user only, copying and networking prohibited.
