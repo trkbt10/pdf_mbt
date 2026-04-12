@@ -29,14 +29,14 @@ Library implementers and later parser layers use this as the stable foundation f
 
 ### Out of Boundary
 - Resolving indirect references against cross-reference data. This spec can represent `Ref`, but it does not load referenced objects.
-- Treating nonexistent indirect references as `Null` during file-level lookup. This spec defines the result value and reader contract used by the next layer.
+- Resolving nonexistent indirect references to `Null` during file-level lookup. That responsibility belongs to the `reader` layer. This spec provides `PdfObject::Null` as a value and `PdfObject::Ref` as a reference, but does not perform resolution. Requirement 13.2 is deferred to the `pdf-file-structure` spec.
 - Cross-reference tables, trailers, incremental updates, object streams, xref streams, and hybrid reference files.
 - Stream filter decoding and decoded-length validation.
 - Content stream operator parsing, Type 4 function parsing, and brace delimiters.
 
 ### Allowed Dependencies
 - MoonBit standard library only: `Bytes`, `Array`, `Map`, numeric types, `Result`, `Option`, and `suberror`.
-- Local packages in this direction: `src/objects` has no project imports; `src/lexer` may use only standard library and lexical support types; `src/parser` may import `src/objects` and `src/lexer`.
+- Local packages in this direction: `src/objects` has no project imports; `src/lexer` imports `src/objects` (for `PdfParseError` only); `src/parser` imports `src/objects` and `src/lexer`.
 - Local specification references under `spec/extracted/7.2-lexical.md` and `spec/extracted/7.3-objects.md`.
 - Project tooling: `moon check`, `moon test`, `moon fmt`, and `moon info`.
 
@@ -190,7 +190,7 @@ The parser never tokenizes stream data. `StreamReader` uses the dictionary `Leng
 | 10.1, 10.2, 10.3, 10.4 | Arrays | ObjectParser | `Array(Array[PdfObject])` | General Object Parse Flow |
 | 11.1, 11.2, 11.3, 11.4, 11.5, 11.6 | Dictionaries, keys, null omission, duplicate rejection | DictionaryBuilder, ObjectParser | `Dictionary(Map[PdfName, PdfObject])` | General Object Parse Flow |
 | 12.1, 12.2, 12.3, 12.4, 12.5 | Stream syntax and dictionary entries | StreamReader, DictionaryBuilder, Accessors | `Stream(PdfStream)`, `as_integer` | Stream Parse Flow |
-| 13.1, 13.2 | Null object and missing-reference contract | ObjectParser, Accessors | `Null`, future reader missing-ref result contract | General Object Parse Flow |
+| 13.1, 13.2 | Null object as value; `Null` availability for reader layer | ObjectParser | `Null` | General Object Parse Flow |
 | 14.1, 14.2, 14.3, 14.4 | Indirect object definitions and references | IndirectObjectParser, ObjectParser | `IndirectObject`, `Ref(ObjectId)` | General Object Parse Flow |
 | 15.1, 15.2, 15.3, 15.4 | Two-token lookahead disambiguation | ObjectParser | bounded lookahead buffer | General Object Parse Flow |
 | 16.1, 16.2, 16.3, 16.4, 16.5 | Type-safe model and diagnostics | PdfObject Model, PdfParseError | public object and error contracts | General Object Parse Flow, Stream Parse Flow |
@@ -201,7 +201,7 @@ The parser never tokenizes stream data. `StreamReader` uses the dictionary `Leng
 |-----------|----------------|--------|--------------|------------------|-----------|
 | PdfObject Model | objects | Public recursive PDF object data model | 4.1, 4.2, 5.1, 6.1, 7.8, 8.5, 9.6, 10.1, 11.1, 12.1, 13.1, 14.2, 16.1, 16.2, 16.3, 16.4 | Standard `Bytes`, `Array`, `Map` P0 | Service, State |
 | PdfParseError | objects | Typed diagnostics with byte offsets | 5.3, 6.4, 9.4, 11.2, 11.4, 12.2, 12.3, 14.1, 16.5 | MoonBit `suberror` P0 | Service |
-| Accessors | objects | Typed validation helpers for expected object kinds | 6.3, 6.4, 12.3, 12.5, 13.2 | PdfObject Model P0 | Service |
+| Accessors | objects | Typed validation helpers for expected object kinds | 6.3, 6.4, 12.3, 12.5 | PdfObject Model P0 | Service |
 | ByteCursor | lexer | Single owner of byte offset movement | 1.4, 2.1, 7.5, 7.6, 12.2, 12.3, 12.4 | Standard `Bytes` P0 | Service, State |
 | CharClassifier | lexer | Pure classification of bytes outside special regions | 1.1, 1.2, 1.3 | None P0 | Service |
 | Lexer | lexer | Ordinary token scanning, separator collapse, comment handling | 2.2, 2.3, 3.1, 3.2, 3.3 | ByteCursor P0, CharClassifier P0 | Service, State |
@@ -317,12 +317,12 @@ pub(all) suberror PdfParseError {
 | Field | Detail |
 |-------|--------|
 | Intent | Validate object kinds where downstream or stream syntax expects a narrower type. |
-| Requirements | 6.3, 6.4, 12.3, 12.5, 13.2 |
+| Requirements | 6.3, 6.4, 12.3, 12.5 |
 
 **Responsibilities & Constraints**
 - Provide `as_integer` for contexts where real numbers are invalid.
 - Provide `as_number` for contexts where integer values may substitute for real values.
-- Provide dictionary lookup helpers that return `Null` for a future reader's nonexistent-reference contract without resolving references in this layer.
+- Provide dictionary lookup helpers that return `Null` when a key is absent.
 
 **Dependencies**
 - Inbound: StreamReader - validates `Length` and optional `DL` (P0).
@@ -618,7 +618,7 @@ pub fn maybe_read_stream(
 - Validate positive object number and non-negative generation number.
 - Parse `N G R` as `PdfObject::Ref(ObjectId)`.
 - Parse `N G obj ... endobj` as `IndirectObject`.
-- Ensure stream objects appear only as the value inside an indirect object when the caller uses indirect-object parsing mode.
+- Per ISO 32000-2 §7.3.8.1: "All streams shall be indirect objects." The parser shall reject a stream (dictionary followed by `stream` keyword) when parsing in direct-object mode (e.g. array elements, dictionary values). Streams are accepted only when the caller uses indirect-object parsing mode (`parse_indirect_object`). In direct-object mode, a dictionary followed by `stream` is parsed as a plain dictionary, and the `stream` keyword is left unconsumed for the caller to handle or reject.
 
 **Dependencies**
 - Inbound: Public parser APIs, Future Reader (P0/P1).

@@ -115,7 +115,7 @@ The parser shall parse `<<`...`>>` delimited key-value pair collections per §7.
 The parser shall parse dictionary + `stream`...`endstream` byte sequences per §7.3.8.
 
 #### Acceptance Criteria
-1. When a dictionary is immediately followed by the keyword `stream`, the parser shall treat it as a Stream object
+1. When parsing an indirect object value and a dictionary is immediately followed by the keyword `stream`, the parser shall treat it as a Stream object. In direct-object contexts (array elements, dictionary values), a dictionary followed by `stream` shall be parsed as a plain dictionary
 2. The parser shall require the `stream` keyword to be followed by an EOL: CR+LF or LF only (not CR alone)
 3. The parser shall use the `Length` entry from the stream dictionary to determine the exact byte count of stream data
 4. The parser shall not include the optional EOL before `endstream` in the stream data
@@ -126,7 +126,7 @@ The parser shall recognize keyword `null` as the Null object per §7.3.9.
 
 #### Acceptance Criteria
 1. When the parser encounters token `null`, the parser shall produce a `Null` object
-2. An indirect reference to a nonexistent object shall be treated as `Null`
+2. The object model shall provide `PdfObject::Null` as a distinct value so that the reader layer can return it for nonexistent indirect references (resolution itself is out of scope for this spec)
 
 ### Requirement 14: Indirect Objects and References
 The parser shall parse `N G obj ... endobj` definitions and `N G R` references per §7.3.10.
