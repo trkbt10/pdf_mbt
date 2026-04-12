@@ -102,7 +102,7 @@
   - _Requirements: 6.5, 9.1, 9.2, 9.3, 9.4, 9.5_
   - _Boundary: ObjectLoader_
 
-- [ ] 5.4 Expose the opened file reader lifecycle
+- [x] 5.4 Expose the opened file reader lifecycle
   - Coordinate header parsing, tail discovery, section-chain traversal, xref merge, latest trailer metadata, root reference access, and lazy object loading through the public file handle.
   - Keep file opening structural only: it builds the index without eagerly parsing every in-use indirect object and never falls back to heuristic body scans.
   - The public lifecycle is complete when a black-box test opens a minimal complete PDF, reads version and trailer data, loads an existing object, and receives null for a missing object.

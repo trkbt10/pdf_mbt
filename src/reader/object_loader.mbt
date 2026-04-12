@@ -1,5 +1,5 @@
 ///|
-fn PdfFile::load_object(
+pub fn PdfFile::load_object(
   self : PdfFile,
   id : @objects.ObjectId,
 ) -> @objects.PdfObject raise PdfReaderError {
