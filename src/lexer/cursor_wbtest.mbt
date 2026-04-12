@@ -67,3 +67,18 @@ test "cursor raw byte reads preserve physical eol bytes" {
     _ => fail("expected short raw read to fail")
   }
 }
+
+///|
+test "cursor rejects negative raw byte lengths" {
+  let cursor = ByteCursor::new(b"AB")
+  let result : Result[Bytes, @objects.PdfParseError] = try? cursor.read_bytes(
+    -1L,
+  )
+  match result {
+    Err(InvalidStream(offset, reason)) => {
+      assert_eq(offset, 0L)
+      assert_eq(reason.contains("non-negative"), true)
+    }
+    _ => fail("expected negative raw length rejection")
+  }
+}

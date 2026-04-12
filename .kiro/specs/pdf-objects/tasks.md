@@ -147,7 +147,7 @@
   - _Depends: 6.1_
   - _Requirements: 3.3, 4.1, 4.2, 5.2, 6.2, 7.8, 8.5, 9.5, 10.4, 11.5, 12.3, 13.1, 14.4, 15.1, 15.2, 15.3, 15.4_
 
-- [ ] 6.3 Complete robustness, formatting, and full validation checks
+- [x] 6.3 Complete robustness, formatting, and full validation checks
   - Exercise malformed inputs for EOF, numeric overflow, invalid names, duplicate dictionary keys, invalid stream lengths, bounds-checked cursor movement, and invalid indirect-object headers.
   - Verify large strings and stream payloads advance offsets correctly without decoding stream data or adding filter support.
   - Final validation is complete when `moon fmt`, `moon check`, `moon test`, and `moon info` all pass and generated interface changes match the intended public contracts.
