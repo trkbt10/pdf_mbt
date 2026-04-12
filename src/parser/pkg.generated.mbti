@@ -1,11 +1,20 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/pdf/src/parser"
 
+import {
+  "trkbt10/pdf/src/objects",
+}
+
 // Values
+pub fn parse_object(Bytes) -> @objects.PdfObject raise @objects.PdfParseError
 
 // Errors
 
 // Types and methods
+type ObjectParser
+pub fn ObjectParser::new(Bytes) -> Self
+pub fn ObjectParser::parse_all_objects(Self) -> Array[@objects.PdfObject] raise @objects.PdfParseError
+pub fn ObjectParser::parse_object(Self) -> @objects.PdfObject raise @objects.PdfParseError
 
 // Type aliases
 

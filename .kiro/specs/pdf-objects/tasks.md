@@ -58,7 +58,7 @@
   - _Boundary: NameReader_
 
 - [ ] 3. Parse scalar and direct object forms
-- [ ] 3.1 Parse booleans, nulls, integers, and real numbers
+- [x] 3.1 Parse booleans, nulls, integers, and real numbers
   - Recognize `true`, `false`, and `null` case-sensitively while rejecting lookalike keywords as those object types.
   - Parse signed decimal integers and PERIOD-containing real numbers, including leading and trailing PERIOD forms, while rejecting radix and exponent notation.
   - Scalar parsing is complete when parser tests produce exact values for all required numeric examples and typed errors for invalid numeric syntaxes.

@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/core/string",
   "trkbt10/pdf/src/objects",
   "trkbt10/pdf/src/lexer",
 }
