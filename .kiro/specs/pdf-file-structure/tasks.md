@@ -146,7 +146,7 @@
   - _Depends: 6.1, 6.2_
   - _Requirements: 1.2, 1.3, 2.1, 2.3, 3.3, 3.7, 4.2, 6.6, 7.8, 9.5_
 
-- [ ] 6.6 Validate lazy-loading and xref performance boundaries
+- [x] 6.6 Validate lazy-loading and xref performance boundaries
   - Verify opening a file builds xref and trailer state without parsing every in-use object and repeated object loads use memoized results.
   - Verify large fixed-width xref tables are processed in linear time with bounds-checked reads and object streams are decoded once per container object.
   - Performance validation is complete when tests or lightweight benchmarks demonstrate lazy parsing, cache reuse, and linear xref-table behavior within the reader package.
