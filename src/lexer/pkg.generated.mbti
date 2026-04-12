@@ -32,6 +32,23 @@ pub(all) enum CharClass {
   Regular
 } derive(Eq, @debug.Debug)
 
+type Lexer
+pub fn Lexer::new(ByteCursor) -> Self
+pub fn Lexer::next_token(Self) -> PdfToken raise @objects.PdfParseError
+pub fn Lexer::peek_token(Self) -> PdfToken raise @objects.PdfParseError
+pub fn Lexer::push_back(Self, PdfToken) -> Unit
+pub fn Lexer::skip_separators(Self) -> Unit raise @objects.PdfParseError
+
+pub(all) enum PdfToken {
+  Regular(Bytes, Int64)
+  Delimiter(Byte, Int64)
+  DictStart(Int64)
+  DictEnd(Int64)
+  HeaderMarker(Int, Int, Int64)
+  EofMarker(Int64)
+  EndOfInput(Int64)
+} derive(Eq, @debug.Debug)
+
 // Type aliases
 pub using @objects {type PdfName as LexedName}
 

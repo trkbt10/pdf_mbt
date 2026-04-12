@@ -33,7 +33,7 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
   - _Boundary: CharClassifier_
 
-- [ ] 2.3 Implement ordinary token scanning, separator collapse, comments, and structural markers
+- [x] 2.3 Implement ordinary token scanning, separator collapse, comments, and structural markers
   - Collapse consecutive white-space and ordinary comments into token separators without exposing ordinary comments as object tokens.
   - Terminate regular tokens at delimiters while preserving delimiter tokens, dictionary delimiters, header markers, EOF markers, and token offsets.
   - The lexer is complete when tests cover separator collapse, delimiter token boundaries, ordinary comment skipping, `%PDF-n.m`, and `%%EOF` marker emission.

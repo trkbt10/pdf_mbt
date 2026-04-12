@@ -3,7 +3,7 @@ test "classifier maps all 256 bytes into exactly one class" {
   let whitespace = [b'\x00', b'\t', b'\n', b'\f', b'\r', b' ']
   let delimiters = [b'(', b')', b'<', b'>', b'[', b']', b'/', b'%']
 
-  for byte in 0..=255 {
+  for byte in 0..<=255 {
     let b = byte.to_byte()
     let class = classify_byte(b)
     match class {
