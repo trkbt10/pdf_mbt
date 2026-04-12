@@ -116,7 +116,7 @@
   - _Requirements: 14.1, 14.3, 14.4, 15.2, 15.4_
   - _Boundary: IndirectObjectParser_
 
-- [ ] 5.2 Parse stream envelopes using dictionary Length and exact raw data
+- [x] 5.2 Parse stream envelopes using dictionary Length and exact raw data
   - Treat a dictionary immediately followed by `stream` as a stream only in indirect-object parsing mode.
   - Require LF or CRLF after `stream`, read exactly the required integer Length bytes, exclude the optional data EOL before `endstream`, and reject malformed envelopes without scanning heuristics.
   - Stream parsing is complete when tests cover exact-length data, zero-length data, CR-alone rejection, missing or non-integer Length, missing `endstream`, optional pre-`endstream` EOL, and recognized `Filter`, `DecodeParms`, and `DL` entries.

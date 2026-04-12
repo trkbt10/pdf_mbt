@@ -7,7 +7,10 @@ pub fn ObjectParser::parse_indirect_object(
   let object_number = self.read_indirect_object_number(start_offset)
   let generation_number = self.read_indirect_generation_number(start_offset)
   self.require_indirect_keyword(b"obj", "indirect object", start_offset)
-  let value = self.parse_object()
+  let value = match self.parse_object() {
+    Dictionary(dict) => self.maybe_read_stream(dict)
+    value => value
+  }
   self.lexer.skip_separators()
   let end_offset = self.cursor.offset()
   let end_token = self.lexer.next_token()
