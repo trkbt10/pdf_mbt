@@ -53,7 +53,7 @@
   - _Boundary: XrefTableParser_
 
 - [ ] 4. Parse stream-based reference sections and section chains
-- [ ] 4.1 (P) Provide the structural stream decoding boundary
+- [x] 4.1 (P) Provide the structural stream decoding boundary
   - Treat unfiltered structural streams as decoded bytes while keeping general PDF filter support outside this feature.
   - Reject encrypted, `/Crypt`-filtered, or otherwise unsupported structural streams with explicit reader errors.
   - The decoder boundary is complete when tests prove unfiltered xref and object streams pass through unchanged and unsupported filters fail before entry parsing.
