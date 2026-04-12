@@ -49,7 +49,7 @@
   - _Requirements: 1.4, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 8.1, 8.2, 8.3, 8.4, 8.5_
   - _Boundary: StringReader_
 
-- [ ] 2.5 (P) Implement slash-prefixed name decoding
+- [x] 2.5 (P) Implement slash-prefixed name decoding
   - Read name bodies until white-space, delimiter, or end of input and expand valid two-digit hexadecimal escapes.
   - Allow the empty name, reject decoded NUL bytes, and keep equality based on exact decoded bytes rather than UTF-8 text.
   - The name reader is complete when tests pass for all required examples, empty names, invalid NUL escapes, high-bit bytes, and byte-equality comparisons.

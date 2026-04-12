@@ -17,6 +17,8 @@ pub fn read_hex_string(ByteCursor) -> Bytes raise @objects.PdfParseError
 
 pub fn read_literal_string(ByteCursor) -> Bytes raise @objects.PdfParseError
 
+pub fn read_name(ByteCursor) -> @objects.PdfName raise @objects.PdfParseError
+
 // Errors
 
 // Types and methods
