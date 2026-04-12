@@ -83,7 +83,7 @@
   - _Boundary: ObjectParser_
 
 - [ ] 4. Parse aggregate direct objects
-- [ ] 4.1 Parse recursive arrays
+- [x] 4.1 Parse recursive arrays
   - Read bracket-delimited arrays containing heterogeneous direct objects and nested arrays.
   - Preserve empty arrays and element ordering exactly.
   - Array parsing is complete when tests parse `[]`, nested arrays, and `[549 3.14 false (Ralph) /SomeName]` with the expected element count and values.

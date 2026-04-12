@@ -24,6 +24,7 @@ pub fn ObjectParser::parse_object(
     Some(b'<') if self.cursor.peek_n(1) != Some(b'<') =>
       @objects.PdfObject::String(@lexer.read_hex_string(self.cursor))
     Some(b'/') => @objects.PdfObject::Name(@lexer.read_name(self.cursor))
+    Some(b'[') => @objects.PdfObject::Array(self.parse_array())
     _ => self.parse_ordinary_object()
   }
 }
@@ -74,15 +75,60 @@ pub fn parse_object(
 }
 
 ///|
+fn ObjectParser::parse_array(
+  self : ObjectParser,
+) -> Array[@objects.PdfObject] raise @objects.PdfParseError {
+  let offset = self.cursor.offset()
+  match self.cursor.read_byte() {
+    Some(b'[') => ()
+    Some(byte) =>
+      raise @objects.PdfParseError::UnexpectedToken(
+        offset,
+        "[",
+        String::from_array([byte.to_char()]),
+      )
+    None => raise @objects.PdfParseError::UnexpectedEof(offset, "array")
+  }
+  let values : Array[@objects.PdfObject] = []
+  while true {
+    if self.lexer.has_pushed_tokens() {
+      values.push(self.parse_object())
+      continue
+    }
+    self.lexer.skip_separators()
+    match self.cursor.peek() {
+      Some(b']') => {
+        self.cursor.read_byte() |> ignore
+        break
+      }
+      None =>
+        raise @objects.PdfParseError::UnexpectedEof(
+          self.cursor.offset(),
+          "array",
+        )
+      _ => values.push(self.parse_object())
+    }
+  }
+  values
+}
+
+///|
 fn ObjectParser::parse_integer_or_reference(
   self : ObjectParser,
   first_lexeme : Bytes,
   first_offset : Int64,
 ) -> @objects.PdfObject raise @objects.PdfParseError {
   let first = parse_int64_lexeme(first_lexeme, first_offset)
+  if !self.next_token_can_be_regular() {
+    return @objects.PdfObject::Integer(first)
+  }
   let second_token = self.lexer.next_token()
   match second_token {
     Regular(second_lexeme, _) if is_integer_lexeme(second_lexeme) => {
+      if !self.next_token_can_be_regular() {
+        self.lexer.push_back(second_token)
+        return @objects.PdfObject::Integer(first)
+      }
       let third_token = self.lexer.next_token()
       match third_token {
         Regular(b"R", _) =>
@@ -102,6 +148,17 @@ fn ObjectParser::parse_integer_or_reference(
       self.lexer.push_back(second_token)
       @objects.PdfObject::Integer(first)
     }
+  }
+}
+
+///|
+fn ObjectParser::next_token_can_be_regular(
+  self : ObjectParser,
+) -> Bool raise @objects.PdfParseError {
+  self.lexer.skip_separators()
+  match self.cursor.peek() {
+    Some(byte) => !@lexer.is_white_space(byte) && !@lexer.is_delimiter(byte)
+    None => false
   }
 }
 
