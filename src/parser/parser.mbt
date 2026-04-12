@@ -77,6 +77,13 @@ pub fn parse_object(
 }
 
 ///|
+pub fn parse_all_objects(
+  input : Bytes,
+) -> Array[@objects.PdfObject] raise @objects.PdfParseError {
+  ObjectParser::new(input).parse_all_objects()
+}
+
+///|
 fn ObjectParser::parse_array(
   self : ObjectParser,
 ) -> Array[@objects.PdfObject] raise @objects.PdfParseError {

@@ -133,7 +133,7 @@
   - _Boundary: ObjectParser, StreamReader, IndirectObjectParser_
 
 - [ ] 6. Validate public behavior, examples, and toolchain readiness
-- [ ] 6.1 Expose and verify the intended public parser surface
+- [x] 6.1 Expose and verify the intended public parser surface
   - Provide public entry points for parsing a single object, all object fragments, indirect references, and indirect object definitions according to the design contracts.
   - Keep future reader responsibilities out of scope: indirect references remain unresolved and nonexistent-reference lookup is not implemented here.
   - Public API integration is complete when `moon info` shows only intended object, error, lexer, and parser interfaces and downstream code can construct or consume `Null`, `Ref`, dictionaries, and streams.

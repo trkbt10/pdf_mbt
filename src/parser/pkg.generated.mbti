@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn parse_all_objects(Bytes) -> Array[@objects.PdfObject] raise @objects.PdfParseError
+
 pub fn parse_indirect_object(Bytes) -> @objects.IndirectObject raise @objects.PdfParseError
 
 pub fn parse_object(Bytes) -> @objects.PdfObject raise @objects.PdfParseError
