@@ -14,6 +14,9 @@ pub fn ObjectParser::new(input : Bytes) -> ObjectParser {
 pub fn ObjectParser::parse_object(
   self : ObjectParser,
 ) -> @objects.PdfObject raise @objects.PdfParseError {
+  if self.lexer.has_pushed_tokens() {
+    return self.parse_ordinary_object()
+  }
   self.lexer.skip_separators()
   match self.cursor.peek() {
     Some(b'(') =>
@@ -30,7 +33,12 @@ fn ObjectParser::parse_ordinary_object(
   self : ObjectParser,
 ) -> @objects.PdfObject raise @objects.PdfParseError {
   match self.lexer.next_token() {
-    Regular(lexeme, offset) => parse_regular_object(lexeme, offset)
+    Regular(lexeme, offset) =>
+      if is_integer_lexeme(lexeme) {
+        self.parse_integer_or_reference(lexeme, offset)
+      } else {
+        parse_regular_object(lexeme, offset)
+      }
     EndOfInput(offset) =>
       raise @objects.PdfParseError::UnexpectedEof(offset, "object")
     token =>
@@ -48,10 +56,11 @@ pub fn ObjectParser::parse_all_objects(
 ) -> Array[@objects.PdfObject] raise @objects.PdfParseError {
   let objects : Array[@objects.PdfObject] = []
   while true {
-    self.lexer.skip_separators()
-    match self.cursor.peek() {
-      None => break
-      _ => objects.push(self.parse_object())
+    let result : Result[@objects.PdfObject, @objects.PdfParseError] = try? self.parse_object()
+    match result {
+      Ok(object) => objects.push(object)
+      Err(UnexpectedEof(_, context)) if context == "object" => break
+      Err(error) => raise error
     }
   }
   objects
@@ -62,6 +71,60 @@ pub fn parse_object(
   input : Bytes,
 ) -> @objects.PdfObject raise @objects.PdfParseError {
   ObjectParser::new(input).parse_object()
+}
+
+///|
+fn ObjectParser::parse_integer_or_reference(
+  self : ObjectParser,
+  first_lexeme : Bytes,
+  first_offset : Int64,
+) -> @objects.PdfObject raise @objects.PdfParseError {
+  let first = parse_int64_lexeme(first_lexeme, first_offset)
+  let second_token = self.lexer.next_token()
+  match second_token {
+    Regular(second_lexeme, _) if is_integer_lexeme(second_lexeme) => {
+      let third_token = self.lexer.next_token()
+      match third_token {
+        Regular(b"R", _) =>
+          build_ref_object(
+            first,
+            parse_int64_lexeme(second_lexeme, token_offset(second_token)),
+            first_offset,
+          )
+        _ => {
+          self.lexer.push_back(third_token)
+          self.lexer.push_back(second_token)
+          @objects.PdfObject::Integer(first)
+        }
+      }
+    }
+    _ => {
+      self.lexer.push_back(second_token)
+      @objects.PdfObject::Integer(first)
+    }
+  }
+}
+
+///|
+fn build_ref_object(
+  object_number : Int64,
+  generation_number : Int64,
+  offset : Int64,
+) -> @objects.PdfObject raise @objects.PdfParseError {
+  if object_number <= 0L {
+    raise @objects.PdfParseError::InvalidIndirectObject(
+      offset, "object number must be positive",
+    )
+  }
+  if generation_number < 0L {
+    raise @objects.PdfParseError::InvalidIndirectObject(
+      offset, "generation number must be non-negative",
+    )
+  }
+  @objects.PdfObject::Ref(@objects.ObjectId::{
+    object_number: object_number.to_int(),
+    generation_number: generation_number.to_int(),
+  })
 }
 
 ///|

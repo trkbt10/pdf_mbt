@@ -74,7 +74,7 @@
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 8.1, 8.2, 8.3, 8.4, 8.5, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
   - _Boundary: ObjectParser_
 
-- [ ] 3.3 Implement bounded lookahead for indirect references and integer fallback
+- [x] 3.3 Implement bounded lookahead for indirect references and integer fallback
   - Use at most two tokens of lookahead to recognize integer pairs followed by `R` as references.
   - Preserve the second integer for re-parsing when two integers are not followed by `R` or `obj`.
   - Lookahead is complete when tests distinguish `1 2 R`, `1 2 true`, and standalone integer streams without consuming the wrong token.

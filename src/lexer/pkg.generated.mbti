@@ -39,6 +39,7 @@ pub(all) enum CharClass {
 } derive(Eq, @debug.Debug)
 
 type Lexer
+pub fn Lexer::has_pushed_tokens(Self) -> Bool
 pub fn Lexer::new(ByteCursor) -> Self
 pub fn Lexer::next_token(Self) -> PdfToken raise @objects.PdfParseError
 pub fn Lexer::peek_token(Self) -> PdfToken raise @objects.PdfParseError

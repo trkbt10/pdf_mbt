@@ -15,6 +15,11 @@ pub fn Lexer::push_back(self : Lexer, token : PdfToken) -> Unit {
 }
 
 ///|
+pub fn Lexer::has_pushed_tokens(self : Lexer) -> Bool {
+  self.pushed.length() > 0
+}
+
+///|
 pub fn Lexer::peek_token(self : Lexer) -> PdfToken raise @objects.PdfParseError {
   let token = self.next_token()
   self.push_back(token)
