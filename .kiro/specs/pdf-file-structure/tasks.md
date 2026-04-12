@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. Establish reader foundations
-- [ ] 1.1 Create the reader package boundary and toolchain baseline
+- [x] 1.1 Create the reader package boundary and toolchain baseline
   - Add the downstream reader package with imports only from the existing object, lexer, parser, and standard-library layers.
   - Keep the root library and CLI surface unchanged unless a later public API validation intentionally chooses a re-export.
   - The baseline is complete when the MoonBit toolchain discovers the reader package with no external dependencies and no reversed package imports.
