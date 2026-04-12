@@ -28,7 +28,7 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
   - _Boundary: HeaderScanner_
 
-- [ ] 2.2 (P) Locate the latest startxref from the file tail
+- [x] 2.2 (P) Locate the latest startxref from the file tail
   - Search backward for the last `%%EOF` marker and ignore earlier EOF markers from incremental updates during initial discovery.
   - Locate the nearest preceding `startxref` keyword and parse the following decimal integer as the latest cross-reference offset.
   - Tail scanning is complete when tests cover multiple EOF markers, missing markers, invalid startxref integers, and offsets converted from the final marker context.
