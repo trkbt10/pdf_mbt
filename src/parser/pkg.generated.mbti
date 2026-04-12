@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn parse_indirect_object(Bytes) -> @objects.IndirectObject raise @objects.PdfParseError
+
 pub fn parse_object(Bytes) -> @objects.PdfObject raise @objects.PdfParseError
 
 // Errors
@@ -14,6 +16,7 @@ pub fn parse_object(Bytes) -> @objects.PdfObject raise @objects.PdfParseError
 type ObjectParser
 pub fn ObjectParser::new(Bytes) -> Self
 pub fn ObjectParser::parse_all_objects(Self) -> Array[@objects.PdfObject] raise @objects.PdfParseError
+pub fn ObjectParser::parse_indirect_object(Self) -> @objects.IndirectObject raise @objects.PdfParseError
 pub fn ObjectParser::parse_object(Self) -> @objects.PdfObject raise @objects.PdfParseError
 
 // Type aliases

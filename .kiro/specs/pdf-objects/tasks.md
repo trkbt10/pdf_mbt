@@ -108,7 +108,7 @@
   - _Boundary: ObjectParser, DictionaryBuilder_
 
 - [ ] 5. Parse indirect objects and stream objects
-- [ ] 5.1 Parse indirect object definitions with validated object identifiers
+- [x] 5.1 Parse indirect object definitions with validated object identifiers
   - Recognize positive object number plus non-negative generation number followed by `obj` as an indirect object definition.
   - Read the enclosed object value through `endobj`, recording start and end offsets without implementing reference resolution.
   - Indirect object parsing is complete when tests parse `12 0 obj (Brillig) endobj`, reject invalid object numbers or generations, and preserve object identity by object-number/generation pair.
