@@ -26,7 +26,7 @@
   - The cursor is complete when unit tests show correct offsets for normal tokens, line continuations, unescaped string EOLs, stream EOL validation, and fixed-length raw reads.
   - _Requirements: 2.1, 7.5, 7.6, 12.2, 12.3, 12.4_
 
-- [ ] 2.2 (P) Implement byte classification outside special lexical regions
+- [x] 2.2 (P) Implement byte classification outside special lexical regions
   - Classify exactly the PDF white-space bytes, delimiter bytes, and all remaining bytes including high-bit bytes.
   - Keep classification out of literal strings, streams, and comments by limiting it to ordinary lexical scanning and name boundaries.
   - The classifier is complete when exhaustive byte tests prove every byte maps to exactly one class and the required delimiter and white-space sets match ISO 32000-2.

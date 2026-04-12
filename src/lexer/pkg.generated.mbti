@@ -2,10 +2,16 @@
 package "trkbt10/pdf/src/lexer"
 
 import {
+  "moonbitlang/core/debug",
   "trkbt10/pdf/src/objects",
 }
 
 // Values
+pub fn classify_byte(Byte) -> CharClass
+
+pub fn is_delimiter(Byte) -> Bool
+
+pub fn is_white_space(Byte) -> Bool
 
 // Errors
 
@@ -19,6 +25,12 @@ pub fn ByteCursor::read_byte(Self) -> Byte? raise @objects.PdfParseError
 pub fn ByteCursor::read_bytes(Self, Int64) -> Bytes raise @objects.PdfParseError
 pub fn ByteCursor::read_eol(Self) -> Bool
 pub fn ByteCursor::require_stream_eol(Self) -> Unit raise @objects.PdfParseError
+
+pub(all) enum CharClass {
+  WhiteSpace
+  Delimiter
+  Regular
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 pub using @objects {type PdfName as LexedName}
