@@ -132,7 +132,7 @@
   - _Depends: 5.4_
   - _Requirements: 10.1, 10.2_
 
-- [ ] 6.4 Validate bundled PDF 2.0 example files
+- [x] 6.4 Validate bundled PDF 2.0 example files
   - Parse `spec/pdf20examples/Simple PDF 2.0 file.pdf` and load all in-use indirect objects reachable from its cross-reference data.
   - Parse `spec/pdf20examples/PDF 2.0 via incremental save.pdf`, follow incremental updates, and resolve modified objects to their latest versions.
   - Bundled validation is complete when both example files pass through the public reader API with expected object counts and latest-version resolution.
