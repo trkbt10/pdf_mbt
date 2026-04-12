@@ -36,6 +36,16 @@ pub(all) enum ObjectLocation {
   Compressed(Int, Int)
 } derive(Eq, @debug.Debug)
 
+pub struct ObjectStreamTableCache {
+  offset : Int64
+  members : Array[ObjectStreamTableCacheEntry]
+} derive(Eq, @debug.Debug)
+
+pub struct ObjectStreamTableCacheEntry {
+  object_number : Int
+  object : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
 pub struct PdfFile {
   bytes : Bytes
   header : PdfHeader
@@ -43,6 +53,7 @@ pub struct PdfFile {
   sections : Array[XrefSection]
   xref_index : Map[@objects.ObjectId, ObjectLocation]
   cache : Map[@objects.ObjectId, @objects.PdfObject]
+  object_stream_tables : Map[@objects.ObjectId, ObjectStreamTableCache]
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfFileId {

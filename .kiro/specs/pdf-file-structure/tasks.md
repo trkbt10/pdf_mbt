@@ -94,7 +94,7 @@
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 9.3_
   - _Boundary: ObjectStreamReader_
 
-- [ ] 5.3 Load uncompressed and compressed objects on demand
+- [x] 5.3 Load uncompressed and compressed objects on demand
   - Resolve requested object identifiers through the active index and return null for absent, deleted, or generation-mismatched references.
   - Parse uncompressed locations as indirect objects at the resolved byte offset, verify the parsed identifier, delegate compressed locations to object stream extraction, and cache loaded objects plus object-stream member tables.
   - Lazy loading is complete when tests show the first access parses and caches the object, repeated access reuses the cache, object identity mismatches raise reader errors, and missing references return null.

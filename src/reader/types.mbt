@@ -72,6 +72,20 @@ pub(all) enum ObjectLocation {
 } derive(Eq, Debug)
 
 ///|
+/// Cached decoded object-stream member identity and parsed direct object.
+pub struct ObjectStreamTableCacheEntry {
+  object_number : Int
+  object : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+/// Cached decoded object-stream members and their parse offset.
+pub struct ObjectStreamTableCache {
+  offset : Int64
+  members : Array[ObjectStreamTableCacheEntry]
+} derive(Eq, Debug)
+
+///|
 /// One parsed cross-reference section and its provenance.
 pub(all) struct XrefSection {
   provenance : XrefSectionProvenance
@@ -92,4 +106,5 @@ pub struct PdfFile {
   sections : Array[XrefSection]
   xref_index : XrefIndex
   cache : Map[@objects.ObjectId, @objects.PdfObject]
+  object_stream_tables : Map[@objects.ObjectId, ObjectStreamTableCache]
 } derive(Eq, Debug)

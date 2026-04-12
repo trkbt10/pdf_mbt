@@ -37,6 +37,7 @@ test "reader metadata contracts are constructible" {
     sections: [section],
     xref_index,
     cache: Map::new(),
+    object_stream_tables: Map::new(),
   }
 
   assert_eq(file.header.version == PdfVersion::{ major: 2, minor: 0 }, true)
@@ -107,6 +108,7 @@ test "reader metadata contracts are constructible" {
   assert_eq(file.bytes, b"%PDF-2.0\r\n")
   assert_eq(file.xref_index.length(), 0)
   assert_eq(file.cache.length(), 0)
+  assert_eq(file.object_stream_tables.length(), 0)
 }
 
 ///|

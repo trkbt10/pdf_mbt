@@ -48,6 +48,23 @@ fn ObjectStreamTable::entry_at(
 }
 
 ///|
+fn ObjectStreamTable::entries(
+  self : ObjectStreamTable,
+) -> Array[ObjectStreamTableCacheEntry] {
+  let entries : Array[ObjectStreamTableCacheEntry] = []
+  let mut index = 0
+  while index < self.members.length() {
+    let item = self.members[index]
+    entries.push(ObjectStreamTableCacheEntry::{
+      object_number: item.object_number,
+      object: item.object,
+    })
+    index = index + 1
+  }
+  entries
+}
+
+///|
 fn require_object_stream_type(
   dict : @objects.PdfDictionary,
   offset : Int64,
