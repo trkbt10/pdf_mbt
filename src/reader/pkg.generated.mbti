@@ -1,13 +1,97 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/pdf/src/reader"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/pdf/src/objects",
+}
+
 // Values
 
 // Errors
+pub(all) suberror PdfReaderError {
+  InvalidHeader(Int64, String)
+  MissingTailMarker(String)
+  InvalidXref(Int64, String)
+  InvalidTrailer(Int64, String)
+  InvalidObjectStream(Int64, String)
+  InvalidObjectLocation(@objects.ObjectId, String)
+  UnsupportedFilter(Int64, String)
+  PrevChainCycle(Int64)
+  ParseObjectError(Int64, @objects.PdfParseError)
+} derive(Eq, @debug.Debug)
 
 // Types and methods
+pub(all) enum ObjectLocation {
+  Uncompressed(Int64, Int)
+  Compressed(Int, Int)
+} derive(Eq, @debug.Debug)
+
+pub struct PdfFile {
+  bytes : Bytes
+  header : PdfHeader
+  trailer : TrailerInfo
+  sections : Array[XrefSection]
+  xref_index : Map[@objects.ObjectId, ObjectLocation]
+  cache : Map[@objects.ObjectId, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfFileId {
+  first : Bytes
+  second : Bytes
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfHeader {
+  version : PdfVersion
+  base_offset : Int64
+  has_binary_indicator : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfVersion {
+  major : Int
+  minor : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TrailerInfo {
+  size : Int
+  root : @objects.ObjectId
+  prev : Int64?
+  encrypt : @objects.ObjectId?
+  info : @objects.ObjectId?
+  id : PdfFileId?
+  xref_stm : Int64?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum XrefEntry {
+  Free(Int, Int)
+  InUse(Int64, Int)
+  Compressed(Int, Int)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct XrefSection {
+  provenance : XrefSectionProvenance
+  entries : Array[XrefSectionEntry]
+  trailer : TrailerInfo
+} derive(Eq, @debug.Debug)
+
+pub(all) struct XrefSectionEntry {
+  object_number : Int
+  entry : XrefEntry
+} derive(Eq, @debug.Debug)
+
+pub(all) struct XrefSectionProvenance {
+  source : XrefSectionSource
+  pdf_offset : Int64
+} derive(Eq, @debug.Debug)
+
+pub(all) enum XrefSectionSource {
+  Table
+  Stream
+} derive(Eq, @debug.Debug)
 
 // Type aliases
+pub type XrefIndex = Map[@objects.ObjectId, ObjectLocation]
 
 // Traits
 

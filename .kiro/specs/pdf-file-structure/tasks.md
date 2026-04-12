@@ -7,7 +7,7 @@
   - The baseline is complete when the MoonBit toolchain discovers the reader package with no external dependencies and no reversed package imports.
   - _Requirements: 9.1, 9.4_
 
-- [ ] 1.2 Define reader metadata, object-location contracts, and diagnostics
+- [x] 1.2 Define reader metadata, object-location contracts, and diagnostics
   - Represent PDF versions, parsed headers, trailer metadata, cross-reference entries, object locations, section provenance, and opened-file state as typed reader values.
   - Report invalid headers, missing tail markers, invalid xref data, invalid trailers, unsupported filters, invalid object streams, invalid object locations, Prev cycles, and wrapped parser failures with relevant offsets.
   - The contracts are complete when white-box tests can construct representative metadata and assert stable reader error variants with PDF-relative or physical offsets where applicable.
