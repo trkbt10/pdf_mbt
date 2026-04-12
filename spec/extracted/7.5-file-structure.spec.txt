@@ -1,0 +1,1246 @@
+Key 
+Type 
+Value 
+Name 
+name 
+(Optional) The name of the crypt filter that shall be used to decrypt 
+this stream. The name shall correspond to an entry in the CF entry 
+of the encryption dictionary (see "Table 20 — Entries common to 
+all encryption dictionaries") or one of the standard crypt filters 
+(see "Table 26 — Standard crypt filter names"). 
+Default value: Identity. 
+ 
+In addition, the decode parameters dictionary may include entries that are private to the security 
+handler. Security handlers may use information from both the crypt filter decode parameters 
+dictionary and the crypt filter dictionaries (see "Table 25 — Entries common to all crypt filter 
+dictionaries") when decrypting data or providing a key to decrypt data. 
+NOTE 
+When adding private data to the decode parameters dictionary, security handlers are required to 
+name these entries as defined by Annex E, "Extending PDF". 
+If a stream specifies a crypt filter, then the security handler does not apply "Algorithm 1: Encryption of 
+data using the RC4 or AES algorithms" in 7.6.3, "General encryption algorithm" to the key prior to 
+decrypting the stream. Instead, the security handler shall decrypt the stream using the key as is. 7.4, 
+"Filters" explains how a stream specifies filters. 
+7.5 File structure 
+7.5.1 General 
+This subclause describes how objects are organised in a PDF file for efficient random access and 
+incremental update. A basic conforming PDF file shall be constructed of the following four elements 
+(see "Figure 2 — Initial structure of a PDF file"): 
+• 
+A one-line header identifying the version of the PDF specification to which the PDF file conforms 
+• 
+A body containing the objects that make up the document contained in the PDF file 
+• 
+A cross-reference table containing information about the indirect objects in the PDF file 
+• 
+A trailer giving the location of the cross-reference table and of certain special objects within the 
+body of the PDF file 
+This initial structure may be modified by later updates, which append additional elements to the end of 
+the file; see 7.5.6, "Incremental updates" for details. 
+
+ 
+Figure 2 — Initial structure of a PDF file 
+As a matter of convention, the tokens in a PDF file are arranged into lines; see 7.2, "Lexical 
+conventions". PDF files with binary data may have arbitrarily long lines. 
+The rules described here are sufficient to produce a basic conforming PDF file. However, additional 
+rules apply to organising a PDF file to enable efficient incremental access to a document’s components 
+in a network environment. This form of organisation, called Linearized PDF, is described in Annex F, 
+"Linearized PDF" and Annex G, " Linearized PDF access strategies". With the exception of linearized 
+PDF files, all PDF files should be read using the trailer and cross-reference table as described in the 
+following subclauses. Reading a non-linearized file in a serial manner is not reliable because of the way 
+objects are to be processed after an incremental update. (See 6.3.2, "Conformance of PDF processors".) 
+7.5.2 File header 
+The PDF file begins with the 5 characters “%PDF–” and byte offsets shall be calculated from the 
+PERCENT SIGN (25h). 
+NOTE 1 
+This provision allows for arbitrary bytes preceding the %PDF- without impacting the viability of 
+the PDF file and its byte offsets. 
+A PDF reader shall accept files with any of the following headers: 
+%PDF–1.0 
+ 
+%PDF–1.1 
+ 
+%PDF–1.2 
+ 
+%PDF–1.3 
+ 
+%PDF–1.4 
+ 
+%PDF–1.5 
+ 
+%PDF–1.6 
+ 
+
+%PDF–1.7 
+ 
+%PDF–2.0 
+ 
+The file header shall consist of “%PDF–1.n” or “%PDF–2.n” followed by a single EOL marker, where ‘n’ 
+is a single digit number between 0 (30h) and 9 (39h). 
+NOTE 2 The above paragraph was added in this document (2020). 
+A PDF processor that writes a file that conforms to this document shall identify the version (either in 
+the header or as the value of the Version entry in the document’s catalog dictionary (see 7.7.2, 
+"Document catalog dictionary") as 2.0. 
+NOTE 3 
+The Version entry in the document’s catalog dictionary is used to update the version using an 
+incremental update (see 7.5.6, "Incremental updates"). 
+Under some conditions, a PDF processor may be able to process PDF files conforming to a later version 
+than it was designed to accept. New features in PDF files are often introduced in such a way that they 
+can safely be ignored by a PDF processor that does not understand them (see Annex I, "PDF versions 
+and compatibility). 
+This document defines the Extensions entry in the document’s catalog dictionary. If present, it shall 
+identify any developer-defined extensions that are contained in this PDF file. See 7.12, "Extensions 
+dictionary". 
+If a PDF file contains binary data, as most do (see 7.2, "Lexical conventions"), the header line shall be 
+immediately followed by a comment line containing at least four binary characters–that is, characters 
+whose codes are 128 or greater. This ensures proper behaviour of file transfer applications that 
+inspect data near the beginning of a file to determine whether to treat the file’s contents as text or as 
+binary. 
+7.5.3 File body 
+The body of a PDF file shall consist of a sequence of indirect objects representing the contents of a 
+document. The objects, which are of the basic types described in 7.3, "Objects" represent components 
+of the document such as fonts, pages, and sampled images. Beginning with PDF 1.5, the body can also 
+contain object streams, each of which contains a sequence of indirect objects; see 7.5.7, "Object 
+streams". 
+7.5.4 Cross-reference table 
+The cross-reference table contains information that permits random access to indirect objects within 
+the PDF file so that the entire PDF file need not be read to locate any particular object. The table shall 
+contain a one-line entry for each indirect object, specifying the byte offset of that object within the 
+body of the PDF file. Beginning with PDF 1.5, some or all of the cross-reference information may 
+alternatively be contained in cross-reference streams; see 7.5.8, "Cross-reference streams". 
+NOTE 1 
+The cross-reference table is the only part of a PDF file with a fixed format, which permits entries 
+in the table to be accessed randomly. 
+The table comprises one or more cross-reference sections. Initially, the entire table consists of a single 
+section (or two sections if the file is linearized; see Annex F, "Linearized PDF" and Annex G, "Linearized 
+PDF access strategies"). One additional section shall be added each time the file is incrementally 
+
+updated (see 7.5.6, "Incremental updates"). 
+Each cross-reference section shall begin with a line containing the keyword xref. Following this line 
+shall be one or more cross-reference subsections, which may appear in any order. For a PDF file that 
+has never been incrementally updated, the cross-reference section shall contain only one subsection, 
+whose object numbering begins at 0. PDF comments shall not be included in a cross-reference table 
+between the keywords xref and trailer. 
+NOTE 2 
+(2020) This document clarified the above paragraph in relation to comments not being 
+permitted in cross-reference tables, as this is also stated in 7.5.8.4, "Compatibility with 
+applications that do not support compressed reference streams". 
+NOTE 3 
+The subsection structure is useful for incremental updates, since it allows a new cross-reference 
+section to be added to the PDF file, containing entries only for objects that have been added, 
+modified or deleted. This also means that cross reference subsections of incremental updates can 
+never have an object number of zero. 
+Each cross-reference subsection shall contain entries for a contiguous range of object numbers. Each 
+cross-reference subsection shall contain entries for a contiguous range of object numbers. The 
+subsection shall begin with a line containing only two integers separated by a SPACE (20h) and 
+terminated by an end-of-line marker (see 7.2.3, "Character set"). The two integers denote 
+(respectively) the object number of the first object in this subsection and the number of entries in the 
+subsection. 
+NOTE 4 
+The number of entries in a subsection for a file that has never been incrementally updated can 
+never be zero. 
+EXAMPLE 1 
+The following line introduces a subsection containing five objects numbered consecutively from 28 to 32. 
+28 5 
+ 
+A given object number shall not have an entry in more than one subsection within a single section. 
+Following this line are the cross-reference entries themselves, one per line. Each entry shall be exactly 
+20 bytes long, including the end-of-line marker. There are two kinds of cross-reference entries: one for 
+objects that are in use and another for objects that have been deleted and therefore are free. Both types 
+of entries have similar basic formats, distinguished by the keyword n (for an in-use entry) or f (for a 
+free entry). The format of an in-use entry shall be: 
+nnnnnnnnnn ggggg n eol 
+where: 
+nnnnnnnnnn shall be a 10-digit byte offset in the decoded stream 
+ggggg shall be a 5-digit generation number 
+n shall be a keyword identifying this as an in-use entry 
+eol shall be a 2-character end-of-line sequence 
+The byte offset in the decoded stream shall be a 10-digit number, padded with leading zeros if 
+necessary, giving the number of bytes from the beginning of the PDF file to the beginning of the object. 
+It shall be separated from the generation number by a single SPACE. The generation number shall be a 
+
+5-digit number, also padded with leading zeros if necessary. Following the generation number shall be 
+a single SPACE, the keyword n, and a 2-character end-of-line sequence consisting of one of the 
+following: SP CR, SP LF, or CR LF. Thus, the overall length of the entry shall always be exactly 20 bytes. 
+The cross-reference entry for a free object has essentially the same format, except that the keyword 
+shall be f instead of n and the interpretation of the first item is different: 
+nnnnnnnnnn ggggg f eol 
+where: 
+nnnnnnnnnn shall be the 10-digit object number of the next free object 
+ggggg shall be a 5-digit generation number 
+f shall be a keyword identifying this as a free entry 
+eol shall be a 2-character end-of-line sequence 
+There are two ways an entry may be a member of the free entries list. Using the basic mechanism the 
+free entries in the cross-reference table may form a linked list, with each free entry containing the 
+object number of the next. The first entry in the table (object number 0) shall always be free and shall 
+have a generation number of 65,535; this entry shall be the head of the linked list of free objects. The 
+last free entry (the tail of the linked list) links back to object number 0. Using the second mechanism, 
+the table may contain other free entries that link back to object number 0 and have a generation 
+number of 65,535, even though these entries are not in the linked list itself. 
+Except for object number 0, all objects in the cross-reference table shall initially have generation 
+numbers of 0. When an indirect object is deleted, its cross-reference entry shall be marked free and it 
+shall be added to the linked list of free entries. The entry’s generation number shall be incremented by 
+1 to indicate the generation number to be used the next time an object with that object number is 
+created. Thus, each time the entry is reused, it is given a new generation number. The maximum 
+generation number is 65,535; when a cross-reference entry reaches this value, it shall never be reused. 
+The cross-reference table (comprising the original cross-reference section and all update sections) 
+shall contain one entry for each object number from 0 to the maximum object number defined in the 
+PDF file, even if one or more of the object numbers in this range do not actually occur in the PDF file. 
+EXAMPLE 2 
+The following shows a cross-reference section consisting of a single subsection with six entries: four that 
+are in use (objects number 1, 2, 4, and 5) and two that are free (objects number 0 and 3). Object number 3 
+has been deleted, and the next object created with that object number is given a generation number of 7. 
+xref 
+0 6 
+0000000003 65535 f 
+0000000017 00000 n 
+0000000081 00000 n 
+0000000000 00007 f 
+0000000331 00000 n 
+0000000409 00000 n 
+EXAMPLE 3 
+The following shows a cross-reference section with four subsections, containing a total of five entries. The 
+first subsection contains one entry, for object number 0, which is free. The second subsection contains one 
+entry, for object number 3, which is in use. The third subsection contains two entries, for objects number 23 
+and 24, both of which are in use. Object number 23 has been reused, as can be seen from the fact that it has 
+
+a generation number of 2. The fourth subsection contains one entry, for object number 30, which is in use. 
+xref 
+0 1 
+0000000000 65535 f 
+3 1 
+0000025325 00000 n 
+23 2 
+0000025518 00002 n 
+0000025635 00000 n 
+30 1 
+0000025777 00000 n 
+ 
+See H.7, "Updating example", for a more extensive example of the structure of a PDF file that has been 
+updated several times. 
+7.5.5 File trailer 
+The trailer of a PDF file enables a PDF processor to quickly find the cross-reference table and certain 
+special objects. PDF processors should read a PDF file from its end. The last line of the file shall contain 
+only the end-of-file marker, %%EOF. The two preceding lines shall contain, one per line and in order, 
+the keyword startxref and the byte offset in the decoded stream from the beginning of the PDF file to 
+the beginning of the xref keyword in the last cross-reference section. The startxref line shall be 
+preceded by the trailer dictionary, consisting of the keyword trailer followed by a series of key-value 
+pairs enclosed in double angle brackets (<<…>>) (using LESS-THAN SIGNs (3Ch) and GREATER-THAN 
+SIGNs (3Eh)). Thus, the trailer has the following overall structure: 
+trailer 
+ 
+<<key1 value1 
+ 
+ 
+key2 value2 
+ 
+ 
+… 
+ 
+ 
+keyn valuen 
+ 
+>> 
+startxref 
+Byte_offset_of_last_cross-reference_section 
+%%EOF 
+ 
+"Table 15 — Entries in the file trailer dictionary" lists the contents of the trailer dictionary. The PDF 
+file trailer dictionary may also contain any second-class name as described in Annex E, "Extending 
+PDF". 
+Table 15 — Entries in the file trailer dictionary 
+Key 
+Type 
+Value 
+Size 
+integer 
+(Required; shall not be an indirect reference) The total number of entries 
+in the PDF file’s cross-reference table, as defined by the combination of 
+the original section and all update sections. Equivalently, this value shall 
+be 1 greater than the highest object number defined in the PDF file. 
+Any object in a cross-reference section whose number is greater than 
+this value shall be ignored and defined to be missing by a PDF reader. 
+Prev 
+integer 
+(Optional, present only if the file has more than one cross-reference 
+section; shall be a direct object) The byte offset from the beginning of the 
+PDF file to the beginning of the previous cross-reference stream. 
+
+Key 
+Type 
+Value 
+Root 
+dictionary 
+(Required; shall be an indirect reference) The catalog dictionary for the 
+PDF file (see 7.7.2, "Document catalog dictionary"). 
+Encrypt 
+dictionary 
+(Required if document is encrypted; PDF 1.1) The PDF file’s encryption 
+dictionary (see 7.6, "Encryption"). 
+Info 
+dictionary 
+(Optional; shall be an indirect reference) The PDF file’s information 
+dictionary. As described in 14.3.3, "Document information dictionary", 
+this method for specifying document metadata has been deprecated in 
+PDF 2.0 and should therefore only be used to encode information that is 
+stated as required elsewhere in this document. 
+NOTE 1 The ModDate key within the Info dictionary is required if Page-Piece 
+dictionaries (see 14.5, "Page-piece dictionaries") are used. 
+ID 
+array 
+(Required in PDF 2.0 and later, or if an Encrypt entry is present; optional 
+otherwise; PDF 1.1) An array of two byte-strings constituting a PDF file 
+identifier (See 14.4, "File identifiers") for the PDF file. Each PDF file 
+identifier byte-string shall have a minimum length of 16 bytes. If there is 
+an Encrypt entry, this array and the two byte-strings shall be direct 
+objects and shall be unencrypted. 
+NOTE 2 Because the ID entries are not encrypted, the ID key can be checked to 
+assure that the correct PDF file is being accessed without decrypting 
+the PDF file. The restrictions that the objects all be direct objects and 
+not be encrypted ensure this. 
+NOTE 3 Although this entry is optional prior to PDF 2.0, its absence can 
+prevent the PDF file from functioning in some workflows that depend 
+on PDF files being uniquely identified. 
+NOTE 4 The values of the ID strings are used as input to the encryption 
+algorithm. If these strings were indirect, or if the ID array were 
+indirect, these strings would be encrypted when written. This would 
+result in a circular condition for a PDF reader: the ID strings need be 
+decrypted in order to use them to decrypt strings, including the ID 
+strings themselves. The preceding restriction prevents this circular 
+condition. 
+ 
+NOTE 
+"Table 19 — Additional entries in a hybrid-reference file’s trailer dictionary" defines an 
+additional entry, XRefStm, that appears only in the trailer of hybrid-reference files, described in 
+7.5.8.4, "Compatibility with applications that do not support compressed reference streams" 
+EXAMPLE 
+This example shows a trailer for a PDF file that has never been updated (as indicated by the absence of a 
+Prev entry in the trailer dictionary). 
+trailer 
+ 
+ 
+ <</Size 22 
+ 
+ 
+ 
+/Root 2 0 R 
+ 
+ 
+ 
+/Info 1 0 R 
+ 
+ 
+ 
+/ID [<81b14aafa313db63dbd6f981e49f94f4> 
+ 
+ 
+ 
+ 
+<81b14aafa313db63dbd6f981e49f94f4> 
+ 
+ 
+ 
+ 
+] 
+ 
+ 
+>> 
+startxref 
+18799 
+%%EOF 
+ 
+
+7.5.6 Incremental updates 
+The contents of a PDF file can be updated incrementally without rewriting the entire file. When 
+updating a PDF file incrementally, changes shall be appended to the end of the file, leaving its original 
+contents intact. 
+NOTE 1 
+The main advantage to updating a PDF file in this way is that small changes to a large document 
+can be saved quickly. There are additional advantages such as when editing a document across 
+an HTTP connection or using OLE embedding (a Microsoft WindowsTM specific technology), a 
+PDF processor cannot overwrite the contents of the original PDF file. Incremental updates are 
+used to save changes to documents in these contexts. 
+NOTE 2 
+The resulting PDF file has the structure shown in "Figure 3 — Structure of an updated PDF file". 
+A complete example of an updated file is shown in H.7, "Updating example". 
+A cross-reference section for an incremental update shall contain entries only for objects that have 
+been changed, replaced, or deleted. Deleted objects shall be left unchanged in the PDF file, but shall be 
+marked as deleted by means of their cross-reference entries. The added trailer shall contain all the 
+entries except the Prev entry (if present) from the previous trailer, whether modified or not. In 
+addition, the added trailer dictionary shall contain a Prev entry giving the location of the previous 
+cross-reference section (see "Table 15 — Entries in the file trailer dictionary"). Each trailer shall be 
+terminated by its own end-of-file (%%EOF) marker. 
+NOTE 3 
+As shown in "Figure 3 — Structure of an updated PDF file", a PDF file that has been updated 
+several times contains several trailers. Because updates are appended to PDF files, a PDF file can 
+have several copies of an object with the same object identifier (object number and generation 
+number). 
+EXAMPLE 
+Several copies of an object can occur if a text annotation (see 12.5, "Annotations") is changed several times 
+and the PDF file is saved between changes. Because the text annotation object is not deleted, it retains the 
+same object number and generation number as before. The updated copy of the object is included in the new 
+update section added to the PDF file. 
+The update’s cross-reference section shall include a byte offset to this new copy of the object, 
+overriding the old byte offset contained in the original cross-reference section. When a PDF reader 
+reads the PDF file, it shall build its cross-reference information in such a way that the most recent copy 
+of each object shall be the one accessed from the PDF file. 
+In versions of PDF 1.4 or later a PDF writer may use the Version entry in the document’s catalog 
+dictionary (see 7.7.2, "Document catalog dictionary") to override the version specified in the header. A 
+PDF writer may also need to update the Extensions dictionary, see 7.12, "Extensions dictionary", if the 
+update either deleted or added developer-defined extensions. 
+NOTE 4 
+The Version entry enables the version to be altered when performing an incremental update. 
+
+ 
+Figure 3 — Structure of an updated PDF file 
+7.5.7 Object streams 
+An object stream is a stream object in which a sequence of indirect objects may be stored, as an 
+alternative to their being stored at the outermost PDF file level. 
+NOTE 1 
+Object streams are first introduced in PDF 1.5. The purpose of object streams is to allow indirect 
+objects other than streams to be stored more compactly by using the facilities provided by 
+stream compression filters. 
+NOTE 2 
+The term "compressed object" is used regardless of whether the stream is actually encoded with 
+a compression filter. 
+The following objects shall not be stored in an object stream: 
+• 
+Stream objects 
+• 
+Objects with a generation number other than zero 
+• 
+A document’s encryption dictionary (see 7.6, "Encryption") 
+• 
+An object representing the value of the Length entry in an object stream dictionary 
+• 
+In linearized files (see Annex F, "Linearized PDF" and Annex G, "Linearized PDF access 
+strategies"), the document catalog dictionary, the linearization dictionary, and page objects shall 
+
+not appear in an object stream. 
+NOTE 3 
+Indirect references to objects inside object streams use the normal syntax: for example, 14 0 R. 
+Access to these objects requires a different way of storing cross-reference information; see 7.5.8, 
+"Cross-reference streams". Use of compressed objects requires a PDF 1.5 PDF reader. However, 
+compressed objects can be stored in a manner that a PDF 1.4 PDF reader can ignore. 
+In addition to the regular keys for streams shown in "Table 5 — Entries common to all stream 
+dictionaries", the stream dictionary describing an object stream contains the entries specified in “Table 
+16 — Additional entries specific to an object stream dictionary”. 
+Table 16 — Additional entries specific to an object stream dictionary 
+Key 
+Type 
+Value 
+Type 
+name 
+(Required) The type of PDF object that this dictionary describes; shall be 
+ObjStm for an object stream. 
+N 
+integer 
+(Required) The number of indirect objects stored in the stream. 
+First 
+integer 
+(Required) The byte offset in the decoded stream of the first compressed 
+object. 
+Extends 
+stream 
+(Optional) A reference to another object stream, of which the current 
+object stream is an extension. Both streams are considered part of a 
+collection of object streams (see below). A given collection consists of a 
+set of streams whose Extends links form a directed acyclic graph. 
+ 
+A PDF writer determines which objects, if any, to store in object streams. 
+EXAMPLE 1 
+It can be useful to store objects having common characteristics together, such as "fonts on page 1" or 
+"Comments for draft #3." These objects are known as a collection. 
+NOTE 4 
+To avoid a degradation of performance, such as would occur when downloading and 
+decompressing a large object stream to access a single compressed object, the number of objects 
+in an individual object stream needs to be limited. This can require a group of object streams to 
+be linked as a collection, which can be done by means of the Extends entry in the object stream 
+dictionary. 
+NOTE 5 
+Extends can also be used when a collection is being updated to include new objects. Rather than 
+modifying the original object stream, which could entail duplicating much of the stream data, the 
+new objects can be stored in a separate object stream. This is particularly important when 
+adding an update section to a document. 
+The stream data in an object stream shall contain the following items: 
+• 
+N pairs of integers separated by white-space, where the first integer in each pair shall represent 
+the object number of a compressed object and the second integer shall represent the byte offset in 
+the decoded stream of that object, relative to the first object stored in the object stream, the offset 
+for which is the value of the stream's First entry. The byte offsets shall be in increasing order. The 
+pairs, themselves, shall also be separated by white-space. 
+NOTE 6 
+There is no restriction on the order of objects in the object stream; in particular, the objects need 
+not be stored in object-number order. 
+• 
+The value of the First entry in the stream dictionary shall be the byte offset in the decoded stream 
+of the first object. 
+
+• 
+Following the N pairs of integers, the N objects are stored consecutively. Only the object values 
+are stored in the stream; the obj and endobj keywords shall not be used. 
+NOTE7 
+(2020) Previous editions of this specification incorrectly stated that white-space was required 
+between objects. This document corrects the text to clarify that processing of each object in an 
+object stream starts at the specified byte offset in the decompressed stream and ends prior to the 
+byte offset of the next object or when the end of stream is encountered. 
+NOTE 8 
+A compressed dictionary or array can contain indirect references. 
+An object in an object stream shall not consist solely of an object reference. 
+EXAMPLE 2 
+ 
+3 0 R 
+ 
+In an encrypted PDF file (i.e., entire object stream is encrypted), strings occurring anywhere in an 
+object stream shall not be separately encrypted. 
+A PDF writer shall store the first object immediately after the last byte offset separated by white-space. 
+A PDF processor shall rely on the First entry in the stream dictionary to locate the first object. 
+An object stream itself, like any stream, shall be an indirect object, and therefore, there shall be an 
+entry for it in a cross-reference table or cross-reference stream (see 7.5.8, "Cross-reference streams"), 
+although there might not be any references to it (of the form 243 0 R). 
+The generation number of an object stream and of any compressed object shall be zero. If either an 
+object stream or a compressed object is deleted and the object number is freed, that object number 
+shall be reused only for an ordinary (uncompressed) object other than an object stream. When new 
+object streams and compressed objects are created, they shall always be assigned new object numbers, 
+not old ones taken from the free list. 
+EXAMPLE 3 
+The following shows three objects (two fonts and a font descriptor) as they would be represented in a PDF 
+1.4 or earlier file, along with a cross-reference table. 
+11 0 obj 
+ 
+ 
+ <</Type /Font 
+ 
+ 
+ 
+/Subtype /TrueType 
+ 
+ 
+ 
+… other entries … 
+ 
+ 
+ 
+/FontDescriptor 12 0 R 
+ 
+ 
+>> 
+endobj 
+ 
+12 0 obj 
+ 
+ 
+ <</Type /FontDescriptor 
+ 
+ 
+ 
+/Ascent 891 
+ 
+ 
+ 
+… other entries … 
+ 
+ 
+ 
+/FontFile2 22 0 R 
+ 
+ 
+>> 
+endobj 
+ 
+13 0 obj 
+ 
+ 
+ <</Type /Font 
+ 
+ 
+ 
+/Subtype /Type0 
+ 
+ 
+ 
+… other entries … 
+ 
+ 
+ 
+/ToUnicode 10 0 R 
+ 
+ 
+>> 
+endobj 
+ 
+… 
+
+ 
+xref 
+0 32 
+0000000000 65535 f 
+… cross-reference entries for objects 1 through 10 … 
+0000001434 00000 n 
+0000001735 00000 n 
+0000002155 00000 n 
+… cross-reference entries for objects 14 and on … 
+trailer 
+ 
+ 
+ <</Size 32 
+ 
+ 
+/Root … 
+ 
+ 
+>> 
+NOTE 9 
+For readability, the object stream has been shown unencoded. In a PDF 2.0 file, Flate encoding 
+would typically be used to gain the benefits of compression. 
+EXAMPLE 4 
+The following shows the same objects from the previous example stored in an object stream in a PDF 1.5 
+file, along with a cross-reference stream. 
+ 
+The cross-reference stream (see 7.5.8, "Cross-reference streams") contains entries for the fonts (objects 11 
+and 13) and the descriptor (object 12), which are compressed objects in an object stream. The first field of, 
+along with a cross-reference table field is the number of the object stream (15), and the third field is the 
+position within the sequence of objects in the object stream (0, 1, and 2). The cross-reference stream also 
+contains a Type 1 entry for the object stream itself. 
+15 0 obj  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%The object stream 
+ 
+ 
+ <</Type /ObjStm 
+ 
+ 
+ 
+/Length 1856 
+ 
+ 
+ 
+/N 3  
+ 
+ 
+ 
+ 
+ 
+ 
+%The number of objects in the stream 
+ 
+ 
+ 
+/First 24 
+ 
+ 
+ 
+ 
+ 
+%The byte offset in the decoded stream of the first object 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%The object numbers and offsets of the objects,  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%relative to the first are shown on the first line of 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%the stream (i.e., 11 0 12 547 13 665). 
+ 
+ 
+>> 
+stream 
+ 
+ 
+11 0 12 547 13 665 
+ 
+ 
+ <</Type /Font 
+ 
+ 
+ 
+/Subtype /TrueType 
+ 
+ 
+ 
+… other keys … 
+ 
+ 
+ 
+/FontDescriptor 12 0 R 
+ 
+ 
+>> 
+ 
+ 
+ 
+ <</Type /FontDescriptor 
+ 
+ 
+ 
+/Ascent 891 
+ 
+ 
+ 
+…other keys… 
+ 
+ 
+ 
+/FontFile2 22 0 R 
+ 
+ 
+>> 
+ 
+ 
+ <</Type /Font 
+ 
+ 
+ 
+/Subtype /Type0 
+ 
+ 
+ 
+… other keys … 
+ 
+ 
+ 
+/ToUnicode 10 0 R 
+ 
+ 
+>> 
+… 
+endstream 
+endobj 
+ 
+99 0 obj  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%The cross-reference stream 
+ 
+ 
+ <</Type /XRef 
+ 
+ 
+ 
+/Index [0 32]  
+ 
+ 
+ 
+%This section has one subsection with 32 objects 
+ 
+ 
+ 
+/W [1 2 2]  
+ 
+ 
+ 
+ 
+%Each entry has 3 fields: 1, 2 & 2 bytes in width 
+respectively 
+ 
+ 
+ 
+/Filter /ASCIIHexDecode  
+%For readability in this example 
+ 
+ 
+ 
+/Size 32 
+ 
+ 
+ 
+… 
+ 
+ 
+>> 
+
+stream 
+ 
+ 
+00 0000 FFFF 
+ 
+ 
+… cross-references for objects 1 through 10 … 
+ 
+ 
+02 000F 0000 
+ 
+ 
+02 000F 0001 
+ 
+ 
+02 000F 0002 
+ 
+ 
+… cross-reference for object 14 … 
+ 
+ 
+01 BA5E 0000 
+ 
+ 
+… 
+endstream 
+endobj 
+ 
+startxref 
+54321 
+%%EOF 
+NOTE 10 The number 54321 in Example 4 is the byte offset for object 99 0. 
+7.5.8 Cross-reference streams 
+7.5.8.1 General 
+Beginning with PDF 1.5, cross-reference information may be stored in a cross-reference stream instead 
+of in a cross-reference table. Cross-reference streams provide the following advantages: 
+• 
+A more compact representation of cross-reference information 
+• 
+The ability to access compressed objects that are stored in object streams (see 7.5.7, "Object 
+streams") and to allow new cross-reference entry types to be added in the future. 
+Cross-reference streams are stream objects (see 7.3.8, "Stream objects"), and contain a dictionary and 
+a data stream. Each cross-reference stream contains the information equivalent to the cross-reference 
+table (see 7.5.4, "Cross-reference table") and trailer (7.5.5, "File trailer") for one cross-reference 
+section. 
+EXAMPLE 
+In this example, the trailer dictionary entries are stored in the stream dictionary, and the cross-reference 
+table entries are stored as the stream data. 
+… objects … 
+ 
+12 0 obj  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%Cross-reference stream 
+ 
+ 
+ <</Type /XRef  
+ 
+ 
+ 
+ 
+%Cross-reference stream dictionary 
+ 
+ 
+ 
+/Size … 
+ 
+ 
+ 
+/Root … 
+ 
+ 
+ 
+ 
+ 
+>> 
+stream 
+ 
+ 
+…Stream data containing cross-reference information … 
+endstream 
+endobj 
+ 
+… more objects … 
+ 
+startxref 
+byte_offset_of_cross-reference_stream (points to object 12) 
+%%EOF 
+ 
+The value following the startxref keyword shall be the byte offset of the cross-reference stream rather 
+than the xref keyword. For PDF files that use cross-reference streams entirely (that is, PDF files that 
+are not hybrid-reference files; see 7.5.8.4, "Compatibility with applications that do not support 
+compressed reference streams"), the keywords xref and trailer shall no longer be used. Therefore, 
+
+with the exception of the startxref address, %%EOF segment and comments, a PDF file may be 
+entirely a sequence of objects. 
+In linearized PDF files (see F.3, "Linearized PDF document structure"), the document catalog 
+dictionary, the linearization dictionary, and page objects shall not appear in an object stream. 
+7.5.8.2 Cross-reference stream dictionary 
+Cross-reference streams shall contain the required entries and may contain the optional entries shown 
+in "Table 17 — Additional entries specific to a cross-reference stream dictionary" in addition to the 
+entries common to all streams ("Table 5 — Entries common to all stream dictionaries") and trailer 
+dictionaries ("Table 15 — Entries in the file trailer dictionary"). Since some of the information in the 
+cross-reference stream is needed by the PDF processor to construct the index that allows indirect 
+references to be resolved, the entries in cross-reference streams shall be subject to the following 
+restrictions: 
+• 
+The values of all entries shown in "Table 17 — Additional entries specific to a cross-reference 
+stream dictionary" shall be direct objects; indirect references shall not be permitted. For arrays 
+(the Index and W entries), all of their elements shall be direct objects as well. If the stream is 
+encoded, the Filter and DecodeParms entries in "Table 5 — Entries common to all stream 
+dictionaries" shall also be direct objects. 
+• 
+Other cross-reference stream entries not listed in "Table 17 — Additional entries specific to a 
+cross-reference stream dictionary" may be indirect; in fact, some (such as Root in "Table 15 — 
+Entries in the file trailer dictionary") shall be indirect. 
+• 
+The cross-reference stream shall not be encrypted and strings appearing in the cross-reference 
+stream dictionary shall not be encrypted. It shall not have a Filter entry that specifies a Crypt 
+filter (see 7.4.10, "Crypt filter"). 
+Table 17 — Additional entries specific to a cross-reference stream dictionary 
+Key 
+Type 
+Value 
+Type 
+name 
+(Required) The type of PDF object that this dictionary describes; shall 
+be XRef for a cross-reference stream. 
+Size 
+integer 
+(Required) The number one greater than the highest object number 
+used in this section or in any section for which this shall be an update. 
+It shall be equivalent to the Size entry in a trailer dictionary. 
+Index 
+array 
+(Optional) An array containing a pair of integers for each subsection in 
+this section. The first integer shall be the first object number in the 
+subsection; the second integer shall be the number of entries in the 
+subsection 
+The array shall be sorted in ascending order by object number. 
+Subsections cannot overlap; an object number shall have no more than 
+one entry in a section. 
+Default value: [0 Size]. 
+
+Key 
+Type 
+Value 
+Prev 
+integer 
+(Required, if any cross reference streams are already present in the file) 
+The byte offset from the beginning of the PDF file to the beginning of 
+the previous cross-reference stream. The value is meaningful if the PDF 
+file has more than one cross-reference stream. It is not meaningful in 
+hybrid-reference files; see 7.5.8.4, "Compatibility with applications that 
+do not support compressed reference streams". This entry has the 
+same function as the Prev entry in the trailer dictionary ("Table 15 — 
+Entries in the file trailer dictionary"). 
+W 
+array 
+(Required) An array of integers representing the size of the fields in a 
+single cross-reference entry. "Table 18 — Entries in a cross-reference 
+stream" describes the types of entries and their fields. For PDF 1.5, W 
+always contains three integers; the value of each integer shall be the 
+number of bytes (in the decoded stream) of the corresponding field. 
+EXAMPLE 
+[1 2 1] means that the fields are one byte, two bytes, and one 
+byte, respectively. 
+A value of zero for an element in the W array indicates that the 
+corresponding field shall not be present in the stream, and the default 
+value shall be used, if there is one. A value of zero shall not be used for 
+the second element of the array. If the first element is zero, the type 
+field shall not be present, and shall default to Type 1. 
+The sum of the items shall be the total length of each entry; it can be 
+used with the Index array to determine the starting position of each 
+subsection. 
+Different cross-reference streams in a PDF file may use different values 
+for W. 
+ 
+7.5.8.3 Cross-reference stream data 
+Each entry in a cross-reference stream shall have one or more fields, the first of which designates the 
+entry’s type (see "Table 18 — Entries in a cross-reference stream"). In PDF 1.5 through PDF 2.0, only 
+types 0, 1, and 2 are allowed. Any other value shall be interpreted as a reference to the null object, thus 
+permitting new entry types to be defined in the future. 
+The fields are written in increasing order of field number; the length of each field shall be determined 
+by the corresponding value in the W entry (see "Table 17 — Additional entries specific to a cross-
+reference stream dictionary"). Fields requiring more than one byte are stored with the high-order byte 
+first. 
+Table 18 — Entries in a cross-reference stream 
+Type 
+Field 
+Description 
+The type of this entry, which shall be 0. Type 0 entries 
+define the linked list of free objects (corresponding to f 
+entries in a cross-reference table). Default value: 0. 
+ 
+The object number of the next free object. 
+
+Type 
+Field 
+Description 
+ 
+The generation number to use if this object number is used 
+again. Default value: 0. 
+The type of this entry, which shall be 1. Type 1 entries 
+define objects that are in use but are not compressed 
+(corresponding to n entries in a cross-reference table). 
+ 
+The byte offset of the object, starting from the beginning of 
+the PDF file. Default value: 0. 
+ 
+The generation number of the object. Default value: 0. 
+The type of this entry, which shall be 2. Type 2 entries 
+define compressed objects. 
+ 
+The object number of the object stream in which this 
+object is stored. (The generation number of the object 
+stream shall be implicitly 0.) 
+ 
+The index of this object within the object stream. 
+NOTE 
+This index value will be between zero and the value of 
+N minus 1 from the associated object stream 
+dictionary. 
+ 
+Like any stream, a cross-reference stream shall be an indirect object. Therefore, an entry for it shall 
+exist in either a cross-reference stream (usually itself) or in a cross-reference table (in hybrid-
+reference files; see 7.5.8.4, "Compatibility with applications that do not support compressed reference 
+streams"). 
+7.5.8.4 Compatibility with applications that do not support compressed 
+reference streams 
+A hybrid-reference PDF file is readable by PDF processors designed only to support versions of PDF 
+before PDF 1.5. Such a PDF file contains objects referenced by standard cross-reference tables in 
+addition to objects in object streams that are referenced by cross-reference streams. 
+In these PDF files, the trailer dictionary may contain, in addition to the entry for trailers shown in 
+"Table 15 — Entries in the file trailer dictionary", an entry, as shown in “Table 19 — Additional entries 
+in a hybrid-reference file’s trailer dictionary”. 
+Table 19 — Additional entries in a hybrid-reference file’s trailer dictionary 
+Key 
+Type 
+Value 
+XRefStm 
+integer 
+(Optional) The byte offset in the decoded stream from the beginning of the 
+PDF file of a cross-reference stream. 
+ 
+When a PDF reader opens a hybrid-reference PDF file, objects with entries in cross-reference streams 
+are not hidden. When the PDF reader searches for an object, if an entry is not found in any given 
+
+standard cross-reference section, the search shall proceed to a cross-reference stream specified by the 
+XRefStm entry before looking in the previous cross-reference section (the Prev entry in the trailer). 
+NOTE 
+Hidden objects, therefore, have two cross-reference entries. One is in the cross-reference stream. 
+The other is a free entry in some previous section, typically the section referenced by the Prev 
+entry.  
+A PDF reader shall look in the cross-reference stream first, find the object there, and shall ignore the 
+free entry in the previous section.  
+EXAMPLE 
+In this example, an ASCIIHexDecode filter is specified to make the format and contents of the cross-
+reference stream readable. This example shows a hybrid-reference PDF file containing a main cross-
+reference section and an update cross-reference section with an XRefStm entry that points to a cross-
+reference stream (object 11), which in turn has references to an object stream (object 2). 
+ 
+In this example, the catalog dictionary (object 1) contains an indirect reference (3 0 R) to the root of the 
+structure tree. The search for the object starts at the update cross-reference table, which has no objects in 
+it. The search proceeds depending on the version of the PDF reader. 
+ 
+One choice for a PDF reader designed only to support versions of PDF before PDF 1.5 is to continue the 
+search by following the Prev pointer to the main cross-reference table. That table defines object 3 as a free 
+object, which is treated as the null object. Therefore, the entry is considered missing, and the document has 
+no structure tree.  
+ 
+Another choice for a PDF reader, is to continue the search by following the XRefStm pointer to the cross-
+reference stream (object 11). It defines object 3 as a compressed object, stored at index 0 in the object stream 
+(2 0 obj). Therefore, the document has a structure tree. 
+1 0 obj  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+%The document root, at offset 23. 
+<< /Type /Catalog 
+ 
+/StructTreeRoot 3 0 R 
+ 
+… 
+>> 
+endobj 
+ 
+12 0 obj 
+… 
+endobj 
+… 
+99 0 obj 
+… 
+endobj 
+ 
+%The main xref section, at offset 2664 is next with entries for objects 0-99. 
+%Objects 2 through 11 are marked free and objects 12, 13 and 99 are marked in use. 
+xref 
+0 100 
+0000000002 65535 f 
+0000000023 00000 n 
+0000000003 65535 f 
+0000000004 65535 f 
+0000000005 65535 f 
+0000000006 65535 f 
+0000000007 65535 f 
+0000000008 65535 f 
+0000000009 65535 f 
+0000000010 65535 f 
+0000000011 65535 f 
+0000000000 65535 f 
+0000000045 00000 n 
+0000000179 00000 n 
+… cross-reference entries for objects 14 through 98 … 
+0000002201 00000 n 
+trailer 
+
+<< /Size 100 
+ 
+/Root 1 0 R 
+ 
+/ID … 
+>> 
+%The main xref section starts at offset 2664. 
+startxref 
+2664 
+%%EOF 
+ 
+2 0 obj  
+ 
+ 
+ 
+ 
+ 
+ 
+%The object stream, at offset 3722 
+<< /Length … 
+ 
+/N 8  
+ 
+ 
+ 
+ 
+ 
+ 
+%This stream contains 8 objects. 
+ 
+/First 47 
+ 
+ 
+ 
+ 
+ 
+%The stream-offset of the first object 
+>> 
+stream 
+3 0 4 50 5 72 … the numbers and stream-offsets of the remaining 5 objects followed by 
+dictionary objects 3-5 … 
+<< /Type /StructTreeRoot 
+ 
+/K 4 0 R 
+ 
+/RoleMap 5 0 R 
+ 
+/ClassMap 6 0 R 
+ 
+/ParentTree 7 0 R 
+ 
+/ParentTreeNextKey 8 
+>> 
+<< /S /Workbook 
+ 
+/P 8 0 R 
+ 
+/K 9 0 R 
+>> 
+<< /Workbook /Div 
+ 
+/Worksheet /Sect 
+ 
+/TextBox /Figure 
+ 
+/Shape /Figure 
+>> 
+… definitions for objects 6 through 10 … 
+endstream 
+endobj 
+ 
+11 0 obj  
+ 
+ 
+ 
+ 
+ 
+ 
+%The cross-reference stream, at offset 4899 
+<< /Type /XRef 
+ 
+/Index [2 10]  
+ 
+ 
+ 
+%This stream contains entries for objects 2 through 11 
+ 
+/Size 100 
+ 
+/W [1 2 1]   
+ 
+ 
+ 
+ 
+%The byte-widths of each field 
+ 
+/Filter /ASCIIHexDecode  
+%For readability only 
+ 
+… 
+>> 
+stream 
+01 0E8A 00 
+02 0002 00 
+02 0002 01 
+02 0002 02 
+02 0002 03 
+02 0002 04 
+02 0002 05 
+02 0002 06 
+02 0002 07 
+01 1323 00 
+endstream 
+endobj 
+ 
+%The entries above are for: object 2 (0x0E8A = 3722), object 3 (in object stream 2, index 0), 
+%object 4 (in object stream 2, index 1) … object 10 (in object stream 2, index 7), 
+%object 11 (0x1323 = 4899). 
+ 
+%The update xref section starting at offset 5640. There are no entries in this section. 
+xref 
+0 0 
+trailer 
