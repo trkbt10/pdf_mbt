@@ -125,7 +125,7 @@
   - _Depends: 5.4_
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 8.1, 8.2, 9.3_
 
-- [ ] 6.3 Prepare and validate Annex H examples through public API
+- [x] 6.3 Prepare and validate Annex H examples through public API
   - Build or normalize test fixtures from the Annex H.2 and H.3 extracted examples so byte offsets, xref data, and trailers are consistent inputs for the reader.
   - Parse the Annex H.2 fixture and access all listed indirect objects, including Catalog, Pages, Page, Content stream, and Metadata; parse the Annex H.3 fixture and access font resources plus content stream objects without interpreting content operators.
   - Annex validation is complete when the public reader loads every required indirect object from both prepared fixtures and leaves document semantics to later layers.

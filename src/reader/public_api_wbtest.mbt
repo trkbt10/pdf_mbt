@@ -354,6 +354,180 @@ fn build_object_stream_fixture() -> Bytes {
 }
 
 ///|
+fn build_pdf2_fixture_prefix() -> (Bytes, Int64) {
+  let prefix = b"garbage\n"
+  let header = b"%PDF-2.0\r\n"
+  let binary_indicator = b"%\x80\x80\x80\x80\r\n"
+  (prefix + header + binary_indicator, prefix.length().to_int64())
+}
+
+///|
+fn build_annex_content_stream_data() -> Bytes {
+  b"q\nQ\n"
+}
+
+///|
+fn build_annex_h3_content_stream_data() -> Bytes {
+  b"BT\n" +
+  b"/F1 24 Tf\n" +
+  b"72 696 Td\n" +
+  b"(Hello ) Tj\n" +
+  b"/F2 24 Tf\n" +
+  b"(32000-2) Tj\n" +
+  b"/F1 24 Tf\n" +
+  b"156.1 0 Td\n" +
+  b"(Wor) Tj\n" +
+  b"(ld) Tj\n" +
+  b"ET\n"
+}
+
+///|
+fn build_metadata_stream_data(producer : Bytes, creator_tool : Bytes) -> Bytes {
+  b"<?xpacket begin=\"\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>\n" +
+  b"<x:xmpmeta xmlns:x=\"adobe:ns:meta/\">\n" +
+  b"<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n" +
+  b"<rdf:Description rdf:about=\"\" xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\">\n" +
+  b"<pdf:Producer>" +
+  producer +
+  b"</pdf:Producer>\n" +
+  b"</rdf:Description>\n" +
+  b"<rdf:Description rdf:about=\"\" xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\">\n" +
+  b"<xmp:CreatorTool>" +
+  creator_tool +
+  b"</xmp:CreatorTool>\n" +
+  b"</rdf:Description>\n" +
+  b"</rdf:RDF>\n" +
+  b"</x:xmpmeta>\n" +
+  b"<?xpacket end=\"w\"?>"
+}
+
+///|
+fn build_annex_h2_fixture() -> Bytes {
+  let (bytes, header_base) = build_pdf2_fixture_prefix()
+
+  let (bytes, catalog_offset) = append_indirect_object(
+    bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R /Metadata 5 0 R >>",
+  )
+  let (bytes, pages_offset) = append_indirect_object(
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+  )
+  let (bytes, page_offset) = append_indirect_object(
+    bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
+  )
+  let content_stream_data = build_annex_content_stream_data()
+  let (bytes, content_offset) = append_indirect_object(
+    bytes,
+    header_base,
+    4,
+    0,
+    build_stream_object_body(
+      b"<< /Length " +
+      decimal_bytes(content_stream_data.length().to_int64()) +
+      b" >>",
+      content_stream_data,
+    ),
+  )
+  let metadata_stream_data = build_metadata_stream_data(
+    b"Annex H.2 Producer", b"Annex H.2 Tool",
+  )
+  let (bytes, metadata_offset) = append_indirect_object(
+    bytes,
+    header_base,
+    5,
+    0,
+    build_stream_object_body(
+      b"<< /Type /Metadata /Subtype /XML /Length " +
+      decimal_bytes(metadata_stream_data.length().to_int64()) +
+      b" >>",
+      metadata_stream_data,
+    ),
+  )
+
+  let xref_offset = object_offset(bytes, header_base)
+  bytes +
+  b"xref\r\n" +
+  b"0 6\r\n" +
+  xref_entry_line(0L, 65535, b'f') +
+  xref_entry_line(catalog_offset, 0, b'n') +
+  xref_entry_line(pages_offset, 0, b'n') +
+  xref_entry_line(page_offset, 0, b'n') +
+  xref_entry_line(content_offset, 0, b'n') +
+  xref_entry_line(metadata_offset, 0, b'n') +
+  b"trailer\r\n" +
+  b"<< /Size 6 /Root 1 0 R >>\r\n" +
+  b"startxref\r\n" +
+  decimal_bytes(xref_offset) +
+  b"\r\n%%EOF\r\n"
+}
+
+///|
+fn build_annex_h3_fixture() -> Bytes {
+  let (bytes, header_base) = build_pdf2_fixture_prefix()
+
+  let (bytes, catalog_offset) = append_indirect_object(
+    bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R /Metadata 7 0 R >>",
+  )
+  let (bytes, pages_offset) = append_indirect_object(
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+  )
+  let (bytes, page_offset) = append_indirect_object(
+    bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources <</Font <</F1 5 0 R /F2 6 0 R>> >> >>",
+  )
+  let content_stream_data = build_annex_h3_content_stream_data()
+  let (bytes, content_offset) = append_indirect_object(
+    bytes,
+    header_base,
+    4,
+    0,
+    build_stream_object_body(
+      b"<< /Length " +
+      decimal_bytes(content_stream_data.length().to_int64()) +
+      b" >>",
+      content_stream_data,
+    ),
+  )
+  let (bytes, font1_offset) = append_indirect_object(
+    bytes, header_base, 5, 0, b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+  )
+  let (bytes, font2_offset) = append_indirect_object(
+    bytes, header_base, 6, 0, b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>",
+  )
+  let metadata_stream_data = build_metadata_stream_data(
+    b"Annex H.3 Producer", b"Annex H.3 Tool",
+  )
+  let (bytes, metadata_offset) = append_indirect_object(
+    bytes,
+    header_base,
+    7,
+    0,
+    build_stream_object_body(
+      b"<< /Type /Metadata /Subtype /XML /Length " +
+      decimal_bytes(metadata_stream_data.length().to_int64()) +
+      b" >>",
+      metadata_stream_data,
+    ),
+  )
+
+  let xref_offset = object_offset(bytes, header_base)
+  bytes +
+  b"xref\r\n" +
+  b"0 8\r\n" +
+  xref_entry_line(0L, 65535, b'f') +
+  xref_entry_line(catalog_offset, 0, b'n') +
+  xref_entry_line(pages_offset, 0, b'n') +
+  xref_entry_line(page_offset, 0, b'n') +
+  xref_entry_line(content_offset, 0, b'n') +
+  xref_entry_line(font1_offset, 0, b'n') +
+  xref_entry_line(font2_offset, 0, b'n') +
+  xref_entry_line(metadata_offset, 0, b'n') +
+  b"trailer\r\n" +
+  b"<< /Size 8 /Root 1 0 R >>\r\n" +
+  b"startxref\r\n" +
+  decimal_bytes(xref_offset) +
+  b"\r\n%%EOF\r\n"
+}
+
+///|
 test "PdfFile::open reads a synthetic traditional table file end to end" {
   let file = PdfFile::open(build_traditional_fixture())
   let trailer = file.trailer()
@@ -658,5 +832,313 @@ test "PdfFile::open resolves compressed xref stream members and rejects invalid 
     Err(InvalidObjectStream(_, reason)) =>
       assert_eq(reason.contains("index"), true)
     _ => fail("expected invalid compressed member index")
+  }
+}
+
+///|
+test "PdfFile::open reads Annex H.2 fixtures through public APIs" {
+  let file = PdfFile::open(build_annex_h2_fixture())
+  let trailer = file.trailer()
+  let catalog_ref = @objects.ObjectId::{
+    object_number: 1,
+    generation_number: 0,
+  }
+  let pages_ref = @objects.ObjectId::{ object_number: 2, generation_number: 0 }
+  let page_ref = @objects.ObjectId::{ object_number: 3, generation_number: 0 }
+  let content_ref = @objects.ObjectId::{
+    object_number: 4,
+    generation_number: 0,
+  }
+  let metadata_ref = @objects.ObjectId::{
+    object_number: 5,
+    generation_number: 0,
+  }
+
+  assert_eq(file.version() == PdfVersion::{ major: 2, minor: 0 }, true)
+  assert_eq(file.root_ref() == catalog_ref, true)
+  assert_eq(trailer.size, 6)
+
+  match file.load_object(catalog_ref) {
+    @objects.PdfObject::Dictionary(dict) => {
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Pages")) ==
+        Some(@objects.PdfObject::Ref(pages_ref)),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Metadata")) ==
+        Some(@objects.PdfObject::Ref(metadata_ref)),
+        true,
+      )
+    }
+    _ => fail("expected Annex H.2 catalog dictionary")
+  }
+
+  match file.load_object(pages_ref) {
+    @objects.PdfObject::Dictionary(dict) => {
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Type")) ==
+        Some(@objects.PdfObject::Name(@objects.PdfName::new(b"Pages"))),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Kids")) ==
+        Some(@objects.PdfObject::Array([@objects.PdfObject::Ref(page_ref)])),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Count")) ==
+        Some(@objects.PdfObject::Integer(1L)),
+        true,
+      )
+    }
+    _ => fail("expected Annex H.2 pages dictionary")
+  }
+
+  match file.load_object(page_ref) {
+    @objects.PdfObject::Dictionary(dict) => {
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Type")) ==
+        Some(@objects.PdfObject::Name(@objects.PdfName::new(b"Page"))),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Parent")) ==
+        Some(@objects.PdfObject::Ref(pages_ref)),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Contents")) ==
+        Some(@objects.PdfObject::Ref(content_ref)),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"MediaBox")) ==
+        Some(
+          @objects.PdfObject::Array([
+            @objects.PdfObject::Integer(0L),
+            @objects.PdfObject::Integer(0L),
+            @objects.PdfObject::Integer(612L),
+            @objects.PdfObject::Integer(792L),
+          ]),
+        ),
+        true,
+      )
+    }
+    _ => fail("expected Annex H.2 page dictionary")
+  }
+
+  match file.load_object(content_ref) {
+    @objects.PdfObject::Stream(stream) => {
+      assert_eq(stream.data, build_annex_content_stream_data())
+      assert_eq(
+        stream.dict.get(@objects.PdfName::new(b"Length")) ==
+        Some(@objects.PdfObject::Integer(4L)),
+        true,
+      )
+    }
+    _ => fail("expected Annex H.2 content stream")
+  }
+
+  match file.load_object(metadata_ref) {
+    @objects.PdfObject::Stream(stream) => {
+      assert_eq(
+        stream.dict.get(@objects.PdfName::new(b"Type")) ==
+        Some(@objects.PdfObject::Name(@objects.PdfName::new(b"Metadata"))),
+        true,
+      )
+      assert_eq(
+        stream.dict.get(@objects.PdfName::new(b"Subtype")) ==
+        Some(@objects.PdfObject::Name(@objects.PdfName::new(b"XML"))),
+        true,
+      )
+      assert_eq(
+        stream.data,
+        build_metadata_stream_data(b"Annex H.2 Producer", b"Annex H.2 Tool"),
+      )
+    }
+    _ => fail("expected Annex H.2 metadata stream")
+  }
+}
+
+///|
+test "PdfFile::open reads Annex H.3 resources and text stream objects" {
+  let file = PdfFile::open(build_annex_h3_fixture())
+  let trailer = file.trailer()
+  let catalog_ref = @objects.ObjectId::{
+    object_number: 1,
+    generation_number: 0,
+  }
+  let pages_ref = @objects.ObjectId::{ object_number: 2, generation_number: 0 }
+  let page_ref = @objects.ObjectId::{ object_number: 3, generation_number: 0 }
+  let content_ref = @objects.ObjectId::{
+    object_number: 4,
+    generation_number: 0,
+  }
+  let font1_ref = @objects.ObjectId::{ object_number: 5, generation_number: 0 }
+  let font2_ref = @objects.ObjectId::{ object_number: 6, generation_number: 0 }
+  let metadata_ref = @objects.ObjectId::{
+    object_number: 7,
+    generation_number: 0,
+  }
+
+  assert_eq(file.version() == PdfVersion::{ major: 2, minor: 0 }, true)
+  assert_eq(file.root_ref() == catalog_ref, true)
+  assert_eq(trailer.size, 8)
+
+  match file.load_object(catalog_ref) {
+    @objects.PdfObject::Dictionary(dict) => {
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Pages")) ==
+        Some(@objects.PdfObject::Ref(pages_ref)),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Metadata")) ==
+        Some(@objects.PdfObject::Ref(metadata_ref)),
+        true,
+      )
+    }
+    _ => fail("expected Annex H.3 catalog dictionary")
+  }
+
+  match file.load_object(pages_ref) {
+    @objects.PdfObject::Dictionary(dict) => {
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Kids")) ==
+        Some(@objects.PdfObject::Array([@objects.PdfObject::Ref(page_ref)])),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Count")) ==
+        Some(@objects.PdfObject::Integer(1L)),
+        true,
+      )
+    }
+    _ => fail("expected Annex H.3 pages dictionary")
+  }
+
+  match file.load_object(page_ref) {
+    @objects.PdfObject::Dictionary(dict) => {
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Contents")) ==
+        Some(@objects.PdfObject::Ref(content_ref)),
+        true,
+      )
+      match dict.get(@objects.PdfName::new(b"Resources")) {
+        Some(@objects.PdfObject::Dictionary(resources)) =>
+          match resources.get(@objects.PdfName::new(b"Font")) {
+            Some(@objects.PdfObject::Dictionary(fonts)) => {
+              assert_eq(
+                fonts.get(@objects.PdfName::new(b"F1")) ==
+                Some(@objects.PdfObject::Ref(font1_ref)),
+                true,
+              )
+              assert_eq(
+                fonts.get(@objects.PdfName::new(b"F2")) ==
+                Some(@objects.PdfObject::Ref(font2_ref)),
+                true,
+              )
+            }
+            _ => fail("expected Annex H.3 font resource dictionary")
+          }
+        _ => fail("expected Annex H.3 resources dictionary")
+      }
+    }
+    _ => fail("expected Annex H.3 page dictionary")
+  }
+
+  match file.load_object(content_ref) {
+    @objects.PdfObject::Stream(stream) => {
+      assert_eq(stream.data, build_annex_h3_content_stream_data())
+      assert_eq(
+        stream.dict.get(@objects.PdfName::new(b"Length")) ==
+        Some(
+          @objects.PdfObject::Integer(
+            build_annex_h3_content_stream_data().length().to_int64(),
+          ),
+        ),
+        true,
+      )
+    }
+    _ => fail("expected Annex H.3 content stream")
+  }
+
+  match file.load_object(font1_ref) {
+    @objects.PdfObject::Dictionary(dict) => {
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Type")) ==
+        Some(@objects.PdfObject::Name(@objects.PdfName::new(b"Font"))),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Subtype")) ==
+        Some(@objects.PdfObject::Name(@objects.PdfName::new(b"Type1"))),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"BaseFont")) ==
+        Some(@objects.PdfObject::Name(@objects.PdfName::new(b"Helvetica"))),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Encoding")) ==
+        Some(
+          @objects.PdfObject::Name(@objects.PdfName::new(b"WinAnsiEncoding")),
+        ),
+        true,
+      )
+    }
+    _ => fail("expected Annex H.3 first font dictionary")
+  }
+
+  match file.load_object(font2_ref) {
+    @objects.PdfObject::Dictionary(dict) => {
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Type")) ==
+        Some(@objects.PdfObject::Name(@objects.PdfName::new(b"Font"))),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Subtype")) ==
+        Some(@objects.PdfObject::Name(@objects.PdfName::new(b"Type1"))),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"BaseFont")) ==
+        Some(
+          @objects.PdfObject::Name(@objects.PdfName::new(b"Helvetica-Oblique")),
+        ),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Encoding")) ==
+        Some(
+          @objects.PdfObject::Name(@objects.PdfName::new(b"WinAnsiEncoding")),
+        ),
+        true,
+      )
+    }
+    _ => fail("expected Annex H.3 second font dictionary")
+  }
+
+  match file.load_object(metadata_ref) {
+    @objects.PdfObject::Stream(stream) => {
+      assert_eq(
+        stream.dict.get(@objects.PdfName::new(b"Type")) ==
+        Some(@objects.PdfObject::Name(@objects.PdfName::new(b"Metadata"))),
+        true,
+      )
+      assert_eq(
+        stream.dict.get(@objects.PdfName::new(b"Subtype")) ==
+        Some(@objects.PdfObject::Name(@objects.PdfName::new(b"XML"))),
+        true,
+      )
+      assert_eq(
+        stream.data,
+        build_metadata_stream_data(b"Annex H.3 Producer", b"Annex H.3 Tool"),
+      )
+    }
+    _ => fail("expected Annex H.3 metadata stream")
   }
 }
