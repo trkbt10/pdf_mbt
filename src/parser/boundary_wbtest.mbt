@@ -1,5 +1,8 @@
 ///|
-test "parser can reach lexer and objects boundary probes" {
-  inspect(@objects.boundary_probe(), content="objects")
-  inspect(@lexer.boundary_probe(), content="objects")
+test "parser package can use lexer and object model types" {
+  let name = @objects.PdfName::new(b"ParserName")
+  match _object_from_lexer_name(name) {
+    Name(value) => assert_eq(value == name, true)
+    _ => fail("expected name object")
+  }
 }

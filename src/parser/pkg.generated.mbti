@@ -2,9 +2,6 @@
 package "trkbt10/pdf/src/parser"
 
 // Values
-pub fn boundary_probe() -> String
-
-pub fn objects_boundary_probe() -> String
 
 // Errors
 

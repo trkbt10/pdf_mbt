@@ -7,7 +7,7 @@
   - The package graph is complete when `moon check` succeeds with the intended object -> lexer -> parser dependency direction and no external dependency additions.
   - _Requirements: 16.1, 16.5_
 
-- [ ] 1.2 Define type-safe PDF values, names, streams, and identifiers
+- [x] 1.2 Define type-safe PDF values, names, streams, and identifiers
   - Represent every required PDF value, indirect reference, object identifier, indirect object wrapper, dictionary, stream dictionary, and encoded byte payload as strongly typed public values.
   - Preserve byte-sequence equality for names while keeping text conversion explicit and non-authoritative for lookup.
   - The model is complete when black-box tests can construct, compare, and pattern-match booleans, integers, reals, strings, names, arrays, dictionaries, streams, nulls, and references.

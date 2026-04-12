@@ -1,4 +1,7 @@
 ///|
-pub fn boundary_probe() -> String {
-  @objects.boundary_probe()
+pub type LexedName = @objects.PdfName
+
+///|
+fn _object_from_lexed_name(name : LexedName) -> @objects.PdfObject {
+  @objects.PdfObject::Name(name)
 }

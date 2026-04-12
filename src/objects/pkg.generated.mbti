@@ -1,14 +1,53 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/pdf/src/objects"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
-pub fn boundary_probe() -> String
 
 // Errors
 
 // Types and methods
+pub(all) struct IndirectObject {
+  id : ObjectId
+  value : PdfObject
+  start_offset : Int64
+  end_offset : Int64
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ObjectId {
+  object_number : Int
+  generation_number : Int
+} derive(Eq, Hash, @debug.Debug)
+
+pub(all) struct PdfName {
+  bytes : Bytes
+} derive(Eq, Hash, @debug.Debug)
+pub fn PdfName::new(Bytes) -> Self
+pub fn PdfName::to_text(Self) -> String
+
+pub(all) enum PdfObject {
+  Boolean(Bool)
+  Integer(Int64)
+  Real(Double)
+  String(Bytes)
+  Name(PdfName)
+  Array(Array[PdfObject])
+  Dictionary(Map[PdfName, PdfObject])
+  Stream(PdfStream)
+  Null
+  Ref(ObjectId)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfStream {
+  dict : Map[PdfName, PdfObject]
+  data : Bytes
+} derive(Eq, @debug.Debug)
 
 // Type aliases
+pub type PdfDictionary = Map[PdfName, PdfObject]
 
 // Traits
 

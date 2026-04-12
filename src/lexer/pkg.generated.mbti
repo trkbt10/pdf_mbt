@@ -1,14 +1,18 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/pdf/src/lexer"
 
+import {
+  "trkbt10/pdf/src/objects",
+}
+
 // Values
-pub fn boundary_probe() -> String
 
 // Errors
 
 // Types and methods
 
 // Type aliases
+pub using @objects {type PdfName as LexedName}
 
 // Traits
 
