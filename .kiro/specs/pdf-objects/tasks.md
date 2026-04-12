@@ -99,7 +99,7 @@
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 13.1, 16.3_
   - _Boundary: DictionaryBuilder_
 
-- [ ] 4.3 Integrate recursive direct-object parsing across arrays and dictionaries
+- [x] 4.3 Integrate recursive direct-object parsing across arrays and dictionaries
   - Ensure arrays and dictionary values can contain any direct object type already implemented, including nested arrays, nested dictionaries, strings, names, numbers, booleans, nulls, and references.
   - Keep parse cursor position correct after each nested object so following tokens remain available to the caller.
   - Recursive parsing is complete when combined fixtures parse nested aggregate values and leave no unconsumed object bytes except expected trailing separators.
