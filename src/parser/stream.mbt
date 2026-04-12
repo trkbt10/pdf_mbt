@@ -1,4 +1,7 @@
 ///|
+/// After an indirect object value parses as a Dictionary object, checks for
+/// the ISO 32000-2 section 7.3.8 stream keyword and upgrades it to a Stream
+/// object only in indirect-object parsing.
 fn ObjectParser::maybe_read_stream(
   self : ObjectParser,
   dict : @objects.PdfDictionary,
@@ -15,6 +18,9 @@ fn ObjectParser::maybe_read_stream(
 }
 
 ///|
+/// Reads an ISO 32000-2 section 7.3.8 Stream object: validate the Length
+/// entry, require stream EOL, read exactly that many bytes, allow the optional
+/// EOL before endstream, and then require endstream.
 fn ObjectParser::read_stream_object(
   self : ObjectParser,
   dict : @objects.PdfDictionary,
@@ -28,6 +34,8 @@ fn ObjectParser::read_stream_object(
 }
 
 ///|
+/// Reads the required ISO 32000-2 section 7.3.8 Length entry from the stream
+/// dictionary.
 fn ObjectParser::read_stream_length(
   self : ObjectParser,
   dict : @objects.PdfDictionary,
@@ -54,6 +62,7 @@ fn ObjectParser::read_stream_length(
 }
 
 ///|
+/// Requires the ISO 32000-2 section 7.3.8 endstream keyword.
 fn ObjectParser::require_endstream(
   self : ObjectParser,
 ) -> Unit raise @objects.PdfParseError {
@@ -65,6 +74,8 @@ fn ObjectParser::require_endstream(
 }
 
 ///|
+/// Matches a keyword only when the following byte is white-space, delimiter,
+/// or end of input.
 fn ObjectParser::matches_keyword(self : ObjectParser, expected : Bytes) -> Bool {
   let mut matched = true
   for i in 0..<expected.length() {

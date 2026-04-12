@@ -1,4 +1,7 @@
 ///|
+/// Parses an ISO 32000-2 section 7.3.7 Dictionary object as key-value pairs
+/// between << and >>, requiring each key to be a Name object and omitting
+/// Null object values.
 fn ObjectParser::parse_dictionary(
   self : ObjectParser,
 ) -> @objects.PdfDictionary raise @objects.PdfParseError {
@@ -58,6 +61,7 @@ fn ObjectParser::parse_dictionary(
 }
 
 ///|
+/// Consumes the ISO 32000-2 section 7.3.7 Dictionary object opening <<.
 fn ObjectParser::consume_dictionary_start(
   self : ObjectParser,
 ) -> Unit raise @objects.PdfParseError {
@@ -73,6 +77,7 @@ fn ObjectParser::consume_dictionary_start(
 }
 
 ///|
+/// Consumes the ISO 32000-2 section 7.3.7 Dictionary object closing >>.
 fn ObjectParser::consume_dictionary_end(
   self : ObjectParser,
 ) -> Unit raise @objects.PdfParseError {
@@ -86,6 +91,7 @@ fn ObjectParser::consume_dictionary_end(
 }
 
 ///|
+/// Detects the Dictionary object closing delimiter >>.
 fn ObjectParser::is_at_dictionary_end(self : ObjectParser) -> Bool {
   self.cursor.peek() == Some(b'>') && self.cursor.peek_n(1) == Some(b'>')
 }

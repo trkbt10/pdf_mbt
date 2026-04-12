@@ -1,25 +1,30 @@
 ///|
+/// Lexer state for ISO 32000-2 section 7.2 ordinary lexical scanning.
 struct Lexer {
   cursor : ByteCursor
   pushed : Array[PdfToken]
 }
 
 ///|
+/// Creates a lexer over a byte cursor with a bounded push-back buffer.
 pub fn Lexer::new(cursor : ByteCursor) -> Lexer {
   Lexer::{ cursor, pushed: [] }
 }
 
 ///|
+/// Pushes a token back so numeric lookahead can preserve fallback parsing.
 pub fn Lexer::push_back(self : Lexer, token : PdfToken) -> Unit {
   self.pushed.push(token)
 }
 
 ///|
+/// Reports whether the parser has a token saved from lookahead.
 pub fn Lexer::has_pushed_tokens(self : Lexer) -> Bool {
   self.pushed.length() > 0
 }
 
 ///|
+/// Reads and then restores the next token for parser lookahead.
 pub fn Lexer::peek_token(self : Lexer) -> PdfToken raise @objects.PdfParseError {
   let token = self.next_token()
   self.push_back(token)
@@ -27,6 +32,7 @@ pub fn Lexer::peek_token(self : Lexer) -> PdfToken raise @objects.PdfParseError 
 }
 
 ///|
+/// Returns the next PDF token after collapsing separators.
 pub fn Lexer::next_token(self : Lexer) -> PdfToken raise @objects.PdfParseError {
   match self.pushed.pop() {
     Some(token) => token
@@ -35,6 +41,9 @@ pub fn Lexer::next_token(self : Lexer) -> PdfToken raise @objects.PdfParseError 
 }
 
 ///|
+/// Skips ISO 32000-2 section 7.2.3 separators: consecutive white-space,
+/// EOL marker forms, and ordinary comments. A delimiter terminates a regular
+/// token, so this stops before delimiters.
 pub fn Lexer::skip_separators(
   self : Lexer,
 ) -> Unit raise @objects.PdfParseError {
@@ -54,6 +63,7 @@ pub fn Lexer::skip_separators(
 }
 
 ///|
+/// Reads the next ordinary token or delimiter outside strings and streams.
 fn Lexer::read_next_token(
   self : Lexer,
 ) -> PdfToken raise @objects.PdfParseError {
@@ -80,6 +90,9 @@ fn Lexer::read_next_token(
 }
 
 ///|
+/// Reads a sequence of regular characters until white-space or delimiter.
+/// ISO 32000-2 section 7.2.3 says a delimiter terminates the token without
+/// being included in it.
 fn Lexer::read_regular_token(
   self : Lexer,
   offset : Int64,
@@ -98,6 +111,7 @@ fn Lexer::read_regular_token(
 }
 
 ///|
+/// Consumes one white-space separator, normalizing an EOL marker first.
 fn Lexer::consume_white_space(
   self : Lexer,
 ) -> Unit raise @objects.PdfParseError {
@@ -109,6 +123,8 @@ fn Lexer::consume_white_space(
 }
 
 ///|
+/// Skips an ISO 32000-2 section 7.2.4 comment up to but not including the
+/// EOL marker, treating it as white-space for token separation.
 fn Lexer::skip_comment(self : Lexer) -> Unit raise @objects.PdfParseError {
   self.consume_bytes(1)
   while true {

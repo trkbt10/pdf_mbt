@@ -1,16 +1,21 @@
 ///|
+/// Recursive object parser for ISO 32000-2 sections 7.2 and 7.3.
 struct ObjectParser {
   cursor : @lexer.ByteCursor
   lexer : @lexer.Lexer
 }
 
 ///|
+/// Creates an object parser over PDF bytes.
 pub fn ObjectParser::new(input : Bytes) -> ObjectParser {
   let cursor = @lexer.ByteCursor::new(input)
   ObjectParser::{ cursor, lexer: @lexer.Lexer::new(cursor) }
 }
 
 ///|
+/// Parses one ISO 32000-2 section 7.3 object, dispatching literal string,
+/// hexadecimal string, Name object, array, Dictionary object, and regular
+/// keyword or number forms.
 pub fn ObjectParser::parse_object(
   self : ObjectParser,
 ) -> @objects.PdfObject raise @objects.PdfParseError {
@@ -32,6 +37,8 @@ pub fn ObjectParser::parse_object(
 }
 
 ///|
+/// Parses regular tokens into Boolean object true/false, Null object,
+/// Integer object, Real object, or an indirect reference candidate.
 fn ObjectParser::parse_ordinary_object(
   self : ObjectParser,
 ) -> @objects.PdfObject raise @objects.PdfParseError {
@@ -54,6 +61,7 @@ fn ObjectParser::parse_ordinary_object(
 }
 
 ///|
+/// Parses all adjacent direct objects in a byte slice.
 pub fn ObjectParser::parse_all_objects(
   self : ObjectParser,
 ) -> Array[@objects.PdfObject] raise @objects.PdfParseError {
@@ -70,6 +78,7 @@ pub fn ObjectParser::parse_all_objects(
 }
 
 ///|
+/// Parses a single direct object from bytes.
 pub fn parse_object(
   input : Bytes,
 ) -> @objects.PdfObject raise @objects.PdfParseError {
@@ -77,6 +86,7 @@ pub fn parse_object(
 }
 
 ///|
+/// Parses all direct objects from bytes.
 pub fn parse_all_objects(
   input : Bytes,
 ) -> Array[@objects.PdfObject] raise @objects.PdfParseError {
@@ -84,6 +94,8 @@ pub fn parse_all_objects(
 }
 
 ///|
+/// Parses an ISO 32000-2 section 7.3.6 Array object until the closing
+/// delimiter.
 fn ObjectParser::parse_array(
   self : ObjectParser,
 ) -> Array[@objects.PdfObject] raise @objects.PdfParseError {
@@ -122,6 +134,9 @@ fn ObjectParser::parse_array(
 }
 
 ///|
+/// Uses bounded lookahead for ISO 32000-2 section 7.3.10 disambiguation:
+/// N G R becomes an indirect reference, while other integer pairs preserve
+/// standalone Integer object fallback.
 fn ObjectParser::parse_integer_or_reference(
   self : ObjectParser,
   first_lexeme : Bytes,
@@ -161,6 +176,8 @@ fn ObjectParser::parse_integer_or_reference(
 }
 
 ///|
+/// Checks whether the next input can begin the regular token needed by
+/// N G R lookahead.
 fn ObjectParser::next_token_can_be_regular(
   self : ObjectParser,
 ) -> Bool raise @objects.PdfParseError {
@@ -172,6 +189,8 @@ fn ObjectParser::next_token_can_be_regular(
 }
 
 ///|
+/// Builds an ISO 32000-2 section 7.3.10 indirect reference after validating
+/// object number and generation number.
 fn build_ref_object(
   object_number : Int64,
   generation_number : Int64,
@@ -194,6 +213,10 @@ fn build_ref_object(
 }
 
 ///|
+/// Parses ISO 32000-2 section 7.3.2 Boolean object keywords true and false,
+/// section 7.3.9 Null object keyword null, section 7.3.3 Integer object
+/// signed decimal integer tokens, and Real object tokens with PERIOD decimal
+/// point.
 fn parse_regular_object(
   lexeme : Bytes,
   offset : Int64,
@@ -220,6 +243,7 @@ fn parse_regular_object(
 }
 
 ///|
+/// Converts a signed decimal integer token into an Integer object payload.
 fn parse_int64_lexeme(
   lexeme : Bytes,
   offset : Int64,
@@ -230,6 +254,8 @@ fn parse_int64_lexeme(
 }
 
 ///|
+/// Converts a decimal number containing a PERIOD decimal point into a Real
+/// object payload.
 fn parse_double_lexeme(
   lexeme : Bytes,
   offset : Int64,
@@ -240,12 +266,15 @@ fn parse_double_lexeme(
 }
 
 ///|
+/// Recognizes a signed decimal integer token with no PERIOD.
 fn is_integer_lexeme(lexeme : Bytes) -> Bool {
   let start = sign_prefix_length(lexeme)
   start < lexeme.length() && all_digits_from(lexeme, start)
 }
 
 ///|
+/// Recognizes a Real object token containing exactly one PERIOD as the
+/// decimal point.
 fn is_real_lexeme(lexeme : Bytes) -> Bool {
   let start = sign_prefix_length(lexeme)
   let mut period_count = 0
@@ -265,6 +294,8 @@ fn is_real_lexeme(lexeme : Bytes) -> Bool {
 }
 
 ///|
+/// Recognizes malformed numeric-looking lexemes for ISO 32000-2 section 7.3.3
+/// rejection.
 fn is_numeric_like(lexeme : Bytes) -> Bool {
   if lexeme.length() == 0 {
     false
@@ -275,6 +306,8 @@ fn is_numeric_like(lexeme : Bytes) -> Bool {
 }
 
 ///|
+/// Returns the optional sign prefix length for signed decimal integer and
+/// real-number parsing.
 fn sign_prefix_length(lexeme : Bytes) -> Int {
   if lexeme.length() > 0 && (lexeme[0] == b'+' || lexeme[0] == b'-') {
     1
@@ -284,6 +317,7 @@ fn sign_prefix_length(lexeme : Bytes) -> Int {
 }
 
 ///|
+/// Checks that all bytes from start are decimal digits.
 fn all_digits_from(lexeme : Bytes, start : Int) -> Bool {
   let mut valid = true
   for i in start..<lexeme.length() {
@@ -295,6 +329,7 @@ fn all_digits_from(lexeme : Bytes, start : Int) -> Bool {
 }
 
 ///|
+/// Returns true for one decimal digit.
 fn is_digit(byte : Byte) -> Bool {
   byte >= b'0' && byte <= b'9'
 }

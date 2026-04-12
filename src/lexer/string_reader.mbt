@@ -1,4 +1,7 @@
 ///|
+/// Reads an ISO 32000-2 section 7.3.4.2 literal string, including escape
+/// sequence handling, line continuation, unescaped EOL normalization, and
+/// balanced parentheses.
 pub fn read_literal_string(
   cursor : ByteCursor,
 ) -> Bytes raise @objects.PdfParseError {
@@ -42,6 +45,9 @@ pub fn read_literal_string(
 }
 
 ///|
+/// Reads an ISO 32000-2 section 7.3.4.3 hexadecimal string. Pairs of
+/// hex digits decode to bytes, white-space is ignored, and an odd final
+/// hex digit is padded with zero.
 pub fn read_hex_string(
   cursor : ByteCursor,
 ) -> Bytes raise @objects.PdfParseError {
@@ -85,6 +91,7 @@ pub fn read_hex_string(
 }
 
 ///|
+/// Requires the opening delimiter for a literal string or hexadecimal string.
 fn require_opening(
   cursor : ByteCursor,
   expected : Byte,
@@ -104,6 +111,9 @@ fn require_opening(
 }
 
 ///|
+/// Decodes a literal string escape sequence from ISO 32000-2 section 7.3.4.2,
+/// including named escapes, line continuation, unknown escapes, and octal
+/// escape handling.
 fn read_literal_escape(
   cursor : ByteCursor,
   output : Array[Byte],
@@ -136,6 +146,7 @@ fn read_literal_escape(
 }
 
 ///|
+/// Reads a one-, two-, or three-digit octal escape for a literal string.
 fn read_octal_escape(cursor : ByteCursor) -> Byte raise @objects.PdfParseError {
   let mut value = 0
   let mut digits = 0
@@ -153,16 +164,19 @@ fn read_octal_escape(cursor : ByteCursor) -> Byte raise @objects.PdfParseError {
 }
 
 ///|
+/// Returns true for an octal escape digit.
 fn is_octal_digit(byte : Byte) -> Bool {
   byte >= b'0' && byte <= b'7'
 }
 
 ///|
+/// Converts an octal escape digit to its value.
 fn octal_value(byte : Byte) -> Int {
   byte.to_int() - b'0'.to_int()
 }
 
 ///|
+/// Converts one hexadecimal string digit to its nibble value.
 fn hex_value(byte : Byte) -> Int? {
   if byte >= b'0' && byte <= b'9' {
     Some(byte.to_int() - b'0'.to_int())
@@ -176,6 +190,8 @@ fn hex_value(byte : Byte) -> Int? {
 }
 
 ///|
+/// ISO 32000-2 section 7.3.4.3 white-space ignored inside a hexadecimal
+/// string.
 fn is_pdf_string_space(byte : Byte) -> Bool {
   match byte {
     b'\x00' | b'\t' | b'\n' | b'\f' | b'\r' | b' ' => true

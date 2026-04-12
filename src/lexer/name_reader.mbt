@@ -1,4 +1,7 @@
 ///|
+/// Reads an ISO 32000-2 section 7.3.5 Name object. The SOLIDUS prefix is
+/// excluded, regular bytes form the name, and each #XX hex escape expands to
+/// the corresponding byte.
 pub fn read_name(
   cursor : ByteCursor,
 ) -> @objects.PdfName raise @objects.PdfParseError {
@@ -30,6 +33,7 @@ pub fn read_name(
 }
 
 ///|
+/// Requires the SOLIDUS prefix for an ISO 32000-2 section 7.3.5 Name object.
 fn require_name_opening(
   cursor : ByteCursor,
 ) -> Unit raise @objects.PdfParseError {
@@ -47,6 +51,7 @@ fn require_name_opening(
 }
 
 ///|
+/// Detects the #XX hex escape form used inside a Name object.
 fn has_name_hex_escape(cursor : ByteCursor) -> Bool {
   match (cursor.peek_n(1), cursor.peek_n(2)) {
     (Some(high), Some(low)) => is_name_hex_digit(high) && is_name_hex_digit(low)
@@ -55,6 +60,7 @@ fn has_name_hex_escape(cursor : ByteCursor) -> Bool {
 }
 
 ///|
+/// Returns true for one hexadecimal digit in a #XX hex escape.
 fn is_name_hex_digit(byte : Byte) -> Bool {
   (byte >= b'0' && byte <= b'9') ||
   (byte >= b'A' && byte <= b'F') ||
@@ -62,6 +68,7 @@ fn is_name_hex_digit(byte : Byte) -> Bool {
 }
 
 ///|
+/// Converts a #XX hex escape digit to its nibble value.
 fn name_hex_value(byte : Byte) -> Int {
   if byte >= b'0' && byte <= b'9' {
     byte.to_int() - b'0'.to_int()

@@ -1,25 +1,30 @@
 ///|
+/// Byte cursor for ISO 32000-2 section 7.2.3 lexical scanning.
 struct ByteCursor {
   input : Bytes
   mut position : Int
 }
 
 ///|
+/// Creates a cursor over PDF bytes while preserving byte offsets.
 pub fn ByteCursor::new(input : Bytes) -> ByteCursor {
   ByteCursor::{ input, position: 0 }
 }
 
 ///|
+/// Current byte offset used in parser diagnostics.
 pub fn ByteCursor::offset(self : ByteCursor) -> Int64 {
   self.position.to_int64()
 }
 
 ///|
+/// Peeks at the current byte without consuming it.
 pub fn ByteCursor::peek(self : ByteCursor) -> Byte? {
   self.peek_n(0)
 }
 
 ///|
+/// Peeks ahead by n bytes without consuming input.
 pub fn ByteCursor::peek_n(self : ByteCursor, n : Int) -> Byte? {
   if n < 0 {
     None
@@ -29,6 +34,7 @@ pub fn ByteCursor::peek_n(self : ByteCursor, n : Int) -> Byte? {
 }
 
 ///|
+/// Reads one raw byte, preserving stream and string byte semantics.
 pub fn ByteCursor::read_byte(
   self : ByteCursor,
 ) -> Byte? raise @objects.PdfParseError {
@@ -48,6 +54,8 @@ pub fn ByteCursor::read_byte(
 }
 
 ///|
+/// Consumes one ISO 32000-2 section 7.2.3 EOL marker. CR, LF, and CR
+/// followed by LF are treated as one marker.
 pub fn ByteCursor::read_eol(self : ByteCursor) -> Bool {
   match self.peek() {
     Some(b'\r') => {
@@ -66,6 +74,8 @@ pub fn ByteCursor::read_eol(self : ByteCursor) -> Bool {
 }
 
 ///|
+/// Requires the ISO 32000-2 section 7.3.8 stream keyword to be followed by
+/// an EOL marker, accepting LF or CRLF and rejecting CR alone.
 pub fn ByteCursor::require_stream_eol(
   self : ByteCursor,
 ) -> Unit raise @objects.PdfParseError {
@@ -91,6 +101,7 @@ pub fn ByteCursor::require_stream_eol(
 }
 
 ///|
+/// Reads an exact raw byte count, used for stream data after the Length entry.
 pub fn ByteCursor::read_bytes(
   self : ByteCursor,
   length : Int64,

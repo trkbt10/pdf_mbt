@@ -1,4 +1,7 @@
 ///|
+/// Parses an ISO 32000-2 section 7.3.10 indirect object definition in the
+/// N G obj ... endobj form, preserving object number, generation number, and
+/// byte offsets.
 pub fn ObjectParser::parse_indirect_object(
   self : ObjectParser,
 ) -> @objects.IndirectObject raise @objects.PdfParseError {
@@ -33,6 +36,7 @@ pub fn ObjectParser::parse_indirect_object(
 }
 
 ///|
+/// Parses a single ISO 32000-2 section 7.3.10 indirect object from bytes.
 pub fn parse_indirect_object(
   input : Bytes,
 ) -> @objects.IndirectObject raise @objects.PdfParseError {
@@ -40,6 +44,7 @@ pub fn parse_indirect_object(
 }
 
 ///|
+/// Reads and validates the positive object number in an indirect object.
 fn ObjectParser::read_indirect_object_number(
   self : ObjectParser,
   start_offset : Int64,
@@ -67,6 +72,8 @@ fn ObjectParser::read_indirect_object_number(
 }
 
 ///|
+/// Reads and validates the non-negative generation number in an indirect
+/// object.
 fn ObjectParser::read_indirect_generation_number(
   self : ObjectParser,
   start_offset : Int64,
@@ -94,6 +101,7 @@ fn ObjectParser::read_indirect_generation_number(
 }
 
 ///|
+/// Requires the obj keyword when parsing N G obj indirect object syntax.
 fn ObjectParser::require_indirect_keyword(
   self : ObjectParser,
   expected : Bytes,
