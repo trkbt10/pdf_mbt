@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Establish package foundations and object contracts
+- [x] 1. Establish package foundations and object contracts
 - [x] 1.1 Create the package boundaries and validation baseline
   - Establish separate object, lexer, and parser package boundaries using only MoonBit standard-library dependencies.
   - Preserve the existing root library and CLI scaffold while making the new packages discoverable by the MoonBit toolchain.
@@ -19,7 +19,7 @@
   - The helpers are complete when tests assert integer-vs-real behavior, absent dictionary lookup as null, and representative error kind plus offset values.
   - _Requirements: 5.3, 6.3, 6.4, 11.2, 11.4, 12.3, 12.5, 16.5_
 
-- [ ] 2. Build lexical byte handling
+- [x] 2. Build lexical byte handling
 - [x] 2.1 Implement byte cursor movement, offsets, EOL normalization, and raw byte reads
   - Track byte offsets for every read, peek, and end-of-input condition.
   - Normalize CR, LF, and CRLF as one EOL marker outside raw stream data while preserving exact raw reads for stream payloads.
@@ -57,7 +57,7 @@
   - _Requirements: 1.4, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
   - _Boundary: NameReader_
 
-- [ ] 3. Parse scalar and direct object forms
+- [x] 3. Parse scalar and direct object forms
 - [x] 3.1 Parse booleans, nulls, integers, and real numbers
   - Recognize `true`, `false`, and `null` case-sensitively while rejecting lookalike keywords as those object types.
   - Parse signed decimal integers and PERIOD-containing real numbers, including leading and trailing PERIOD forms, while rejecting radix and exponent notation.
@@ -82,7 +82,7 @@
   - _Requirements: 14.2, 15.1, 15.3, 15.4, 16.2_
   - _Boundary: ObjectParser_
 
-- [ ] 4. Parse aggregate direct objects
+- [x] 4. Parse aggregate direct objects
 - [x] 4.1 Parse recursive arrays
   - Read bracket-delimited arrays containing heterogeneous direct objects and nested arrays.
   - Preserve empty arrays and element ordering exactly.
@@ -107,7 +107,7 @@
   - _Requirements: 10.2, 11.1, 14.2, 15.3, 16.1_
   - _Boundary: ObjectParser, DictionaryBuilder_
 
-- [ ] 5. Parse indirect objects and stream objects
+- [x] 5. Parse indirect objects and stream objects
 - [x] 5.1 Parse indirect object definitions with validated object identifiers
   - Recognize positive object number plus non-negative generation number followed by `obj` as an indirect object definition.
   - Read the enclosed object value through `endobj`, recording start and end offsets without implementing reference resolution.
@@ -132,7 +132,7 @@
   - _Requirements: 12.1, 12.4, 14.1, 16.5_
   - _Boundary: ObjectParser, StreamReader, IndirectObjectParser_
 
-- [ ] 6. Validate public behavior, examples, and toolchain readiness
+- [x] 6. Validate public behavior, examples, and toolchain readiness
 - [x] 6.1 Expose and verify the intended public parser surface
   - Provide public entry points for parsing a single object, all object fragments, indirect references, and indirect object definitions according to the design contracts.
   - Keep future reader responsibilities out of scope: indirect references remain unresolved and nonexistent-reference lookup is not implemented here.
