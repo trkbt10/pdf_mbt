@@ -124,7 +124,7 @@
   - _Requirements: 6.4, 12.1, 12.2, 12.3, 12.4, 12.5_
   - _Boundary: StreamReader_
 
-- [ ] 5.3 Enforce direct-object stream boundaries and indirect-object termination
+- [x] 5.3 Enforce direct-object stream boundaries and indirect-object termination
   - Leave a dictionary followed by `stream` as a plain dictionary in direct-object contexts and keep the `stream` token available for the caller to reject or handle.
   - Validate that indirect stream objects consume the stream envelope and terminate cleanly at `endobj` without extra non-white-space bytes owned by the object.
   - Boundary enforcement is complete when tests show direct array and dictionary values do not consume streams, while indirect stream objects parse successfully with correct payload bytes.

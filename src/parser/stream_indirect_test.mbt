@@ -10,6 +10,34 @@ fn stream_entry(
 }
 
 ///|
+test "parser leaves direct dictionary values as plain dictionaries before stream" {
+  let object = @parser.parse_object(b"<< /Length 1 >> stream\nX\nendstream")
+  match object {
+    Dictionary(dict) =>
+      assert_eq(
+        stream_entry(dict, b"Length") == @objects.PdfObject::Integer(1L),
+        true,
+      )
+    _ => fail("expected plain dictionary")
+  }
+}
+
+///|
+test "parser rejects direct aggregate stream boundaries without consuming stream data" {
+  let parser = @parser.ObjectParser::new(
+    b"[<< /Length 1 >> stream\nX\nendstream]",
+  )
+  let result : Result[Array[@objects.PdfObject], @objects.PdfParseError] = try? parser.parse_all_objects()
+  match result {
+    Err(UnexpectedToken(_, expected, actual)) => {
+      assert_eq(expected, "object")
+      assert_eq(actual, "stream")
+    }
+    _ => fail("expected stream token rejection")
+  }
+}
+
+///|
 test "parser reads indirect stream objects with exact length and metadata" {
   let indirect = @parser.parse_indirect_object(
     b"12 0 obj << /Length 3 /Filter /FlateDecode /DecodeParms << /Predictor 12 >> /DL 3 >> stream\nabc\r\nendstream endobj",
@@ -45,6 +73,18 @@ test "parser reads indirect stream objects with exact length and metadata" {
       )
     }
     _ => fail("expected stream object")
+  }
+}
+
+///|
+test "parser rejects extra non-white-space before endobj in indirect streams" {
+  let result : Result[@objects.IndirectObject, @objects.PdfParseError] = try? @parser.parse_indirect_object(
+    b"1 0 obj << /Length 1 >> stream\nX\nendstream Y endobj",
+  )
+  match result {
+    Err(InvalidIndirectObject(_, reason)) =>
+      assert_eq(reason.contains("endobj"), true)
+    _ => fail("expected indirect object termination rejection")
   }
 }
 
