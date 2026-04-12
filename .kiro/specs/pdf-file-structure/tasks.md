@@ -139,7 +139,7 @@
   - _Depends: 5.4_
   - _Requirements: 5.1, 5.2, 10.3, 10.4_
 
-- [ ] 6.5 Complete malformed-structure robustness coverage
+- [x] 6.5 Complete malformed-structure robustness coverage
   - Exercise malformed headers, tails, xref rows, trailer fields, stream filters, object stream headers, out-of-bounds offsets, and parser-error wrapping with representative tests.
   - Verify each failure reports the intended reader error category and relevant offset without scanning heuristics or swallowing parser context.
   - Robustness coverage is complete when the malformed fixture suite passes and each design error category is asserted at least once.
