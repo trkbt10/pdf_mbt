@@ -66,22 +66,14 @@ fn expect_unsupported_structural_stream(
 ///|
 test "decode_structural_stream passes through unfiltered xref stream bytes unchanged" {
   let stream = make_structural_stream(b"0 1 2", b"XRef", None)
-  let decoded = expect_decoded_structural_stream(
-    stream,
-    XrefStream,
-    17L,
-  )
+  let decoded = expect_decoded_structural_stream(stream, XrefStream, 17L)
   assert_eq(decoded, b"0 1 2")
 }
 
 ///|
 test "decode_structural_stream passes through unfiltered object stream bytes unchanged" {
   let stream = make_structural_stream(b"12 0 0 1", b"ObjStm", None)
-  let decoded = expect_decoded_structural_stream(
-    stream,
-    ObjectStream,
-    31L,
-  )
+  let decoded = expect_decoded_structural_stream(stream, ObjectStream, 31L)
   assert_eq(decoded, b"12 0 0 1")
 }
 
@@ -92,11 +84,7 @@ test "decode_structural_stream rejects crypt-filtered structural streams" {
     b"XRef",
     Some(@objects.PdfObject::Name(@objects.PdfName::new(b"Crypt"))),
   )
-  let reason = expect_unsupported_structural_stream(
-    stream,
-    XrefStream,
-    73L,
-  )
+  let reason = expect_unsupported_structural_stream(stream, XrefStream, 73L)
   assert_eq(reason.contains("Crypt"), true)
 }
 
@@ -105,11 +93,7 @@ test "decode_structural_stream rejects encrypted xref streams without filters" {
   let stream = mark_structural_stream_encrypted(
     make_structural_stream(b"0 1 2", b"XRef", None),
   )
-  let reason = expect_unsupported_structural_stream(
-    stream,
-    XrefStream,
-    41L,
-  )
+  let reason = expect_unsupported_structural_stream(stream, XrefStream, 41L)
   assert_eq(reason.contains("Encrypt"), true)
 }
 
@@ -157,10 +141,6 @@ test "decode_structural_stream rejects unsupported structural stream filters bef
     b"ObjStm",
     Some(@objects.PdfObject::Name(@objects.PdfName::new(b"FlateDecode"))),
   )
-  let reason = expect_unsupported_structural_stream(
-    stream,
-    ObjectStream,
-    99L,
-  )
+  let reason = expect_unsupported_structural_stream(stream, ObjectStream, 99L)
   assert_eq(reason.contains("FlateDecode"), true)
 }

@@ -271,9 +271,7 @@ test "parse_trailer_info rejects missing required trailer entries" {
   )
 
   let missing_root : @objects.PdfDictionary = Map::new()
-  missing_root[@objects.PdfName::new(b"Size")] = @objects.PdfObject::Integer(
-    8L,
-  )
+  missing_root[@objects.PdfName::new(b"Size")] = @objects.PdfObject::Integer(8L)
   missing_root[@objects.PdfName::new(b"ID")] = id
   expect_invalid_trailer(
     missing_root,

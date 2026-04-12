@@ -153,7 +153,7 @@
   - _Depends: 5.4_
   - _Requirements: 3.3, 9.1, 9.3, 9.4_
 
-- [ ] 6.7 Complete formatting, checking, testing, and public API validation
+- [x] 6.7 Complete formatting, checking, testing, and public API validation
   - Run the standard MoonBit validation sequence and review the generated public interface so only intentional reader APIs are exposed.
   - Confirm the final package graph still uses only allowed dependencies and keeps file-structure responsibilities out of lower parser packages.
   - Final validation is complete when formatting, checking, testing, and interface generation all pass with no external dependency additions or unexpected public surface changes.
