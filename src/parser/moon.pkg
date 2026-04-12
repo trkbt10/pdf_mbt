@@ -1,0 +1,4 @@
+import {
+  "trkbt10/pdf/src/objects",
+  "trkbt10/pdf/src/lexer",
+}

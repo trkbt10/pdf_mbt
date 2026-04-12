@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. Establish package foundations and object contracts
-- [ ] 1.1 Create the package boundaries and validation baseline
+- [x] 1.1 Create the package boundaries and validation baseline
   - Establish separate object, lexer, and parser package boundaries using only MoonBit standard-library dependencies.
   - Preserve the existing root library and CLI scaffold while making the new packages discoverable by the MoonBit toolchain.
   - The package graph is complete when `moon check` succeeds with the intended object -> lexer -> parser dependency direction and no external dependency additions.

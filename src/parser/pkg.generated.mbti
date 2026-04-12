@@ -1,0 +1,16 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/parser"
+
+// Values
+pub fn boundary_probe() -> String
+
+pub fn objects_boundary_probe() -> String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+
