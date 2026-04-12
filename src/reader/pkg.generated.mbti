@@ -22,6 +22,15 @@ pub(all) suberror PdfReaderError {
 } derive(Eq, @debug.Debug)
 
 // Types and methods
+pub struct ByteSource {
+  bytes : Bytes
+  base_offset : Int64
+}
+pub fn ByteSource::new(Bytes, Int64) -> Self
+pub fn ByteSource::physical_offset(Self, Int64) -> Int64 raise PdfReaderError
+pub fn ByteSource::slice_from_pdf_offset(Self, Int64) -> Bytes raise PdfReaderError
+pub fn ByteSource::slice_range(Self, Int64, Int64) -> Bytes raise PdfReaderError
+
 pub(all) enum ObjectLocation {
   Uncompressed(Int64, Int)
   Compressed(Int, Int)

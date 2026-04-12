@@ -13,7 +13,7 @@
   - The contracts are complete when white-box tests can construct representative metadata and assert stable reader error variants with PDF-relative or physical offsets where applicable.
   - _Requirements: 1.2, 1.3, 2.1, 2.3, 3.3, 3.7, 4.2, 6.6, 7.8, 9.5_
 
-- [ ] 1.3 Build byte-source offset conversion and slice safety
+- [x] 1.3 Build byte-source offset conversion and slice safety
   - Own the input bytes and PDF-relative base offset for the lifetime of an opened file.
   - Convert every cross-reference offset through the header base, reject out-of-range slices, and preserve raw bytes without normalizing EOL or stream data.
   - The byte boundary is complete when tests show prefixed PDF data uses the `%PDF-` percent byte as offset zero and invalid offsets raise reader errors before slicing.
