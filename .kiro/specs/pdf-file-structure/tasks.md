@@ -118,7 +118,7 @@
   - _Depends: 5.4_
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 9.1, 9.2, 9.5_
 
-- [ ] 6.2 Validate synthetic hybrid-reference and object-stream flows
+- [x] 6.2 Validate synthetic hybrid-reference and object-stream flows
   - Open a hybrid-reference fixture and verify lookup priority is current table, then `XRefStm`, then `Prev` sections.
   - Load a synthetic unfiltered object stream containing multiple direct objects and verify invalid compressed stream members raise object-stream errors.
   - The flow is complete when hybrid and compressed-object tests pass through the public reader API and exercise both table and stream reference sources.

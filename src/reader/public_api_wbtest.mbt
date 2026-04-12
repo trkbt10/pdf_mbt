@@ -190,6 +190,170 @@ fn build_incremental_fixture() -> Bytes {
 }
 
 ///|
+fn bytes_to_u16_be(value : Int) -> Bytes {
+  Bytes::from_array([(value / 256).to_byte(), (value % 256).to_byte()])
+}
+
+///|
+fn append_indirect_object(
+  bytes : Bytes,
+  header_base : Int64,
+  object_number : Int,
+  generation : Int,
+  body : Bytes,
+) -> (Bytes, Int64) {
+  let offset = object_offset(bytes, header_base)
+  let bytes = bytes +
+    decimal_bytes(object_number.to_int64()) +
+    b" " +
+    decimal_bytes(generation.to_int64()) +
+    b" obj\n" +
+    body +
+    b"\nendobj\n"
+  (bytes, offset)
+}
+
+///|
+fn build_stream_object_body(dict : Bytes, data : Bytes) -> Bytes {
+  dict + b"\r\nstream\r\n" + data + b"\r\nendstream"
+}
+
+///|
+fn xref_stream_entry_bytes(
+  entry_type : Int,
+  field2 : Int,
+  field3 : Int,
+) -> Bytes {
+  Bytes::from_array([entry_type.to_byte()]) +
+  bytes_to_u16_be(field2) +
+  bytes_to_u16_be(field3)
+}
+
+///|
+fn build_hybrid_reference_fixture() -> Bytes {
+  let prefix = b"garbage\n"
+  let header = b"%PDF-1.7\r\n"
+  let header_base = prefix.length().to_int64()
+  let bytes = prefix + header
+
+  let (bytes, catalog_offset) = append_indirect_object(
+    bytes, header_base, 1, 0, b"<< /Type /Catalog >>",
+  )
+  let (bytes, prev_current_offset) = append_indirect_object(
+    bytes, header_base, 10, 0, b"(Prev)",
+  )
+  let (bytes, prev_stream_offset) = append_indirect_object(
+    bytes, header_base, 20, 0, b"(Prev20)",
+  )
+  let (bytes, prev_only_offset) = append_indirect_object(
+    bytes, header_base, 30, 0, b"(Prev30)",
+  )
+
+  let prev_xref_offset = object_offset(bytes, header_base)
+  let bytes = bytes +
+    b"xref\r\n" +
+    b"10 1\r\n" +
+    xref_entry_line(prev_current_offset, 0, b'n') +
+    b"20 1\r\n" +
+    xref_entry_line(prev_stream_offset, 0, b'n') +
+    b"30 1\r\n" +
+    xref_entry_line(prev_only_offset, 0, b'n') +
+    b"trailer\r\n" +
+    b"<< /Size 31 /Root 1 0 R >>\r\n"
+
+  let (bytes, stream_current_offset) = append_indirect_object(
+    bytes, header_base, 10, 0, b"(Stream)",
+  )
+  let (bytes, stream_only_offset) = append_indirect_object(
+    bytes, header_base, 20, 0, b"(Stream20)",
+  )
+
+  let xref_stream_offset = object_offset(bytes, header_base)
+  let xref_stream_data = xref_stream_entry_bytes(
+      1,
+      stream_current_offset.to_int(),
+      0,
+    ) +
+    xref_stream_entry_bytes(1, stream_only_offset.to_int(), 0)
+  let xref_stream_body = build_stream_object_body(
+    b"<< /Type /XRef /Size 31 /Index [10 1 20 1] /W [1 2 2] /Root 1 0 R /Length " +
+    decimal_bytes(xref_stream_data.length().to_int64()) +
+    b" >>",
+    xref_stream_data,
+  )
+  let (bytes, _) = append_indirect_object(
+    bytes, header_base, 11, 0, xref_stream_body,
+  )
+
+  let (bytes, current_offset) = append_indirect_object(
+    bytes, header_base, 10, 0, b"(Current)",
+  )
+
+  let current_xref_offset = object_offset(bytes, header_base)
+  let bytes = bytes +
+    b"xref\r\n" +
+    b"0 2\r\n" +
+    xref_entry_line(0L, 65535, b'f') +
+    xref_entry_line(catalog_offset, 0, b'n') +
+    b"10 1\r\n" +
+    xref_entry_line(current_offset, 0, b'n') +
+    b"trailer\r\n" +
+    b"<< /Size 31 /Root 1 0 R /XRefStm " +
+    decimal_bytes(xref_stream_offset) +
+    b" /Prev " +
+    decimal_bytes(prev_xref_offset) +
+    b" >>\r\n" +
+    b"startxref\r\n" +
+    decimal_bytes(current_xref_offset) +
+    b"\r\n%%EOF\r\n"
+  bytes
+}
+
+///|
+fn build_object_stream_fixture() -> Bytes {
+  let prefix = b"garbage\n"
+  let header = b"%PDF-1.7\r\n"
+  let header_base = prefix.length().to_int64()
+  let bytes = prefix + header
+
+  let (bytes, catalog_offset) = append_indirect_object(
+    bytes, header_base, 1, 0, b"<< /Type /Catalog >>",
+  )
+  let (bytes, object_stream_offset) = append_indirect_object(
+    bytes,
+    header_base,
+    9,
+    0,
+    build_stream_object_body(
+      b"<< /Type /ObjStm /N 2 /First 10 /Length 22 >>", b"40 0 41 2 1 << /A 1 >>",
+    ),
+  )
+
+  let xref_stream_offset = object_offset(bytes, header_base)
+  let xref_stream_data = xref_stream_entry_bytes(1, catalog_offset.to_int(), 0) +
+    xref_stream_entry_bytes(1, object_stream_offset.to_int(), 0) +
+    xref_stream_entry_bytes(2, 9, 0) +
+    xref_stream_entry_bytes(2, 9, 1) +
+    xref_stream_entry_bytes(2, 9, 2)
+  let xref_stream_body = build_stream_object_body(
+    b"<< /Type /XRef /Size 43 /Index [1 1 9 1 40 3] /W [1 2 2] /Root 1 0 R /Length " +
+    decimal_bytes(xref_stream_data.length().to_int64()) +
+    b" >>",
+    xref_stream_data,
+  )
+  let (bytes, _) = append_indirect_object(
+    bytes, header_base, 11, 0, xref_stream_body,
+  )
+
+  let startxref_offset = xref_stream_offset
+  let bytes = bytes +
+    b"startxref\r\n" +
+    decimal_bytes(startxref_offset) +
+    b"\r\n%%EOF\r\n"
+  bytes
+}
+
+///|
 test "PdfFile::open reads a synthetic traditional table file end to end" {
   let file = PdfFile::open(build_traditional_fixture())
   let trailer = file.trailer()
@@ -404,4 +568,95 @@ test "PdfFile::open merges incremental updates and keeps deleted objects null" {
     @objects.PdfObject::Null,
     true,
   )
+}
+
+///|
+test "PdfFile::open respects hybrid xref priority from current table to xref stream to prev" {
+  let file = PdfFile::open(build_hybrid_reference_fixture())
+  let root_ref = @objects.ObjectId::{ object_number: 1, generation_number: 0 }
+  let current_ref = @objects.ObjectId::{
+    object_number: 10,
+    generation_number: 0,
+  }
+  let stream_ref = @objects.ObjectId::{
+    object_number: 20,
+    generation_number: 0,
+  }
+  let prev_ref = @objects.ObjectId::{ object_number: 30, generation_number: 0 }
+
+  assert_eq(file.root_ref() == root_ref, true)
+  match file.load_object(root_ref) {
+    @objects.PdfObject::Dictionary(dict) =>
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Type")) ==
+        Some(@objects.PdfObject::Name(@objects.PdfName::new(b"Catalog"))),
+        true,
+      )
+    _ => fail("expected catalog dictionary")
+  }
+
+  assert_eq(
+    file.load_object(current_ref) == @objects.PdfObject::String(b"Current"),
+    true,
+  )
+  assert_eq(
+    file.load_object(stream_ref) == @objects.PdfObject::String(b"Stream20"),
+    true,
+  )
+  assert_eq(
+    file.load_object(prev_ref) == @objects.PdfObject::String(b"Prev30"),
+    true,
+  )
+}
+
+///|
+test "PdfFile::open resolves compressed xref stream members and rejects invalid indexes" {
+  let file = PdfFile::open(build_object_stream_fixture())
+  let catalog_ref = @objects.ObjectId::{
+    object_number: 1,
+    generation_number: 0,
+  }
+  let first_ref = @objects.ObjectId::{ object_number: 40, generation_number: 0 }
+  let second_ref = @objects.ObjectId::{
+    object_number: 41,
+    generation_number: 0,
+  }
+  let invalid_ref = @objects.ObjectId::{
+    object_number: 42,
+    generation_number: 0,
+  }
+
+  assert_eq(file.root_ref() == catalog_ref, true)
+  match file.load_object(catalog_ref) {
+    @objects.PdfObject::Dictionary(dict) =>
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Type")) ==
+        Some(@objects.PdfObject::Name(@objects.PdfName::new(b"Catalog"))),
+        true,
+      )
+    _ => fail("expected catalog dictionary")
+  }
+
+  assert_eq(
+    file.load_object(first_ref) == @objects.PdfObject::Integer(1L),
+    true,
+  )
+  match file.load_object(second_ref) {
+    @objects.PdfObject::Dictionary(dict) =>
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"A")) ==
+        Some(@objects.PdfObject::Integer(1L)),
+        true,
+      )
+    _ => fail("expected object stream dictionary member")
+  }
+
+  let result : Result[@objects.PdfObject, PdfReaderError] = try? file.load_object(
+    invalid_ref,
+  )
+  match result {
+    Err(InvalidObjectStream(_, reason)) =>
+      assert_eq(reason.contains("index"), true)
+    _ => fail("expected invalid compressed member index")
+  }
 }
