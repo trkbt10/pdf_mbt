@@ -91,7 +91,7 @@
   - _Requirements: 10.1, 10.2, 10.3, 10.4_
   - _Boundary: ObjectParser_
 
-- [ ] 4.2 Parse dictionaries with key validation and normalized entries
+- [x] 4.2 Parse dictionaries with key validation and normalized entries
   - Distinguish dictionary delimiters from hexadecimal string delimiters and read name-keyed value pairs until the closing delimiter.
   - Reject non-name keys and duplicate keys, including duplicates where one syntactic value is null, while omitting null-valued entries from the final dictionary.
   - Dictionary parsing is complete when tests cover `<<>>`, nested dictionaries, null omission, duplicate-key errors, non-name key errors, and hex-string disambiguation.

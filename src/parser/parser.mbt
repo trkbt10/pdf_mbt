@@ -21,6 +21,8 @@ pub fn ObjectParser::parse_object(
   match self.cursor.peek() {
     Some(b'(') =>
       @objects.PdfObject::String(@lexer.read_literal_string(self.cursor))
+    Some(b'<') if self.cursor.peek_n(1) == Some(b'<') =>
+      @objects.PdfObject::Dictionary(self.parse_dictionary())
     Some(b'<') if self.cursor.peek_n(1) != Some(b'<') =>
       @objects.PdfObject::String(@lexer.read_hex_string(self.cursor))
     Some(b'/') => @objects.PdfObject::Name(@lexer.read_name(self.cursor))
