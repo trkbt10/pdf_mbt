@@ -6,8 +6,19 @@ import {
 }
 
 // Values
+pub fn dictionary_get_or_null(Map[PdfName, PdfObject], PdfName) -> PdfObject
 
 // Errors
+pub(all) suberror PdfParseError {
+  UnexpectedToken(Int64, String, String)
+  UnexpectedEof(Int64, String)
+  InvalidNumber(Int64, Bytes)
+  NumericOverflow(Int64, Bytes)
+  InvalidName(Int64, String)
+  InvalidDictionary(Int64, String)
+  InvalidStream(Int64, String)
+  InvalidIndirectObject(Int64, String)
+} derive(Eq, @debug.Debug)
 
 // Types and methods
 pub(all) struct IndirectObject {
@@ -40,6 +51,13 @@ pub(all) enum PdfObject {
   Null
   Ref(ObjectId)
 } derive(Eq, @debug.Debug)
+pub fn PdfObject::as_dictionary(Self, offset~ : Int64) -> Map[PdfName, Self] raise PdfParseError
+pub fn PdfObject::as_integer(Self, offset~ : Int64) -> Int64 raise PdfParseError
+pub fn PdfObject::as_name(Self, offset~ : Int64) -> PdfName raise PdfParseError
+pub fn PdfObject::as_number(Self, offset~ : Int64) -> Double raise PdfParseError
+pub fn PdfObject::as_ref(Self, offset~ : Int64) -> ObjectId raise PdfParseError
+pub fn PdfObject::as_stream(Self, offset~ : Int64) -> PdfStream raise PdfParseError
+pub fn PdfObject::is_null(Self) -> Bool
 
 pub(all) struct PdfStream {
   dict : Map[PdfName, PdfObject]

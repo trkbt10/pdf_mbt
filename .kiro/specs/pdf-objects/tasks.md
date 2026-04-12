@@ -13,7 +13,7 @@
   - The model is complete when black-box tests can construct, compare, and pattern-match booleans, integers, reals, strings, names, arrays, dictionaries, streams, nulls, and references.
   - _Requirements: 9.6, 12.5, 13.2, 14.3, 16.1, 16.2, 16.3, 16.4_
 
-- [ ] 1.3 Add typed diagnostics and object expectation helpers
+- [x] 1.3 Add typed diagnostics and object expectation helpers
   - Report parse failures with narrow error categories and byte offsets for lexical, numeric, dictionary, stream, indirect-object, and unexpected-token conditions.
   - Provide object expectation helpers that distinguish integer-only contexts from number contexts and leave indirect references unresolved.
   - The helpers are complete when tests assert integer-vs-real behavior, absent dictionary lookup as null, and representative error kind plus offset values.
