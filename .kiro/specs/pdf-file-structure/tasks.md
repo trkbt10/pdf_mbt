@@ -69,7 +69,7 @@
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8_
   - _Boundary: XrefStreamParser_
 
-- [ ] 4.3 Traverse xref section chains with hybrid and Prev ordering
+- [x] 4.3 Traverse xref section chains with hybrid and Prev ordering
   - Dispatch a section offset to either a traditional table or an xref stream while preserving section provenance for merging.
   - For hybrid-reference files, read the current table first, then the `XRefStm` stream, then follow `Prev` offsets; track visited offsets to reject cycles.
   - Section traversal is complete when synthetic chains return sections in merge-priority order and cycle or out-of-bounds offsets produce reader errors.
