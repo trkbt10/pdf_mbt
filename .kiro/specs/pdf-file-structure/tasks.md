@@ -20,7 +20,7 @@
   - _Requirements: 1.5, 2.1, 2.4, 9.2_
 
 - [ ] 2. Read the file envelope
-- [ ] 2.1 (P) Parse the PDF header and binary indicator
+- [x] 2.1 (P) Parse the PDF header and binary indicator
   - Locate the `%PDF-` marker, extract accepted versions `1.0` through `1.7` and `2.0`, and require CR, LF, or CRLF immediately after the version digits.
   - Detect a following binary-indicator comment when it contains at least four high-bit bytes.
   - Header parsing is complete when tests accept every valid version, reject unsupported or unterminated headers, detect the high-bit indicator, and expose the correct offset base.
