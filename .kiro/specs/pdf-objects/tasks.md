@@ -41,7 +41,7 @@
   - _Requirements: 2.2, 2.3, 3.1, 3.2, 3.3_
   - _Boundary: Lexer_
 
-- [ ] 2.4 (P) Implement literal and hexadecimal string decoding
+- [x] 2.4 (P) Implement literal and hexadecimal string decoding
   - Decode balanced literal strings with named escapes, octal escapes, line continuations, unescaped EOL normalization, unknown escape handling, and empty strings.
   - Decode hexadecimal strings with ignored internal white-space, uppercase and lowercase digits, odd-digit padding, and empty strings.
   - The string readers are complete when tests cover every literal-string and hex-string example and verify delimiter bytes are excluded from decoded output.

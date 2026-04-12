@@ -13,6 +13,10 @@ pub fn is_delimiter(Byte) -> Bool
 
 pub fn is_white_space(Byte) -> Bool
 
+pub fn read_hex_string(ByteCursor) -> Bytes raise @objects.PdfParseError
+
+pub fn read_literal_string(ByteCursor) -> Bytes raise @objects.PdfParseError
+
 // Errors
 
 // Types and methods
