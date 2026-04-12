@@ -44,7 +44,7 @@
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 8.1_
   - _Boundary: TrailerParser_
 
-- [ ] 3.2 Parse traditional fixed-width cross-reference tables
+- [x] 3.2 Parse traditional fixed-width cross-reference tables
   - Require the `xref` keyword at the section offset, parse subsection headers, and read every entry as exactly 20 bytes including the two-byte EOL form.
   - Extract in-use and free entries, accept the required EOL variants, validate object 0 when present, and support multiple subsections without allowing comments between `xref` and `trailer`.
   - Table parsing is complete when fixture tests produce entries plus trailer metadata for valid sections and offset-bearing errors for malformed rows or invalid object 0 data.
