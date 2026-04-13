@@ -52,7 +52,7 @@
   - _Boundary: RunLengthDecoder_
 
 - [ ] 3. Implement shared predictor reconstruction
-- [ ] 3.1 Parse predictor parameters and row geometry
+- [x] 3.1 Parse predictor parameters and row geometry
   - Apply defaults for `Predictor`, `Colors`, `BitsPerComponent`, and `Columns` at the predictor boundary.
   - Calculate row byte width from colors, component bits, and columns using byte rounding.
   - Reject unsupported predictor values and invalid non-positive row parameters with filter-specific diagnostics.
