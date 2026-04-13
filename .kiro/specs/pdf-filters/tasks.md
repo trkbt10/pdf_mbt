@@ -35,7 +35,7 @@
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
   - _Boundary: ASCIIHexDecoder_
 
-- [ ] 2.2 (P) Decode ASCII base-85 streams
+- [x] 2.2 (P) Decode ASCII base-85 streams
   - Decode five-character base-85 groups into four binary bytes using PDF's accepted character range.
   - Support the `z` abbreviation only as a complete zero group and reject invalid placement inside partial groups.
   - Decode final partial groups by padding with `u`, emitting only the corresponding output bytes.

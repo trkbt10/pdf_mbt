@@ -16,6 +16,23 @@ test "decode_stream returns raw bytes unchanged when filter is absent" {
 }
 
 ///|
+test "decode_stream_bytes decodes ASCII85 streams" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"ASCII85Decode"),
+  )
+  let data = Bytes::from_array([b'!', b'!', b'!', b'!', b'u', b'~', b'>'])
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Ok(bytes) =>
+      assert_eq(bytes, Bytes::from_array([b'\x00', b'\x00', b'\x00', b'T']))
+    _ => fail("expected ASCII85Decode to be routed through the pipeline")
+  }
+}
+
+///|
 test "decode_stream_bytes rejects a null filter entry" {
   let dict : @objects.PdfDictionary = Map::new()
   dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Null
