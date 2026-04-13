@@ -162,7 +162,7 @@
   - Reader tests can distinguish reader-side rejection from wrapped filter package failures.
   - _Requirements: 7.1, 7.2, 8.3, 8.4_
 
-- [ ] 7.2 Decode compressed cross-reference streams on demand
+- [x] 7.2 Decode compressed cross-reference streams on demand
   - Delegate supported cross-reference stream filters to the filter pipeline.
   - Feed decoded xref stream bytes into the existing xref entry parser without changing raw stream storage.
   - Keep encrypted xref streams and Crypt-filtered xref streams rejected at the reader boundary.

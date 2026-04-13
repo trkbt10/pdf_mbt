@@ -121,6 +121,58 @@ test "parse_xref_stream_section decodes W widths, explicit Index, and supported 
 }
 
 ///|
+test "parse_xref_stream_section decodes Flate compressed xref entries" {
+  let input = b"1 0 obj\r\n" +
+    b"<< /Type /XRef /Size 3 /W [1 2 1] /Index [0 3] /Root 1 0 R /Filter /FlateDecode /Length 20 >>\r\n" +
+    b"stream\r\n" +
+    b"\x78\x9c\x63\x60\x60\x65\x67\x64\xd4\x61\x62\x62\xe0\x64\x06\x00\x01\xbb\x00\x4b" +
+    b"\r\nendstream endobj"
+
+  let section = expect_valid_xref_stream_section(input, PdfVersion::{
+    major: 1,
+    minor: 7,
+  })
+
+  assert_eq(section.entries.length(), 3)
+
+  match find_xref_stream_entry(section.entries, 0) {
+    Some(entry) =>
+      match entry.entry {
+        Free(next_free, generation) => {
+          assert_eq(next_free, 5)
+          assert_eq(generation, 7)
+        }
+        _ => fail("expected free xref entry")
+      }
+    None => fail("expected object 0 xref entry")
+  }
+
+  match find_xref_stream_entry(section.entries, 1) {
+    Some(entry) =>
+      match entry.entry {
+        InUse(pdf_offset, generation) => {
+          assert_eq(pdf_offset, 300L)
+          assert_eq(generation, 2)
+        }
+        _ => fail("expected in-use xref entry")
+      }
+    None => fail("expected object 1 xref entry")
+  }
+
+  match find_xref_stream_entry(section.entries, 2) {
+    Some(entry) =>
+      match entry.entry {
+        Compressed(object_stream_number, index) => {
+          assert_eq(object_stream_number, 9)
+          assert_eq(index, 3)
+        }
+        _ => fail("expected compressed xref entry")
+      }
+    None => fail("expected object 2 xref entry")
+  }
+}
+
+///|
 test "parse_xref_stream_section defaults the index range and entry type when W[0] is zero" {
   let input = b"1 0 obj\r\n" +
     b"<< /Type /XRef /Size 2 /W [0 2 1] /Root 1 0 R /Length 6 >>\r\n" +
