@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. Establish document-structure foundations
-- [ ] 1.1 Define document-level diagnostics and shared structural value shapes
+- [x] 1.1 Define document-level diagnostics and shared structural value shapes
   - Add document errors that wrap reader failures and distinguish invalid catalog, page tree, page object, inherited attribute, name tree, page-index, and cycle failures.
   - Add shared document-structure values for validated catalog state, page records, page rectangles, and name-tree categories without changing lower object or reader contracts.
   - The completed foundation lets document APIs report malformed required structures with document-specific errors while optional and absent values remain representable.

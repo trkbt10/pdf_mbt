@@ -10,6 +10,17 @@ import {
 // Values
 
 // Errors
+pub(all) suberror PdfDocumentError {
+  ReaderError(PdfReaderError)
+  InvalidCatalog(@objects.ObjectId, String)
+  InvalidPageTree(@objects.ObjectId, String)
+  InvalidPage(@objects.ObjectId, String)
+  InvalidInheritedAttribute(@objects.ObjectId, @objects.PdfName, String)
+  InvalidNameTree(@objects.PdfName, String)
+  PageIndexOutOfRange(Int, Int)
+  CycleDetected(@objects.ObjectId, String)
+} derive(Eq, @debug.Debug)
+
 pub(all) suberror PdfReaderError {
   InvalidHeader(Int64, String)
   MissingTailMarker(String)
@@ -33,6 +44,16 @@ pub fn ByteSource::physical_offset(Self, Int64) -> Int64 raise PdfReaderError
 pub fn ByteSource::slice_from_pdf_offset(Self, Int64) -> Bytes raise PdfReaderError
 pub fn ByteSource::slice_range(Self, Int64, Int64) -> Bytes raise PdfReaderError
 
+pub(all) enum NameTreeCategory {
+  Dests
+  AP
+  JavaScript
+  Pages
+  Templates
+  EmbeddedFiles
+  AlternatePresentations
+} derive(Eq, @debug.Debug)
+
 pub(all) enum ObjectLocation {
   Uncompressed(Int64, Int)
   Compressed(Int, Int)
@@ -47,6 +68,19 @@ pub struct ObjectStreamTableCacheEntry {
   object_number : Int
   object : @objects.PdfObject
 } derive(Eq, @debug.Debug)
+
+type PageTreeIndex derive(Eq, @debug.Debug)
+
+type PageTreeRecord derive(Eq, @debug.Debug)
+
+pub struct PdfCatalog {
+  object_id : @objects.ObjectId
+  dict : Map[@objects.PdfName, @objects.PdfObject]
+  pages_ref : @objects.ObjectId
+} derive(Eq, @debug.Debug)
+
+pub struct PdfDocument {
+}
 
 pub struct PdfFile {
   bytes : Bytes
@@ -72,6 +106,16 @@ pub(all) struct PdfHeader {
   version : PdfVersion
   base_offset : Int64
   has_binary_indicator : Bool
+} derive(Eq, @debug.Debug)
+
+pub struct PdfPage {
+}
+
+pub(all) struct PdfRectangle {
+  left : Double
+  bottom : Double
+  right : Double
+  top : Double
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfVersion {
