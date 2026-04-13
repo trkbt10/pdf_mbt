@@ -66,10 +66,24 @@ pub fn ContentStreamParser::compatibility_depth(Self) -> Int
 pub fn ContentStreamParser::new(Bytes) -> Self
 pub fn ContentStreamParser::parse_next_operation(Self) -> ContentOperation? raise PdfContentError
 
+pub(all) struct InlineImageReader {
+  reader : ContentOperandReader
+}
+pub fn InlineImageReader::new(Bytes) -> Self
+pub fn InlineImageReader::parse(Self, Int64) -> PdfInlineImage raise PdfContentError
+
 pub(all) enum OperandReadResult {
   Operand(@objects.PdfObject)
   OperatorCandidate(Bytes, Int64)
   EndOfInput(Int64)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfInlineImage {
+  dictionary : Map[@objects.PdfName, @objects.PdfObject]
+  data : Bytes
+  start_offset : Int64
+  data_offset : Int64
+  end_offset : Int64
 } derive(Eq, @debug.Debug)
 
 pub(all) enum StandardContentOperator {
