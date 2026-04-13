@@ -9,6 +9,7 @@ import {
 }
 
 // Values
+pub fn recognize_operator(Bytes) -> StandardContentOperator?
 
 // Errors
 pub(all) suberror PdfContentError {
@@ -33,6 +34,82 @@ pub fn ContentInput::read_byte(Self) -> Byte? raise @objects.PdfParseError
 pub fn ContentInput::read_bytes(Self, Int64) -> Bytes raise @objects.PdfParseError
 pub fn ContentInput::read_eol(Self) -> Bool
 pub fn ContentInput::require_stream_eol(Self) -> Unit raise @objects.PdfParseError
+
+pub(all) enum StandardContentOperator {
+  SaveGraphicsState
+  RestoreGraphicsState
+  ConcatMatrix
+  SetLineWidth
+  SetLineCap
+  SetLineJoin
+  SetMiterLimit
+  SetLineDash
+  SetRenderingIntent
+  SetFlatness
+  SetExtGState
+  MoveTo
+  LineTo
+  CurveTo
+  CurveToInitialReplicated
+  CurveToFinalReplicated
+  ClosePath
+  Rectangle
+  Stroke
+  CloseAndStroke
+  FillNonzero
+  FillNonzeroDeprecated
+  FillEvenOdd
+  FillStrokeNonzero
+  FillStrokeEvenOdd
+  CloseFillStrokeNonzero
+  CloseFillStrokeEvenOdd
+  EndPath
+  ClipNonzero
+  ClipEvenOdd
+  BeginText
+  EndText
+  SetCharacterSpacing
+  SetWordSpacing
+  SetHorizontalScaling
+  SetTextLeading
+  SetTextFont
+  SetTextRenderingMode
+  SetTextRise
+  MoveTextPosition
+  MoveTextPositionSetLeading
+  SetTextMatrix
+  MoveToNextLine
+  ShowText
+  ShowTextAdjusted
+  QuoteShowText
+  DoubleQuoteShowText
+  SetStrokingColorSpace
+  SetNonstrokingColorSpace
+  SetStrokingColor
+  SetStrokingColorSpecial
+  SetNonstrokingColor
+  SetNonstrokingColorSpecial
+  SetStrokingGray
+  SetNonstrokingGray
+  SetStrokingRgb
+  SetNonstrokingRgb
+  SetStrokingCmyk
+  SetNonstrokingCmyk
+  InvokeXObject
+  BeginInlineImage
+  BeginInlineImageData
+  EndInlineImage
+  BeginMarkedContentPoint
+  DefineMarkedContentPoint
+  BeginMarkedContent
+  BeginMarkedContentWithProperties
+  EndMarkedContent
+  BeginCompatibility
+  EndCompatibility
+  PaintShading
+  SetGlyphWidth
+  SetGlyphWidthAndBoundingBox
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 
