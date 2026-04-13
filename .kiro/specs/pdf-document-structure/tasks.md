@@ -132,7 +132,7 @@
   - _Boundary: NameDictionaryReader, NameTreeReader tests_
   - _Depends: 5.2_
 
-- [ ] 6.5 Validate bundled and end-to-end PDF document examples
+- [x] 6.5 Validate bundled and end-to-end PDF document examples
   - Open the bundled simple PDF 2.0 example, resolve its catalog, enumerate pages, fetch page 0, and read its media box through public APIs.
   - Validate a multi-page document count against the root page tree count and validate inherited resources from an ancestor page tree node.
   - Run formatting, public interface generation, build checks, and the full test suite after the document-structure work is integrated.

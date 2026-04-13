@@ -1,4 +1,7 @@
-fn load_page_tree_index_from_bytes(bytes : Bytes) -> PageTreeIndex raise PdfDocumentError {
+///|
+fn load_page_tree_index_from_bytes(
+  bytes : Bytes,
+) -> PageTreeIndex raise PdfDocumentError {
   let file = try PdfFile::open(bytes) catch {
     error => raise PdfDocumentError::ReaderError(error)
   } noraise {
@@ -40,50 +43,60 @@ test "page tree traversal returns document order and ancestry" {
 
 ///|
 test "page tree traversal rejects malformed shapes and count mismatches" {
-  let missing_kids : Result[PageTreeIndex, PdfDocumentError] = try?
-    load_page_tree_index_from_bytes(build_page_tree_missing_kids_fixture())
+  let missing_kids : Result[PageTreeIndex, PdfDocumentError] = try? load_page_tree_index_from_bytes(
+    build_page_tree_missing_kids_fixture(),
+  )
   match missing_kids {
     Err(InvalidPageTree(_, reason)) => assert_eq(reason.contains("/Kids"), true)
     _ => fail("expected missing kids to be rejected")
   }
 
-  let negative_count : Result[PageTreeIndex, PdfDocumentError] = try?
-    load_page_tree_index_from_bytes(build_page_tree_negative_count_fixture())
+  let negative_count : Result[PageTreeIndex, PdfDocumentError] = try? load_page_tree_index_from_bytes(
+    build_page_tree_negative_count_fixture(),
+  )
   match negative_count {
-    Err(InvalidPageTree(_, reason)) => assert_eq(reason.contains("non-negative"), true)
+    Err(InvalidPageTree(_, reason)) =>
+      assert_eq(reason.contains("non-negative"), true)
     _ => fail("expected negative count to be rejected")
   }
 
-  let non_ref_kid : Result[PageTreeIndex, PdfDocumentError] = try?
-    load_page_tree_index_from_bytes(build_page_tree_non_ref_kid_fixture())
+  let non_ref_kid : Result[PageTreeIndex, PdfDocumentError] = try? load_page_tree_index_from_bytes(
+    build_page_tree_non_ref_kid_fixture(),
+  )
   match non_ref_kid {
     Err(InvalidPageTree(_, reason)) => assert_eq(reason.contains("Kids"), true)
     _ => fail("expected non-ref kid to be rejected")
   }
 
-  let wrong_leaf_type : Result[PageTreeIndex, PdfDocumentError] = try?
-    load_page_tree_index_from_bytes(build_page_tree_wrong_leaf_type_fixture())
+  let wrong_leaf_type : Result[PageTreeIndex, PdfDocumentError] = try? load_page_tree_index_from_bytes(
+    build_page_tree_wrong_leaf_type_fixture(),
+  )
   match wrong_leaf_type {
-    Err(InvalidPage(_, reason)) => assert_eq(reason.contains("/Type /Page"), true)
+    Err(InvalidPage(_, reason)) =>
+      assert_eq(reason.contains("/Type /Page"), true)
     _ => fail("expected wrong leaf type to be rejected")
   }
 
-  let count_mismatch : Result[PageTreeIndex, PdfDocumentError] = try?
-    load_page_tree_index_from_bytes(build_page_tree_count_mismatch_fixture())
+  let count_mismatch : Result[PageTreeIndex, PdfDocumentError] = try? load_page_tree_index_from_bytes(
+    build_page_tree_count_mismatch_fixture(),
+  )
   match count_mismatch {
     Err(InvalidPageTree(_, reason)) => assert_eq(reason.contains("Count"), true)
     _ => fail("expected count mismatch to be rejected")
   }
 
-  let repeated_intermediate : Result[PageTreeIndex, PdfDocumentError] = try?
-    load_page_tree_index_from_bytes(build_page_tree_repeated_intermediate_fixture())
+  let repeated_intermediate : Result[PageTreeIndex, PdfDocumentError] = try? load_page_tree_index_from_bytes(
+    build_page_tree_repeated_intermediate_fixture(),
+  )
   match repeated_intermediate {
-    Err(InvalidPageTree(_, reason)) => assert_eq(reason.contains("repeated"), true)
+    Err(InvalidPageTree(_, reason)) =>
+      assert_eq(reason.contains("repeated"), true)
     _ => fail("expected repeated intermediate node to be rejected")
   }
 
-  let cycle : Result[PageTreeIndex, PdfDocumentError] = try?
-    load_page_tree_index_from_bytes(build_page_tree_cycle_fixture())
+  let cycle : Result[PageTreeIndex, PdfDocumentError] = try? load_page_tree_index_from_bytes(
+    build_page_tree_cycle_fixture(),
+  )
   match cycle {
     Err(CycleDetected(_, reason)) => assert_eq(reason.contains("cycle"), true)
     _ => fail("expected cycle to be rejected")

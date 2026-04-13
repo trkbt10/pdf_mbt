@@ -128,13 +128,16 @@ pub fn PdfPage::rotate(self : PdfPage) -> Int? raise PdfDocumentError {
 ///|
 pub fn PdfPage::user_unit(self : PdfPage) -> Double? raise PdfDocumentError {
   match self.entry(@objects.PdfName::new(b"UserUnit")) {
-    Some(value) => Some(parse_typed_page_number(
-      self.object_id(),
-      @objects.PdfName::new(b"UserUnit"),
-      value,
-      "UserUnit",
-      false,
-    ))
+    Some(value) =>
+      Some(
+        parse_typed_page_number(
+          self.object_id(),
+          @objects.PdfName::new(b"UserUnit"),
+          value,
+          "UserUnit",
+          false,
+        ),
+      )
     None => None
   }
 }
@@ -318,17 +321,25 @@ fn resolve_typed_page_rectangle(
 ) -> PdfRectangle? raise PdfDocumentError {
   let label = typed_page_key_label(key)
   match page.entry(key) {
-    Some(value) => Some(parse_typed_page_rectangle(
-      page.object_id(), key, value, label, false,
-    ))
-    None => match resolve_inherited_page_entry(
-      page.file, page.record.parent_ref, key,
-    ) {
-      Some(found) => Some(parse_typed_page_rectangle(
-        found.source_id, key, found.value, label, true,
-      ))
-      None => None
-    }
+    Some(value) =>
+      Some(
+        parse_typed_page_rectangle(page.object_id(), key, value, label, false),
+      )
+    None =>
+      match
+        resolve_inherited_page_entry(page.file, page.record.parent_ref, key) {
+        Some(found) =>
+          Some(
+            parse_typed_page_rectangle(
+              found.source_id,
+              key,
+              found.value,
+              label,
+              true,
+            ),
+          )
+        None => None
+      }
   }
 }
 
@@ -339,17 +350,23 @@ fn resolve_typed_page_integer(
 ) -> Int? raise PdfDocumentError {
   let label = typed_page_key_label(key)
   match page.entry(key) {
-    Some(value) => Some(parse_typed_page_integer(
-      page.object_id(), key, value, label, false,
-    ))
-    None => match resolve_inherited_page_entry(
-      page.file, page.record.parent_ref, key,
-    ) {
-      Some(found) => Some(parse_typed_page_integer(
-        found.source_id, key, found.value, label, true,
-      ))
-      None => None
-    }
+    Some(value) =>
+      Some(parse_typed_page_integer(page.object_id(), key, value, label, false))
+    None =>
+      match
+        resolve_inherited_page_entry(page.file, page.record.parent_ref, key) {
+        Some(found) =>
+          Some(
+            parse_typed_page_integer(
+              found.source_id,
+              key,
+              found.value,
+              label,
+              true,
+            ),
+          )
+        None => None
+      }
   }
 }
 
@@ -389,8 +406,20 @@ fn parse_typed_page_rectangle(
       }
       PdfRectangle::{
         left: parse_typed_page_number(page_id, key, values[0], label, inherited),
-        bottom: parse_typed_page_number(page_id, key, values[1], label, inherited),
-        right: parse_typed_page_number(page_id, key, values[2], label, inherited),
+        bottom: parse_typed_page_number(
+          page_id,
+          key,
+          values[1],
+          label,
+          inherited,
+        ),
+        right: parse_typed_page_number(
+          page_id,
+          key,
+          values[2],
+          label,
+          inherited,
+        ),
         top: parse_typed_page_number(page_id, key, values[3], label, inherited),
       }
     }

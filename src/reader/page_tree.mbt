@@ -5,14 +5,8 @@ fn build_page_tree_index(
 ) -> PageTreeIndex raise PdfDocumentError {
   let pages : Array[PageTreeRecord] = []
   let seen_pages : Map[@objects.ObjectId, Bool] = Map::new()
-  let _ = traverse_pages_node(
-    file,
-    catalog.pages_ref,
-    [],
-    pages,
-    seen_pages,
-  )
-  PageTreeIndex::{ pages }
+  let _ = traverse_pages_node(file, catalog.pages_ref, [], pages, seen_pages)
+  PageTreeIndex::{ pages, }
 }
 
 ///|
@@ -29,8 +23,7 @@ fn traverse_pages_node(
 
   if seen_pages.contains(node_id) {
     raise PdfDocumentError::InvalidPageTree(
-      node_id,
-      "page tree node is repeated",
+      node_id, "page tree node is repeated",
     )
   }
 
@@ -47,19 +40,13 @@ fn traverse_pages_node(
   let mut actual_count = 0L
   for kid in kids {
     actual_count += traverse_page_tree_child(
-      file,
-      kid,
-      node_id,
-      next_ancestors,
-      pages,
-      seen_pages,
+      file, kid, node_id, next_ancestors, pages, seen_pages,
     )
   }
 
   if actual_count != expected_count {
     raise PdfDocumentError::InvalidPageTree(
-      node_id,
-      "page tree Count does not match descendant page count",
+      node_id, "page tree Count does not match descendant page count",
     )
   }
 
@@ -79,26 +66,18 @@ fn traverse_page_tree_child(
   let type_name = read_type_name(child_dict, child_ref, "page tree child")
   match type_name {
     Some(name) if name == @objects.PdfName::new(b"Pages") =>
-      traverse_pages_node(
-        file, child_ref, ancestor_refs, pages, seen_pages,
-      )
+      traverse_pages_node(file, child_ref, ancestor_refs, pages, seen_pages)
     Some(name) if name == @objects.PdfName::new(b"Page") =>
       append_page_record(
-        child_ref,
-        child_dict,
-        parent_ref,
-        ancestor_refs,
-        pages,
+        child_ref, child_dict, parent_ref, ancestor_refs, pages,
       )
     Some(_) =>
       raise PdfDocumentError::InvalidPage(
-        child_ref,
-        "leaf page object must have /Type /Page",
+        child_ref, "leaf page object must have /Type /Page",
       )
     None =>
       raise PdfDocumentError::InvalidPage(
-        child_ref,
-        "leaf page object must have /Type /Page",
+        child_ref, "leaf page object must have /Type /Page",
       )
   }
 }
@@ -133,13 +112,11 @@ fn require_pages_node_type(
     Some(name) if name == @objects.PdfName::new(b"Pages") => ()
     Some(_) =>
       raise PdfDocumentError::InvalidPageTree(
-        object_id,
-        "page tree node must have /Type /Pages",
+        object_id, "page tree node must have /Type /Pages",
       )
     None =>
       raise PdfDocumentError::InvalidPageTree(
-        object_id,
-        "page tree node must have /Type /Pages",
+        object_id, "page tree node must have /Type /Pages",
       )
   }
 }
@@ -154,8 +131,7 @@ fn read_pages_kids(
     Some(value) => value
     None =>
       raise PdfDocumentError::InvalidPageTree(
-        object_id,
-        "page tree node is missing /Kids",
+        object_id, "page tree node is missing /Kids",
       )
   }
 
@@ -163,8 +139,7 @@ fn read_pages_kids(
     @objects.PdfObject::Array(values) => values
     _ =>
       raise PdfDocumentError::InvalidPageTree(
-        object_id,
-        "page tree /Kids entry must be an array of indirect references",
+        object_id, "page tree /Kids entry must be an array of indirect references",
       )
   }
 
@@ -174,8 +149,7 @@ fn read_pages_kids(
       @objects.PdfObject::Ref(object_id) => kids.push(object_id)
       _ =>
         raise PdfDocumentError::InvalidPageTree(
-          object_id,
-          "page tree /Kids entries must be indirect references",
+          object_id, "page tree /Kids entries must be indirect references",
         )
     }
   }
@@ -192,8 +166,7 @@ fn read_pages_count(
     Some(value) => value
     None =>
       raise PdfDocumentError::InvalidPageTree(
-        object_id,
-        "page tree node is missing /Count",
+        object_id, "page tree node is missing /Count",
       )
   }
 
@@ -201,15 +174,13 @@ fn read_pages_count(
     @objects.PdfObject::Integer(value) => value
     _ =>
       raise PdfDocumentError::InvalidPageTree(
-        object_id,
-        "page tree /Count entry must be an integer",
+        object_id, "page tree /Count entry must be an integer",
       )
   }
 
   if count < 0L {
     raise PdfDocumentError::InvalidPageTree(
-      object_id,
-      "page tree /Count entry must be non-negative",
+      object_id, "page tree /Count entry must be non-negative",
     )
   }
   count

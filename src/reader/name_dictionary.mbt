@@ -92,8 +92,7 @@ fn lookup_name_tree_object(
     @objects.PdfObject::Ref(object_id) => {
       if seen.contains(object_id) {
         raise PdfDocumentError::CycleDetected(
-          object_id,
-          "name tree cycle detected",
+          object_id, "name tree cycle detected",
         )
       }
       seen[object_id] = true
@@ -137,20 +136,14 @@ fn lookup_name_tree_dictionary(
   match (dict.get(names_key), dict.get(kids_key)) {
     (Some(_), Some(_)) =>
       raise PdfDocumentError::InvalidNameTree(
-        names_key,
-        "name tree node must not contain both /Names and /Kids",
+        names_key, "name tree node must not contain both /Names and /Kids",
       )
     (Some(names_value), None) => lookup_name_tree_names(names_value, key)
-    (None, Some(kids_value)) => lookup_name_tree_kids(
-      file,
-      kids_value,
-      key,
-      seen,
-    )
+    (None, Some(kids_value)) =>
+      lookup_name_tree_kids(file, kids_value, key, seen)
     (None, None) =>
       raise PdfDocumentError::InvalidNameTree(
-        names_key,
-        "name tree node must have /Names or /Kids",
+        names_key, "name tree node must have /Names or /Kids",
       )
   }
 }
@@ -223,8 +216,7 @@ fn lookup_name_tree_kids(
     @objects.PdfObject::Array(values) => values
     _ =>
       raise PdfDocumentError::InvalidNameTree(
-        kids_key,
-        "name tree /Kids entry must be an array",
+        kids_key, "name tree /Kids entry must be an array",
       )
   }
 
@@ -233,15 +225,13 @@ fn lookup_name_tree_kids(
       @objects.PdfObject::Ref(object_id) => object_id
       _ =>
         raise PdfDocumentError::InvalidNameTree(
-          kids_key,
-        "name tree /Kids entries must be indirect references",
+          kids_key, "name tree /Kids entries must be indirect references",
         )
     }
 
     if seen.contains(child_ref) {
       raise PdfDocumentError::CycleDetected(
-        child_ref,
-        "name tree cycle detected",
+        child_ref, "name tree cycle detected",
       )
     }
 

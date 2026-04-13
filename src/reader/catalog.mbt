@@ -11,13 +11,11 @@ fn load_catalog(file : PdfFile) -> PdfCatalog raise PdfDocumentError {
     @objects.PdfObject::Dictionary(dict) => dict
     @objects.PdfObject::Null =>
       raise PdfDocumentError::InvalidCatalog(
-        root_ref,
-        "catalog object is missing",
+        root_ref, "catalog object is missing",
       )
     _ =>
       raise PdfDocumentError::InvalidCatalog(
-        root_ref,
-        "catalog object must be a dictionary",
+        root_ref, "catalog object must be a dictionary",
       )
   }
 
@@ -49,8 +47,7 @@ fn require_catalog_type(
     Some(value) => value
     None =>
       raise PdfDocumentError::InvalidCatalog(
-        object_id,
-        "catalog dictionary is missing /Type /Catalog",
+        object_id, "catalog dictionary is missing /Type /Catalog",
       )
   }
 
@@ -58,15 +55,13 @@ fn require_catalog_type(
     @objects.PdfObject::Name(value) => value
     _ =>
       raise PdfDocumentError::InvalidCatalog(
-        object_id,
-        "catalog /Type entry must be a name",
+        object_id, "catalog /Type entry must be a name",
       )
   }
 
   if type_name != @objects.PdfName::new(b"Catalog") {
     raise PdfDocumentError::InvalidCatalog(
-      object_id,
-      "catalog /Type entry must be /Catalog",
+      object_id, "catalog /Type entry must be /Catalog",
     )
   }
 }
@@ -81,8 +76,7 @@ fn require_catalog_pages_ref(
     Some(value) => value
     None =>
       raise PdfDocumentError::InvalidCatalog(
-        object_id,
-        "catalog dictionary is missing /Pages",
+        object_id, "catalog dictionary is missing /Pages",
       )
   }
 
@@ -90,13 +84,11 @@ fn require_catalog_pages_ref(
     @objects.PdfObject::Ref(value) => value
     @objects.PdfObject::Null =>
       raise PdfDocumentError::InvalidCatalog(
-        object_id,
-        "/Pages entry must be an indirect reference",
+        object_id, "/Pages entry must be an indirect reference",
       )
     _ =>
       raise PdfDocumentError::InvalidCatalog(
-        object_id,
-        "/Pages entry must be an indirect reference",
+        object_id, "/Pages entry must be an indirect reference",
       )
   }
 }

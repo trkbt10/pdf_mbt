@@ -10,10 +10,14 @@ test "document structure fixtures open through the reader" {
   let single = PdfFile::open(build_document_structure_single_page_fixture())
   assert_eq(single.root_ref() == oid(1), true)
 
-  let nested = PdfFile::open(build_document_structure_nested_page_tree_fixture())
+  let nested = PdfFile::open(
+    build_document_structure_nested_page_tree_fixture(),
+  )
   assert_eq(nested.root_ref() == oid(1), true)
 
-  let inherited = PdfFile::open(build_document_structure_inherited_resources_fixture())
+  let inherited = PdfFile::open(
+    build_document_structure_inherited_resources_fixture(),
+  )
   assert_eq(inherited.root_ref() == oid(1), true)
 
   let names = PdfFile::open(build_document_structure_names_fixture())
@@ -55,15 +59,19 @@ test "document structure fixtures expose raw catalog and page tree shapes" {
     _ => fail("expected pages dictionary")
   }
 
-  let nested = PdfFile::open(build_document_structure_nested_page_tree_fixture())
+  let nested = PdfFile::open(
+    build_document_structure_nested_page_tree_fixture(),
+  )
   match nested.load_object(oid(2)) {
     @objects.PdfObject::Dictionary(dict) => {
       assert_eq(
         dict.get(@objects.PdfName::new(b"Kids")) ==
-        Some(@objects.PdfObject::Array([
-          @objects.PdfObject::Ref(oid(3)),
-          @objects.PdfObject::Ref(oid(5)),
-        ])),
+        Some(
+          @objects.PdfObject::Array([
+            @objects.PdfObject::Ref(oid(3)),
+            @objects.PdfObject::Ref(oid(5)),
+          ]),
+        ),
         true,
       )
       assert_eq(
@@ -75,20 +83,20 @@ test "document structure fixtures expose raw catalog and page tree shapes" {
     _ => fail("expected nested pages dictionary")
   }
 
-  let inherited = PdfFile::open(build_document_structure_inherited_resources_fixture())
+  let inherited = PdfFile::open(
+    build_document_structure_inherited_resources_fixture(),
+  )
   match inherited.load_object(oid(2)) {
-    @objects.PdfObject::Dictionary(dict) => {
+    @objects.PdfObject::Dictionary(dict) =>
       match dict.get(@objects.PdfName::new(b"Resources")) {
-        Some(@objects.PdfObject::Dictionary(resources)) => {
+        Some(@objects.PdfObject::Dictionary(resources)) =>
           match resources.get(@objects.PdfName::new(b"Font")) {
             Some(@objects.PdfObject::Ref(font_ref)) =>
               assert_eq(font_ref == oid(4), true)
             _ => fail("expected inherited font reference")
           }
-        }
         _ => fail("expected inherited resources dictionary")
       }
-    }
     _ => fail("expected inherited resources pages dictionary")
   }
 
@@ -115,20 +123,15 @@ test "document structure fixtures expose raw catalog and page tree shapes" {
   }
 
   match names.load_object(oid(5)) {
-    @objects.PdfObject::Dictionary(dict) => {
+    @objects.PdfObject::Dictionary(dict) =>
       match dict.get(@objects.PdfName::new(b"Names")) {
         Some(@objects.PdfObject::Array(values)) => {
           assert_eq(values.length(), 4)
-          assert_eq(
-            values[0] ==
-            @objects.PdfObject::String(b"chapter-1"),
-            true,
-          )
+          assert_eq(values[0] == @objects.PdfObject::String(b"chapter-1"), true)
           assert_eq(values[1] == @objects.PdfObject::Ref(oid(12)), true)
         }
         _ => fail("expected leaf name array")
       }
-    }
     _ => fail("expected dests tree leaf")
   }
 
@@ -152,16 +155,9 @@ fn build_document_structure_single_page_fixture() -> Bytes {
     bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
   )
   let (bytes, page_offset) = append_indirect_object(
-    bytes,
-    header_base,
-    3,
-    0,
-    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
+    bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
   )
-  let content_stream = build_stream_object_body(
-    b"<< /Length 5 >>",
-    b"BT\nET",
-  )
+  let content_stream = build_stream_object_body(b"<< /Length 5 >>", b"BT\nET")
   let (bytes, content_offset) = append_indirect_object(
     bytes, header_base, 4, 0, content_stream,
   )
@@ -190,11 +186,7 @@ fn build_document_structure_nested_page_tree_fixture() -> Bytes {
     bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R >>",
   )
   let (bytes, root_pages_offset) = append_indirect_object(
-    bytes,
-    header_base,
-    2,
-    0,
-    b"<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>",
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>",
   )
   let (bytes, child_pages_offset) = append_indirect_object(
     bytes, header_base, 3, 0, b"<< /Type /Pages /Kids [4 0 R] /Count 1 /Parent 2 0 R >>",
@@ -231,21 +223,13 @@ fn build_document_structure_inherited_resources_fixture() -> Bytes {
     bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R >>",
   )
   let (bytes, pages_offset) = append_indirect_object(
-    bytes,
-    header_base,
-    2,
-    0,
-    b"<< /Type /Pages /Kids [3 0 R] /Count 1 /Resources <</Font 4 0 R>> >>",
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 /Resources <</Font 4 0 R>> >>",
   )
   let (bytes, page_offset) = append_indirect_object(
     bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
   )
   let (bytes, font_offset) = append_indirect_object(
-    bytes,
-    header_base,
-    4,
-    0,
-    b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    bytes, header_base, 4, 0, b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
   )
 
   let xref_offset = object_offset(bytes, header_base)
@@ -269,31 +253,19 @@ fn build_document_structure_names_fixture() -> Bytes {
   let (bytes, header_base) = build_document_structure_fixture_prefix()
 
   let (bytes, catalog_offset) = append_indirect_object(
-    bytes,
-    header_base,
-    1,
-    0,
-    b"<< /Type /Catalog /Pages 2 0 R /Names 3 0 R >>",
+    bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R /Names 3 0 R >>",
   )
   let (bytes, pages_offset) = append_indirect_object(
     bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [4 0 R] /Count 1 >>",
   )
   let (bytes, names_offset) = append_indirect_object(
-    bytes,
-    header_base,
-    3,
-    0,
-    b"<< /Dests 5 0 R /AP 6 0 R /JavaScript 7 0 R /Pages 8 0 R /Templates 9 0 R /EmbeddedFiles 10 0 R /AlternatePresentations 11 0 R >>",
+    bytes, header_base, 3, 0, b"<< /Dests 5 0 R /AP 6 0 R /JavaScript 7 0 R /Pages 8 0 R /Templates 9 0 R /EmbeddedFiles 10 0 R /AlternatePresentations 11 0 R >>",
   )
   let (bytes, page_offset) = append_indirect_object(
     bytes, header_base, 4, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] >>",
   )
   let (bytes, dests_offset) = append_indirect_object(
-    bytes,
-    header_base,
-    5,
-    0,
-    b"<< /Names [(chapter-1) 12 0 R (chapter-2) 13 0 R] >>",
+    bytes, header_base, 5, 0, b"<< /Names [(chapter-1) 12 0 R (chapter-2) 13 0 R] >>",
   )
   let (bytes, ap_kids_offset) = append_indirect_object(
     bytes, header_base, 6, 0, b"<< /Kids [14 0 R] /Limits [(appearance-a) (appearance-z)] >>",

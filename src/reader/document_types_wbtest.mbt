@@ -36,10 +36,7 @@ test "document structure foundation types are constructible" {
 
   assert_eq(NameTreeCategory::Dests == NameTreeCategory::Dests, true)
   assert_eq(NameTreeCategory::AP == NameTreeCategory::AP, true)
-  assert_eq(
-    NameTreeCategory::JavaScript == NameTreeCategory::JavaScript,
-    true,
-  )
+  assert_eq(NameTreeCategory::JavaScript == NameTreeCategory::JavaScript, true)
   assert_eq(NameTreeCategory::Pages == NameTreeCategory::Pages, true)
   assert_eq(NameTreeCategory::Templates == NameTreeCategory::Templates, true)
   assert_eq(
@@ -52,11 +49,13 @@ test "document structure foundation types are constructible" {
     true,
   )
 
-  match PdfDocumentError::ReaderError(PdfReaderError::MissingTailMarker("EOF")) {
-    ReaderError(error) => match error {
-      MissingTailMarker(reason) => assert_eq(reason, "EOF")
-      _ => fail("expected wrapped reader error")
-    }
+  match
+    PdfDocumentError::ReaderError(PdfReaderError::MissingTailMarker("EOF")) {
+    ReaderError(error) =>
+      match error {
+        MissingTailMarker(reason) => assert_eq(reason, "EOF")
+        _ => fail("expected wrapped reader error")
+      }
     _ => fail("expected reader error wrapper")
   }
 
@@ -98,7 +97,11 @@ test "document structure foundation types are constructible" {
     _ => fail("expected invalid inherited attribute error")
   }
 
-  match PdfDocumentError::InvalidNameTree(@objects.PdfName::new(b"Dests"), "bad leaf") {
+  match
+    PdfDocumentError::InvalidNameTree(
+      @objects.PdfName::new(b"Dests"),
+      "bad leaf",
+    ) {
     InvalidNameTree(name, reason) => {
       assert_eq(name == @objects.PdfName::new(b"Dests"), true)
       assert_eq(reason, "bad leaf")

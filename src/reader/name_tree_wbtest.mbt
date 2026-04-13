@@ -65,10 +65,7 @@ test "name tree lookup returns raw values for direct and indirect roots" {
 test "name tree lookup prunes subtrees with limits" {
   let document = PdfDocument::open(build_document_structure_names_fixture())
 
-  assert_eq(
-    document.lookup_name(NameTreeCategory::AP, b"zzzz") is None,
-    true,
-  )
+  assert_eq(document.lookup_name(NameTreeCategory::AP, b"zzzz") is None, true)
   assert_eq(document.file.cache.get(oid(14)) is None, true)
 
   assert_eq(
@@ -82,8 +79,10 @@ test "name tree lookup prunes subtrees with limits" {
 ///|
 test "name tree lookup rejects malformed names kids and limits" {
   let odd_names_document = PdfDocument::open(build_odd_names_fixture())
-  let odd_names_result : Result[@objects.PdfObject?, PdfDocumentError] = try?
-    odd_names_document.lookup_name(NameTreeCategory::Dests, b"chapter-1")
+  let odd_names_result : Result[@objects.PdfObject?, PdfDocumentError] = try? odd_names_document.lookup_name(
+    NameTreeCategory::Dests,
+    b"chapter-1",
+  )
   match odd_names_result {
     Err(InvalidNameTree(name, reason)) => {
       assert_eq(name == @objects.PdfName::new(b"Names"), true)
@@ -93,8 +92,10 @@ test "name tree lookup rejects malformed names kids and limits" {
   }
 
   let non_string_document = PdfDocument::open(build_non_string_key_fixture())
-  let non_string_result : Result[@objects.PdfObject?, PdfDocumentError] = try?
-    non_string_document.lookup_name(NameTreeCategory::Dests, b"chapter-1")
+  let non_string_result : Result[@objects.PdfObject?, PdfDocumentError] = try? non_string_document.lookup_name(
+    NameTreeCategory::Dests,
+    b"chapter-1",
+  )
   match non_string_result {
     Err(InvalidNameTree(name, reason)) => {
       assert_eq(name == @objects.PdfName::new(b"Names"), true)
@@ -104,8 +105,10 @@ test "name tree lookup rejects malformed names kids and limits" {
   }
 
   let invalid_kids_document = PdfDocument::open(build_invalid_kids_fixture())
-  let invalid_kids_result : Result[@objects.PdfObject?, PdfDocumentError] = try?
-    invalid_kids_document.lookup_name(NameTreeCategory::AP, b"appearance-a")
+  let invalid_kids_result : Result[@objects.PdfObject?, PdfDocumentError] = try? invalid_kids_document.lookup_name(
+    NameTreeCategory::AP,
+    b"appearance-a",
+  )
   match invalid_kids_result {
     Err(InvalidNameTree(name, reason)) => {
       assert_eq(name == @objects.PdfName::new(b"Kids"), true)
@@ -115,8 +118,10 @@ test "name tree lookup rejects malformed names kids and limits" {
   }
 
   let bad_limits_document = PdfDocument::open(build_bad_limits_fixture())
-  let bad_limits_result : Result[@objects.PdfObject?, PdfDocumentError] = try?
-    bad_limits_document.lookup_name(NameTreeCategory::AP, b"appearance-a")
+  let bad_limits_result : Result[@objects.PdfObject?, PdfDocumentError] = try? bad_limits_document.lookup_name(
+    NameTreeCategory::AP,
+    b"appearance-a",
+  )
   match bad_limits_result {
     Err(InvalidNameTree(name, reason)) => {
       assert_eq(name == @objects.PdfName::new(b"Limits"), true)
@@ -156,8 +161,10 @@ test "name tree lookup applies node limits before validating pruned nodes" {
 test "name tree lookup rejects nodes that mix names and kids" {
   let document = PdfDocument::open(build_mixed_names_and_kids_fixture())
 
-  let result : Result[@objects.PdfObject?, PdfDocumentError] = try?
-    document.lookup_name(NameTreeCategory::Dests, b"hit")
+  let result : Result[@objects.PdfObject?, PdfDocumentError] = try? document.lookup_name(
+    NameTreeCategory::Dests,
+    b"hit",
+  )
   match result {
     Err(InvalidNameTree(name, reason)) => {
       assert_eq(name == @objects.PdfName::new(b"Names"), true)
@@ -170,8 +177,10 @@ test "name tree lookup rejects nodes that mix names and kids" {
 ///|
 test "name tree lookup detects cycles" {
   let document = PdfDocument::open(build_cycle_fixture())
-  let result : Result[@objects.PdfObject?, PdfDocumentError] = try?
-    document.lookup_name(NameTreeCategory::AP, b"cycle-key")
+  let result : Result[@objects.PdfObject?, PdfDocumentError] = try? document.lookup_name(
+    NameTreeCategory::AP,
+    b"cycle-key",
+  )
   match result {
     Err(CycleDetected(object_id, reason)) => {
       assert_eq(object_id == oid(5), true)

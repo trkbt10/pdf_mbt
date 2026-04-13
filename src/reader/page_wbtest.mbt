@@ -72,7 +72,9 @@ test "typed page boxes return absence when no page or ancestor defines them" {
 
 ///|
 test "typed page accessors reject malformed direct and inherited values" {
-  let direct_document = PdfDocument::open(build_malformed_direct_typed_fixture())
+  let direct_document = PdfDocument::open(
+    build_malformed_direct_typed_fixture(),
+  )
   let direct_page = direct_document.page(0)
 
   let media_box_result : Result[PdfRectangle?, PdfDocumentError] = try? direct_page.media_box()
@@ -195,11 +197,7 @@ fn build_typed_page_attributes_fixture() -> Bytes {
     bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
   )
   let (bytes, page_offset) = append_indirect_object(
-    bytes,
-    header_base,
-    3,
-    0,
-    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /CropBox [10 20 30 40] /Rotate 90 /UserUnit 2.5 >>",
+    bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /CropBox [10 20 30 40] /Rotate 90 /UserUnit 2.5 >>",
   )
 
   let xref_offset = object_offset(bytes, header_base)
@@ -225,18 +223,10 @@ fn build_typed_page_inheritance_fixture() -> Bytes {
     bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R >>",
   )
   let (bytes, root_pages_offset) = append_indirect_object(
-    bytes,
-    header_base,
-    2,
-    0,
-    b"<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 612 792] /CropBox [1 2 3 4] /Rotate 180 >>",
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 612 792] /CropBox [1 2 3 4] /Rotate 180 >>",
   )
   let (bytes, child_pages_offset) = append_indirect_object(
-    bytes,
-    header_base,
-    3,
-    0,
-    b"<< /Type /Pages /Kids [4 0 R] /Count 1 /Parent 2 0 R /MediaBox [0 0 400 400] /CropBox [5 6 7 8] /Rotate 270 >>",
+    bytes, header_base, 3, 0, b"<< /Type /Pages /Kids [4 0 R] /Count 1 /Parent 2 0 R /MediaBox [0 0 400 400] /CropBox [5 6 7 8] /Rotate 270 >>",
   )
   let (bytes, page_offset) = append_indirect_object(
     bytes, header_base, 4, 0, b"<< /Type /Page /Parent 3 0 R >>",
@@ -269,11 +259,7 @@ fn build_malformed_direct_typed_fixture() -> Bytes {
     bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
   )
   let (bytes, page_offset) = append_indirect_object(
-    bytes,
-    header_base,
-    3,
-    0,
-    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612] /CropBox [0 0 10] /UserUnit /Bad >>",
+    bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612] /CropBox [0 0 10] /UserUnit /Bad >>",
   )
 
   let xref_offset = object_offset(bytes, header_base)

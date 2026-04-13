@@ -3,10 +3,7 @@ test "catalog resolver returns validated catalog from root" {
   let file = PdfFile::open(build_document_structure_single_page_fixture())
   let catalog = load_catalog(file)
   assert_eq(catalog.object_id == oid(1), true)
-  assert_eq(
-    catalog.pages_ref == oid(2),
-    true,
-  )
+  assert_eq(catalog.pages_ref == oid(2), true)
   assert_eq(
     catalog.dict.get(@objects.PdfName::new(b"Type")) ==
     Some(@objects.PdfObject::Name(@objects.PdfName::new(b"Catalog"))),
@@ -20,16 +17,25 @@ test "catalog resolver exposes raw optional entries" {
   let catalog = load_catalog(file)
 
   assert_eq(catalog.entry(@objects.PdfName::new(b"Names")) is Some(_), true)
-  assert_eq(catalog.names_entry() == Some(@objects.PdfObject::Ref(oid(3))), true)
+  assert_eq(
+    catalog.names_entry() == Some(@objects.PdfObject::Ref(oid(3))),
+    true,
+  )
 
   let root_dict : @objects.PdfDictionary = Map::new()
   root_dict[@objects.PdfName::new(b"Type")] = @objects.PdfObject::Name(
     @objects.PdfName::new(b"Catalog"),
   )
   root_dict[@objects.PdfName::new(b"Pages")] = @objects.PdfObject::Ref(oid(2))
-  root_dict[@objects.PdfName::new(b"Metadata")] = @objects.PdfObject::Ref(oid(4))
+  root_dict[@objects.PdfName::new(b"Metadata")] = @objects.PdfObject::Ref(
+    oid(4),
+  )
   root_dict[@objects.PdfName::new(b"Lang")] = @objects.PdfObject::String(b"en")
-  let catalog = PdfCatalog::{ object_id: oid(1), dict: root_dict, pages_ref: oid(2) }
+  let catalog = PdfCatalog::{
+    object_id: oid(1),
+    dict: root_dict,
+    pages_ref: oid(2),
+  }
   assert_eq(
     catalog.entry(@objects.PdfName::new(b"Metadata")) ==
     Some(@objects.PdfObject::Ref(oid(4))),
@@ -42,7 +48,10 @@ test "catalog resolver exposes raw optional entries" {
   )
   assert_eq(catalog.entry(@objects.PdfName::new(b"Outlines")) is None, true)
   assert_eq(catalog.entry(@objects.PdfName::new(b"PageLabels")) is None, true)
-  assert_eq(catalog.entry(@objects.PdfName::new(b"StructTreeRoot")) is None, true)
+  assert_eq(
+    catalog.entry(@objects.PdfName::new(b"StructTreeRoot")) is None,
+    true,
+  )
   assert_eq(catalog.entry(@objects.PdfName::new(b"MarkInfo")) is None, true)
   assert_eq(catalog.entry(@objects.PdfName::new(b"Names")) is None, true)
   assert_eq(catalog.pages_ref == oid(2), true)
@@ -98,7 +107,10 @@ test "catalog resolver rejects malformed catalog objects" {
     _ => fail("expected invalid catalog for missing pages")
   }
 
-  let non_dictionary_file = make_reader_file(b"1 0 obj\n(hello)\nendobj", Map::new())
+  let non_dictionary_file = make_reader_file(
+    b"1 0 obj\n(hello)\nendobj",
+    Map::new(),
+  )
   non_dictionary_file.xref_index[oid(1)] = ObjectLocation::Uncompressed(0L, 0)
   let non_dictionary_result : Result[PdfCatalog, PdfDocumentError] = try? load_catalog(
     non_dictionary_file,

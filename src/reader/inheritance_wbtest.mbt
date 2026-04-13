@@ -77,13 +77,12 @@ test "inherited entries return absence without raising when undefined" {
 
 ///|
 test "unsupported inherited keys are rejected even when direct values exist" {
-  let document = PdfDocument::open(
-    build_page_access_resolution_fixture(),
-  )
+  let document = PdfDocument::open(build_page_access_resolution_fixture())
   let page = document.page(0)
 
-  let direct_contents : Result[@objects.PdfObject?, PdfDocumentError] = try?
-    page.inherited_entry(@objects.PdfName::new(b"Contents"))
+  let direct_contents : Result[@objects.PdfObject?, PdfDocumentError] = try? page.inherited_entry(
+    @objects.PdfName::new(b"Contents"),
+  )
   match direct_contents {
     Err(InvalidInheritedAttribute(object_id, key, reason)) => {
       assert_eq(object_id == oid(3), true)
@@ -93,8 +92,9 @@ test "unsupported inherited keys are rejected even when direct values exist" {
     _ => fail("expected unsupported direct key to be rejected")
   }
 
-  let direct_annots : Result[@objects.PdfObject?, PdfDocumentError] = try?
-    page.inherited_entry(@objects.PdfName::new(b"Annots"))
+  let direct_annots : Result[@objects.PdfObject?, PdfDocumentError] = try? page.inherited_entry(
+    @objects.PdfName::new(b"Annots"),
+  )
   match direct_annots {
     Err(InvalidInheritedAttribute(object_id, key, reason)) => {
       assert_eq(object_id == oid(3), true)
@@ -104,8 +104,9 @@ test "unsupported inherited keys are rejected even when direct values exist" {
     _ => fail("expected unsupported direct key to be rejected")
   }
 
-  let absent_unsupported : Result[@objects.PdfObject?, PdfDocumentError] = try?
-    page.inherited_entry(@objects.PdfName::new(b"Foo"))
+  let absent_unsupported : Result[@objects.PdfObject?, PdfDocumentError] = try? page.inherited_entry(
+    @objects.PdfName::new(b"Foo"),
+  )
   match absent_unsupported {
     Err(InvalidInheritedAttribute(object_id, key, reason)) => {
       assert_eq(object_id == oid(3), true)
@@ -195,18 +196,10 @@ fn build_document_structure_inheritance_nearest_ancestor_fixture() -> Bytes {
     bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R >>",
   )
   let (bytes, root_pages_offset) = append_indirect_object(
-    bytes,
-    header_base,
-    2,
-    0,
-    b"<< /Type /Pages /Kids [3 0 R] /Count 1 /Resources <</Font 4 0 R /ProcSet [/PDF]>> /Rotate 180 /MediaBox [0 0 612 792] >>",
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 /Resources <</Font 4 0 R /ProcSet [/PDF]>> /Rotate 180 /MediaBox [0 0 612 792] >>",
   )
   let (bytes, child_pages_offset) = append_indirect_object(
-    bytes,
-    header_base,
-    3,
-    0,
-    b"<< /Type /Pages /Kids [5 0 R] /Count 1 /Parent 2 0 R /Resources <</Font 5 0 R>> /Rotate 270 /MediaBox [0 0 400 400] >>",
+    bytes, header_base, 3, 0, b"<< /Type /Pages /Kids [5 0 R] /Count 1 /Parent 2 0 R /Resources <</Font 5 0 R>> /Rotate 270 /MediaBox [0 0 400 400] >>",
   )
   let (bytes, page_offset) = append_indirect_object(
     bytes, header_base, 5, 0, b"<< /Type /Page /Parent 3 0 R >>",
