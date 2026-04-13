@@ -1,0 +1,172 @@
+# Implementation Plan
+
+- [ ] 1. Foundation: shared semantic validation baseline
+- [ ] 1.1 Establish typed graphics diagnostics and reusable dictionary validation for XObjects, images, forms, and optional content
+  - Normalize how malformed dictionaries, missing required entries, unknown subtypes, and unsupported resource shapes are reported at the closest content or object offset.
+  - Preserve existing content and resource errors at package boundaries while giving XObject and optional-content failures distinguishable graphics diagnostics.
+  - Done: malformed direct image, form, and optional-content inputs fail with deterministic graphics diagnostics without importing document loading into graphics.
+  - _Requirements: 0.1, 0.6, 0.16, 0.24, 0.25, 0.33, 0.34_
+- [ ] 1.2 Create reusable semantic fixtures for direct streams, resource dictionaries, forms, and optional-content references
+  - Provide test construction paths for direct image and form streams, unresolved references, inline images, and Catalog optional-content dictionaries.
+  - Keep fixtures byte-oriented and standard-library-only so they can be reused across graphics and reader tests.
+  - Done: graphics and reader tests can exercise direct and materialized resource paths without duplicating large PDF byte fixtures.
+  - _Requirements: 0.1, 0.14, 0.15, 0.22, 0.33_
+
+- [ ] 2. XObject and image semantics
+- [ ] 2.1 Resolve Do XObject resources into image, form, unresolved, or typed failure outcomes
+  - Validate name operands, XObject resource lookup, stream requirement, optional Type, and required Subtype rules.
+  - Preserve indirect references explicitly when no materialized object is available.
+  - Done: direct image and form resources produce typed resource outcomes, while missing names, non-stream resources, and unknown subtypes raise graphics resource failures.
+  - _Requirements: 0.1_
+  - _Boundary: XObjectResourceResolver_
+- [ ] 2.2 Build base image descriptors and sample layout semantics
+  - Validate positive dimensions, ColorSpace restrictions, BitsPerComponent rules, JPX exceptions, and component count from the image colour space.
+  - Record raw or decoded byte availability and define the intrinsic image-space unit-square placement model without consuming invocation graphics state.
+  - Done: valid base images produce inspectable descriptors with sample layout and intrinsic placement semantics; invalid dimensions, Pattern colour spaces, and invalid bit depths fail.
+  - _Requirements: 0.2, 0.3, 0.4, 0.5, 0.6_
+  - _Boundary: ImageDescriptorModel_
+- [ ] 2.3 Add decode-array defaults and row bit layout validation
+  - Compute default decode ranges for Device, CIE-based, ICCBased, Indexed, Separation, and DeviceN images from colour-space metadata.
+  - Validate explicit Decode length and preserve inverted ranges; calculate byte-aligned row layout and optional decoded-length checks where supported filters yield bytes.
+  - Done: descriptors expose decode mappings and row layout, and tests show padded row bits do not affect subsequent rows.
+  - _Requirements: 0.3, 0.4, 0.7_
+  - _Boundary: ImageDescriptorModel_
+- [ ] 2.4 (P) Model image masks, explicit masks, colour-key masks, and soft-mask metadata
+  - Enforce ImageMask true forbids ColorSpace and Mask and requires one-bit semantics when BitsPerComponent is present.
+  - Validate direct or materialized explicit Mask streams, colour-key array count and ranges, SMask and SMaskInData exclusions, and soft-mask metadata preservation.
+  - Done: mask descriptors distinguish stencil, explicit, colour-key, and soft-mask cases, with invalid combinations rejected before image events are emitted.
+  - _Depends: 2.2_
+  - _Requirements: 0.6, 0.10, 0.11, 0.12, 0.13_
+  - _Boundary: ImageMaskModel_
+- [ ] 2.5 Preserve image interpolation, intent, alternates, and PDF 2.0 associated metadata
+  - Preserve Interpolate hints, rendering intent, Alternates entries, DefaultForPrinting, and alternate optional-content selection inputs without raster decisions.
+  - Record associated files, measure dictionaries, point data, name, structural parent, identifier, OPI, and metadata entries as structural image metadata where present.
+  - Done: base and alternate image dictionaries are represented structurally, alternate images cannot recursively contain Alternates, and print or optional-content selection inputs are observable.
+  - _Requirements: 0.6, 0.8, 0.9_
+  - _Boundary: ImageDescriptorModel_
+- [ ] 2.6 Validate inline images as image descriptors
+  - Normalize inline image entries and abbreviations, require PDF 2.0 Length semantics, enforce inline colour-space restrictions, and reject forbidden inline filters.
+  - Reconcile Length with captured image data and preserve the 4096-byte recommendation as a diagnostic or metadata according to local error conventions.
+  - Done: inline images produce the same descriptor family as XObject images, and invalid inline-only constraints fail before graphics image events are emitted.
+  - _Requirements: 0.2, 0.3, 0.4, 0.6, 0.14_
+  - _Boundary: InlineImageSemanticValidator_
+
+- [ ] 3. Form XObject semantics
+- [ ] 3.1 (P) Validate form dictionaries, group attributes, and reference metadata
+  - Validate Type 1 form requirements, BBox, Matrix defaults, Resources, structural parent exclusivity, group Type and subtype metadata, and reference F/Page/ID entries.
+  - Preserve proxy form behavior, printing selection metadata, annotation caveats, logical-structure caveats, and PDF 2.0 associated metadata without external PDF import.
+  - Done: valid forms produce inspectable form, group, and reference metadata; malformed dictionaries fail before nested content interpretation.
+  - _Depends: 1.1, 1.2_
+  - _Requirements: 0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21_
+  - _Boundary: FormXObjectInterpreter_
+- [ ] 3.2 Interpret form invocations as scoped nested graphics content
+  - Save the invocation graphics state, concatenate the form matrix, apply BBox clipping, select scoped resources, interpret loaded form content, and restore the parent state.
+  - Preserve event ordering so form begin precedes nested events and form end follows state restoration.
+  - Done: repeated form invocation leaves the parent graphics state unchanged after restore, while nested content events appear inside the form event boundaries.
+  - _Depends: 2.1, 3.1_
+  - _Requirements: 0.15, 0.16, 0.17, 0.19_
+  - _Boundary: FormXObjectInterpreter_
+- [ ] 3.3 Preserve reference proxy behavior during form execution
+  - Treat reference XObjects as ordinary proxy forms when imported target content is unavailable.
+  - Keep reference printing and special-consideration metadata visible on the interpreted form event model.
+  - Done: reference forms can be invoked through Do without attempting external document loading, and proxy metadata remains inspectable for later print/import features.
+  - _Depends: 3.1, 3.2_
+  - _Requirements: 0.18, 0.19, 0.20, 0.21_
+  - _Boundary: FormXObjectInterpreter_
+
+- [ ] 4. Optional-content semantics
+- [ ] 4.1 (P) Parse optional content groups and membership policies
+  - Validate optional content groups with Type, Name, Intent, and Usage and optional content membership dictionaries with OCGs, P, and VE.
+  - Ignore null or deleted group references, apply VE precedence over OCGs/P, and evaluate AllOn, AnyOn, AnyOff, AllOff, And, Or, and Not policies.
+  - Done: the visibility evaluator returns visible or hidden decisions for OCG and OCMD inputs under active intent filtering.
+  - _Depends: 1.1, 1.2_
+  - _Requirements: 0.22, 0.23, 0.24, 0.25, 0.26_
+  - _Boundary: OptionalContentEvaluator_
+- [ ] 4.2 Build optional-content configuration state
+  - Parse OCProperties, OCGs, default and alternate configurations, BaseState, ON, OFF, Intent, Order, ListMode, RBGroups, and Locked entries.
+  - Apply the default configuration to initialize group state, while missing OCProperties makes optional-content structures inert and visible.
+  - Done: default configuration state reflects BaseState and ON/OFF overrides, with configuration presentation metadata preserved.
+  - _Depends: 4.1_
+  - _Requirements: 0.31, 0.32, 0.33, 0.34, 0.36_
+  - _Boundary: OptionalContentEvaluator_
+- [ ] 4.3 Apply usage dictionaries and use-context state adjustments
+  - Parse usage dictionary categories and usage application dictionaries for View, Print, Export, Zoom, User, and Language contexts.
+  - Apply matching automatic state recommendations while leaving non-matching or missing categories unchanged as specified.
+  - Done: state construction can produce view, print, and export states and can apply zoom, user, and language recommendations deterministically.
+  - _Depends: 4.2_
+  - _Requirements: 0.35, 0.36_
+  - _Boundary: OptionalContentEvaluator_
+- [ ] 4.4 Resolve optional-content property lists for marked content and XObject entries
+  - Resolve marked-content OC property names through current Properties resources and accept direct materialized OCG or OCMD dictionaries.
+  - Answer visibility for marked-content scopes, DP references, and image or form XObject OC entries from the current optional-content state.
+  - Done: the evaluator can decide visibility for BDC/DP optional content and whole XObject optional content without document loading inside graphics.
+  - _Depends: 4.1, 4.2_
+  - _Requirements: 0.27, 0.28, 0.29, 0.30_
+  - _Boundary: OptionalContentEvaluator_
+
+- [ ] 5. Graphics interpreter integration
+- [ ] 5.1 Gate drawing events through marked-content visibility while preserving state side effects
+  - Maintain a visibility stack for BDC and EMC optional-content scopes and process DP optional-content declarations.
+  - Suppress drawing events when content is hidden while still applying graphics-state and other persistent state changes.
+  - Done: hidden marked-content leaves the same final graphics state as visible content, while visible-only paint events are absent from hidden scopes.
+  - _Depends: 4.4_
+  - _Requirements: 0.22, 0.27, 0.28, 0.29_
+  - _Boundary: GraphicsInterpreterIntegration_
+- [ ] 5.2 Emit typed image and inline-image events with placement and visibility metadata
+  - Enforce that Do and inline images are accepted only in valid graphics object contexts before descriptor validation or event emission.
+  - Replace raw image and inline-image sightings with validated descriptors, invocation graphics-state snapshots, and explicit skipped-image outcomes when optional content hides an image.
+  - Preserve unsupported image filter names as metadata and avoid device-dependent rendering, colour conversion, or codec execution outside supported byte checks.
+  - Done: visible image XObjects and inline images emit validated image events with invocation placement, and hidden image XObjects are skipped as whole encapsulated objects.
+  - _Depends: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 5.1_
+  - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14, 0.30_
+  - _Boundary: GraphicsInterpreterIntegration_
+- [ ] 5.3 Emit typed form events with nested content and whole-form visibility gating
+  - Invoke validated forms through Do, gate form OC entries as whole objects, and emit begin, nested, end, or skipped outcomes.
+  - Keep nested form interpretation device-independent and ensure hidden forms do not leak nested state changes into the parent stream.
+  - Done: visible form Do operations emit ordered form boundaries and nested events, while hidden form Do operations emit only the skipped outcome.
+  - _Depends: 3.1, 3.2, 3.3, 5.1_
+  - _Requirements: 0.1, 0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21, 0.28, 0.30_
+  - _Boundary: GraphicsInterpreterIntegration_
+
+- [ ] 6. Reader materialization and page API integration
+- [ ] 6.1 (P) Load Catalog optional-content properties into page-level state
+  - Resolve Catalog OCProperties and all listed OCG references through reader-owned object loading.
+  - Wrap malformed optional-content structures in document errors while preserving missing OCProperties as visible defaults.
+  - Done: document and page callers can obtain optional-content state from the default configuration and caller use context.
+  - _Depends: 4.1, 4.2, 4.3_
+  - _Requirements: 0.22, 0.23, 0.24, 0.25, 0.26, 0.31, 0.32, 0.33, 0.34, 0.35, 0.36_
+  - _Boundary: ReaderXObjectMaterializer_
+- [ ] 6.2 Materialize indirect XObject resources and detect recursive forms
+  - Load page and nested form XObject references on demand and prepare reader-owned materialized resource maps for graphics interpretation.
+  - Track form object identities during nested interpretation and fail before handing a repeated form cycle back to graphics.
+  - Done: reader materialization returns loaded image and form streams with recursion metadata, and recursive form references are rejected before graphics interpretation re-enters the same form.
+  - _Depends: 2.1, 3.1, 3.2_
+  - _Requirements: 0.1, 0.15, 0.16, 0.18, 0.19_
+  - _Boundary: ReaderXObjectMaterializer_
+- [ ] 6.3 Add page-level graphics interpretation with materialized XObjects and optional content
+  - Combine materialized XObject resources, optional-content state, page resources, and graphics initial state into a single reader-owned interpretation path.
+  - Preserve existing page graphics behavior for callers that do not request materialized resource semantics.
+  - Done: page graphics interpretation can produce typed XObject, image, form, and optional-content events from indirect resources while wrapping content and graphics failures as document errors.
+  - _Depends: 5.2, 5.3, 6.1, 6.2_
+  - _Requirements: 0.1, 0.15, 0.22, 0.28, 0.30, 0.33, 0.36_
+  - _Boundary: ReaderXObjectMaterializer, GraphicsInterpreterIntegration_
+
+- [ ] 7. Validation and API review
+- [ ] 7.1 Test XObject, image, mask, and inline-image semantics
+  - Cover missing resources, non-stream resources, invalid Type/Subtype, direct image resources, unresolved references, required image entries, bit depths, colour spaces, Decode defaults, masks, alternates, interpolation, and inline-image restrictions.
+  - Include public event assertions for visible images, hidden images, and inline-image descriptor emission.
+  - Done: graphics package tests pass for image and XObject cases and fail on the malformed cases described by the requirements.
+  - _Depends: 5.2_
+  - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14_
+- [ ] 7.2 Test form and optional-content semantics
+  - Cover form dictionary defaults, BBox clipping, matrix concatenation order, scoped resources, nested form ordering, state restoration, group metadata, reference metadata, OCG parsing, OCMD policies, VE precedence, intent filtering, marked-content side effects, DP resources, and XObject OC skipping.
+  - Include tests that hidden marked content still applies persistent state while hidden XObjects are skipped as encapsulated objects.
+  - Done: graphics package tests pass for form and optional-content behavior across visible and hidden states.
+  - _Depends: 5.1, 5.3_
+  - _Requirements: 0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.30_
+- [ ] 7.3 Test reader integration, regression behavior, formatting, and public API surface
+  - Cover Catalog OCProperties, indirect image and form XObjects, nested form resources, recursive form rejection, optional-content use contexts, document error wrapping, and unchanged legacy graphics behavior.
+  - Run formatting, package tests, and public interface generation so generated interface files reflect intentional API changes only.
+  - Done: project checks pass, generated public interfaces are updated where required, and reader tests demonstrate typed events from materialized page resources.
+  - _Depends: 6.3, 7.1, 7.2_
+  - _Requirements: 0.1, 0.15, 0.16, 0.18, 0.19, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.30, 0.31, 0.32, 0.33, 0.34, 0.35, 0.36_
