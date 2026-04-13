@@ -43,7 +43,7 @@ test "interpret content reports operand failure with source offset" {
 test "interpret content classifies deferred domains in input order" {
   let content = @content.parse_decoded_content(
     b"BT /F1 12 Tf ET /Im1 Do /Shade sh 0.5 g /Tag BMC EMC",
-    @content.ContentResources::empty(),
+    interpreter_test_shading_resources(),
   )
   let program = interpret_content(content, GraphicsInitialState::default())
   assert_eq(program.events.length(), 8)
@@ -61,7 +61,7 @@ test "interpret content classifies deferred domains in input order" {
     _ => fail("expected xobject event")
   }
   match program.events[4] {
-    ShadingSeen(_, name) =>
+    ShadingPainted(_, DirectShading(Some(name), _), _) =>
       assert_eq(name == @objects.PdfName::new(b"Shade"), true)
     _ => fail("expected shading event")
   }
@@ -70,4 +70,33 @@ test "interpret content classifies deferred domains in input order" {
       assert_eq(value.components, [0.5])
     _ => fail("expected color event")
   }
+}
+
+///|
+fn interpreter_test_shading_resources() -> @content.ContentResources {
+  let shading_dict : @objects.PdfDictionary = Map::new()
+  shading_dict[@objects.PdfName::new(b"ShadingType")] = @objects.PdfObject::Integer(
+    2L,
+  )
+  shading_dict[@objects.PdfName::new(b"ColorSpace")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"DeviceRGB"),
+  )
+  shading_dict[@objects.PdfName::new(b"Coords")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Integer(0L),
+    @objects.PdfObject::Integer(0L),
+    @objects.PdfObject::Integer(1L),
+    @objects.PdfObject::Integer(0L),
+  ])
+  shading_dict[@objects.PdfName::new(b"Function")] = @objects.PdfObject::Dictionary(
+    Map::new(),
+  )
+  let shadings : @objects.PdfDictionary = Map::new()
+  shadings[@objects.PdfName::new(b"Shade")] = @objects.PdfObject::Dictionary(
+    shading_dict,
+  )
+  let resources : @objects.PdfDictionary = Map::new()
+  resources[@objects.PdfName::new(b"Shading")] = @objects.PdfObject::Dictionary(
+    shadings,
+  )
+  @content.ContentResources::from_dictionary(resources)
 }

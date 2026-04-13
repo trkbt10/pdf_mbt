@@ -83,12 +83,15 @@ test "SC rejects ICCBased while SCN accepts it" {
 
 ///|
 test "SCN stores Pattern payloads with underlying components" {
-  let resources = resources_with_colour_space(
-    @objects.PdfName::new(b"P"),
-    @objects.PdfObject::Array([
-      @objects.PdfObject::Name(@objects.PdfName::new(b"Pattern")),
-      @objects.PdfObject::Name(@objects.PdfName::new(b"DeviceRGB")),
-    ]),
+  let colour_spaces : @objects.PdfDictionary = Map::new()
+  colour_spaces[@objects.PdfName::new(b"P")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Name(@objects.PdfName::new(b"Pattern")),
+    @objects.PdfObject::Name(@objects.PdfName::new(b"DeviceRGB")),
+  ])
+  let resources = resources_with_colour_spaces_and_patterns(
+    colour_spaces,
+    @objects.PdfName::new(b"Tile"),
+    colour_operator_tiling_stream(),
   )
   let content = @content.parse_decoded_content(
     b"/P cs 0.1 0.2 0.3 /Tile scn", resources,
@@ -97,6 +100,70 @@ test "SCN stores Pattern payloads with underlying components" {
   let value = program.final_state.nonstroking_colour.colour_value
   assert_eq(value.components, [0.1, 0.2, 0.3])
   assert_eq(value.pattern == Some(@objects.PdfName::new(b"Tile")), true)
+}
+
+///|
+fn resources_with_colour_spaces_and_patterns(
+  colour_spaces : @objects.PdfDictionary,
+  pattern_name : @objects.PdfName,
+  pattern_stream : @objects.PdfStream,
+) -> @content.ContentResources {
+  let patterns : @objects.PdfDictionary = Map::new()
+  patterns[pattern_name] = @objects.PdfObject::Stream(pattern_stream)
+  let resource_dict : @objects.PdfDictionary = Map::new()
+  resource_dict[@objects.PdfName::new(b"ColorSpace")] = @objects.PdfObject::Dictionary(
+    colour_spaces,
+  )
+  resource_dict[@objects.PdfName::new(b"Pattern")] = @objects.PdfObject::Dictionary(
+    patterns,
+  )
+  @content.ContentResources::from_dictionary(resource_dict)
+}
+
+///|
+fn colour_operator_tiling_stream() -> @objects.PdfStream {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Type")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"Pattern"),
+  )
+  dict[@objects.PdfName::new(b"PatternType")] = @objects.PdfObject::Integer(1L)
+  dict[@objects.PdfName::new(b"PaintType")] = @objects.PdfObject::Integer(2L)
+  dict[@objects.PdfName::new(b"TilingType")] = @objects.PdfObject::Integer(1L)
+  dict[@objects.PdfName::new(b"BBox")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Integer(0L),
+    @objects.PdfObject::Integer(0L),
+    @objects.PdfObject::Integer(10L),
+    @objects.PdfObject::Integer(10L),
+  ])
+  dict[@objects.PdfName::new(b"XStep")] = @objects.PdfObject::Integer(10L)
+  dict[@objects.PdfName::new(b"YStep")] = @objects.PdfObject::Integer(10L)
+  dict[@objects.PdfName::new(b"Resources")] = @objects.PdfObject::Dictionary(
+    Map::new(),
+  )
+  @objects.PdfStream::{ dict, data: b"" }
+}
+
+///|
+test "SCN rejects missing Pattern resources" {
+  let content = @content.parse_decoded_content(
+    b"/P cs 0.1 0.2 0.3 /Tile scn",
+    resources_with_colour_space(
+      @objects.PdfName::new(b"P"),
+      @objects.PdfObject::Array([
+        @objects.PdfObject::Name(@objects.PdfName::new(b"Pattern")),
+        @objects.PdfObject::Name(@objects.PdfName::new(b"DeviceRGB")),
+      ]),
+    ),
+  )
+  let result : Result[GraphicsProgram, PdfGraphicsError] = try? interpret_content(
+    content,
+    GraphicsInitialState::default(),
+  )
+  match result {
+    Err(ResourceFailure(_, reason)) =>
+      assert_eq(reason.contains("Pattern"), true)
+    _ => fail("expected missing Pattern resource failure")
+  }
 }
 
 ///|

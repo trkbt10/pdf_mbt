@@ -43,7 +43,15 @@ pub(all) enum GraphicsEvent {
   TextObjectEnded(Int64)
   ExternalObjectInvoked(Int64, @objects.PdfName)
   InlineImageSeen(@content.PdfInlineImage)
+  PatternColourSelected(
+    Int64,
+    ColourUse,
+    PatternResource,
+    ColourValue,
+    GraphicsState
+  )
   ShadingSeen(Int64, @objects.PdfName)
+  ShadingPainted(Int64, ShadingResource, GraphicsState)
   MarkedContentSeen(Int64, @content.StandardContentOperator)
   IgnoredFutureDomainOperator(Int64, @content.StandardContentOperator)
 } derive(Eq, Debug)
@@ -462,7 +470,18 @@ fn GraphicsInterpreter::classify_deferred_operator(
     PaintShading => {
       let name = single_name_operand(operation, "shading name")
       if !self.state.colour_restriction.is_restricted() {
-        self.events.push(GraphicsEvent::ShadingSeen(operation.offset, name))
+        let resource = resolve_shading_resource(
+          self.resources,
+          name,
+          operation.offset,
+        )
+        self.events.push(
+          GraphicsEvent::ShadingPainted(
+            operation.offset,
+            resource,
+            self.state.copy(),
+          ),
+        )
       }
     }
     _ if is_marked_content_operator(operation.operator) =>

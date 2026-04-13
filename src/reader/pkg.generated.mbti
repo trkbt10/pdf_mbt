@@ -147,9 +147,12 @@ pub fn PdfPage::inherited_entry(Self, @objects.PdfName) -> @objects.PdfObject? r
 pub fn PdfPage::media_box(Self) -> PdfRectangle? raise PdfDocumentError
 pub fn PdfPage::object_id(Self) -> @objects.ObjectId
 pub fn PdfPage::parent_ref(Self) -> @objects.ObjectId?
+pub fn PdfPage::pattern_resource(Self, @objects.PdfName) -> @graphics.PatternResource raise PdfDocumentError
+pub fn PdfPage::pattern_resources(Self) -> Array[@graphics.PatternResource] raise PdfDocumentError
 pub fn PdfPage::resolve_entry(Self, @objects.PdfName) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfPage::resources(Self) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfPage::rotate(Self) -> Int? raise PdfDocumentError
+pub fn PdfPage::shading_resource(Self, @objects.PdfName) -> @graphics.ShadingResource raise PdfDocumentError
 pub fn PdfPage::user_unit(Self) -> Double? raise PdfDocumentError
 
 pub(all) struct PdfRectangle {

@@ -130,6 +130,42 @@ fn GraphicsInterpreter::apply_explicit_colour(
     self.state.set_colour_value(colour_use, value, operation.offset)
   } else {
     let value = scn_colour_value(state.colour_space, operation)
+    match state.colour_space {
+      Pattern(_) =>
+        match value.pattern {
+          Some(pattern_name) => {
+            let resource = resolve_pattern_resource(
+              self.resources,
+              pattern_name,
+              operation.offset,
+            )
+            validate_pattern_selection(
+              resource,
+              state.colour_space,
+              value,
+              operation.offset,
+            )
+            self.state.set_colour_value(colour_use, value, operation.offset)
+            let selected = self.state.colour_state(colour_use).colour_value
+            self.events.push(
+              GraphicsEvent::PatternColourSelected(
+                operation.offset,
+                colour_use,
+                resource,
+                selected,
+                self.state.copy(),
+              ),
+            )
+            return
+          }
+          None =>
+            raise PdfGraphicsError::BadOperand(
+              operation.offset,
+              "SCN/scn Pattern colour requires a pattern name",
+            )
+        }
+      _ => ()
+    }
     self.state.set_colour_value(colour_use, value, operation.offset)
   }
   self.emit_colour_change(operation.offset, colour_use)
@@ -276,7 +312,7 @@ pub fn resolve_default_device_space(
 }
 
 ///|
-fn ColourDefaults::from_resources(
+pub fn ColourDefaults::from_resources(
   resources : @content.ContentResources,
   offset : Int64,
 ) -> ColourDefaults raise PdfGraphicsError {

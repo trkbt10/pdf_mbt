@@ -14,6 +14,14 @@ pub fn interpret_content(@content.ContentStream, GraphicsInitialState) -> Graphi
 
 pub fn parse_colour_space_object(@objects.PdfObject, ColourDefaults, Int64) -> ColourSpace raise PdfGraphicsError
 
+pub fn parse_pattern_object(@objects.PdfName, @objects.PdfObject, ColourDefaults, Int64) -> PatternResource raise PdfGraphicsError
+
+pub fn parse_shading_object(@objects.PdfName?, @objects.PdfObject, ColourDefaults, Int64) -> ShadingResource raise PdfGraphicsError
+
+pub fn parse_shading_pattern_dictionary(Map[@objects.PdfName, @objects.PdfObject], ColourDefaults, Int64) -> ShadingPattern raise PdfGraphicsError
+
+pub fn parse_tiling_pattern_stream(@objects.PdfStream, Int64) -> TilingPattern raise PdfGraphicsError
+
 pub fn rendering_intent_from_name(@objects.PdfName) -> RenderingIntent
 
 pub fn resolve_content_colour_space(@content.ContentResources, @objects.PdfName, Int64) -> ColourSpace raise PdfGraphicsError
@@ -22,7 +30,13 @@ pub fn resolve_default_device_space(@content.ContentResources, DeviceColourSpace
 
 pub fn resolve_ext_gstate(@content.ContentResources, @objects.PdfName, Int64) -> ExtGStatePatch raise PdfGraphicsError
 
+pub fn resolve_pattern_resource(@content.ContentResources, @objects.PdfName, Int64) -> PatternResource raise PdfGraphicsError
+
+pub fn resolve_shading_resource(@content.ContentResources, @objects.PdfName, Int64) -> ShadingResource raise PdfGraphicsError
+
 pub fn validate_icc_profile_stream(@objects.PdfStream, Int64) -> IccProfileInfo raise PdfGraphicsError
+
+pub fn validate_tiling_pattern_cell(TilingPattern, GraphicsInitialState, Int64) -> GraphicsProgram raise PdfGraphicsError
 
 // Errors
 pub(all) suberror PdfGraphicsError {
@@ -36,6 +50,15 @@ pub(all) suberror PdfGraphicsError {
 } derive(Eq, @debug.Debug)
 
 // Types and methods
+pub(all) struct AxialShading {
+  coords : Array[Double]
+  domain : Array[Double]
+  function : @objects.PdfObject
+  extend_start : Bool
+  extend_end : Bool
+  coincident_axis : Bool
+} derive(Eq, @debug.Debug)
+
 pub(all) enum BlackPointCompensation {
   BlackPointOn
   BlackPointOff
@@ -74,6 +97,7 @@ pub(all) struct ColourDefaults {
   default_cmyk : @objects.PdfObject?
 } derive(Eq, @debug.Debug)
 pub fn ColourDefaults::empty() -> Self
+pub fn ColourDefaults::from_resources(@content.ContentResources, Int64) -> Self raise PdfGraphicsError
 
 pub(all) struct ColourRange {
   min : Double
@@ -119,6 +143,15 @@ pub(all) struct ColourValue {
   pattern : @objects.PdfName?
 } derive(Eq, @debug.Debug)
 pub fn ColourValue::copy(Self) -> Self
+
+pub(all) struct CoonsPatchMeshShading {
+  bits_per_coordinate : Int
+  bits_per_component : Int
+  bits_per_flag : Int
+  decode : Array[Double]
+  function : @objects.PdfObject?
+  summary : PatchMeshSummary
+} derive(Eq, @debug.Debug)
 
 type CurrentPath derive(Eq, @debug.Debug)
 
@@ -177,6 +210,21 @@ pub(all) enum FillRule {
   EvenOdd
 } derive(Eq, @debug.Debug)
 
+pub(all) struct FreeFormMeshShading {
+  bits_per_coordinate : Int
+  bits_per_component : Int
+  bits_per_flag : Int
+  decode : Array[Double]
+  function : @objects.PdfObject?
+  summary : MeshSummary
+} derive(Eq, @debug.Debug)
+
+pub(all) struct FunctionBasedShading {
+  domain : Array[Double]
+  matrix : GraphicsMatrix
+  function : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
 pub(all) enum GraphicsEvent {
   StateSaved(Int64, GraphicsState)
   StateRestored(Int64, GraphicsState)
@@ -187,7 +235,9 @@ pub(all) enum GraphicsEvent {
   TextObjectEnded(Int64)
   ExternalObjectInvoked(Int64, @objects.PdfName)
   InlineImageSeen(@content.PdfInlineImage)
+  PatternColourSelected(Int64, ColourUse, PatternResource, ColourValue, GraphicsState)
   ShadingSeen(Int64, @objects.PdfName)
+  ShadingPainted(Int64, ShadingResource, GraphicsState)
   MarkedContentSeen(Int64, @content.StandardContentOperator)
   IgnoredFutureDomainOperator(Int64, @content.StandardContentOperator)
 } derive(Eq, @debug.Debug)
@@ -339,6 +389,15 @@ pub(all) struct LabParams {
   range : Array[Double]
 } derive(Eq, @debug.Debug)
 
+pub(all) struct LatticeMeshShading {
+  bits_per_coordinate : Int
+  bits_per_component : Int
+  vertices_per_row : Int
+  decode : Array[Double]
+  function : @objects.PdfObject?
+  summary : MeshSummary
+} derive(Eq, @debug.Debug)
+
 pub(all) enum LineCapStyle {
   ButtCap
   RoundCap
@@ -352,6 +411,21 @@ pub(all) enum LineJoinStyle {
   BevelJoin
 } derive(Eq, @debug.Debug)
 pub fn LineJoinStyle::from_int(Int64, Int64) -> Self raise PdfGraphicsError
+
+type MeshCommonParams derive(Eq, @debug.Debug)
+
+pub(all) struct MeshSummary {
+  vertex_count : Int
+  triangle_count : Int
+  decoded_length : Int
+} derive(Eq, @debug.Debug)
+
+type MsbBitReader derive(Eq, @debug.Debug)
+
+pub(all) struct PatchMeshSummary {
+  patch_count : Int
+  decoded_length : Int
+} derive(Eq, @debug.Debug)
 
 pub(all) enum PathPaintOperation {
   StrokePath
@@ -375,8 +449,31 @@ pub(all) struct PathSubpath {
   closed : Bool
 } derive(Eq, @debug.Debug)
 
+pub(all) enum PatternDefinition {
+  Tiling(TilingPattern)
+  Shading(ShadingPattern)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PatternPaintType {
+  Coloured
+  Uncoloured
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PatternParams {
   underlying : ColourSpace?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PatternResource {
+  DirectPattern(@objects.PdfName, PatternDefinition)
+  IndirectPattern(@objects.PdfName, @objects.ObjectId)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct RadialShading {
+  coords : Array[Double]
+  domain : Array[Double]
+  function : @objects.PdfObject
+  extend_start : Bool
+  extend_end : Bool
 } derive(Eq, @debug.Debug)
 
 pub(all) enum RenderingIntent {
@@ -390,6 +487,65 @@ pub(all) struct SeparationParams {
   colorant : @objects.PdfName
   alternate : ColourSpace
   tint_transform : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Shading {
+  common : ShadingCommon
+  kind : ShadingKind
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ShadingCommon {
+  colour_space : ColourSpace
+  background : Array[Double]?
+  bbox : GraphicsRect?
+  anti_alias : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ShadingKind {
+  FunctionBased(FunctionBasedShading)
+  Axial(AxialShading)
+  Radial(RadialShading)
+  FreeFormMesh(FreeFormMeshShading)
+  LatticeMesh(LatticeMeshShading)
+  CoonsPatchMesh(CoonsPatchMeshShading)
+  TensorPatchMesh(TensorPatchMeshShading)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ShadingPattern {
+  shading : ShadingResource
+  matrix : GraphicsMatrix
+  ext_gstate : Map[@objects.PdfName, @objects.PdfObject]?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ShadingResource {
+  DirectShading(@objects.PdfName?, Shading)
+  IndirectShading(@objects.PdfName?, @objects.ObjectId)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TensorPatchMeshShading {
+  bits_per_coordinate : Int
+  bits_per_component : Int
+  bits_per_flag : Int
+  decode : Array[Double]
+  function : @objects.PdfObject?
+  summary : PatchMeshSummary
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TilingPattern {
+  paint_type : PatternPaintType
+  tiling_type : TilingType
+  bbox : GraphicsRect
+  x_step : Double
+  y_step : Double
+  resources : Map[@objects.PdfName, @objects.PdfObject]
+  matrix : GraphicsMatrix
+  stream : @objects.PdfStream
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TilingType {
+  ConstantSpacing
+  NoDistortion
+  ConstantSpacingFast
 } derive(Eq, @debug.Debug)
 
 // Type aliases
