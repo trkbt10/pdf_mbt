@@ -1,7 +1,7 @@
 # Implementation Plan
 
-- [ ] 1. Establish the text interpretation foundation
-- [ ] 1.1 Create the text package boundary and failure model
+- [x] 1. Establish the text interpretation foundation
+- [x] 1.1 Create the text package boundary and failure model
   - Add the text interpretation package with only the approved object, content, and filter dependencies.
   - Define deterministic text failures for bad operands, invalid text state, missing resources, invalid fonts, invalid CMaps, Unicode conversion failures, and wrapped content or filter failures.
   - Preserve source instruction offsets and resource context in failures so page-level callers can report actionable diagnostics.
@@ -9,7 +9,7 @@
   - _Requirements: 1.1, 1.2, 1.13, 2.1, 2.11_
   - _Boundary: TextInterpreter_
 
-- [ ] 1.2 Implement text-space value primitives
+- [x] 1.2 Implement text-space value primitives
   - Represent text matrices, writing modes, rendering modes, glyph metrics, text rendering matrix snapshots, and text paint intent without renderer-specific output.
   - Support identity, replacement, line translation, glyph advance translation, horizontal scaling, text rise, and CTM-like composition in PDF matrix order.
   - Expose predicates for fill, stroke, invisible, and clipping rendering modes while keeping Type 3 exceptions observable for later interpretation.
@@ -17,7 +17,7 @@
   - _Requirements: 1.3, 1.4, 1.8, 1.10, 1.11, 1.16_
   - _Boundary: TextStateMachine_
 
-- [ ] 1.3 Define text program, event, resource, and extraction summaries
+- [x] 1.3 Define text program, event, resource, and extraction summaries
   - Model ordered text events, source strings, decoded glyphs, Unicode mappings, text spans, text resources, and final text state as inspectable values.
   - Keep glyph identity, source bytes, fallback flags, text matrix snapshots, and Unicode output separate so extraction does not erase display semantics.
   - Preserve empty strings and per-operator grouping in events while allowing consecutive extracted mappings to form spans.
@@ -25,7 +25,7 @@
   - _Requirements: 1.2, 1.15, 2.29, 2.30_
   - _Boundary: TextInterpreter, UnicodeMapper_
 
-- [ ] 1.4 Establish bounded parsing and cache prerequisites
+- [x] 1.4 Establish bounded parsing and cache prerequisites
   - Add shared guards for bounded CMap recursion, bounded codespace lengths, bounded range expansion, and per-interpretation cache ownership.
   - Normalize malformed untrusted stream data into text errors without executing embedded font programs or using runtime network or system font APIs.
   - Keep static generated data source-controlled and reachable through direct lookups rather than linear scans in common paths.

@@ -1,0 +1,264 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/text"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/pdf/src/content",
+  "trkbt10/pdf/src/filters",
+  "trkbt10/pdf/src/objects",
+}
+
+// Values
+
+// Errors
+pub(all) suberror PdfTextError {
+  BadOperand(TextErrorContext, String)
+  InvalidTextState(TextErrorContext, String)
+  MissingResource(TextErrorContext, String)
+  InvalidFont(TextErrorContext, String)
+  InvalidCMap(TextErrorContext, String)
+  UnicodeConversion(TextErrorContext, String)
+  GuardLimitExceeded(TextErrorContext, String)
+  ContentFailure(TextErrorContext, @content.PdfContentError)
+  FilterFailure(TextErrorContext, @filters.PdfFilterError)
+} derive(Eq, @debug.Debug)
+
+// Types and methods
+pub(all) struct DecodedGlyph {
+  source_bytes : Bytes
+  source_code : Int
+  glyph : GlyphIdentifier
+  metrics : GlyphMetrics
+  word_spacing_eligible : Bool
+  fallback : GlyphFallback
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ExtractedText {
+  spans : Array[TextSpan]
+} derive(Eq, @debug.Debug)
+pub fn ExtractedText::from_spans(Array[TextSpan]) -> Self
+
+pub(all) struct FontResourceSummary {
+  resource_name : @objects.PdfName
+  font_object : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GlyphFallback {
+  NoFallback
+  NotdefGlyph
+  MissingUnicode
+  CIDZero
+  ProcessorChoice
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GlyphIdentifier {
+  GlyphName(@objects.PdfName)
+  CharacterCode(Int)
+  CID(Int)
+  Notdef
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GlyphMetrics {
+  horizontal_displacement : Double
+  vertical_displacement_x : Double
+  vertical_displacement_y : Double
+  vertical_origin_x : Double
+  vertical_origin_y : Double
+  width_source : GlyphWidthSource
+} derive(Eq, @debug.Debug)
+pub fn GlyphMetrics::unknown() -> Self
+
+pub(all) enum GlyphWidthSource {
+  FontDictionary
+  FontDescriptorMissingWidth
+  Standard14Fallback
+  CIDDefaultWidth
+  CIDExplicitWidth
+  Type3GlyphProgram
+  UnknownWidth
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TextErrorContext {
+  offset : Int64
+  resource : String?
+} derive(Eq, @debug.Debug)
+pub fn TextErrorContext::at(Int64) -> Self
+pub fn TextErrorContext::with_resource(Int64, String) -> Self
+
+pub(all) enum TextEvent {
+  BeginTextObject(Int64)
+  EndTextObject(Int64)
+  SourceString(TextSourceString)
+  EmptyString(TextSourceString)
+  GlyphShown(TextGlyphEvent)
+  ClippingSummary(Int64, Array[GlyphIdentifier])
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TextGlyphEvent {
+  offset : Int64
+  source : TextSourceString
+  glyph : DecodedGlyph
+  unicode : UnicodeMapping
+  text_matrix : TextMatrix
+  rendering_matrix : TextRenderingMatrix
+  paint : TextPaintIntent
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TextInitialState {
+  ctm : TextMatrix
+  text_knockout : Bool
+} derive(Eq, @debug.Debug)
+pub fn TextInitialState::default() -> Self
+
+pub(all) struct TextInterpretationCache {
+  limits : TextInterpretationLimits
+  mut entry_count : Int
+} derive(Eq, @debug.Debug)
+pub fn TextInterpretationCache::new(TextInterpretationLimits) -> Self
+pub fn TextInterpretationCache::track_entry(Self, TextErrorContext) -> Unit raise PdfTextError
+pub fn TextInterpretationCache::with_default_limits() -> Self
+
+pub(all) struct TextInterpretationLimits {
+  max_cmap_use_depth : Int
+  max_codespace_length : Int
+  max_range_expansion : Int
+  max_cache_entries : Int
+} derive(Eq, @debug.Debug)
+pub fn TextInterpretationLimits::default() -> Self
+pub fn TextInterpretationLimits::validate_cmap_use_depth(Self, Int, TextErrorContext) -> Unit raise PdfTextError
+pub fn TextInterpretationLimits::validate_codespace_length(Self, Int, TextErrorContext) -> Unit raise PdfTextError
+pub fn TextInterpretationLimits::validate_range_expansion(Self, Int, TextErrorContext) -> Unit raise PdfTextError
+
+pub(all) struct TextMatrix {
+  a : Double
+  b : Double
+  c : Double
+  d : Double
+  e : Double
+  f : Double
+} derive(Eq, @debug.Debug)
+pub fn TextMatrix::concat(Self, Self) -> Self
+pub fn TextMatrix::from_six(Double, Double, Double, Double, Double, Double) -> Self
+pub fn TextMatrix::glyph_advance_translation(Double, Double) -> Self
+pub fn TextMatrix::identity() -> Self
+pub fn TextMatrix::replace_with(Self, Self) -> Self
+pub fn TextMatrix::scale(Double, Double) -> Self
+pub fn TextMatrix::text_state_matrix(Double, Double, Double) -> Self
+pub fn TextMatrix::transform_point(Self, TextPoint) -> TextPoint
+pub fn TextMatrix::translated(Self, Double, Double) -> Self
+pub fn TextMatrix::translation(Double, Double) -> Self
+
+pub(all) struct TextObjectState {
+  text_matrix : TextMatrix
+  text_line_matrix : TextMatrix
+} derive(Eq, @debug.Debug)
+pub fn TextObjectState::initial() -> Self
+pub fn TextObjectState::move_line(Self, Double, Double) -> Self
+pub fn TextObjectState::set_text_matrix(Self, TextMatrix) -> Self
+
+pub(all) struct TextPaintIntent {
+  fill : Bool
+  stroke : Bool
+  invisible : Bool
+  clip : Bool
+  type3_clip_suppressed : Bool
+} derive(Eq, @debug.Debug)
+pub fn TextPaintIntent::from_rendering_mode(TextRenderingMode, Bool) -> Self
+
+pub(all) struct TextPoint {
+  x : Double
+  y : Double
+} derive(Eq, @debug.Debug)
+pub fn TextPoint::new(Double, Double) -> Self
+
+pub(all) struct TextProgram {
+  events : Array[TextEvent]
+  spans : Array[TextSpan]
+  final_state : TextState
+} derive(Eq, @debug.Debug)
+pub fn TextProgram::empty() -> Self
+
+pub(all) struct TextRenderingMatrix {
+  matrix : TextMatrix
+} derive(Eq, @debug.Debug)
+pub fn TextRenderingMatrix::from_text_state(TextMatrix, Double, Double, Double, TextMatrix) -> Self
+
+pub(all) enum TextRenderingMode {
+  Fill
+  Stroke
+  FillStroke
+  Invisible
+  FillClip
+  StrokeClip
+  FillStrokeClip
+  Clip
+} derive(Eq, @debug.Debug)
+pub fn TextRenderingMode::clips(Self) -> Bool
+pub fn TextRenderingMode::fills(Self) -> Bool
+pub fn TextRenderingMode::from_int(Int64, TextErrorContext) -> Self raise PdfTextError
+pub fn TextRenderingMode::is_invisible(Self) -> Bool
+pub fn TextRenderingMode::strokes(Self) -> Bool
+
+pub(all) struct TextResources {
+  content_resources : @content.ContentResources
+  fonts : Map[@objects.PdfName, FontResourceSummary]
+  ext_g_states : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+pub fn TextResources::empty() -> Self
+pub fn TextResources::from_content_resources(@content.ContentResources, Int64) -> Self raise PdfTextError
+
+pub(all) struct TextSourceString {
+  bytes : Bytes
+  operator_offset : Int64
+  group_index : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TextSpan {
+  offset : Int64
+  font_name : @objects.PdfName?
+  text : String
+  mappings : Array[UnicodeMapping]
+  source_bytes : Bytes
+  text_matrix : TextMatrix
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TextState {
+  character_spacing : Double
+  word_spacing : Double
+  horizontal_scaling : Double
+  leading : Double
+  font_name : @objects.PdfName?
+  font_size : Double?
+  rendering_mode : TextRenderingMode
+  text_rise : Double
+  text_knockout : Bool
+} derive(Eq, @debug.Debug)
+pub fn TextState::initial() -> Self
+pub fn TextState::with_font(Self, @objects.PdfName, Double) -> Self
+
+pub(all) struct TextStateSnapshot {
+  state : TextState
+  object_state : TextObjectState?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TextStateStack {
+  stack : Array[TextStateSnapshot]
+} derive(Eq, @debug.Debug)
+pub fn TextStateStack::new() -> Self
+pub fn TextStateStack::restore(Self, TextErrorContext) -> TextStateSnapshot raise PdfTextError
+pub fn TextStateStack::save(Self, TextState, TextObjectState?) -> Unit
+
+pub(all) enum UnicodeMapping {
+  Unicode(String)
+  Unknown(Bytes, GlyphIdentifier, GlyphFallback)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum WritingMode {
+  Horizontal
+  Vertical
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+
