@@ -31,7 +31,7 @@
   - _Boundary: DocumentFacade_
 
 - [ ] 3. Build lazy page indexing and indexed page access
-- [ ] 3.1 Traverse page tree nodes in document order
+- [x] 3.1 Traverse page tree nodes in document order
   - Load the root page tree node from the catalog and validate `Pages` nodes with `Kids` and non-negative `Count` entries.
   - Traverse child references recursively from left to right and accept only intermediate `Pages` nodes or leaf `Page` objects.
   - Reject malformed child entries, repeated intermediate nodes, cycles, and count mismatches.
