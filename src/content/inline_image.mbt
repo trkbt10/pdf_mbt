@@ -1,8 +1,11 @@
 ///|
-/// Parsed inline image instruction data from a `BI` dictionary, `ID` image
-/// data marker, and `EI` end marker. The dictionary stores expanded canonical
-/// names such as Width, Height, BitsPerComponent, and ColorSpace, while `data`
-/// preserves the exact raw image bytes between `ID` and `EI`.
+/// Parsed inline image instruction data per ISO 32000-2 §8.9.7 from a `BI`
+/// dictionary, `ID` image data marker, and `EI` end marker. The instruction
+/// contains the image dictionary and raw byte data. The dictionary stores
+/// expanded abbreviated key names: `W` for `Width`, `H` for `Height`, `BPC`
+/// for `BitsPerComponent`, `CS` for `ColorSpace`, and related inline image
+/// abbreviations, while `data` preserves the exact raw image bytes between
+/// `ID` and `EI`.
 pub(all) struct PdfInlineImage {
   dictionary : @objects.PdfDictionary
   data : Bytes
@@ -13,7 +16,8 @@ pub(all) struct PdfInlineImage {
 
 ///|
 /// Reads inline image dictionaries and raw image data without tokenizing image
-/// bytes after the `ID` operator.
+/// bytes after the `ID` operator. It collects key-value pairs until `ID`,
+/// consumes the single white-space byte before image data, and scans for `EI`.
 pub(all) struct InlineImageReader {
   reader : ContentOperandReader
 }
@@ -29,6 +33,8 @@ pub fn InlineImageReader::new(input : Bytes) -> InlineImageReader {
 ///|
 /// Parses one inline image value, expanding abbreviated image dictionary keys
 /// before returning the dictionary, raw data bytes, and start/data/end offsets.
+/// This handles inline image data introduced by `BI`, `ID`, and `EI` as a
+/// special case for content stream tokenization.
 pub fn InlineImageReader::parse(
   self : InlineImageReader,
   start_offset : Int64,
