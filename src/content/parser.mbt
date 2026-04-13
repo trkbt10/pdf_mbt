@@ -63,9 +63,11 @@ pub(all) enum ContentInstruction {
 
 ///|
 /// Parsed decoded content stream aggregate preserving source order for every
-/// operation and inline image instruction emitted by the iteration API.
+/// operation and inline image instruction emitted by the iteration API, paired
+/// with the resource dictionary context used for this content stream.
 pub(all) struct ContentStream {
   instructions : Array[ContentInstruction]
+  resources : ContentResources
 } derive(Eq, Debug)
 
 ///|
@@ -76,15 +78,27 @@ pub(all) struct ContentStreamParser {
   reader : ContentOperandReader
   operands : Array[@objects.PdfObject]
   compatibility : CompatibilityTracker
+  resources : ContentResources
 }
 
 ///|
 /// Creates a content stream parser over already-decoded bytes.
 pub fn ContentStreamParser::new(input : Bytes) -> ContentStreamParser {
+  ContentStreamParser::with_resources(input, ContentResources::empty())
+}
+
+///|
+/// Creates a content stream parser over already-decoded bytes with an explicit
+/// resource dictionary context for downstream resource lookup.
+pub fn ContentStreamParser::with_resources(
+  input : Bytes,
+  resources : ContentResources,
+) -> ContentStreamParser {
   ContentStreamParser::{
     reader: ContentOperandReader::new(input),
     operands: [],
     compatibility: CompatibilityTracker::new(),
+    resources,
   }
 }
 
@@ -144,7 +158,7 @@ pub fn ContentStreamParser::parse_all(
   while self.parse_next() is Some(instruction) {
     instructions.push(instruction)
   }
-  ContentStream::{ instructions, }
+  ContentStream::{ instructions, resources: self.resources }
 }
 
 ///|

@@ -9,6 +9,10 @@ import {
 }
 
 // Values
+pub fn parse_content_stream(@objects.PdfStream, ContentResources) -> ContentStream raise PdfContentError
+
+pub fn parse_decoded_content(Bytes, ContentResources) -> ContentStream raise PdfContentError
+
 pub fn recognize_operator(Bytes) -> StandardContentOperator?
 
 // Errors
@@ -74,18 +78,21 @@ pub fn ContentResources::lookup_resource(Self, ResourceCategory, @objects.PdfNam
 
 pub(all) struct ContentStream {
   instructions : Array[ContentInstruction]
+  resources : ContentResources
 } derive(Eq, @debug.Debug)
 
 pub(all) struct ContentStreamParser {
   reader : ContentOperandReader
   operands : Array[@objects.PdfObject]
   compatibility : CompatibilityTracker
+  resources : ContentResources
 }
 pub fn ContentStreamParser::compatibility_depth(Self) -> Int
 pub fn ContentStreamParser::new(Bytes) -> Self
 pub fn ContentStreamParser::parse_all(Self) -> ContentStream raise PdfContentError
 pub fn ContentStreamParser::parse_next(Self) -> ContentInstruction? raise PdfContentError
 pub fn ContentStreamParser::parse_next_operation(Self) -> ContentOperation? raise PdfContentError
+pub fn ContentStreamParser::with_resources(Bytes, ContentResources) -> Self
 
 pub(all) struct InlineImageReader {
   reader : ContentOperandReader
