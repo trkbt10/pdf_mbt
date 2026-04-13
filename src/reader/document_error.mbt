@@ -11,6 +11,7 @@ pub(all) suberror PdfDocumentError {
   InvalidInheritedAttribute(@objects.ObjectId, @objects.PdfName, String)
   InvalidNameTree(@objects.PdfName, String)
   ContentError(@content.PdfContentError)
+  GraphicsError(@graphics.PdfGraphicsError)
   PageIndexOutOfRange(Int, Int)
   CycleDetected(@objects.ObjectId, String)
 } derive(Eq, Debug)

@@ -4,4 +4,5 @@ import {
   "trkbt10/pdf/src/parser",
   "trkbt10/pdf/src/filters",
   "trkbt10/pdf/src/content",
+  "trkbt10/pdf/src/graphics",
 }
