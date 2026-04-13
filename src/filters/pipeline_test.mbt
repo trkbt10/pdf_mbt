@@ -16,12 +16,59 @@ test "decode_stream returns raw bytes unchanged when filter is absent" {
 }
 
 ///|
-test "decode_stream_bytes treats a null filter entry as decoded bytes" {
+test "decode_stream_bytes rejects a null filter entry" {
   let dict : @objects.PdfDictionary = Map::new()
   dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Null
   let data = Bytes::from_array([b'\x10', b'\x20'])
-  let decoded = @filters.decode_stream_bytes(dict, data)
-  assert_eq(decoded, data)
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Err(InvalidFilterSpec(reason)) => assert_eq(reason.contains("Filter"), true)
+    _ => fail("expected null filter entry to be rejected")
+  }
+}
+
+///|
+test "decode_stream_bytes rejects mismatched decode parms arrays before filters" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Name(@objects.PdfName::new(b"Crypt")),
+    @objects.PdfObject::Name(@objects.PdfName::new(b"FlateDecode")),
+  ])
+  dict[@objects.PdfName::new(b"DecodeParms")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Null,
+  ])
+  let data = Bytes::from_array([b'X', b'Y'])
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Err(InvalidFilterSpec(reason)) =>
+      assert_eq(reason.contains("DecodeParms"), true)
+    _ => fail("expected mismatched decode parms to be rejected")
+  }
+}
+
+///|
+test "decode_stream_bytes rejects indirect decode parms before filters" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"Crypt"),
+  )
+  dict[@objects.PdfName::new(b"DecodeParms")] = @objects.PdfObject::Ref(@objects.ObjectId::{
+    object_number: 9,
+    generation_number: 0,
+  })
+  let data = Bytes::from_array([b'A', b'B'])
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Err(InvalidFilterSpec(reason)) =>
+      assert_eq(reason.contains("DecodeParms"), true)
+    _ => fail("expected indirect decode parms to be rejected")
+  }
 }
 
 ///|

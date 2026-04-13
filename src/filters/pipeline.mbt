@@ -13,29 +13,18 @@ pub fn decode_stream_bytes(
   dict : @objects.PdfDictionary,
   data : Bytes,
 ) -> Bytes raise PdfFilterError {
-  let filter_key = @objects.PdfName::new(b"Filter")
-  match dict.get(filter_key) {
+  let pipeline = normalize_pipeline(dict)
+  match pipeline.get(0) {
     None => data
-    Some(value) => handle_filter_entry(value, data)
+    Some(spec) => execute_pipeline(spec, data)
   }
 }
 
 ///|
-fn handle_filter_entry(
-  filter_entry : @objects.PdfObject,
+fn execute_pipeline(
+  spec : FilterSpec,
   data : Bytes,
 ) -> Bytes raise PdfFilterError {
-  match filter_entry {
-    @objects.PdfObject::Null => data
-    @objects.PdfObject::Name(name) =>
-      raise PdfFilterError::UnsupportedFilter(name.to_text())
-    @objects.PdfObject::Array(_) =>
-      raise PdfFilterError::InvalidFilterSpec(
-        "filter arrays are not yet supported",
-      )
-    _ =>
-      raise PdfFilterError::InvalidFilterSpec(
-        "Filter entry must be a name, array, or null",
-      )
-  }
+  data |> ignore
+  raise PdfFilterError::UnsupportedFilter(spec.name.to_text())
 }

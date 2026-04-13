@@ -15,12 +15,15 @@
   - Tests can assert the error category, filter name, and reason without parsing a formatted message.
   - _Requirements: 7.1, 7.2, 7.3, 8.4_
 
-- [ ] 1.3 Normalize filter and decode-parameter entries
+- [x] 1.3 Normalize filter and decode-parameter entries
   - Accept `Filter` as either one name or an ordered array of names.
   - Accept omitted, dictionary, array, and null decode-parameter forms according to the filter count.
   - Reject mismatched parameter arrays, malformed filter entries, indirect parameter references, and unsupported parameter shapes before any bytes are decoded.
   - Black-box pipeline tests show each normalized filter receives the parameter dictionary aligned to its position.
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 7.3_
+
+## Implementation Notes
+- `Filter` null entries are rejected as malformed input; only an absent `Filter` entry is treated as an identity decode path.
 
 - [ ] 2. Implement independent byte-oriented filters
 - [ ] 2.1 (P) Decode ASCII hexadecimal streams
