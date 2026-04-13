@@ -85,8 +85,8 @@ pub struct PdfDocument {
   // private fields
 }
 pub fn PdfDocument::catalog(Self) -> PdfCatalog
-pub fn PdfDocument::name_tree_root(Self, NameTreeCategory) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfDocument::lookup_name(Self, NameTreeCategory, Bytes) -> @objects.PdfObject? raise PdfDocumentError
+pub fn PdfDocument::name_tree_root(Self, NameTreeCategory) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfDocument::names_dict(Self) -> Map[@objects.PdfName, @objects.PdfObject]? raise PdfDocumentError
 pub fn PdfDocument::open(Bytes) -> Self raise PdfDocumentError
 pub fn PdfDocument::page(Self, Int) -> PdfPage raise PdfDocumentError
@@ -191,3 +191,4 @@ pub(all) enum XrefSectionSource {
 pub type XrefIndex = Map[@objects.ObjectId, ObjectLocation]
 
 // Traits
+

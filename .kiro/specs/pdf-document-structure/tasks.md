@@ -101,7 +101,7 @@
   - _Boundary: NameTreeReader_
 
 - [ ] 6. Integrate the public surface and validation coverage
-- [ ] 6.1 Wire document APIs into the reader public interface
+- [x] 6.1 Wire document APIs into the reader public interface
   - Make the document facade, catalog, page, rectangle, name category, and document error shapes visible through the reader package boundary.
   - Regenerate the public interface metadata and verify existing file-structure APIs remain unchanged in behavior.
   - Preserve the existing package dependency direction and avoid changes to lower object, lexer, parser, or filter packages.
