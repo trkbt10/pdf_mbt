@@ -102,6 +102,28 @@ pub fn ContentResources::lookup_resource(
 }
 
 ///|
+/// Selects the resource scope for a Form XObject content stream. When the Form
+/// XObject stream dictionary provides its own `Resources` entry, that
+/// dictionary is used instead of the parent/page resource context; when absent,
+/// lookup falls back to the parent resources. Malformed Form XObject resource
+/// shapes are reported as content errors.
+pub fn ContentResources::for_form_xobject(
+  self : ContentResources,
+  stream : @objects.PdfStream,
+  offset : Int64,
+) -> ContentResources raise PdfContentError {
+  match stream.dict.get(@objects.PdfName::new(b"Resources")) {
+    None => self
+    Some(Dictionary(dictionary)) =>
+      ContentResources::from_dictionary(dictionary)
+    Some(_) =>
+      raise ResourceFailure(
+        offset, "Form XObject Resources entry must be a dictionary",
+      )
+  }
+}
+
+///|
 pub fn ResourceCategory::name(self : ResourceCategory) -> @objects.PdfName {
   @objects.PdfName::new(self.label_bytes())
 }

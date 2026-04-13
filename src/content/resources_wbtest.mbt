@@ -119,6 +119,80 @@ test "content resources reject malformed top-level resources object" {
 }
 
 ///|
+test "form xobject resource scope prefers form-local resources" {
+  let parent_dict : @objects.PdfDictionary = Map::new()
+  let parent_font : @objects.PdfDictionary = Map::new()
+  parent_font[@objects.PdfName::new(b"F1")] = @objects.PdfObject::Integer(1L)
+  parent_dict[@objects.PdfName::new(b"Font")] = @objects.PdfObject::Dictionary(
+    parent_font,
+  )
+  let parent = ContentResources::from_dictionary(parent_dict)
+
+  let form_resources : @objects.PdfDictionary = Map::new()
+  let form_font : @objects.PdfDictionary = Map::new()
+  form_font[@objects.PdfName::new(b"F1")] = @objects.PdfObject::Integer(99L)
+  form_resources[@objects.PdfName::new(b"Font")] = @objects.PdfObject::Dictionary(
+    form_font,
+  )
+  let stream_dict : @objects.PdfDictionary = Map::new()
+  stream_dict[@objects.PdfName::new(b"Resources")] = @objects.PdfObject::Dictionary(
+    form_resources,
+  )
+  let scoped = parent.for_form_xobject(
+    @objects.PdfStream::{ dict: stream_dict, data: b"" },
+    0L,
+  )
+
+  assert_eq(
+    scoped.lookup_resource(Font, @objects.PdfName::new(b"F1")) ==
+    Some(@objects.PdfObject::Integer(99L)),
+    true,
+  )
+}
+
+///|
+test "form xobject resource scope falls back to parent resources when absent" {
+  let parent_dict : @objects.PdfDictionary = Map::new()
+  let parent_xobject : @objects.PdfDictionary = Map::new()
+  parent_xobject[@objects.PdfName::new(b"Im1")] = @objects.PdfObject::Integer(
+    42L,
+  )
+  parent_dict[@objects.PdfName::new(b"XObject")] = @objects.PdfObject::Dictionary(
+    parent_xobject,
+  )
+  let parent = ContentResources::from_dictionary(parent_dict)
+
+  let scoped = parent.for_form_xobject(
+    @objects.PdfStream::{ dict: Map::new(), data: b"" },
+    0L,
+  )
+  assert_eq(
+    scoped.lookup_resource(XObject, @objects.PdfName::new(b"Im1")) ==
+    Some(@objects.PdfObject::Integer(42L)),
+    true,
+  )
+}
+
+///|
+test "form xobject resource scope rejects malformed resource shapes" {
+  let stream_dict : @objects.PdfDictionary = Map::new()
+  stream_dict[@objects.PdfName::new(b"Resources")] = @objects.PdfObject::String(
+    b"bad",
+  )
+  let result : Result[ContentResources, PdfContentError] = try? ContentResources::empty().for_form_xobject(
+    @objects.PdfStream::{ dict: stream_dict, data: b"" },
+    21L,
+  )
+  match result {
+    Err(ResourceFailure(offset, reason)) => {
+      assert_eq(offset, 21L)
+      assert_eq(reason.contains("Form XObject"), true)
+    }
+    _ => fail("expected malformed Form XObject Resources")
+  }
+}
+
+///|
 fn make_full_resource_dict() -> @objects.PdfDictionary {
   let resources : @objects.PdfDictionary = Map::new()
   put_resource_category(resources, ExtGState, b"GS1", 1L)
