@@ -80,7 +80,12 @@ test "decode_structural_stream wraps filter decode failures with offset" {
     offset=37L,
   )
   match result {
-    Err(DecodeStreamError(actual_offset, @filters.PdfFilterError::DecodeError(filter_name, reason))) => {
+    Err(
+      DecodeStreamError(
+        actual_offset,
+        @filters.PdfFilterError::DecodeError(filter_name, reason)
+      )
+    ) => {
       assert_eq(actual_offset, 37L)
       assert_eq(filter_name, "FlateDecode")
       assert_eq(reason.contains("method"), true)
@@ -103,7 +108,12 @@ test "decode_structural_stream wraps unsupported filter names from the filter la
     offset=41L,
   )
   match result {
-    Err(DecodeStreamError(actual_offset, @filters.PdfFilterError::UnsupportedFilter(filter_name))) => {
+    Err(
+      DecodeStreamError(
+        actual_offset,
+        @filters.PdfFilterError::UnsupportedFilter(filter_name)
+      )
+    ) => {
       assert_eq(actual_offset, 41L)
       assert_eq(filter_name, "DCTDecode")
     }
@@ -180,7 +190,12 @@ test "decode_structural_stream rejects xref array filters with crypt and unsuppo
     offset=53L,
   )
   match unsupported_result {
-    Err(DecodeStreamError(actual_offset, @filters.PdfFilterError::UnsupportedFilter(filter_name))) => {
+    Err(
+      DecodeStreamError(
+        actual_offset,
+        @filters.PdfFilterError::UnsupportedFilter(filter_name)
+      )
+    ) => {
       assert_eq(actual_offset, 53L)
       assert_eq(filter_name, "DCTDecode")
     }
@@ -201,7 +216,12 @@ test "decode_structural_stream wraps unsupported structural stream filters befor
     offset=99L,
   )
   match result {
-    Err(DecodeStreamError(actual_offset, @filters.PdfFilterError::DecodeError(filter_name, reason))) => {
+    Err(
+      DecodeStreamError(
+        actual_offset,
+        @filters.PdfFilterError::DecodeError(filter_name, reason)
+      )
+    ) => {
       assert_eq(actual_offset, 99L)
       assert_eq(filter_name, "FlateDecode")
       assert_eq(reason.contains("method"), true)

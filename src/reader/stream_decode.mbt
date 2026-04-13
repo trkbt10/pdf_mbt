@@ -1,3 +1,4 @@
+///|
 priv enum StructuralStreamPurpose {
   XrefStream
   ObjectStream
@@ -28,9 +29,7 @@ fn decode_structural_stream(
 }
 
 ///|
-fn xref_stream_rejection_reason(
-  dict : @objects.PdfDictionary,
-) -> String? {
+fn xref_stream_rejection_reason(dict : @objects.PdfDictionary) -> String? {
   let encrypt_key = @objects.PdfName::new(b"Encrypt")
   match dict.get(encrypt_key) {
     Some(_) => Some("Encrypt")
@@ -58,11 +57,10 @@ fn xref_stream_rejection_reason_from_array(
   let crypt_name = @objects.PdfName::new(b"Crypt")
   for value in values {
     match value {
-      @objects.PdfObject::Name(name) => {
+      @objects.PdfObject::Name(name) =>
         if name == crypt_name {
           return Some("Crypt")
         }
-      }
       _ => ()
     }
   }

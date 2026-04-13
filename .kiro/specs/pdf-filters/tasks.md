@@ -184,7 +184,7 @@
   - _Requirements: 7.1, 7.2, 7.3, 8.1, 8.2, 8.3, 8.4_
 
 - [ ] 8. Validate the complete feature
-- [ ] 8.1 Run the full package validation workflow
+- [x] 8.1 Run the full package validation workflow
   - Format the updated MoonBit packages.
   - Run the complete test suite across object, parser, reader, and filter packages.
   - Regenerate and review public interface output so only the intended filter API and reader error additions are visible.

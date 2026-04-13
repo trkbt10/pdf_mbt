@@ -38,6 +38,7 @@ fn expect_malformed_invalid_trailer(
   }
 }
 
+///|
 fn expect_malformed_invalid_object_stream(
   stream : @objects.PdfStream,
   offset : Int64,
@@ -119,7 +120,12 @@ test "reader rejects unsupported structural stream filters and malformed object 
     offset=88L,
   )
   match xref_result {
-    Err(DecodeStreamError(actual_offset, @filters.PdfFilterError::DecodeError(filter_name, reason))) => {
+    Err(
+      DecodeStreamError(
+        actual_offset,
+        @filters.PdfFilterError::DecodeError(filter_name, reason)
+      )
+    ) => {
       assert_eq(actual_offset, 88L)
       assert_eq(filter_name, "FlateDecode")
       assert_eq(reason.contains("method"), true)

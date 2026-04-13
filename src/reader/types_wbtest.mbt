@@ -165,7 +165,11 @@ test "reader diagnostics preserve offsets and wrapped parser errors" {
     }
     _ => fail("expected unsupported filter error")
   }
-  match PdfReaderError::DecodeStreamError(56L, @filters.PdfFilterError::UnsupportedFilter("DCTDecode")) {
+  match
+    PdfReaderError::DecodeStreamError(
+      56L,
+      @filters.PdfFilterError::UnsupportedFilter("DCTDecode"),
+    ) {
     DecodeStreamError(offset, error) => {
       assert_eq(offset, 56L)
       match error {

@@ -230,7 +230,12 @@ test "load_object propagates compressed object stream decode failures" {
     invalid_member_id,
   )
   match result {
-    Err(DecodeStreamError(offset, @filters.PdfFilterError::DecodeError(filter_name, reason))) => {
+    Err(
+      DecodeStreamError(
+        offset,
+        @filters.PdfFilterError::DecodeError(filter_name, reason)
+      )
+    ) => {
       assert_eq(offset, 0L)
       assert_eq(filter_name, "FlateDecode")
       assert_eq(reason.contains("method"), true)
