@@ -10,6 +10,7 @@ pub(all) suberror PdfDocumentError {
   InvalidPage(@objects.ObjectId, String)
   InvalidInheritedAttribute(@objects.ObjectId, @objects.PdfName, String)
   InvalidNameTree(@objects.PdfName, String)
+  ContentError(@content.PdfContentError)
   PageIndexOutOfRange(Int, Int)
   CycleDetected(@objects.ObjectId, String)
 } derive(Eq, Debug)

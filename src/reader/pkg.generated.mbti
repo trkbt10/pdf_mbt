@@ -3,6 +3,7 @@ package "trkbt10/pdf/src/reader"
 
 import {
   "moonbitlang/core/debug",
+  "trkbt10/pdf/src/content",
   "trkbt10/pdf/src/filters",
   "trkbt10/pdf/src/objects",
 }
@@ -17,6 +18,7 @@ pub(all) suberror PdfDocumentError {
   InvalidPage(@objects.ObjectId, String)
   InvalidInheritedAttribute(@objects.ObjectId, @objects.PdfName, String)
   InvalidNameTree(@objects.PdfName, String)
+  ContentError(@content.PdfContentError)
   PageIndexOutOfRange(Int, Int)
   CycleDetected(@objects.ObjectId, String)
 } derive(Eq, @debug.Debug)
@@ -124,6 +126,9 @@ pub struct PdfPage {
   // private fields
 }
 pub fn PdfPage::annots(Self) -> @objects.PdfObject?
+pub fn PdfPage::content_instructions(Self) -> Array[@content.ContentInstruction] raise PdfDocumentError
+pub fn PdfPage::content_resources(Self) -> @content.ContentResources raise PdfDocumentError
+pub fn PdfPage::content_stream(Self) -> @content.ContentStream raise PdfDocumentError
 pub fn PdfPage::contents(Self) -> @objects.PdfObject?
 pub fn PdfPage::crop_box(Self) -> PdfRectangle? raise PdfDocumentError
 pub fn PdfPage::entry(Self, @objects.PdfName) -> @objects.PdfObject?
