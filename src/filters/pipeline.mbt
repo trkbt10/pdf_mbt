@@ -30,8 +30,7 @@ fn execute_pipeline(
     ASCII85Decode => decode_ascii85(data)
     FlateDecode => raise PdfFilterError::UnsupportedFilter(spec.name.to_text())
     LZWDecode => raise PdfFilterError::UnsupportedFilter(spec.name.to_text())
-    RunLengthDecode =>
-      raise PdfFilterError::UnsupportedFilter(spec.name.to_text())
+    RunLengthDecode => decode_run_length(data)
     Unsupported(name) => raise PdfFilterError::UnsupportedFilter(name)
   }
 }

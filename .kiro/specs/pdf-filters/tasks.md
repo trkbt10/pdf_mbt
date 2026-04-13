@@ -43,7 +43,7 @@
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
   - _Boundary: ASCII85Decoder_
 
-- [ ] 2.3 (P) Decode run-length streams
+- [x] 2.3 (P) Decode run-length streams
   - Copy literal runs for length bytes 0 through 127.
   - Expand repeated-byte runs for length bytes 129 through 255.
   - Stop at the 128 end marker without letting following bytes affect output.

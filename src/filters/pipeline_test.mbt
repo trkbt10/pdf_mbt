@@ -33,6 +33,22 @@ test "decode_stream_bytes decodes ASCII85 streams" {
 }
 
 ///|
+test "decode_stream_bytes decodes RunLength streams" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"RunLengthDecode"),
+  )
+  let data = Bytes::from_array([b'\x03', b'A', b'B', b'C', b'D', b'\x80'])
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Ok(bytes) => assert_eq(bytes, Bytes::from_array([b'A', b'B', b'C', b'D']))
+    _ => fail("expected RunLengthDecode to be routed through the pipeline")
+  }
+}
+
+///|
 test "decode_stream_bytes rejects a null filter entry" {
   let dict : @objects.PdfDictionary = Map::new()
   dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Null
