@@ -1,7 +1,10 @@
 ///|
-/// Public facade placeholder for document-structure access. The concrete
-/// fields are introduced by later tasks when the reader facade is wired up.
-pub struct PdfDocument {}
+/// Public facade for document-structure access. The file handle and validated
+/// catalog stay internal so the page tree can remain lazy for later tasks.
+pub struct PdfDocument {
+  priv file : PdfFile
+  priv catalog : PdfCatalog
+}
 
 ///|
 /// Validated Catalog state resolved from the trailer root reference.

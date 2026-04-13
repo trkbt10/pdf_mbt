@@ -82,7 +82,10 @@ pub fn PdfCatalog::entry(Self, @objects.PdfName) -> @objects.PdfObject?
 pub fn PdfCatalog::names_entry(Self) -> @objects.PdfObject?
 
 pub struct PdfDocument {
+  // private fields
 }
+pub fn PdfDocument::catalog(Self) -> PdfCatalog
+pub fn PdfDocument::open(Bytes) -> Self raise PdfDocumentError
 
 pub struct PdfFile {
   bytes : Bytes
@@ -93,6 +96,7 @@ pub struct PdfFile {
   cache : Map[@objects.ObjectId, @objects.PdfObject]
   object_stream_tables : Map[@objects.ObjectId, ObjectStreamTableCache]
 } derive(Eq, @debug.Debug)
+pub fn PdfFile::document(Self) -> PdfDocument raise PdfDocumentError
 pub fn PdfFile::load_object(Self, @objects.ObjectId) -> @objects.PdfObject raise PdfReaderError
 pub fn PdfFile::open(Bytes) -> Self raise PdfReaderError
 pub fn PdfFile::root_ref(Self) -> @objects.ObjectId

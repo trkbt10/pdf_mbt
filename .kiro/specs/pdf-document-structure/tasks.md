@@ -22,7 +22,7 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 5.1_
   - _Boundary: CatalogResolver_
 
-- [ ] 2.2 Expose document creation and catalog access without page traversal
+- [x] 2.2 Expose document creation and catalog access without page traversal
   - Add document creation from complete bytes and from an already opened file while preserving the existing file cache and object-loading behavior.
   - Validate the catalog during document creation and expose it through the document facade.
   - Keep the page tree unresolved until page count, page list, or indexed page access is requested.
