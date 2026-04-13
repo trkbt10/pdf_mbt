@@ -27,7 +27,7 @@
   - _Requirements: 1.2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10_
   - _Boundary: OperatorRegistry_
 
-- [ ] 2.2 (P) Parse direct PDF operands in content streams
+- [x] 2.2 (P) Parse direct PDF operands in content streams
   - Parse numbers, strings, names, arrays, dictionaries, booleans, and null values before operators.
   - Reuse existing byte-level lexical behavior for names and strings while applying content-stream restrictions.
   - Reject indirect references, stream-like constructs, unexpected delimiters, invalid numbers, and unterminated aggregate operands with content errors.
@@ -184,3 +184,6 @@
   - _Depends: 7.1_
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 4.4, 5.1, 5.2, 5.3, 5.4, 6.1, 6.2, 6.3_
   - _Boundary: BuildValidation, PublicInterfaces_
+
+## Implementation Notes
+- 2.2: Accepted from inherited green WIP using current spec-alignment evidence supplied in the resume context; `moon test src/content` and `moon check` pass.

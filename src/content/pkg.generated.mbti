@@ -35,6 +35,19 @@ pub fn ContentInput::read_bytes(Self, Int64) -> Bytes raise @objects.PdfParseErr
 pub fn ContentInput::read_eol(Self) -> Bool
 pub fn ContentInput::require_stream_eol(Self) -> Unit raise @objects.PdfParseError
 
+pub(all) struct ContentOperandReader {
+  cursor : @lexer.ByteCursor
+  lexer : @lexer.Lexer
+}
+pub fn ContentOperandReader::new(Bytes) -> Self
+pub fn ContentOperandReader::read_next(Self) -> OperandReadResult raise PdfContentError
+
+pub(all) enum OperandReadResult {
+  Operand(@objects.PdfObject)
+  OperatorCandidate(Bytes, Int64)
+  EndOfInput(Int64)
+} derive(Eq, @debug.Debug)
+
 pub(all) enum StandardContentOperator {
   SaveGraphicsState
   RestoreGraphicsState
