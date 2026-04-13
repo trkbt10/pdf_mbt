@@ -9,5 +9,8 @@ pub(all) suberror PdfGraphicsError {
   InvalidPathState(Int64, String)
   InvalidObjectContext(Int64, String)
   ResourceFailure(Int64, String)
+  InvalidXObject(Int64, String)
+  InvalidImage(Int64, String)
+  InvalidOptionalContent(Int64, String)
   ContentFailure(@content.PdfContentError)
 } derive(Eq, Debug)

@@ -56,9 +56,11 @@ test "interpret content classifies deferred domains in input order" {
     _ => fail("expected text end")
   }
   match program.events[3] {
-    ExternalObjectInvoked(_, name) =>
-      assert_eq(name == @objects.PdfName::new(b"Im1"), true)
-    _ => fail("expected xobject event")
+    ImagePainted(_, descriptor, _) => {
+      assert_eq(descriptor.width, 1)
+      assert_eq(descriptor.height, 1)
+    }
+    _ => fail("expected image xobject event")
   }
   match program.events[4] {
     ShadingPainted(_, DirectShading(Some(name), _), _) =>
@@ -97,6 +99,29 @@ fn interpreter_test_shading_resources() -> @content.ContentResources {
   let resources : @objects.PdfDictionary = Map::new()
   resources[@objects.PdfName::new(b"Shading")] = @objects.PdfObject::Dictionary(
     shadings,
+  )
+  let image_dict : @objects.PdfDictionary = Map::new()
+  image_dict[@objects.PdfName::new(b"Type")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"XObject"),
+  )
+  image_dict[@objects.PdfName::new(b"Subtype")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"Image"),
+  )
+  image_dict[@objects.PdfName::new(b"Width")] = @objects.PdfObject::Integer(1L)
+  image_dict[@objects.PdfName::new(b"Height")] = @objects.PdfObject::Integer(1L)
+  image_dict[@objects.PdfName::new(b"ColorSpace")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"DeviceRGB"),
+  )
+  image_dict[@objects.PdfName::new(b"BitsPerComponent")] = @objects.PdfObject::Integer(
+    8L,
+  )
+  let xobjects : @objects.PdfDictionary = Map::new()
+  xobjects[@objects.PdfName::new(b"Im1")] = @objects.PdfObject::Stream(@objects.PdfStream::{
+    dict: image_dict,
+    data: Bytes::from_array([b'\x00', b'\x00', b'\x00']),
+  })
+  resources[@objects.PdfName::new(b"XObject")] = @objects.PdfObject::Dictionary(
+    xobjects,
   )
   @content.ContentResources::from_dictionary(resources)
 }

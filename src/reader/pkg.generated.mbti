@@ -50,8 +50,11 @@ pub fn ByteSource::slice_range(Self, Int64, Int64) -> Bytes raise PdfReaderError
 
 pub(all) struct GraphicsPageOptions {
   initial_ctm : @graphics.GraphicsMatrix?
+  materialize_xobjects : Bool
+  evaluate_optional_content : Bool
 } derive(Eq, @debug.Debug)
 pub fn GraphicsPageOptions::default() -> Self
+pub fn GraphicsPageOptions::with_materialized_xobjects(@graphics.GraphicsMatrix?) -> Self
 
 pub(all) enum NameTreeCategory {
   Dests
@@ -98,6 +101,7 @@ pub fn PdfDocument::lookup_name(Self, NameTreeCategory, Bytes) -> @objects.PdfOb
 pub fn PdfDocument::name_tree_root(Self, NameTreeCategory) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfDocument::names_dict(Self) -> Map[@objects.PdfName, @objects.PdfObject]? raise PdfDocumentError
 pub fn PdfDocument::open(Bytes) -> Self raise PdfDocumentError
+pub fn PdfDocument::optional_content_state(Self) -> @graphics.OptionalContentState raise PdfDocumentError
 pub fn PdfDocument::page(Self, Int) -> PdfPage raise PdfDocumentError
 pub fn PdfDocument::page_count(Self) -> Int raise PdfDocumentError
 pub fn PdfDocument::pages(Self) -> Array[PdfPage] raise PdfDocumentError
@@ -144,8 +148,11 @@ pub fn PdfPage::graphics_initial_state(Self, GraphicsPageOptions) -> @graphics.G
 pub fn PdfPage::graphics_program(Self, GraphicsPageOptions) -> @graphics.GraphicsProgram raise PdfDocumentError
 pub fn PdfPage::index(Self) -> Int
 pub fn PdfPage::inherited_entry(Self, @objects.PdfName) -> @objects.PdfObject? raise PdfDocumentError
+pub fn PdfPage::materialized_content_resources(Self) -> @content.ContentResources raise PdfDocumentError
+pub fn PdfPage::materialized_content_stream(Self) -> @content.ContentStream raise PdfDocumentError
 pub fn PdfPage::media_box(Self) -> PdfRectangle? raise PdfDocumentError
 pub fn PdfPage::object_id(Self) -> @objects.ObjectId
+pub fn PdfPage::optional_content_state(Self) -> @graphics.OptionalContentState raise PdfDocumentError
 pub fn PdfPage::parent_ref(Self) -> @objects.ObjectId?
 pub fn PdfPage::pattern_resource(Self, @objects.PdfName) -> @graphics.PatternResource raise PdfDocumentError
 pub fn PdfPage::pattern_resources(Self) -> Array[@graphics.PatternResource] raise PdfDocumentError

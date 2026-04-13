@@ -42,6 +42,12 @@ pub(all) enum GraphicsEvent {
   TextObjectBegan(Int64)
   TextObjectEnded(Int64)
   ExternalObjectInvoked(Int64, @objects.PdfName)
+  UnresolvedXObjectInvoked(Int64, @objects.PdfName, @objects.ObjectId)
+  ImagePainted(Int64, ImageDescriptor, GraphicsState)
+  InlineImagePainted(Int64, ImageDescriptor, GraphicsState)
+  FormXObjectBegan(Int64, FormXObject, GraphicsState)
+  FormXObjectEnded(Int64, FormXObject, GraphicsState)
+  XObjectSkipped(Int64, @objects.PdfName, OptionalContentDecision)
   InlineImageSeen(@content.PdfInlineImage)
   PatternColourSelected(
     Int64,
@@ -55,6 +61,18 @@ pub(all) enum GraphicsEvent {
   MarkedContentSeen(Int64, @content.StandardContentOperator)
   IgnoredFutureDomainOperator(Int64, @content.StandardContentOperator)
 } derive(Eq, Debug)
+
+///|
+pub(all) struct GraphicsInterpretOptions {
+  optional_content_state : OptionalContentState
+} derive(Eq, Debug)
+
+///|
+pub fn GraphicsInterpretOptions::default() -> GraphicsInterpretOptions {
+  GraphicsInterpretOptions::{
+    optional_content_state: OptionalContentState::visible(),
+  }
+}
 
 ///|
 /// Complete device-independent graphics description for a PDF content stream.
@@ -87,7 +105,24 @@ pub fn interpret_content(
   content : @content.ContentStream,
   initial : GraphicsInitialState,
 ) -> GraphicsProgram raise PdfGraphicsError {
-  let interpreter = GraphicsInterpreter::new(content.resources, initial)
+  interpret_content_with_options(
+    content,
+    initial,
+    GraphicsInterpretOptions::default(),
+  )
+}
+
+///|
+pub fn interpret_content_with_options(
+  content : @content.ContentStream,
+  initial : GraphicsInitialState,
+  options : GraphicsInterpretOptions,
+) -> GraphicsProgram raise PdfGraphicsError {
+  let interpreter = GraphicsInterpreter::new(
+    content.resources,
+    initial,
+    options,
+  )
   interpreter.interpret(content.instructions)
 }
 
@@ -98,6 +133,8 @@ struct GraphicsInterpreter {
   current_path : CurrentPath
   context : GraphicsObjectContext
   resources : @content.ContentResources
+  optional_content_state : OptionalContentState
+  mut visibility : OptionalVisibilityStack
   mut pending_clip : FillRule?
   events : Array[GraphicsEvent]
 } derive(Eq, Debug)
@@ -106,6 +143,7 @@ struct GraphicsInterpreter {
 fn GraphicsInterpreter::new(
   resources : @content.ContentResources,
   initial : GraphicsInitialState,
+  options : GraphicsInterpretOptions,
 ) -> GraphicsInterpreter {
   GraphicsInterpreter::{
     state: GraphicsState::initial(initial),
@@ -113,6 +151,8 @@ fn GraphicsInterpreter::new(
     current_path: CurrentPath::new(),
     context: GraphicsObjectContext::new(),
     resources,
+    optional_content_state: options.optional_content_state,
+    visibility: OptionalVisibilityStack::new(),
     pending_clip: None,
     events: [],
   }
@@ -128,12 +168,29 @@ fn GraphicsInterpreter::interpret(
       @content.ContentInstruction::Operation(operation) =>
         self.accept_operation(operation)
       @content.ContentInstruction::InlineImage(image) =>
-        self.events.push(GraphicsEvent::InlineImageSeen(image))
+        self.accept_inline_image(image)
     }
   }
   GraphicsProgram::{
     events: self.events.copy(),
     final_state: self.state.copy(),
+  }
+}
+
+///|
+fn GraphicsInterpreter::accept_inline_image(
+  self : GraphicsInterpreter,
+  image : @content.PdfInlineImage,
+) -> Unit raise PdfGraphicsError {
+  let descriptor = validate_inline_image(image)
+  if self.visibility.current() {
+    self.events.push(
+      GraphicsEvent::InlineImagePainted(
+        image.start_offset,
+        descriptor,
+        self.state.copy(),
+      ),
+    )
   }
 }
 
@@ -419,7 +476,9 @@ fn GraphicsInterpreter::apply_path_painting_operator(
       offset, "path-painting operator requires a current path",
     )
   }
-  if has_path && paint != PathPaintOperation::EndPath {
+  if has_path &&
+    paint != PathPaintOperation::EndPath &&
+    self.visibility.current() {
     self.events.push(
       GraphicsEvent::PathPainted(
         offset,
@@ -463,9 +522,7 @@ fn GraphicsInterpreter::classify_deferred_operator(
     }
     InvokeXObject => {
       let name = single_name_operand(operation, "XObject name")
-      self.events.push(
-        GraphicsEvent::ExternalObjectInvoked(operation.offset, name),
-      )
+      self.invoke_xobject(name, operation.offset)
     }
     PaintShading => {
       let name = single_name_operand(operation, "shading name")
@@ -475,19 +532,19 @@ fn GraphicsInterpreter::classify_deferred_operator(
           name,
           operation.offset,
         )
-        self.events.push(
-          GraphicsEvent::ShadingPainted(
-            operation.offset,
-            resource,
-            self.state.copy(),
-          ),
-        )
+        if self.visibility.current() {
+          self.events.push(
+            GraphicsEvent::ShadingPainted(
+              operation.offset,
+              resource,
+              self.state.copy(),
+            ),
+          )
+        }
       }
     }
     _ if is_marked_content_operator(operation.operator) =>
-      self.events.push(
-        GraphicsEvent::MarkedContentSeen(operation.offset, operation.operator),
-      )
+      self.accept_marked_content_operator(operation)
     _ if is_text_domain_operator(operation.operator) =>
       self.events.push(
         GraphicsEvent::IgnoredFutureDomainOperator(
@@ -503,6 +560,152 @@ fn GraphicsInterpreter::classify_deferred_operator(
         ),
       )
   }
+}
+
+///|
+fn GraphicsInterpreter::invoke_xobject(
+  self : GraphicsInterpreter,
+  name : @objects.PdfName,
+  offset : Int64,
+) -> Unit raise PdfGraphicsError {
+  let resource = resolve_xobject_resource(self.resources, name, offset)
+  match resource {
+    UnresolvedXObject(_, _) =>
+      if self.visibility.current() {
+        self.events.push(GraphicsEvent::ExternalObjectInvoked(offset, name))
+      }
+    ImageResource(descriptor) => {
+      let decision = self.optional_content_state.evaluate(
+        descriptor.metadata.oc,
+        offset,
+      )
+      if decision == OptionalContentDecision::Hidden ||
+        !self.visibility.current() {
+        self.events.push(GraphicsEvent::XObjectSkipped(offset, name, decision))
+      } else {
+        self.events.push(
+          GraphicsEvent::ImagePainted(offset, descriptor, self.state.copy()),
+        )
+      }
+    }
+    FormResource(form) => {
+      let decision = self.optional_content_state.evaluate(form.oc, offset)
+      if decision == OptionalContentDecision::Hidden ||
+        !self.visibility.current() {
+        self.events.push(GraphicsEvent::XObjectSkipped(offset, name, decision))
+      } else {
+        self.invoke_form_xobject(form, offset)
+      }
+    }
+  }
+}
+
+///|
+fn GraphicsInterpreter::invoke_form_xobject(
+  self : GraphicsInterpreter,
+  form : FormXObject,
+  offset : Int64,
+) -> Unit raise PdfGraphicsError {
+  let parent_state = self.state.copy()
+  self.state.concat_ctm(form.matrix)
+  self.state.clipping_path = self.state.clipping_path.append_clip(
+    GraphicsPath::from_rect(form.bbox),
+    FillRule::NonZero,
+  )
+  self.events.push(
+    GraphicsEvent::FormXObjectBegan(offset, form, self.state.copy()),
+  )
+  let decoded = try @filters.decode_stream(form.stream) catch {
+    error => raise map_filter_error(offset, "Form XObject", error)
+  } noraise {
+    bytes => bytes
+  }
+  let form_resources = match form.resources {
+    Some(dictionary) => @content.ContentResources::from_dictionary(dictionary)
+    None => self.resources
+  }
+  let content = try
+    @content.parse_decoded_content(decoded, form_resources)
+  catch {
+    error => raise PdfGraphicsError::ContentFailure(error)
+  } noraise {
+    parsed => parsed
+  }
+  let child = GraphicsInterpreter::new(
+    form_resources,
+    GraphicsInitialState::default(),
+    GraphicsInterpretOptions::{
+      optional_content_state: self.optional_content_state,
+    },
+  )
+  child.state = self.state.copy()
+  child.visibility = self.visibility.copy()
+  let program = child.interpret(content.instructions)
+  self.events.append(program.events)
+  self.state = parent_state
+  self.events.push(
+    GraphicsEvent::FormXObjectEnded(offset, form, self.state.copy()),
+  )
+}
+
+///|
+fn GraphicsInterpreter::accept_marked_content_operator(
+  self : GraphicsInterpreter,
+  operation : @content.ContentOperation,
+) -> Unit raise PdfGraphicsError {
+  match operation.operator {
+    BeginMarkedContentPoint => {
+      require_operand_count(operation, 1)
+      self.events.push(
+        GraphicsEvent::MarkedContentSeen(operation.offset, operation.operator),
+      )
+    }
+    BeginMarkedContent => {
+      require_operand_count(operation, 1)
+      self.visibility.push(true)
+      self.events.push(
+        GraphicsEvent::MarkedContentSeen(operation.offset, operation.operator),
+      )
+    }
+    DefineMarkedContentPoint => {
+      require_operand_count(operation, 2)
+      let visible = self.marked_content_property_visible(operation)
+      if visible {
+        self.events.push(
+          GraphicsEvent::MarkedContentSeen(operation.offset, operation.operator),
+        )
+      }
+    }
+    BeginMarkedContentWithProperties => {
+      require_operand_count(operation, 2)
+      let visible = self.marked_content_property_visible(operation)
+      self.visibility.push(visible)
+      self.events.push(
+        GraphicsEvent::MarkedContentSeen(operation.offset, operation.operator),
+      )
+    }
+    EndMarkedContent => {
+      require_operand_count(operation, 0)
+      self.visibility.pop(operation.offset)
+      self.events.push(
+        GraphicsEvent::MarkedContentSeen(operation.offset, operation.operator),
+      )
+    }
+    _ => ()
+  }
+}
+
+///|
+fn GraphicsInterpreter::marked_content_property_visible(
+  self : GraphicsInterpreter,
+  operation : @content.ContentOperation,
+) -> Bool raise PdfGraphicsError {
+  let property = resolve_optional_content_property(
+    self.resources,
+    operation.operands[1],
+    operation.offset,
+  )
+  self.optional_content_state.is_visible_bool(property, operation.offset)
 }
 
 ///|

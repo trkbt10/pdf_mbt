@@ -5,11 +5,28 @@
 /// page metadata.
 pub(all) struct GraphicsPageOptions {
   initial_ctm : @graphics.GraphicsMatrix?
+  materialize_xobjects : Bool
+  evaluate_optional_content : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn GraphicsPageOptions::default() -> GraphicsPageOptions {
-  GraphicsPageOptions::{ initial_ctm: None }
+  GraphicsPageOptions::{
+    initial_ctm: None,
+    materialize_xobjects: false,
+    evaluate_optional_content: false,
+  }
+}
+
+///|
+pub fn GraphicsPageOptions::with_materialized_xobjects(
+  initial_ctm : @graphics.GraphicsMatrix?,
+) -> GraphicsPageOptions {
+  GraphicsPageOptions::{
+    initial_ctm,
+    materialize_xobjects: true,
+    evaluate_optional_content: true,
+  }
 }
 
 ///|
@@ -63,8 +80,24 @@ pub fn PdfPage::graphics_program(
   options : GraphicsPageOptions,
 ) -> @graphics.GraphicsProgram raise PdfDocumentError {
   let initial = self.graphics_initial_state(options)
-  let content = self.content_stream()
-  try @graphics.interpret_content(content, initial) catch {
+  let content = if options.materialize_xobjects ||
+    options.evaluate_optional_content {
+    self.materialized_content_stream()
+  } else {
+    self.content_stream()
+  }
+  let interpret_options = if options.evaluate_optional_content {
+    @graphics.GraphicsInterpretOptions::{
+      optional_content_state: self.optional_content_state(),
+    }
+  } else {
+    @graphics.GraphicsInterpretOptions::default()
+  }
+  try
+    @graphics.interpret_content_with_options(
+      content, initial, interpret_options,
+    )
+  catch {
     error => raise PdfDocumentError::GraphicsError(error)
   } noraise {
     program => program
