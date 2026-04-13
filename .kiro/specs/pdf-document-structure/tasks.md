@@ -109,7 +109,7 @@
   - _Requirements: 1.1, 3.4, 5.2, 6.1, 6.2, 6.3_
   - _Boundary: DocumentFacade, Reader public interface_
 
-- [ ] 6.2 Cover catalog and lazy page-tree behavior with whitebox tests
+- [x] 6.2 Cover catalog and lazy page-tree behavior with whitebox tests
   - Assert catalog root resolution, catalog type validation, required pages reference extraction, optional catalog entry recognition, and reader-error wrapping.
   - Assert lazy page-tree traversal, nested document order, kids validation, count validation, repeated-node rejection, and cycle detection.
   - The completed test suite fails on catalog or page-tree contract regressions and confirms document creation does not enumerate pages.
