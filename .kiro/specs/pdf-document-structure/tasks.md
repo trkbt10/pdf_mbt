@@ -124,7 +124,7 @@
   - _Boundary: PageAccessor, InheritanceResolver tests_
   - _Depends: 4.3_
 
-- [ ] 6.4 (P) Cover name dictionary and name-tree lookup with whitebox tests
+- [x] 6.4 (P) Cover name dictionary and name-tree lookup with whitebox tests
   - Assert missing names dictionaries, required categories, exact byte-key matching, missing key absence, leaf lookup, intermediate kids traversal, and limits pruning.
   - Assert malformed name-tree shapes raise document errors instead of returning misleading absence.
   - The completed tests fail on name dictionary or name-tree lookup regressions across all required categories.

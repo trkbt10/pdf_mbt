@@ -36,6 +36,29 @@ test "name tree lookup returns raw values for direct and indirect roots" {
     Some(@objects.PdfObject::Ref(oid(16))),
     true,
   )
+  assert_eq(
+    indirect_document.lookup_name(NameTreeCategory::JavaScript, b"init") ==
+    Some(@objects.PdfObject::Ref(oid(15))),
+    true,
+  )
+  assert_eq(
+    indirect_document.lookup_name(NameTreeCategory::Templates, b"template-a") ==
+    Some(@objects.PdfObject::Ref(oid(17))),
+    true,
+  )
+  assert_eq(
+    indirect_document.lookup_name(NameTreeCategory::EmbeddedFiles, b"file-a") ==
+    Some(@objects.PdfObject::Ref(oid(21))),
+    true,
+  )
+  assert_eq(
+    indirect_document.lookup_name(
+      NameTreeCategory::AlternatePresentations,
+      b"presentation-a",
+    ) ==
+    Some(@objects.PdfObject::Ref(oid(19))),
+    true,
+  )
 }
 
 ///|
@@ -101,6 +124,21 @@ test "name tree lookup rejects malformed names kids and limits" {
     }
     _ => fail("expected malformed limits to be rejected")
   }
+}
+
+///|
+test "name tree lookup matches exact PDF string bytes" {
+  let document = PdfDocument::open(build_exact_byte_key_fixture())
+
+  assert_eq(
+    document.lookup_name(NameTreeCategory::Dests, b"chapter-\x80") ==
+    Some(@objects.PdfObject::Ref(oid(6))),
+    true,
+  )
+  assert_eq(
+    document.lookup_name(NameTreeCategory::Dests, b"chapter-\x81") is None,
+    true,
+  )
 }
 
 ///|
@@ -241,6 +279,47 @@ fn build_mixed_names_and_kids_fixture() -> Bytes {
   xref_entry_line(child_value_offset, 0, b'n') +
   b"trailer\r\n" +
   b"<< /Size 9 /Root 1 0 R >>\r\n" +
+  b"startxref\r\n" +
+  decimal_bytes(xref_offset) +
+  b"\r\n%%EOF\r\n"
+}
+
+///|
+fn build_exact_byte_key_fixture() -> Bytes {
+  let (bytes, header_base) = build_document_structure_fixture_prefix()
+
+  let (bytes, catalog_offset) = append_indirect_object(
+    bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R /Names 3 0 R >>",
+  )
+  let (bytes, pages_offset) = append_indirect_object(
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [4 0 R] /Count 1 >>",
+  )
+  let (bytes, names_offset) = append_indirect_object(
+    bytes, header_base, 3, 0, b"<< /Dests 5 0 R >>",
+  )
+  let (bytes, page_offset) = append_indirect_object(
+    bytes, header_base, 4, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] >>",
+  )
+  let (bytes, dests_offset) = append_indirect_object(
+    bytes, header_base, 5, 0, b"<< /Names [(\x63\x68\x61\x70\x74\x65\x72-\x80) 6 0 R] >>",
+  )
+  let (bytes, value_offset) = append_indirect_object(
+    bytes, header_base, 6, 0, b"(destination)",
+  )
+
+  let xref_offset = object_offset(bytes, header_base)
+  bytes +
+  b"xref\r\n" +
+  b"0 7\r\n" +
+  xref_entry_line(0L, 65535, b'f') +
+  xref_entry_line(catalog_offset, 0, b'n') +
+  xref_entry_line(pages_offset, 0, b'n') +
+  xref_entry_line(names_offset, 0, b'n') +
+  xref_entry_line(page_offset, 0, b'n') +
+  xref_entry_line(dests_offset, 0, b'n') +
+  xref_entry_line(value_offset, 0, b'n') +
+  b"trailer\r\n" +
+  b"<< /Size 7 /Root 1 0 R >>\r\n" +
   b"startxref\r\n" +
   decimal_bytes(xref_offset) +
   b"\r\n%%EOF\r\n"
