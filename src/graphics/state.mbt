@@ -22,8 +22,10 @@ pub(all) struct DashPattern {
 } derive(Eq, Debug)
 
 ///|
-/// Caller-supplied initial page graphics state inputs. Device-specific CTM
-/// construction is kept outside the graphics package.
+/// Caller-supplied initial page graphics state inputs. The CTM starts the
+/// mapping from user space coordinates used within a PDF content stream toward
+/// output device coordinates. Device-specific CTM construction for printers
+/// and displays is kept outside the graphics package.
 pub(all) struct GraphicsInitialState {
   ctm : GraphicsMatrix
   initial_clip : GraphicsPath?
@@ -32,8 +34,12 @@ pub(all) struct GraphicsInitialState {
 } derive(Eq, Debug)
 
 ///|
-/// Stored graphics state parameters from ISO 32000-2 section 8.4. Current
-/// path and pending clipping are intentionally excluded from this state.
+/// Stored graphics state parameters from ISO 32000-2 section 8.4.
+/// This is the global framework within which other graphics operators execute:
+/// it includes the current transformation matrix (CTM), current colour values,
+/// current clipping path, and other parameters that act as implicit operands
+/// of painting operators. Current path construction and pending clipping are
+/// intentionally excluded from this state.
 pub(all) struct GraphicsState {
   mut ctm : GraphicsMatrix
   mut clipping_path : ClipState

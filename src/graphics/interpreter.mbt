@@ -13,7 +13,9 @@ pub(all) enum GraphicsStateChange {
 } derive(Eq, Debug)
 
 ///|
-/// Path-painting operation that terminates a PDF path object.
+/// Path-painting operation that terminates a PDF path object: fill a path with
+/// a colour, paint a stroke along it, use it as a clipping boundary, or end it
+/// without painting.
 pub(all) enum PathPaintOperation {
   StrokePath
   CloseStrokePath
@@ -24,8 +26,12 @@ pub(all) enum PathPaintOperation {
 } derive(Eq, Debug)
 
 ///|
-/// Ordered graphics interpretation events. Events classify graphics objects
-/// and preserve snapshots without performing device-dependent rendering.
+/// Ordered graphics interpretation events for PDF graphics operators.
+/// The events cover the clause 8.1 groups that affect page appearance:
+/// graphics state operators, path construction operators, path-painting
+/// operators, other painting operators for self-describing graphics objects,
+/// text operators, and marked-content operators. They preserve snapshots
+/// without performing device-dependent rendering.
 pub(all) enum GraphicsEvent {
   StateSaved(Int64, GraphicsState)
   StateRestored(Int64, GraphicsState)
@@ -43,18 +49,32 @@ pub(all) enum GraphicsEvent {
 } derive(Eq, Debug)
 
 ///|
-/// Complete interpretation output: ordered graphics events plus final
-/// graphics state snapshot after all content stream instructions are accepted.
+/// Complete device-independent graphics description for a PDF content stream.
+/// The ordered graphics events describe the abstract appearance of pages for
+/// printer and display applications, while the final graphics state snapshot
+/// records the global framework left after all content stream instructions are
+/// accepted. Rendering to an output device remains outside this program.
 pub(all) struct GraphicsProgram {
   events : Array[GraphicsEvent]
   final_state : GraphicsState
 } derive(Eq, Debug)
 
 ///|
-/// Interprets a parsed content stream as ISO 32000-2 clause 8 graphics
-/// semantics: graphics state operators, path construction, path-painting,
-/// clipping, object context validation, and deferred-domain event
-/// classification. It does not render, load objects, or decode streams.
+/// Interprets a parsed PDF content stream as ISO 32000-2 clause 8 graphics
+/// semantics, where graphics operators describe the appearance of pages to be
+/// reproduced on an output device.
+///
+/// Source excerpt:
+/// `spec/extracted/8.1-8.5-graphics-state.spec.txt`.
+///
+/// This accepts graphics state operators, path construction operators,
+/// path-painting operators, clipping, object context validation, text
+/// operators for glyphs from fonts, marked-content operators for higher-level
+/// logical information, and deferred-domain painting operator classification
+/// for sampled images, geometrically defined shadings, and entire content
+/// streams. It models device-independent graphics and abstract page appearance;
+/// it does not perform device-dependent rendering, load objects, or decode
+/// streams.
 pub fn interpret_content(
   content : @content.ContentStream,
   initial : GraphicsInitialState,

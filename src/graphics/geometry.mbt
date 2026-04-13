@@ -16,7 +16,10 @@ pub(all) struct GraphicsRect {
 
 ///|
 /// ISO PDF six-number affine transformation matrix `[a b c d e f]`.
-/// It maps points by `x' = a*x + c*y + e`, `y' = b*x + d*y + f`.
+/// When used as the current transformation matrix (CTM), it maps user space
+/// coordinates in a PDF content stream toward output device coordinates for
+/// device-independent graphics. It maps points by `x' = a*x + c*y + e`,
+/// `y' = b*x + d*y + f`.
 pub(all) struct GraphicsMatrix {
   a : Double
   b : Double

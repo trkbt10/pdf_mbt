@@ -6,7 +6,9 @@ pub(all) enum FillRule {
 } derive(Eq, Debug)
 
 ///|
-/// One immutable path segment in a graphics path snapshot.
+/// One immutable path construction segment in a graphics path snapshot.
+/// Segments define shapes, line trajectories, and regions by adding line
+/// segments, cubic Bezier curves, and closures to a path.
 pub(all) enum PathSegment {
   LineTo(GraphicsPoint)
   CurveTo(GraphicsPoint, GraphicsPoint, GraphicsPoint)
@@ -23,7 +25,9 @@ pub(all) struct PathSubpath {
 } derive(Eq, Debug)
 
 ///|
-/// Snapshot of a PDF current path. Path data is not part of GraphicsState.
+/// Snapshot of a PDF current path. Paths are device-independent shapes that
+/// painting operators can fill, stroke, or use as a clipping boundary. Path
+/// data is not part of GraphicsState.
 pub(all) struct GraphicsPath {
   subpaths : Array[PathSubpath]
 } derive(Eq, Debug)
