@@ -124,7 +124,7 @@
   - Tests cover 9-to-12-bit transitions, table limit behavior, both EarlyChange modes, and invalid code failures.
   - _Requirements: 5.1, 5.2, 5.3, 5.5_
 
-- [ ] 5.3 Apply LZW predictors and expose LZWDecode behavior through the pipeline
+- [x] 5.3 Apply LZW predictors and expose LZWDecode behavior through the pipeline
   - Pass LZW output through the shared predictor reconstruction when requested.
   - Surface malformed code streams, table overflows, invalid parameters, and predictor failures as named LZWDecode errors.
   - Pipeline tests decode LZW streams with and without predictor parameters.

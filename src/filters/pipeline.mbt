@@ -29,7 +29,7 @@ fn execute_pipeline(
     ASCIIHexDecode => decode_ascii_hex(data)
     ASCII85Decode => decode_ascii85(data)
     FlateDecode => decode_flate(data, spec.params)
-    LZWDecode => raise PdfFilterError::UnsupportedFilter(spec.name.to_text())
+    LZWDecode => decode_lzw(data, spec.params)
     RunLengthDecode => decode_run_length(data)
     Unsupported(name) => raise PdfFilterError::UnsupportedFilter(name)
   }

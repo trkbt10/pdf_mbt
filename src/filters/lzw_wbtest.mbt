@@ -147,6 +147,37 @@ test "decode_lzw rejects unsupported EarlyChange values" {
 }
 
 ///|
+test "decode_lzw applies TIFF predictor reconstruction" {
+  let raw : @objects.PdfDictionary = Map::new()
+  raw[@objects.PdfName::new(b"Predictor")] = @objects.PdfObject::Integer(2L)
+  raw[@objects.PdfName::new(b"Columns")] = @objects.PdfObject::Integer(4L)
+  raw[@objects.PdfName::new(b"Colors")] = @objects.PdfObject::Integer(1L)
+  raw[@objects.PdfName::new(b"BitsPerComponent")] = @objects.PdfObject::Integer(
+    8L,
+  )
+  let params = DecodeParams::{ raw: Some(raw) }
+  let encoded = pack_lzw_codes([256, 10, 20, 30, 40, 257])
+  let decoded = decode_lzw(encoded, params)
+  assert_eq(decoded, Bytes::from_array([b'\n', b'\x1e', b'<', b'd']))
+}
+
+///|
+test "decode_lzw rejects unsupported predictor values" {
+  let raw : @objects.PdfDictionary = Map::new()
+  raw[@objects.PdfName::new(b"Predictor")] = @objects.PdfObject::Integer(9L)
+  let params = DecodeParams::{ raw: Some(raw) }
+  let encoded = pack_lzw_codes([256, 65, 257])
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_lzw(encoded, params)
+  match decoded {
+    Err(InvalidDecodeParms(filter_name, reason)) => {
+      assert_eq(filter_name, "LZWDecode")
+      assert_eq(reason.contains("Predictor"), true)
+    }
+    _ => fail("expected unsupported LZW predictor to fail")
+  }
+}
+
+///|
 test "decode_lzw stops adding table entries after the 4096-entry cap" {
   let decoder = LzwDecoder::new(Bytes::from_array([]), 1)
   decoder.table = Array::make(lzw_table_capacity, None)

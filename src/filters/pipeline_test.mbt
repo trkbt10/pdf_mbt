@@ -1,4 +1,35 @@
 ///|
+fn pack_lzw_codes(codes : Array[Int]) -> Bytes {
+  let output : Array[Byte] = []
+  let mut current_byte = 0
+  let mut bits_filled = 0
+
+  for code in codes {
+    let mut remaining = 9
+    while remaining > 0 {
+      let shift = remaining - 1
+      let bit = (code >> shift) & 1
+      current_byte = (current_byte << 1) | bit
+      bits_filled = bits_filled + 1
+      remaining = remaining - 1
+
+      if bits_filled == 8 {
+        output.push(current_byte.to_byte())
+        current_byte = 0
+        bits_filled = 0
+      }
+    }
+  }
+
+  if bits_filled > 0 {
+    current_byte = current_byte << (8 - bits_filled)
+    output.push(current_byte.to_byte())
+  }
+
+  Bytes::from_array(output)
+}
+
+///|
 test "decode_stream_bytes returns raw bytes unchanged when filter is absent" {
   let dict : @objects.PdfDictionary = Map::new()
   let data = Bytes::from_array([b'\x01', b'\x02', b'\xfe', b'\xff'])
@@ -45,6 +76,76 @@ test "decode_stream_bytes decodes RunLength streams" {
   match decoded {
     Ok(bytes) => assert_eq(bytes, Bytes::from_array([b'A', b'B', b'C', b'D']))
     _ => fail("expected RunLengthDecode to be routed through the pipeline")
+  }
+}
+
+///|
+test "decode_stream_bytes decodes LZW streams without predictors" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"LZWDecode"),
+  )
+  let data = pack_lzw_codes([256, 65, 66, 67, 257])
+
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Ok(bytes) => assert_eq(bytes, Bytes::from_array([b'A', b'B', b'C']))
+    _ => fail("expected LZWDecode to be routed through the pipeline")
+  }
+}
+
+///|
+test "decode_stream_bytes decodes LZW streams with TIFF predictors" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"LZWDecode"),
+  )
+  let params : @objects.PdfDictionary = Map::new()
+  params[@objects.PdfName::new(b"Predictor")] = @objects.PdfObject::Integer(2L)
+  params[@objects.PdfName::new(b"Columns")] = @objects.PdfObject::Integer(4L)
+  params[@objects.PdfName::new(b"Colors")] = @objects.PdfObject::Integer(1L)
+  params[@objects.PdfName::new(b"BitsPerComponent")] = @objects.PdfObject::Integer(
+    8L,
+  )
+  dict[@objects.PdfName::new(b"DecodeParms")] = @objects.PdfObject::Dictionary(
+    params,
+  )
+  let data = pack_lzw_codes([256, 10, 20, 30, 40, 257])
+
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Ok(bytes) =>
+      assert_eq(bytes, Bytes::from_array([b'\n', b'\x1e', b'<', b'd']))
+    _ => fail("expected LZWDecode predictor reconstruction to be applied")
+  }
+}
+
+///|
+test "decode_stream_bytes reports LZWDecode predictor failures" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"LZWDecode"),
+  )
+  let params : @objects.PdfDictionary = Map::new()
+  params[@objects.PdfName::new(b"Predictor")] = @objects.PdfObject::Integer(9L)
+  dict[@objects.PdfName::new(b"DecodeParms")] = @objects.PdfObject::Dictionary(
+    params,
+  )
+  let data = pack_lzw_codes([256, 65, 257])
+
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Err(InvalidDecodeParms(filter_name, reason)) => {
+      assert_eq(filter_name, "LZWDecode")
+      assert_eq(reason.contains("Predictor"), true)
+    }
+    _ => fail("expected LZWDecode predictor failure to be surfaced")
   }
 }
 

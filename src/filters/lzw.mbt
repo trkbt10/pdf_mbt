@@ -26,7 +26,8 @@ fn decode_lzw(
   params : DecodeParams,
 ) -> Bytes raise PdfFilterError {
   let early_change = read_lzw_early_change(params)
-  LzwDecoder::new(data, early_change).decode()
+  let decoded = LzwDecoder::new(data, early_change).decode()
+  apply_predictor("LZWDecode", decoded, params)
 }
 
 ///|
