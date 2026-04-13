@@ -4,6 +4,7 @@
 pub struct PdfDocument {
   priv file : PdfFile
   priv catalog : PdfCatalog
+  priv mut page_index : PageTreeIndex?
 }
 
 ///|

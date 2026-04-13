@@ -39,7 +39,7 @@
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 7.2_
   - _Boundary: PageTreeWalker_
 
-- [ ] 3.2 Store and reuse the ordered page index
+- [x] 3.2 Store and reuse the ordered page index
   - Record each leaf page reference with its raw page dictionary, zero-based index, parent reference, and known ancestor context.
   - Cache the complete page index only after a successful traversal, leaving no public partial state after traversal errors.
   - Reuse the cached index for subsequent page count and indexed page calls.
