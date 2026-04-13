@@ -92,7 +92,7 @@
   - _Boundary: NameDictionaryReader_
   - _Depends: 2.1_
 
-- [ ] 5.2 Search name trees by exact PDF string bytes
+- [x] 5.2 Search name trees by exact PDF string bytes
   - Support leaf `Names` arrays that map exact string keys to raw values.
   - Support intermediate `Kids` traversal with indirect node loading and optional `Limits` pruning.
   - Detect malformed name arrays, non-string keys, invalid child references, and cycles.
