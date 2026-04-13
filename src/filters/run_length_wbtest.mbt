@@ -13,6 +13,21 @@ test "decode_run_length expands repeated-byte runs" {
 }
 
 ///|
+test "decode_run_length expands large repeated-byte runs" {
+  let encoded = Bytes::from_array([b'\x81', b'Q', b'\x80'])
+  let decoded = decode_run_length(encoded)
+
+  let expected : Array[Byte] = []
+  let mut index = 0
+  while index < 128 {
+    expected.push(b'Q')
+    index = index + 1
+  }
+
+  assert_eq(decoded, Bytes::from_array(expected))
+}
+
+///|
 test "decode_run_length stops at the end marker" {
   let encoded = Bytes::from_array([
     b'\x00', b'A', b'\x80', b'\x03', b'B', b'C', b'D', b'E',

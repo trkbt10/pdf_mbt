@@ -191,7 +191,7 @@
   - `moon fmt`, `moon test`, `moon check`, and `moon info` complete without failures.
   - _Requirements: 1.5, 7.3, 8.4_
 
-- [ ] 8.2 Cover boundary and robustness regressions
+- [x] 8.2 Cover boundary and robustness regressions
   - Add regression coverage for large RunLength expansion, LZW table limit behavior, repeated DEFLATE distance copies, and malformed dynamic-Huffman rejection.
   - Add filter-chain failure tests that prove no partially decoded bytes are returned to reader callers.
   - Confirm unsupported filters and Crypt remain explicit failures after reader integration.

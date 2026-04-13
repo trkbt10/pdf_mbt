@@ -229,3 +229,36 @@ test "decode_structural_stream wraps unsupported structural stream filters befor
     _ => fail("expected unsupported structural stream filters to be wrapped")
   }
 }
+
+///|
+test "decode_structural_stream does not return partial bytes when a later filter fails" {
+  let stream = make_structural_stream(
+    b"7001010300FCFF616263024D0127>",
+    b"ObjStm",
+    Some(
+      @objects.PdfObject::Array([
+        @objects.PdfObject::Name(@objects.PdfName::new(b"ASCIIHexDecode")),
+        @objects.PdfObject::Name(@objects.PdfName::new(b"FlateDecode")),
+      ]),
+    ),
+  )
+
+  let result : Result[Bytes, PdfReaderError] = try? decode_structural_stream(
+    stream,
+    ObjectStream,
+    offset=47L,
+  )
+  match result {
+    Err(
+      DecodeStreamError(
+        actual_offset,
+        @filters.PdfFilterError::DecodeError(filter_name, reason)
+      )
+    ) => {
+      assert_eq(actual_offset, 47L)
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("method"), true)
+    }
+    _ => fail("expected later filter failure to surface without partial bytes")
+  }
+}
