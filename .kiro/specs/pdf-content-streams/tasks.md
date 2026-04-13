@@ -9,7 +9,7 @@
   - _Requirements: 4.1, 4.4_
   - _Boundary: ContentPackage_
 
-- [ ] 1.2 Add content-stream diagnostic and wrapping behavior
+- [x] 1.2 Add content-stream diagnostic and wrapping behavior
   - Add a content error boundary for malformed syntax, unknown operators, illegal operands, inline-image failures, resource failures, and filter failures.
   - Include byte offsets in syntax and inline-image errors so callers can locate malformed decoded content.
   - Convert lower-level lexer, object, and filter failures into content-stream context without changing their owning packages.
