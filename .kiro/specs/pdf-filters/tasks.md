@@ -176,7 +176,7 @@
   - Integration tests load FlateDecode-compressed object streams and observe resolved member objects.
   - _Requirements: 8.1, 8.3, 8.4_
 
-- [ ] 7.4 Revalidate reader public behavior
+- [x] 7.4 Revalidate reader public behavior
   - Update reader-level public API and package-boundary checks to reflect the new filter dependency and error wrapping.
   - Preserve existing unfiltered xref and object stream behavior.
   - Preserve unsupported structural filter failures for filters outside this phase.
