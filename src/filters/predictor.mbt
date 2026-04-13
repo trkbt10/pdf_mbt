@@ -43,8 +43,10 @@ fn apply_predictor(
         params.predictor_context(filter_name),
       )
     10..<16 =>
-      raise PdfFilterError::DecodeError(
-        filter_name, "Predictor reconstruction not implemented",
+      reconstruct_png_predictor(
+        filter_name,
+        data,
+        params.predictor_context(filter_name),
       )
     _ =>
       raise PdfFilterError::DecodeError(
@@ -157,6 +159,17 @@ fn predictor_sample_count(context : PredictorContext) -> Int {
 }
 
 ///|
+fn png_bytes_per_pixel(context : PredictorContext) -> Int {
+  let sample_bits = context.colors * context.bits_per_component
+  let bytes_per_pixel = (sample_bits + 7) / 8
+  if bytes_per_pixel < 1 {
+    1
+  } else {
+    bytes_per_pixel
+  }
+}
+
+///|
 fn reconstruct_tiff_predictor(
   filter_name : String,
   data : Bytes,
@@ -200,6 +213,114 @@ fn reconstruct_tiff_predictor(
   }
 
   Bytes::from_array(reconstructed)
+}
+
+///|
+fn reconstruct_png_predictor(
+  filter_name : String,
+  data : Bytes,
+  context : PredictorContext,
+) -> Bytes raise PdfFilterError {
+  let row_width = context.row_bytes + 1
+  if data.length() % row_width != 0 {
+    raise PdfFilterError::DecodeError(
+      filter_name, "Predictor input length must divide into complete rows",
+    )
+  }
+
+  let row_count = data.length() / row_width
+  let bytes_per_pixel = png_bytes_per_pixel(context)
+  let reconstructed : Array[Byte] = []
+  let mut row_index = 0
+  let mut previous_row : Array[Byte] = []
+
+  while row_index < row_count {
+    let start = row_index * row_width
+    let end = start + row_width
+    let filter = data[start].to_int()
+    let row = data[start + 1:end].to_array()
+    let output_row = reconstruct_png_row(
+      filter_name, filter, row, previous_row, bytes_per_pixel,
+    )
+    reconstructed.append(output_row)
+    previous_row = output_row
+    row_index = row_index + 1
+  }
+
+  Bytes::from_array(reconstructed)
+}
+
+///|
+fn reconstruct_png_row(
+  filter_name : String,
+  filter : Int,
+  encoded_row : Array[Byte],
+  previous_row : Array[Byte],
+  bytes_per_pixel : Int,
+) -> Array[Byte] raise PdfFilterError {
+  let output : Array[Byte] = []
+  let mut index = 0
+
+  while index < encoded_row.length() {
+    let encoded = encoded_row[index].to_int()
+    let left = if index >= bytes_per_pixel {
+      output[index - bytes_per_pixel].to_int()
+    } else {
+      0
+    }
+    let up = if index < previous_row.length() {
+      previous_row[index].to_int()
+    } else {
+      0
+    }
+    let upper_left = if index >= bytes_per_pixel &&
+      index - bytes_per_pixel < previous_row.length() {
+      previous_row[index - bytes_per_pixel].to_int()
+    } else {
+      0
+    }
+    let value = match filter {
+      0 => encoded
+      1 => encoded + left
+      2 => encoded + up
+      3 => encoded + (left + up) / 2
+      4 => encoded + paeth_predictor(left, up, upper_left)
+      _ =>
+        raise PdfFilterError::DecodeError(
+          filter_name,
+          "Unknown PNG predictor row filter: " + filter.to_string(),
+        )
+    }
+    output.push((value & 0xff).to_byte())
+    index = index + 1
+  }
+
+  output
+}
+
+///|
+fn paeth_predictor(a : Int, b : Int, c : Int) -> Int {
+  let p = a + b - c
+  let pa = abs_int(p - a)
+  let pb = abs_int(p - b)
+  let pc = abs_int(p - c)
+
+  if pa <= pb && pa <= pc {
+    a
+  } else if pb <= pc {
+    b
+  } else {
+    c
+  }
+}
+
+///|
+fn abs_int(value : Int) -> Int {
+  if value < 0 {
+    0 - value
+  } else {
+    value
+  }
 }
 
 ///|

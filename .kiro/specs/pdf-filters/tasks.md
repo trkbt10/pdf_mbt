@@ -66,7 +66,7 @@
   - Tests show TIFF predictor output for single-color and multi-color rows.
   - _Requirements: 4.2, 4.3, 4.5, 5.4_
 
-- [ ] 3.3 Reconstruct PNG predictor rows
+- [x] 3.3 Reconstruct PNG predictor rows
   - Consume one filter-type byte per row for predictor values 10 through 15.
   - Implement PNG None, Sub, Up, Average, and Paeth reconstruction using the prior row when required.
   - Reject unknown row filter bytes and inconsistent row lengths.

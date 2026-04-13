@@ -295,3 +295,71 @@ test "predictor context rejects non-positive row parameters" {
     _ => fail("expected invalid row parameters to be rejected")
   }
 }
+
+///|
+test "apply_predictor reconstructs PNG rows for all filter types" {
+  let raw : @objects.PdfDictionary = Map::new()
+  raw[@objects.PdfName::new(b"Predictor")] = @objects.PdfObject::Integer(15L)
+  raw[@objects.PdfName::new(b"Columns")] = @objects.PdfObject::Integer(3L)
+  let params = DecodeParams::{ raw: Some(raw) }
+  let data = Bytes::from_array([
+    b'\x00', b'\n', b'\x14', b'\x1e', b'\x01', b'\x01', b'\x02', b'\x03', b'\x02',
+    b'\x01', b'\x01', b'\x01', b'\x03', b'\x01', b'\x01', b'\x01', b'\x04', b'\x01',
+    b'\x01', b'\x01',
+  ])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? apply_predictor(
+    "FlateDecode", data, params,
+  )
+  match decoded {
+    Ok(bytes) =>
+      assert_eq(
+        bytes,
+        Bytes::from_array([
+          b'\n', b'\x14', b'\x1e', b'\x01', b'\x03', b'\x06', b'\x02', b'\x04', b'\x07',
+          b'\x02', b'\x04', b'\x06', b'\x03', b'\x05', b'\x07',
+        ]),
+      )
+    _ => fail("expected PNG predictor rows to reconstruct correctly")
+  }
+}
+
+///|
+test "apply_predictor rejects unknown PNG row filters" {
+  let raw : @objects.PdfDictionary = Map::new()
+  raw[@objects.PdfName::new(b"Predictor")] = @objects.PdfObject::Integer(10L)
+  raw[@objects.PdfName::new(b"Columns")] = @objects.PdfObject::Integer(3L)
+  let params = DecodeParams::{ raw: Some(raw) }
+  let data = Bytes::from_array([b'\x05', b'\x00', b'\x00', b'\x00'])
+
+  let result : Result[Bytes, PdfFilterError] = try? apply_predictor(
+    "FlateDecode", data, params,
+  )
+  match result {
+    Err(DecodeError(filter_name, reason)) => {
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("Unknown PNG predictor row filter"), true)
+    }
+    _ => fail("expected unknown PNG row filter to be rejected")
+  }
+}
+
+///|
+test "apply_predictor rejects inconsistent PNG row lengths" {
+  let raw : @objects.PdfDictionary = Map::new()
+  raw[@objects.PdfName::new(b"Predictor")] = @objects.PdfObject::Integer(12L)
+  raw[@objects.PdfName::new(b"Columns")] = @objects.PdfObject::Integer(3L)
+  let params = DecodeParams::{ raw: Some(raw) }
+  let data = Bytes::from_array([b'\x00', b'\x01', b'\x02', b'\x03', b'\x04'])
+
+  let result : Result[Bytes, PdfFilterError] = try? apply_predictor(
+    "FlateDecode", data, params,
+  )
+  match result {
+    Err(DecodeError(filter_name, reason)) => {
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("complete rows"), true)
+    }
+    _ => fail("expected inconsistent PNG row length to be rejected")
+  }
+}
