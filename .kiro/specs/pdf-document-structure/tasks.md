@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Establish document-structure foundations
+- [x] 1. Establish document-structure foundations
 - [x] 1.1 Define document-level diagnostics and shared structural value shapes
   - Add document errors that wrap reader failures and distinguish invalid catalog, page tree, page object, inherited attribute, name tree, page-index, and cycle failures.
   - Add shared document-structure values for validated catalog state, page records, page rectangles, and name-tree categories without changing lower object or reader contracts.
@@ -13,7 +13,7 @@
   - The completed fixtures can open through the current reader and expose the structural shapes needed by catalog, page tree, inheritance, names, and example validation tests.
   - _Requirements: 7.1, 7.2, 7.3_
 
-- [ ] 2. Resolve the document catalog and facade entry points
+- [x] 2. Resolve the document catalog and facade entry points
 - [x] 2.1 Resolve and validate the catalog from the latest trailer root
   - Follow the latest trailer root reference through the existing object loader and require the resolved object to be a dictionary.
   - Require `/Type /Catalog` and a required `/Pages` indirect reference.
@@ -30,7 +30,7 @@
   - _Requirements: 1.1, 6.4, 7.1_
   - _Boundary: DocumentFacade_
 
-- [ ] 3. Build lazy page indexing and indexed page access
+- [x] 3. Build lazy page indexing and indexed page access
 - [x] 3.1 Traverse page tree nodes in document order
   - Load the root page tree node from the catalog and validate `Pages` nodes with `Kids` and non-negative `Count` entries.
   - Traverse child references recursively from left to right and accept only intermediate `Pages` nodes or leaf `Page` objects.
@@ -55,7 +55,7 @@
   - _Requirements: 2.4, 3.1, 6.1, 6.2, 6.3_
   - _Boundary: DocumentFacade_
 
-- [ ] 4. Implement page structural access and inheritance
+- [x] 4. Implement page structural access and inheritance
 - [x] 4.1 Provide direct page entry access and on-demand reference resolution
   - Validate page dictionaries as `/Type /Page` before exposing page entry behavior.
   - Provide direct access to structural entries such as parent, contents, user unit, and annotations without applying inheritance.
@@ -82,7 +82,7 @@
   - _Boundary: PageAccessor, InheritanceResolver_
   - _Depends: 4.2_
 
-- [ ] 5. Implement catalog name dictionary lookup
+- [x] 5. Implement catalog name dictionary lookup
 - [x] 5.1 (P) Resolve optional name dictionary category roots
   - Treat a missing catalog `Names` entry as absence rather than an error.
   - Resolve direct or indirect `Names` entries to a dictionary when present.
@@ -100,7 +100,7 @@
   - _Requirements: 5.2, 5.3_
   - _Boundary: NameTreeReader_
 
-- [ ] 6. Integrate the public surface and validation coverage
+- [x] 6. Integrate the public surface and validation coverage
 - [x] 6.1 Wire document APIs into the reader public interface
   - Make the document facade, catalog, page, rectangle, name category, and document error shapes visible through the reader package boundary.
   - Regenerate the public interface metadata and verify existing file-structure APIs remain unchanged in behavior.
