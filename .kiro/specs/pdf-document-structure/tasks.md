@@ -14,7 +14,7 @@
   - _Requirements: 7.1, 7.2, 7.3_
 
 - [ ] 2. Resolve the document catalog and facade entry points
-- [ ] 2.1 Resolve and validate the catalog from the latest trailer root
+- [x] 2.1 Resolve and validate the catalog from the latest trailer root
   - Follow the latest trailer root reference through the existing object loader and require the resolved object to be a dictionary.
   - Require `/Type /Catalog` and a required `/Pages` indirect reference.
   - Preserve raw optional catalog entries for `PageLabels`, `Names`, `Outlines`, `Metadata`, `MarkInfo`, `StructTreeRoot`, and `Lang` without interpreting them.

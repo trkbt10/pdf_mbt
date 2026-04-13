@@ -78,6 +78,8 @@ pub struct PdfCatalog {
   dict : Map[@objects.PdfName, @objects.PdfObject]
   pages_ref : @objects.ObjectId
 } derive(Eq, @debug.Debug)
+pub fn PdfCatalog::entry(Self, @objects.PdfName) -> @objects.PdfObject?
+pub fn PdfCatalog::names_entry(Self) -> @objects.PdfObject?
 
 pub struct PdfDocument {
 }
