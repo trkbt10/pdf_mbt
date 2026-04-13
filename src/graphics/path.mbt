@@ -44,34 +44,34 @@ pub(all) struct ClipState {
 } derive(Eq, Debug)
 
 ///|
-pub(all) struct CurrentPath {
-  mut subpaths : Array[PathSubpath]
+struct CurrentPath {
+  subpaths : Array[PathSubpath]
   mut current_point : GraphicsPoint?
 } derive(Eq, Debug)
 
 ///|
-pub fn CurrentPath::new() -> CurrentPath {
+fn CurrentPath::new() -> CurrentPath {
   CurrentPath::{ subpaths: [], current_point: None }
 }
 
 ///|
-pub fn CurrentPath::is_empty(self : CurrentPath) -> Bool {
+fn CurrentPath::is_empty(self : CurrentPath) -> Bool {
   self.subpaths.length() == 0
 }
 
 ///|
-pub fn CurrentPath::snapshot(self : CurrentPath) -> GraphicsPath {
+fn CurrentPath::snapshot(self : CurrentPath) -> GraphicsPath {
   GraphicsPath::{ subpaths: copy_subpaths(self.subpaths) }
 }
 
 ///|
-pub fn CurrentPath::clear(self : CurrentPath) -> Unit {
+fn CurrentPath::clear(self : CurrentPath) -> Unit {
   self.subpaths.clear()
   self.current_point = None
 }
 
 ///|
-pub fn CurrentPath::move_to(self : CurrentPath, point : GraphicsPoint) -> Unit {
+fn CurrentPath::move_to(self : CurrentPath, point : GraphicsPoint) -> Unit {
   if self.subpaths.length() > 0 {
     let last_index = self.subpaths.length() - 1
     let last = self.subpaths[last_index]
@@ -96,7 +96,7 @@ pub fn CurrentPath::move_to(self : CurrentPath, point : GraphicsPoint) -> Unit {
 }
 
 ///|
-pub fn CurrentPath::line_to(
+fn CurrentPath::line_to(
   self : CurrentPath,
   point : GraphicsPoint,
   offset : Int64,
@@ -105,7 +105,7 @@ pub fn CurrentPath::line_to(
 }
 
 ///|
-pub fn CurrentPath::curve_to(
+fn CurrentPath::curve_to(
   self : CurrentPath,
   control1 : GraphicsPoint,
   control2 : GraphicsPoint,
@@ -120,7 +120,7 @@ pub fn CurrentPath::curve_to(
 }
 
 ///|
-pub fn CurrentPath::close_path(
+fn CurrentPath::close_path(
   self : CurrentPath,
   offset : Int64,
 ) -> Unit raise PdfGraphicsError {
@@ -141,7 +141,7 @@ pub fn CurrentPath::close_path(
 }
 
 ///|
-pub fn CurrentPath::rectangle(self : CurrentPath, rect : GraphicsRect) -> Unit {
+fn CurrentPath::rectangle(self : CurrentPath, rect : GraphicsRect) -> Unit {
   let p0 = GraphicsPoint::new(rect.left, rect.bottom)
   let p1 = GraphicsPoint::new(rect.right, rect.bottom)
   let p2 = GraphicsPoint::new(rect.right, rect.top)

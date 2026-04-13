@@ -5,6 +5,7 @@ import {
   "moonbitlang/core/debug",
   "trkbt10/pdf/src/content",
   "trkbt10/pdf/src/filters",
+  "trkbt10/pdf/src/graphics",
   "trkbt10/pdf/src/objects",
 }
 
@@ -19,6 +20,7 @@ pub(all) suberror PdfDocumentError {
   InvalidInheritedAttribute(@objects.ObjectId, @objects.PdfName, String)
   InvalidNameTree(@objects.PdfName, String)
   ContentError(@content.PdfContentError)
+  GraphicsError(@graphics.PdfGraphicsError)
   PageIndexOutOfRange(Int, Int)
   CycleDetected(@objects.ObjectId, String)
 } derive(Eq, @debug.Debug)
@@ -45,6 +47,11 @@ pub fn ByteSource::new(Bytes, Int64) -> Self
 pub fn ByteSource::physical_offset(Self, Int64) -> Int64 raise PdfReaderError
 pub fn ByteSource::slice_from_pdf_offset(Self, Int64) -> Bytes raise PdfReaderError
 pub fn ByteSource::slice_range(Self, Int64, Int64) -> Bytes raise PdfReaderError
+
+pub(all) struct GraphicsPageOptions {
+  initial_ctm : @graphics.GraphicsMatrix?
+} derive(Eq, @debug.Debug)
+pub fn GraphicsPageOptions::default() -> Self
 
 pub(all) enum NameTreeCategory {
   Dests
@@ -132,6 +139,9 @@ pub fn PdfPage::content_stream(Self) -> @content.ContentStream raise PdfDocument
 pub fn PdfPage::contents(Self) -> @objects.PdfObject?
 pub fn PdfPage::crop_box(Self) -> PdfRectangle? raise PdfDocumentError
 pub fn PdfPage::entry(Self, @objects.PdfName) -> @objects.PdfObject?
+pub fn PdfPage::graphics_events(Self, GraphicsPageOptions) -> Array[@graphics.GraphicsEvent] raise PdfDocumentError
+pub fn PdfPage::graphics_initial_state(Self, GraphicsPageOptions) -> @graphics.GraphicsInitialState raise PdfDocumentError
+pub fn PdfPage::graphics_program(Self, GraphicsPageOptions) -> @graphics.GraphicsProgram raise PdfDocumentError
 pub fn PdfPage::index(Self) -> Int
 pub fn PdfPage::inherited_entry(Self, @objects.PdfName) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfPage::media_box(Self) -> PdfRectangle? raise PdfDocumentError

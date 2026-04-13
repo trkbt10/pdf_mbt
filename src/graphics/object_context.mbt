@@ -1,24 +1,24 @@
 ///|
 /// Section 8.2 graphics object context: content stream level, active path
 /// object, or active text object.
-pub(all) enum GraphicsObjectLevel {
+enum GraphicsObjectLevel {
   ContentStreamLevel
   PathObject
   TextObject
 } derive(Eq, Debug)
 
 ///|
-pub(all) struct GraphicsObjectContext {
+struct GraphicsObjectContext {
   mut level : GraphicsObjectLevel
 } derive(Eq, Debug)
 
 ///|
-pub fn GraphicsObjectContext::new() -> GraphicsObjectContext {
+fn GraphicsObjectContext::new() -> GraphicsObjectContext {
   GraphicsObjectContext::{ level: GraphicsObjectLevel::ContentStreamLevel }
 }
 
 ///|
-pub fn GraphicsObjectContext::accept(
+fn GraphicsObjectContext::accept(
   self : GraphicsObjectContext,
   operator : @content.StandardContentOperator,
   offset : Int64,

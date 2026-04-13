@@ -23,7 +23,7 @@ test "stroke parameter validation accepts edges and rejects malformed values" {
   state.set_line_width(0.0, 1L)
   state.set_miter_limit(1.0, 1L)
   state.set_flatness(100.0, 1L)
-  let dash = make_dash_pattern([1.0, 2.0], 8.0, 1L)
+  let dash = DashPattern::from_values([1.0, 2.0], 8.0, 1L)
   assert_eq(dash.phase, 2.0)
   let bad_width : Result[Unit, PdfGraphicsError] = try? state.set_line_width(
     -1.0, 7L,
@@ -32,7 +32,7 @@ test "stroke parameter validation accepts edges and rejects malformed values" {
     Err(InvalidGraphicsState(offset, _)) => assert_eq(offset, 7L)
     _ => fail("expected invalid line width")
   }
-  let bad_dash : Result[DashPattern, PdfGraphicsError] = try? make_dash_pattern(
+  let bad_dash : Result[DashPattern, PdfGraphicsError] = try? DashPattern::from_values(
     [0.0, 0.0],
     0.0,
     8L,

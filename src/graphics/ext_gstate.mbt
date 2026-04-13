@@ -299,7 +299,7 @@ fn optional_dash(
           )
       }
       let phase = object_number(values[1], offset, "D ExtGState dash phase")
-      Some(make_dash_pattern(dash_values, phase, offset))
+      Some(DashPattern::from_values(dash_values, phase, offset))
     }
     Some(_) =>
       raise PdfGraphicsError::InvalidGraphicsState(

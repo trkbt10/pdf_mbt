@@ -64,7 +64,7 @@ pub fn interpret_content(
 }
 
 ///|
-pub(all) struct GraphicsInterpreter {
+struct GraphicsInterpreter {
   mut state : GraphicsState
   stack : GraphicsStateStack
   current_path : CurrentPath
@@ -217,7 +217,7 @@ fn GraphicsInterpreter::apply_graphics_state_operator(
           )
       }
       let phase = operand_number(operation.operands[1], offset, "dash phase")
-      let dash = make_dash_pattern(values, phase, offset)
+      let dash = DashPattern::from_values(values, phase, offset)
       self.state.dash_pattern = DashPattern::{
         array: dash.array.copy(),
         phase: dash.phase,

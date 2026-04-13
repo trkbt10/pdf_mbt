@@ -1,0 +1,243 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/graphics"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/pdf/src/content",
+  "trkbt10/pdf/src/objects",
+}
+
+// Values
+pub fn interpret_content(@content.ContentStream, GraphicsInitialState) -> GraphicsProgram raise PdfGraphicsError
+
+pub fn resolve_ext_gstate(@content.ContentResources, @objects.PdfName, Int64) -> ExtGStatePatch raise PdfGraphicsError
+
+// Errors
+pub(all) suberror PdfGraphicsError {
+  BadOperand(Int64, String)
+  InvalidGraphicsState(Int64, String)
+  GraphicsStackUnderflow(Int64)
+  InvalidPathState(Int64, String)
+  InvalidObjectContext(Int64, String)
+  ResourceFailure(Int64, String)
+  ContentFailure(@content.PdfContentError)
+} derive(Eq, @debug.Debug)
+
+// Types and methods
+pub(all) struct ClipEntry {
+  path : GraphicsPath
+  rule : FillRule
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ClipState {
+  initial_clip : GraphicsPath?
+  clips : Array[ClipEntry]
+} derive(Eq, @debug.Debug)
+pub fn ClipState::append_clip(Self, GraphicsPath, FillRule) -> Self
+pub fn ClipState::copy(Self) -> Self
+pub fn ClipState::new(GraphicsPath?) -> Self
+
+type CurrentPath derive(Eq, @debug.Debug)
+
+pub(all) struct DashPattern {
+  array : Array[Double]
+  phase : Double
+} derive(Eq, @debug.Debug)
+pub fn DashPattern::from_values(Array[Double], Double, Int64) -> Self raise PdfGraphicsError
+pub fn DashPattern::solid() -> Self
+
+pub(all) struct ExtGStatePatch {
+  line_width : Double?
+  line_cap : LineCapStyle?
+  line_join : LineJoinStyle?
+  miter_limit : Double?
+  dash_pattern : DashPattern?
+  rendering_intent : @objects.PdfName?
+  flatness : Double?
+  stroke_adjustment : Bool?
+  overprint_stroking : Bool?
+  overprint_nonstroking : Bool?
+  overprint_mode : Int?
+  blend_mode : @objects.PdfObject?
+  soft_mask : @objects.PdfObject?
+  alpha_stroking : Double?
+  alpha_nonstroking : Double?
+  alpha_source : Bool?
+  text_knockout : Bool?
+  black_point_compensation : @objects.PdfName?
+  halftone_origin : GraphicsPoint?
+  raw_entries : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum FillRule {
+  NonZero
+  EvenOdd
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GraphicsEvent {
+  StateSaved(Int64, GraphicsState)
+  StateRestored(Int64, GraphicsState)
+  StateChanged(Int64, GraphicsStateChange, GraphicsState)
+  PathPainted(Int64, PathPaintOperation, GraphicsPath, GraphicsState)
+  ClipChanged(Int64, ClipState)
+  TextObjectBegan(Int64)
+  TextObjectEnded(Int64)
+  ExternalObjectInvoked(Int64, @objects.PdfName)
+  InlineImageSeen(@content.PdfInlineImage)
+  ShadingSeen(Int64, @objects.PdfName)
+  MarkedContentSeen(Int64, @content.StandardContentOperator)
+  ColorOperatorSeen(Int64, @content.StandardContentOperator)
+  IgnoredFutureDomainOperator(Int64, @content.StandardContentOperator)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GraphicsInitialState {
+  ctm : GraphicsMatrix
+  initial_clip : GraphicsPath?
+  user_unit : Double
+  page_rotate : Int
+} derive(Eq, @debug.Debug)
+pub fn GraphicsInitialState::default() -> Self
+pub fn GraphicsInitialState::from_clip(GraphicsPath, Double, Int) -> Self
+
+type GraphicsInterpreter derive(Eq, @debug.Debug)
+
+pub(all) struct GraphicsMatrix {
+  a : Double
+  b : Double
+  c : Double
+  d : Double
+  e : Double
+  f : Double
+} derive(Eq, @debug.Debug)
+pub fn GraphicsMatrix::concat(Self, Self) -> Self
+pub fn GraphicsMatrix::determinant(Self) -> Double
+pub fn GraphicsMatrix::from_six(Double, Double, Double, Double, Double, Double) -> Self
+pub fn GraphicsMatrix::identity() -> Self
+pub fn GraphicsMatrix::inverse(Self) -> Self?
+pub fn GraphicsMatrix::rotation(Double) -> Self
+pub fn GraphicsMatrix::scale(Double, Double) -> Self
+pub fn GraphicsMatrix::skew(Double, Double) -> Self
+pub fn GraphicsMatrix::transform_point(Self, GraphicsPoint) -> GraphicsPoint
+pub fn GraphicsMatrix::translation(Double, Double) -> Self
+
+type GraphicsObjectContext derive(Eq, @debug.Debug)
+
+type GraphicsObjectLevel derive(Eq, @debug.Debug)
+
+pub(all) struct GraphicsPath {
+  subpaths : Array[PathSubpath]
+} derive(Eq, @debug.Debug)
+pub fn GraphicsPath::copy(Self) -> Self
+pub fn GraphicsPath::from_rect(GraphicsRect) -> Self
+
+pub(all) struct GraphicsPoint {
+  x : Double
+  y : Double
+} derive(Eq, @debug.Debug)
+pub fn GraphicsPoint::new(Double, Double) -> Self
+
+pub(all) struct GraphicsProgram {
+  events : Array[GraphicsEvent]
+  final_state : GraphicsState
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GraphicsRect {
+  left : Double
+  bottom : Double
+  right : Double
+  top : Double
+} derive(Eq, @debug.Debug)
+pub fn GraphicsRect::new(Double, Double, Double, Double) -> Self
+
+pub(all) struct GraphicsState {
+  mut ctm : GraphicsMatrix
+  mut clipping_path : ClipState
+  mut stroking_color_space : @objects.PdfObject
+  mut nonstroking_color_space : @objects.PdfObject
+  mut stroking_color : @objects.PdfObject
+  mut nonstroking_color : @objects.PdfObject
+  mut line_width : Double
+  mut line_cap : LineCapStyle
+  mut line_join : LineJoinStyle
+  mut miter_limit : Double
+  mut dash_pattern : DashPattern
+  mut rendering_intent : @objects.PdfName
+  mut flatness : Double
+  mut stroke_adjustment : Bool
+  mut overprint_stroking : Bool
+  mut overprint_nonstroking : Bool
+  mut overprint_mode : Int
+  mut blend_mode : @objects.PdfObject
+  mut soft_mask : @objects.PdfObject
+  mut alpha_stroking : Double
+  mut alpha_nonstroking : Double
+  mut alpha_source : Bool
+  mut text_knockout : Bool
+  mut black_point_compensation : @objects.PdfName
+  mut halftone_origin : GraphicsPoint?
+  mut deferred_entries : Map[@objects.PdfName, @objects.PdfObject]
+  user_unit : Double
+  page_rotate : Int
+} derive(Eq, @debug.Debug)
+pub fn GraphicsState::apply_ext_gstate(Self, ExtGStatePatch, Int64) -> Unit raise PdfGraphicsError
+pub fn GraphicsState::concat_ctm(Self, GraphicsMatrix) -> Unit
+pub fn GraphicsState::copy(Self) -> Self
+pub fn GraphicsState::initial(GraphicsInitialState) -> Self
+pub fn GraphicsState::set_flatness(Self, Double, Int64) -> Unit raise PdfGraphicsError
+pub fn GraphicsState::set_line_width(Self, Double, Int64) -> Unit raise PdfGraphicsError
+pub fn GraphicsState::set_miter_limit(Self, Double, Int64) -> Unit raise PdfGraphicsError
+
+pub(all) enum GraphicsStateChange {
+  CurrentTransformationMatrix(GraphicsMatrix)
+  LineWidth(Double)
+  LineCap(LineCapStyle)
+  LineJoin(LineJoinStyle)
+  MiterLimit(Double)
+  DashPattern(DashPattern)
+  RenderingIntent(@objects.PdfName)
+  Flatness(Double)
+  ExtGStateApplied(@objects.PdfName)
+} derive(Eq, @debug.Debug)
+
+type GraphicsStateStack derive(Eq, @debug.Debug)
+
+pub(all) enum LineCapStyle {
+  ButtCap
+  RoundCap
+  ProjectingSquareCap
+} derive(Eq, @debug.Debug)
+pub fn LineCapStyle::from_int(Int64, Int64) -> Self raise PdfGraphicsError
+
+pub(all) enum LineJoinStyle {
+  MiterJoin
+  RoundJoin
+  BevelJoin
+} derive(Eq, @debug.Debug)
+pub fn LineJoinStyle::from_int(Int64, Int64) -> Self raise PdfGraphicsError
+
+pub(all) enum PathPaintOperation {
+  StrokePath
+  CloseStrokePath
+  FillPath(FillRule)
+  FillStrokePath(FillRule)
+  CloseFillStrokePath(FillRule)
+  EndPath
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PathSegment {
+  LineTo(GraphicsPoint)
+  CurveTo(GraphicsPoint, GraphicsPoint, GraphicsPoint)
+  ClosePath
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PathSubpath {
+  start : GraphicsPoint
+  segments : Array[PathSegment]
+  current : GraphicsPoint
+  closed : Bool
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

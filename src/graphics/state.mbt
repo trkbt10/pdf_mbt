@@ -66,8 +66,8 @@ pub(all) struct GraphicsState {
 } derive(Eq, Debug)
 
 ///|
-pub(all) struct GraphicsStateStack {
-  mut stack : Array[GraphicsState]
+struct GraphicsStateStack {
+  stack : Array[GraphicsState]
 } derive(Eq, Debug)
 
 ///|
@@ -76,7 +76,7 @@ pub fn DashPattern::solid() -> DashPattern {
 }
 
 ///|
-pub fn make_dash_pattern(
+pub fn DashPattern::from_values(
   values : Array[Double],
   phase : Double,
   offset : Int64,
@@ -286,12 +286,12 @@ pub fn GraphicsState::set_flatness(
 }
 
 ///|
-pub fn GraphicsStateStack::new() -> GraphicsStateStack {
+fn GraphicsStateStack::new() -> GraphicsStateStack {
   GraphicsStateStack::{ stack: [] }
 }
 
 ///|
-pub fn GraphicsStateStack::save(
+fn GraphicsStateStack::save(
   self : GraphicsStateStack,
   state : GraphicsState,
 ) -> Unit {
@@ -299,7 +299,7 @@ pub fn GraphicsStateStack::save(
 }
 
 ///|
-pub fn GraphicsStateStack::restore(
+fn GraphicsStateStack::restore(
   self : GraphicsStateStack,
   offset : Int64,
 ) -> GraphicsState raise PdfGraphicsError {
