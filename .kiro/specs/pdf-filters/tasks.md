@@ -140,7 +140,7 @@
   - Public pipeline tests prove chained filters return the fully decoded final byte sequence.
   - _Requirements: 1.1, 1.2, 1.5, 7.3_
 
-- [ ] 6.2 Align DecodeParms through end-to-end decoding
+- [x] 6.2 Align DecodeParms through end-to-end decoding
   - Pass a single parameter dictionary to a single filter.
   - Pass each parameter-array entry to the filter at the same index and treat null entries as no parameters.
   - Reject mismatched parameter arrays with an invalid filter specification error.

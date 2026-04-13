@@ -30,6 +30,29 @@ fn pack_lzw_codes(codes : Array[Int]) -> Bytes {
 }
 
 ///|
+fn ascii_hex_encode(bytes : Bytes) -> Bytes {
+  let output : Array[Byte] = []
+  for byte in bytes {
+    let value = byte.to_int()
+    let high = value / 16
+    let low = value % 16
+    output.push(hex_digit(high))
+    output.push(hex_digit(low))
+  }
+  output.push(b'>')
+  Bytes::from_array(output)
+}
+
+///|
+fn hex_digit(value : Int) -> Byte {
+  if value < 10 {
+    (b'0'.to_int() + value).to_byte()
+  } else {
+    (b'A'.to_int() + (value - 10)).to_byte()
+  }
+}
+
+///|
 test "decode_stream_bytes returns raw bytes unchanged when filter is absent" {
   let dict : @objects.PdfDictionary = Map::new()
   let data = Bytes::from_array([b'\x01', b'\x02', b'\xfe', b'\xff'])
@@ -187,6 +210,89 @@ test "decode_stream_bytes reports LZWDecode predictor failures" {
       assert_eq(reason.contains("Predictor"), true)
     }
     _ => fail("expected LZWDecode predictor failure to be surfaced")
+  }
+}
+
+///|
+test "decode_stream_bytes applies Flate predictor params only to the Flate stage" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Name(@objects.PdfName::new(b"ASCIIHexDecode")),
+    @objects.PdfObject::Name(@objects.PdfName::new(b"FlateDecode")),
+  ])
+  let flate_params : @objects.PdfDictionary = Map::new()
+  flate_params[@objects.PdfName::new(b"Predictor")] = @objects.PdfObject::Integer(
+    2L,
+  )
+  flate_params[@objects.PdfName::new(b"Columns")] = @objects.PdfObject::Integer(
+    4L,
+  )
+  flate_params[@objects.PdfName::new(b"Colors")] = @objects.PdfObject::Integer(
+    1L,
+  )
+  flate_params[@objects.PdfName::new(b"BitsPerComponent")] = @objects.PdfObject::Integer(
+    8L,
+  )
+  dict[@objects.PdfName::new(b"DecodeParms")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Null,
+    @objects.PdfObject::Dictionary(flate_params),
+  ])
+
+  let raw_flate = Bytes::from_array([
+    b'\x78', b'\xda', b'\xe3', b'\x12', b'\x91', b'\xd3', b'`', b'\x04', b'\x02',
+    b'\x00', b'\x02', b'j', b'\x00', b'i',
+  ])
+  let data = ascii_hex_encode(raw_flate)
+
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Ok(bytes) =>
+      assert_eq(
+        bytes,
+        Bytes::from_array([
+          b'\n', b'\x1e', b'<', b'd', b'\x01', b'\x02', b'\x03', b'\x04',
+        ]),
+      )
+    _ =>
+      fail("expected Flate predictor params to apply only to the Flate stage")
+  }
+}
+
+///|
+test "decode_stream_bytes applies LZW predictor params only to the LZW stage" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Name(@objects.PdfName::new(b"ASCIIHexDecode")),
+    @objects.PdfObject::Name(@objects.PdfName::new(b"LZWDecode")),
+  ])
+  let lzw_params : @objects.PdfDictionary = Map::new()
+  lzw_params[@objects.PdfName::new(b"Predictor")] = @objects.PdfObject::Integer(
+    2L,
+  )
+  lzw_params[@objects.PdfName::new(b"Columns")] = @objects.PdfObject::Integer(
+    4L,
+  )
+  lzw_params[@objects.PdfName::new(b"Colors")] = @objects.PdfObject::Integer(1L)
+  lzw_params[@objects.PdfName::new(b"BitsPerComponent")] = @objects.PdfObject::Integer(
+    8L,
+  )
+  dict[@objects.PdfName::new(b"DecodeParms")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Null,
+    @objects.PdfObject::Dictionary(lzw_params),
+  ])
+
+  let raw_lzw = pack_lzw_codes([256, 10, 20, 30, 40, 257])
+  let data = ascii_hex_encode(raw_lzw)
+
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Ok(bytes) =>
+      assert_eq(bytes, Bytes::from_array([b'\n', b'\x1e', b'<', b'd']))
+    _ => fail("expected LZW predictor params to apply only to the LZW stage")
   }
 }
 
