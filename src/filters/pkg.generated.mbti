@@ -1,0 +1,25 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/filters"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/pdf/src/objects",
+}
+
+// Values
+pub fn decode_stream(@objects.PdfStream) -> Bytes raise PdfFilterError
+
+pub fn decode_stream_bytes(Map[@objects.PdfName, @objects.PdfObject], Bytes) -> Bytes raise PdfFilterError
+
+// Errors
+pub(all) suberror PdfFilterError {
+  InvalidFilterSpec(String)
+  UnsupportedFilter(String)
+} derive(Eq, @debug.Debug)
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+
