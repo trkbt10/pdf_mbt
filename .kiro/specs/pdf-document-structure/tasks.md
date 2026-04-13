@@ -73,7 +73,7 @@
   - _Boundary: InheritanceResolver_
   - _Depends: 3.2_
 
-- [ ] 4.3 Convert page boundary and scalar attributes into typed results
+- [x] 4.3 Convert page boundary and scalar attributes into typed results
   - Normalize `MediaBox` and `CropBox` arrays of four numbers into rectangle values after direct or inherited lookup.
   - Validate inherited or direct `Rotate` values and direct `UserUnit` values while leaving resources, contents, and annotations as raw objects.
   - Surface malformed rectangle or scalar shapes as document errors tied to the page or inherited source.

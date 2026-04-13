@@ -107,6 +107,39 @@ pub fn PdfPage::resources(
 }
 
 ///|
+pub fn PdfPage::media_box(
+  self : PdfPage,
+) -> PdfRectangle? raise PdfDocumentError {
+  resolve_typed_page_rectangle(self, @objects.PdfName::new(b"MediaBox"))
+}
+
+///|
+pub fn PdfPage::crop_box(
+  self : PdfPage,
+) -> PdfRectangle? raise PdfDocumentError {
+  resolve_typed_page_rectangle(self, @objects.PdfName::new(b"CropBox"))
+}
+
+///|
+pub fn PdfPage::rotate(self : PdfPage) -> Int? raise PdfDocumentError {
+  resolve_typed_page_integer(self, @objects.PdfName::new(b"Rotate"))
+}
+
+///|
+pub fn PdfPage::user_unit(self : PdfPage) -> Double? raise PdfDocumentError {
+  match self.entry(@objects.PdfName::new(b"UserUnit")) {
+    Some(value) => Some(parse_typed_page_number(
+      self.object_id(),
+      @objects.PdfName::new(b"UserUnit"),
+      value,
+      "UserUnit",
+      false,
+    ))
+    None => None
+  }
+}
+
+///|
 pub fn PdfPage::inherited_entry(
   self : PdfPage,
   key : @objects.PdfName,
@@ -123,7 +156,10 @@ pub fn PdfPage::inherited_entry(
     return Some(value)
   }
 
-  resolve_inherited_page_entry(self.file, self.record.parent_ref, key)
+  match resolve_inherited_page_entry(self.file, self.record.parent_ref, key) {
+    Some(found) => Some(found.value)
+    None => None
+  }
 }
 
 ///|
@@ -186,11 +222,17 @@ fn is_inheritable_page_key(key : @objects.PdfName) -> Bool {
 }
 
 ///|
+priv struct InheritedPageEntry {
+  source_id : @objects.ObjectId
+  value : @objects.PdfObject
+}
+
+///|
 fn resolve_inherited_page_entry(
   file : PdfFile,
   parent_ref : @objects.ObjectId?,
   key : @objects.PdfName,
-) -> @objects.PdfObject? raise PdfDocumentError {
+) -> InheritedPageEntry? raise PdfDocumentError {
   let seen : Map[@objects.ObjectId, Bool] = Map::new()
   let mut current = parent_ref
   while current is Some(parent_id) {
@@ -222,7 +264,8 @@ fn resolve_inherited_page_entry(
     require_pages_parent_type(parent_id, key, parent_dict)
 
     match parent_dict.get(key) {
-      Some(value) => return Some(value)
+      Some(value) =>
+        return Some(InheritedPageEntry::{ source_id: parent_id, value })
       None => ()
     }
 
@@ -265,5 +308,148 @@ fn require_pages_parent_type(
     raise PdfDocumentError::InvalidInheritedAttribute(
       parent_id, key, "parent node must have /Type /Pages",
     )
+  }
+}
+
+///|
+fn resolve_typed_page_rectangle(
+  page : PdfPage,
+  key : @objects.PdfName,
+) -> PdfRectangle? raise PdfDocumentError {
+  let label = typed_page_key_label(key)
+  match page.entry(key) {
+    Some(value) => Some(parse_typed_page_rectangle(
+      page.object_id(), key, value, label, false,
+    ))
+    None => match resolve_inherited_page_entry(
+      page.file, page.record.parent_ref, key,
+    ) {
+      Some(found) => Some(parse_typed_page_rectangle(
+        found.source_id, key, found.value, label, true,
+      ))
+      None => None
+    }
+  }
+}
+
+///|
+fn resolve_typed_page_integer(
+  page : PdfPage,
+  key : @objects.PdfName,
+) -> Int? raise PdfDocumentError {
+  let label = typed_page_key_label(key)
+  match page.entry(key) {
+    Some(value) => Some(parse_typed_page_integer(
+      page.object_id(), key, value, label, false,
+    ))
+    None => match resolve_inherited_page_entry(
+      page.file, page.record.parent_ref, key,
+    ) {
+      Some(found) => Some(parse_typed_page_integer(
+        found.source_id, key, found.value, label, true,
+      ))
+      None => None
+    }
+  }
+}
+
+///|
+fn typed_page_key_label(key : @objects.PdfName) -> String {
+  if key == @objects.PdfName::new(b"MediaBox") {
+    "MediaBox"
+  } else if key == @objects.PdfName::new(b"CropBox") {
+    "CropBox"
+  } else if key == @objects.PdfName::new(b"Rotate") {
+    "Rotate"
+  } else if key == @objects.PdfName::new(b"UserUnit") {
+    "UserUnit"
+  } else {
+    "page attribute"
+  }
+}
+
+///|
+fn parse_typed_page_rectangle(
+  page_id : @objects.ObjectId,
+  key : @objects.PdfName,
+  value : @objects.PdfObject,
+  label : String,
+  inherited : Bool,
+) -> PdfRectangle raise PdfDocumentError {
+  let error = typed_page_error(
+    page_id,
+    key,
+    label + " must be an array of four numbers",
+    inherited,
+  )
+  match value {
+    @objects.PdfObject::Array(values) => {
+      if values.length() != 4 {
+        raise error
+      }
+      PdfRectangle::{
+        left: parse_typed_page_number(page_id, key, values[0], label, inherited),
+        bottom: parse_typed_page_number(page_id, key, values[1], label, inherited),
+        right: parse_typed_page_number(page_id, key, values[2], label, inherited),
+        top: parse_typed_page_number(page_id, key, values[3], label, inherited),
+      }
+    }
+    _ => raise error
+  }
+}
+
+///|
+fn parse_typed_page_integer(
+  page_id : @objects.ObjectId,
+  key : @objects.PdfName,
+  value : @objects.PdfObject,
+  label : String,
+  inherited : Bool,
+) -> Int raise PdfDocumentError {
+  let error = typed_page_error(
+    page_id,
+    key,
+    label + " must be an integer",
+    inherited,
+  )
+  match value {
+    @objects.PdfObject::Integer(number) => number.to_int()
+    _ => raise error
+  }
+}
+
+///|
+fn parse_typed_page_number(
+  page_id : @objects.ObjectId,
+  key : @objects.PdfName,
+  value : @objects.PdfObject,
+  label : String,
+  inherited : Bool,
+) -> Double raise PdfDocumentError {
+  let error = typed_page_error(
+    page_id,
+    key,
+    label + " must be a number",
+    inherited,
+  )
+  match value {
+    @objects.PdfObject::Integer(number) => number.to_double()
+    @objects.PdfObject::Real(number) => number
+    _ => raise error
+  }
+}
+
+///|
+fn typed_page_error(
+  page_id : @objects.ObjectId,
+  key : @objects.PdfName,
+  reason : String,
+  inherited : Bool,
+) -> PdfDocumentError {
+  let reason = if inherited { "inherited " + reason } else { reason }
+  if inherited {
+    PdfDocumentError::InvalidInheritedAttribute(page_id, key, reason)
+  } else {
+    PdfDocumentError::InvalidPage(page_id, reason)
   }
 }
