@@ -62,6 +62,15 @@ pub(all) struct ContentOperation {
   offset : Int64
 } derive(Eq, @debug.Debug)
 
+pub(all) struct ContentResources {
+  dictionary : Map[@objects.PdfName, @objects.PdfObject]?
+} derive(Eq, @debug.Debug)
+pub fn ContentResources::category_object(Self, ResourceCategory) -> @objects.PdfObject? raise PdfContentError
+pub fn ContentResources::empty() -> Self
+pub fn ContentResources::from_dictionary(Map[@objects.PdfName, @objects.PdfObject]) -> Self
+pub fn ContentResources::from_object(@objects.PdfObject?, Int64) -> Self raise PdfContentError
+pub fn ContentResources::lookup_resource(Self, ResourceCategory, @objects.PdfName) -> @objects.PdfObject? raise PdfContentError
+
 pub(all) struct ContentStream {
   instructions : Array[ContentInstruction]
 } derive(Eq, @debug.Debug)
@@ -96,6 +105,18 @@ pub(all) struct PdfInlineImage {
   data_offset : Int64
   end_offset : Int64
 } derive(Eq, @debug.Debug)
+
+pub(all) enum ResourceCategory {
+  ExtGState
+  ColorSpace
+  Pattern
+  Shading
+  XObject
+  Font
+  Properties
+  ProcSet
+} derive(Eq, @debug.Debug)
+pub fn ResourceCategory::name(Self) -> @objects.PdfName
 
 pub(all) enum StandardContentOperator {
   SaveGraphicsState
