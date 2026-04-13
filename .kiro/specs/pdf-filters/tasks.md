@@ -81,7 +81,7 @@
   - Tests reject invalid headers, preset dictionaries, truncated payloads, and checksum mismatches.
   - _Requirements: 4.1_
 
-- [ ] 4.2 Decode stored DEFLATE blocks
+- [x] 4.2 Decode stored DEFLATE blocks
   - Parse block headers, final-block markers, stored block lengths, and one's-complement length checks.
   - Emit uncompressed bytes for stored blocks and reject malformed stored block boundaries.
   - Validate that the zlib wrapper returns the stored-block output only after checksum verification.

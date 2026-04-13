@@ -51,3 +51,8 @@ fn LsbBitReader::align_to_byte(self : LsbBitReader) -> Unit {
     self.byte_index = self.byte_index + 1
   }
 }
+
+///|
+fn LsbBitReader::byte_position(self : LsbBitReader) -> Int {
+  self.byte_index
+}

@@ -1,4 +1,94 @@
 ///|
+test "decode_deflate decodes a single stored block" {
+  let data = Bytes::from_array([
+    b'\x01', b'\x03', b'\x00', b'\xfc', b'\xff', b'a', b'b', b'c',
+  ])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_deflate(data)
+  match decoded {
+    Ok(bytes) => assert_eq(bytes, Bytes::from_array([b'a', b'b', b'c']))
+    _ => fail("expected a single stored block to decode")
+  }
+}
+
+///|
+test "decode_deflate decodes multiple stored blocks and honors the final marker" {
+  let data = Bytes::from_array([
+    b'\x00', b'\x02', b'\x00', b'\xfd', b'\xff', b'a', b'b', b'\x01', b'\x01', b'\x00',
+    b'\xfe', b'\xff', b'c',
+  ])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_deflate(data)
+  match decoded {
+    Ok(bytes) => assert_eq(bytes, Bytes::from_array([b'a', b'b', b'c']))
+    _ => fail("expected stored blocks to decode across block boundaries")
+  }
+}
+
+///|
+test "decode_deflate rejects invalid stored block length pairs" {
+  let data = Bytes::from_array([
+    b'\x01', b'\x03', b'\x00', b'\x00', b'\xff', b'a', b'b', b'c',
+  ])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_deflate(data)
+  match decoded {
+    Err(DecodeError(filter_name, reason)) => {
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("length"), true)
+    }
+    _ => fail("expected mismatched LEN/NLEN values to be rejected")
+  }
+}
+
+///|
+test "decode_deflate rejects truncated stored block payloads" {
+  let data = Bytes::from_array([
+    b'\x01', b'\x03', b'\x00', b'\xfc', b'\xff', b'a', b'b',
+  ])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_deflate(data)
+  match decoded {
+    Err(DecodeError(filter_name, reason)) => {
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("truncated"), true)
+    }
+    _ => fail("expected truncated stored block payload to fail")
+  }
+}
+
+///|
+test "decode_zlib_stored returns stored-block bytes only after checksum verification" {
+  let data = Bytes::from_array([
+    b'\x78', b'\x01', b'\x01', b'\x03', b'\x00', b'\xfc', b'\xff', b'a', b'b', b'c',
+    b'\x02', b'M', b'\x01', b'\'',
+  ])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_zlib_stored(data)
+  match decoded {
+    Ok(bytes) => assert_eq(bytes, Bytes::from_array([b'a', b'b', b'c']))
+    _ => fail("expected zlib-wrapped stored blocks to decode")
+  }
+}
+
+///|
+test "decode_zlib_stored rejects checksum mismatches after stored block decoding" {
+  let data = Bytes::from_array([
+    b'\x78', b'\x01', b'\x01', b'\x03', b'\x00', b'\xfc', b'\xff', b'a', b'b', b'c',
+    b'\x02', b'M', b'\x01', b'(',
+  ])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_zlib_stored(data)
+  match decoded {
+    Err(DecodeError(filter_name, reason)) => {
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("checksum"), true)
+    }
+    _ => fail("expected checksum mismatches to be rejected")
+  }
+}
+
+///|
 test "lsb bit reader returns deterministic least-significant-bit-first values" {
   let reader = LsbBitReader::new(Bytes::from_array([b'\x6d', b'\x3a']))
 
