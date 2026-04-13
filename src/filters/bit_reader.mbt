@@ -56,3 +56,39 @@ fn LsbBitReader::align_to_byte(self : LsbBitReader) -> Unit {
 fn LsbBitReader::byte_position(self : LsbBitReader) -> Int {
   self.byte_index
 }
+
+///|
+priv struct MsbBitReader {
+  data : Bytes
+  mut bit_position : Int
+}
+
+///|
+fn MsbBitReader::new(data : Bytes) -> MsbBitReader {
+  MsbBitReader::{ data, bit_position: 0 }
+}
+
+///|
+fn MsbBitReader::read_bits(self : MsbBitReader, bit_count : Int) -> Int? {
+  if bit_count < 0 {
+    None
+  } else {
+    let bit_limit = self.data.length() * 8
+    if self.bit_position + bit_count > bit_limit {
+      None
+    } else {
+      let mut value = 0
+      let mut remaining = bit_count
+      while remaining > 0 {
+        let bit_index = self.bit_position
+        let byte_index = bit_index / 8
+        let shift = 7 - bit_index % 8
+        let bit = (self.data[byte_index].to_int() >> shift) & 1
+        value = (value << 1) | bit
+        self.bit_position = self.bit_position + 1
+        remaining = remaining - 1
+      }
+      Some(value)
+    }
+  }
+}
