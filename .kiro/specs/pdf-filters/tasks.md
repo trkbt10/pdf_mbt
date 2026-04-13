@@ -59,7 +59,7 @@
   - Predictor tests demonstrate default no-op behavior and invalid-parameter failures before row reconstruction begins.
   - _Requirements: 4.2, 4.3, 4.5, 5.4_
 
-- [ ] 3.2 Reconstruct TIFF predictor rows
+- [x] 3.2 Reconstruct TIFF predictor rows
   - Implement predictor value 2 using the configured component geometry.
   - Preserve predictor value 1 as an exact no-op for already decompressed data.
   - Reject data whose length cannot be divided into complete reconstructed rows.

@@ -15,9 +15,7 @@ fn DecodeParams::predictor_context(
   let raw = self.raw
   let predictor = read_predictor_value(filter_name, raw)
   let colors = read_positive_parameter(filter_name, raw, "Colors", 1)
-  let bits_per_component = read_positive_parameter(
-    filter_name, raw, "BitsPerComponent", 8,
-  )
+  let bits_per_component = read_bits_per_component(filter_name, raw)
   let columns = read_positive_parameter(filter_name, raw, "Columns", 1)
   let row_bytes = row_byte_width(colors, bits_per_component, columns)
   PredictorContext::{
@@ -35,10 +33,16 @@ fn apply_predictor(
   data : Bytes,
   params : DecodeParams,
 ) -> Bytes raise PdfFilterError {
-  let context = params.predictor_context(filter_name)
-  match context.predictor {
+  let predictor = read_predictor_value(filter_name, params.raw)
+  match predictor {
     1 => data
-    2 | 10..<16 =>
+    2 =>
+      reconstruct_tiff_predictor(
+        filter_name,
+        data,
+        params.predictor_context(filter_name),
+      )
+    10..<16 =>
       raise PdfFilterError::DecodeError(
         filter_name, "Predictor reconstruction not implemented",
       )
@@ -89,6 +93,25 @@ fn read_positive_parameter(
 }
 
 ///|
+fn read_bits_per_component(
+  filter_name : String,
+  raw : @objects.PdfDictionary?,
+) -> Int raise PdfFilterError {
+  let value = read_integer_parameter(filter_name, raw, "BitsPerComponent", 8)
+  match value {
+    1 => 1
+    2 => 2
+    4 => 4
+    8 => 8
+    16 => 16
+    _ =>
+      raise PdfFilterError::InvalidDecodeParms(
+        filter_name, "BitsPerComponent must be 1, 2, 4, 8, or 16",
+      )
+  }
+}
+
+///|
 fn read_integer_parameter(
   filter_name : String,
   raw : @objects.PdfDictionary?,
@@ -126,4 +149,154 @@ fn read_integer_parameter(
 fn row_byte_width(colors : Int, bits_per_component : Int, columns : Int) -> Int {
   let total_bits = colors * bits_per_component * columns
   (total_bits + 7) / 8
+}
+
+///|
+fn predictor_sample_count(context : PredictorContext) -> Int {
+  context.colors * context.columns
+}
+
+///|
+fn reconstruct_tiff_predictor(
+  filter_name : String,
+  data : Bytes,
+  context : PredictorContext,
+) -> Bytes raise PdfFilterError {
+  let row_bytes = context.row_bytes
+  if data.length() % row_bytes != 0 {
+    raise PdfFilterError::DecodeError(
+      filter_name, "Predictor input length must divide into complete rows",
+    )
+  }
+
+  let sample_count = predictor_sample_count(context)
+  let row_count = data.length() / row_bytes
+  let reconstructed : Array[Byte] = []
+  let mut row_index = 0
+
+  while row_index < row_count {
+    let start = row_index * row_bytes
+    let end = start + row_bytes
+    let row = data[start:end].to_array()
+    let samples = unpack_tiff_row_samples(
+      row,
+      sample_count,
+      context.bits_per_component,
+    )
+    reconstruct_tiff_row_samples(
+      samples,
+      context.colors,
+      context.bits_per_component,
+    )
+    reconstructed.append(
+      pack_tiff_row_samples(
+        filter_name,
+        samples,
+        context.bits_per_component,
+        row_bytes,
+      ),
+    )
+    row_index = row_index + 1
+  }
+
+  Bytes::from_array(reconstructed)
+}
+
+///|
+fn unpack_tiff_row_samples(
+  row : Array[Byte],
+  sample_count : Int,
+  bits_per_component : Int,
+) -> Array[Int] {
+  let samples : Array[Int] = []
+  let mut sample_index = 0
+  let mut bit_offset = 0
+
+  while sample_index < sample_count {
+    let mut sample = 0
+    let mut remaining_bits = bits_per_component
+
+    while remaining_bits > 0 {
+      let byte_index = bit_offset / 8
+      let bit_index = bit_offset % 8
+      let available_bits = 8 - bit_index
+      let take = if remaining_bits < available_bits {
+        remaining_bits
+      } else {
+        available_bits
+      }
+      let shift = available_bits - take
+      let mask = (1 << take) - 1
+      let chunk = (row[byte_index].to_int() >> shift) & mask
+      sample = (sample << take) | chunk
+      bit_offset = bit_offset + take
+      remaining_bits = remaining_bits - take
+    }
+
+    samples.push(sample)
+    sample_index = sample_index + 1
+  }
+
+  samples
+}
+
+///|
+fn reconstruct_tiff_row_samples(
+  samples : Array[Int],
+  colors : Int,
+  bits_per_component : Int,
+) -> Unit {
+  let mask = (1 << bits_per_component) - 1
+  let mut index = colors
+  while index < samples.length() {
+    samples[index] = (samples[index] + samples[index - colors]) & mask
+    index = index + 1
+  }
+}
+
+///|
+fn pack_tiff_row_samples(
+  filter_name : String,
+  samples : Array[Int],
+  bits_per_component : Int,
+  row_bytes : Int,
+) -> Array[Byte] raise PdfFilterError {
+  let packed : Array[Byte] = []
+  let mut current = 0
+  let mut bits_filled = 0
+
+  for sample in samples {
+    let mut remaining_bits = bits_per_component
+    while remaining_bits > 0 {
+      let free_bits = 8 - bits_filled
+      let take = if remaining_bits < free_bits {
+        remaining_bits
+      } else {
+        free_bits
+      }
+      let shift = remaining_bits - take
+      let chunk = (sample >> shift) & ((1 << take) - 1)
+      current = (current << take) | chunk
+      bits_filled = bits_filled + take
+      remaining_bits = remaining_bits - take
+
+      if bits_filled == 8 {
+        packed.push(current.to_byte())
+        current = 0
+        bits_filled = 0
+      }
+    }
+  }
+
+  if bits_filled > 0 {
+    packed.push((current << (8 - bits_filled)).to_byte())
+  }
+
+  if packed.length() != row_bytes {
+    raise PdfFilterError::DecodeError(
+      filter_name, "Predictor reconstruction produced an invalid row length",
+    )
+  }
+
+  packed
 }
