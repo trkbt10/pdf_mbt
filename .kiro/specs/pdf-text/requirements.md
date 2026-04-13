@@ -1,0 +1,2546 @@
+# SDD Draft
+
+Generated from:
+- `spec/extracted/9-text.spec.txt`
+
+## Requirements
+
+### Requirement 1: 9.1      General
+This clause describes the special facilities in PDF for dealing with text — specifically, for representing
+characters with glyphs from fonts. A glyph is a graphical shape and is subject to all graphical
+manipulations, such as coordinate transformation. Because of the importance of text in most page
+descriptions, PDF provides higher-level facilities to describe, select, and render glyphs conveniently
+and efficiently.
+The first subclause is a general description of how glyphs from fonts are painted on the page.
+Subsequent subclauses cover these topics in detail:
+Text state. A subset of the graphics state parameters pertain to text, including parameters that select
+the font, scale the glyphs to an appropriate size, and accomplish other graphical effects.
+Text objects and operators. The text operators specify the glyphs to be painted, represented by string
+objects whose values shall be interpreted as sequences of character codes. A text object encloses a
+sequence of text operators and associated parameters.
+Font data structures. Font dictionaries and associated data structures provide information that a PDF
+processor needs to interpret the text and position the glyphs properly. The definitions of the glyphs
+themselves shall be contained in font programs, which may be embedded in the PDF file, built into a
+PDF processor, or obtained from an external font program.
+
+#### 1.1: 9.2.1 General
+A character is an abstract symbol, whereas a glyph is a specific graphical rendering of a character.
+EXAMPLE 1         The glyphs A, A, and A are renderings of the abstract "A" character.
+NOTE 1      Historically these two terms have often been used interchangeably in computer typography (as
+evidenced by the names chosen for some PDF dictionary keys and PostScript language
+operators), but advances in this area have made the distinction more meaningful. Consequently,
+this document distinguishes between characters and glyphs, though with some residual names
+which are inconsistent.
+Glyphs are organised into fonts. A font defines glyphs for a particular character set.
+EXAMPLE 2         The Helvetica and Times fonts define glyphs for a set of standard Latin characters.
+A font for use with a PDF processor is prepared in the form of a program. Such a font program shall be
+written in a special-purpose language, such as the Type 1, TrueType™, or OpenType® font format, that is
+understood by a specialised font interpreter.
+In PDF, the term font refers to a font dictionary, a PDF object that identifies the font program and
+contains additional information about it. There are several different font types, identified by the
+Subtype entry of the font dictionary.
+For most font types, the font program shall be defined in a separate font program, which may be either
+embedded in a PDF stream object or obtained from an external source. The font program contains
+glyph descriptions that generate glyphs.
+NOTE 2      It is important to carefully distinguish among: 1) PDF objects that compose the PDF structure
+flowing from a PDF font dictionary, 2) actual font files that can be external to the PDF or
+embedded in the PDF as a PDF stream object, and 3) terminology used to distinguish varying
+font and glyph technologies. For example, TrueType is a valid value of the Subtype key in a font
+dictionary, but is also the name used for a glyph technology and the name used for font programs
+employing that technology. It is often the case that select material from a font file is extracted
+and used to populate various PDF data structures and the terminology will shift from what is
+used for font file formats to what is used for the PDF objects.
+PDF supports 3 different graphic representations for the shapes of glyphs which have come to be
+called: Type 1, TrueType and CFF (a compact representation derived from Type 1). Further
+complicating this, TrueType fonts contain TrueType glyph descriptions, Type 1 fonts contain Type 1
+glyph descriptions and OpenType fonts can contain either TrueType glyph descriptions or CFF glyph
+descriptions. So the term TrueType can be used to distinguish a font file format, the glyph descriptions
+found in those files, the glyph descriptions found in some OpenType format fonts and the value of the
+Subtype key in a font dictionary. "Table 108 — Font types" provides a good summary of this
+information.
+In the descriptions below the discussion is about the PDF objects used to represent the font
+information and the glyph technology used, so the terminology is primarily referring to PDF objects.
+For example, the use of TrueType (as a glyph technology) is much more prevalent than the use of
+OpenType (as a file format).
+A content stream paints glyphs on the page by specifying a font dictionary and a string object that shall
+be interpreted as a sequence of one or more character codes identifying glyphs in the font. This
+operation is called showing the text string; the text strings drawn in this way are called show strings.
+The glyph description consists of a sequence of graphics operators that produce the specific shape for
+that character in this font. To render a glyph, the PDF processor executes the glyph description.
+NOTE 3      Programmers who have experience with scan conversion of general shapes need not be
+concerned about the amount of computation that this description seems to imply. However, this
+is only the abstract behaviour of glyph descriptions and font programs, not how they are
+implemented. In fact, an efficient implementation can be achieved through careful caching and
+reuse of previously rendered glyphs.
+
+#### 1.2: 9.2.2 Basics of showing text
+EXAMPLE 1       This example illustrates the most straightforward use of a font. The text ABC is placed 10 inches from the
+bottom of the page and 4 inches from the left edge, using 12-point Helvetica.
+BT
+/F13 12 Tf
+288 720 Td
+( ABC ) Tj
+ET
+The five lines of EXAMPLE 1 perform these steps:
+a) Begin a text object.
+
+b) Set the font and font size to use, installing them as parameters in the text state. In this case, the font
+resource identified by the name F13 specifies the font externally known as Helvetica.
+c) Specify a starting position on the page, setting parameters in the text object.
+d) Paint the glyphs for a string of characters at that position.
+e) End the text object.
+This subclause explains these operations in more detail.
+To paint glyphs, a content stream shall first identify the font to be used. The Tf operator shall specify
+the name of a font resource — that is, an entry in the Font subdictionary of the current resource
+dictionary. The value of that entry shall be a font dictionary. The font dictionary shall identify the font’s
+externally known name, such as Helvetica, and shall supply some additional information that the PDF
+processor needs to paint glyphs from that font. The font dictionary may provide the definition of the
+font program itself.
+NOTE 1      The font resource name presented to the Tf operator is arbitrary, as are the names for all kinds
+of resources. It bears no relationship to an actual font name, such as Helvetica.
+EXAMPLE 2       This Example illustrates an excerpt from the current page’s resource dictionary, which defines the font
+dictionary that is referenced as F13 (see Example 1 in this subclause).
+/Resources
+<</Font <</F13 23 0 R>>
+>>
+23 0 obj
+<</Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+A font defines the glyphs at one standard size. This standard is arranged so that the nominal height of
+tightly spaced lines of text is 1 unit. In the default user coordinate system, this means the standard
+glyph size is 1 unit in user space, or 1 ⁄ 72 inch. Starting with PDF 1.6, the size of this unit may be
+specified as greater than 1 ⁄ 72 inch by means of the UserUnit entry of the page dictionary; see "Table
+31 — Entries in a page object". The standard-size font shall then be scaled to be usable. The scale factor
+is specified as the second operand of the Tf operator, thereby setting the text font size parameter in the
+graphics state. Example 1 in this subclause establishes the Helvetica font with a 12-unit size in the
+graphics state.
+Once the font has been selected and scaled, it may be used to paint glyphs. The Td operator shall adjust
+the translation components of the text matrix, as described in 9.4.2, "Text-positioning operators".
+When executed for the first time after BT, Td shall establish the text position in the current user
+coordinate system. This determines the position on the page at which to begin painting glyphs.
+The Tj operator shall take a string operand and shall paint the corresponding glyphs, using the current
+font and other text-related parameters in the graphics state.
+NOTE 2      The Tj operator treats each element of the string (an integer in the range 0 to 255) as a character
+code (see Example 1 in this subclause).
+Each byte shall select a glyph description in the font, and the glyph description shall be executed to
+paint that glyph on the page. This is the behaviour of Tj for simple fonts, such as ordinary Latin text
+fonts. Interpretation of the string as a sequence of character codes is more complex for composite
+fonts, described in 9.7, "Composite fonts".
+What these steps produce on the page is not a 12-point glyph, but rather a 12-unit glyph, where the
+unit size shall be that of the text space at the time the glyphs are rendered on the page. The actual size
+of the glyph is determined by the text matrix (Tm) in the text object, several text state parameters, and
+the current transformation matrix (CTM) in the graphics state; see 9.4.4, "Text space details".
+EXAMPLE 3      If the text space is later scaled to make the unit size 1 centimetre, painting glyphs from the same 12-unit font
+generates results that are 12 centimetres high.
+
+#### 1.3: 9.2.3 Achieving special graphical effects
+Normal uses of Tj and other glyph-painting operators cause black-filled glyphs to be painted. Other
+effects may be obtained by combining font operators with general graphics operators.
+The colour used for painting glyphs shall be the current colour in the graphics state: either the
+nonstroking colour or the stroking colour (or both), depending on the text rendering mode (see 9.3.6,
+"Text rendering mode"). The default colour shall be black (in DeviceGray), but other colours may be
+obtained by executing an appropriate colour-setting operator or operators (see 8.6.8, "Colour
+operators") before painting the glyphs.
+EXAMPLE 1      This example uses text rendering mode 0 and the g operator to fill glyphs in 50 percent gray, as shown in
+"Figure 51 — Glyphs painted in 50% gray".
+BT
+/F13 48 Tf
+20 40 Td
+0 Tr
+0.5 g
+(ABC) Tj
+ET
+Figure 51 — Glyphs painted in 50% gray
+Other graphical effects may be achieved by treating the glyph outline as a path instead of filling it. The
+text rendering mode parameter in the graphics state specifies whether glyph outlines shall be filled,
+stroked, used as a clipping boundary, or some combination of these effects. Only a subset of the
+possible rendering modes applies to Type 3 fonts.
+EXAMPLE 2      This example treats glyph outlines as a path to be stroked. The Tr operator sets the text rendering mode to
+1 (stroke). The w operator sets the line width to 2 units in user space. Given those graphics state parameters,
+the Tj operator strokes the glyph outlines with a line 2 units thick (see "Figure 52 — Glyph outlines treated
+
+as a stroked path").
+BT
+/F13 48 Tf
+20 38 Td
+1 Tr
+2 w
+(ABC) Tj
+ET
+Figure 52 — Glyph outlines treated as a stroked path
+EXAMPLE 3       This example illustrates how the glyphs’ outlines can be used as a clipping boundary. The Tr operator sets
+the text rendering mode to 7 (clip), causing the subsequent Tj operator to impose the glyph outlines as the
+current clipping path. All subsequent painting operations mark the page only within this path, as illustrated
+in "Figure 53 — Graphics clipped by a glyph path". This state persists until an earlier clipping path is
+reinstated by the Q operator.
+BT
+/F13 48 Tf
+20 38 Td
+7 Tr
+(ABC) Tj
+ET
+… Graphics operators to draw a starburst …
+Figure 53 — Graphics clipped by a glyph path
+
+#### 1.4: 9.2.4 Glyph positioning and metrics
+A glyph’s width — formally, its horizontal displacement — is the amount of space it occupies along the
+baseline of a line of text that is written horizontally. In other words, it is the distance the current text
+position shall move (by translating text space) when the glyph is painted.
+NOTE 1      The width is distinct from the dimensions of the glyph outline.
+In some fonts, the width is constant; it does not vary from glyph to glyph. Such fonts are called fixed-
+pitch or monospaced. They are used mainly for typewriter-style printing. However, most fonts used for
+high-quality typography associate a different width with each glyph. Such fonts are called proportional
+or variable-pitch fonts. In either case, the Tj operator shall position the consecutive glyphs of a string
+according to their widths.
+The width information for each glyph shall be stored both in the font dictionary and in the font
+program itself.
+These widths shall be consistent with the actual widths given in the font program.
+NOTE 2      Storing this information in the font dictionary, although redundant, enables a PDF processor to
+determine glyph positioning without having to look inside the font program.
+NOTE 3      Due to differences in the way that TrueType and the Widths array store width information,
+there can be cases where widths are not identical between the two. TrueType stores widths in
+units of 1024 or 2048 to an Em (a unit in the field of typography), equal to the currently specified
+point size, however the Widths array stores widths in units of 1000 to an Em. Using real
+numbers instead of integers can mitigate rounding errors caused by this difference, and is
+recommended when precise character positioning is required.
+NOTE 4      The operators for showing text are designed on the assumption that glyphs are ordinarily
+positioned according to their standard widths. However, means are provided to vary the
+positioning in certain limited ways. For example, the TJ operator enables the text position to be
+adjusted between any consecutive pair of glyphs corresponding to characters in a text string.
+There are graphics state parameters to adjust character and word spacing systematically.
+In addition to width, a glyph has several other metrics that influence glyph positioning and painting.
+For most font types, this information is largely internal to the font program and is not specified
+explicitly in the PDF font dictionary. However, in a Type 3 font, all metrics are specified explicitly (see
+9.6.4, "Type 3 fonts").
+The glyph coordinate system is the space in which an individual character’s glyph is defined. All path
+coordinates and metrics shall be interpreted in glyph space. For all font types except Type 3, the units
+of glyph space are one-thousandth of a unit of text space; for a Type 3 font, the transformation from
+glyph space to text space shall be defined by a font matrix specified in an explicit FontMatrix entry in
+the font. "Figure 54 — Glyph metrics" shows a typical glyph outline and its metrics.
+Figure 54 — Glyph metrics
+The glyph origin is the point (0, 0) in the glyph coordinate system. Tj and other text-showing operators
+shall position the origin of the first glyph to be painted at the origin of text space.
+EXAMPLE 1       This code adjusts the origin of text space to (40, 50) in the user coordinate system and then places the origin
+
+of the A glyph at that point:
+BT
+40 50 Td
+(ABC) Tj
+ET
+The glyph displacement is the distance from the glyph’s origin to the point at which the origin of the
+next glyph should normally be placed when painting the consecutive glyphs of a line of text. This
+distance is a vector (called the displacement vector) in the glyph coordinate system; it has horizontal
+and vertical components.
+NOTE 5      Most Western writing systems, including those based on the Latin alphabet, have a positive
+horizontal displacement and a zero vertical displacement. Some Asian writing systems have a
+non-zero vertical displacement. In all cases, the text-showing operators transform the
+displacement vector into text space and then translate text space by that amount.
+The glyph bounding box shall be the smallest rectangle (oriented with the axes of the glyph coordinate
+system) that just encloses the entire glyph shape. The bounding box shall be expressed in terms of its
+left, bottom, right, and top coordinates relative to the glyph origin in the glyph coordinate system.
+In some writing systems, text is frequently aligned in two different directions.
+NOTE 6      It is common to write Japanese and Chinese glyphs either horizontally or vertically.
+To handle this, a font may contain a second set of metrics for each glyph. Which set of metrics to use
+shall be selected according to a writing mode, where 0 shall specify horizontal writing and 1 shall
+specify vertical writing. This feature is available only for composite fonts, discussed in 9.7, "Composite
+fonts".
+When a glyph has two sets of metrics, each set shall specify a glyph origin and a displacement vector
+for that writing mode. In vertical writing, the glyph position shall be described by a position vector
+from the origin used for horizontal writing (origin 0) to the origin used for vertical writing (origin 1).
+"Figure 55 — Metrics for horizontal and vertical writing modes" illustrates the metrics for the two
+writing modes:
+•    The left diagram illustrates the glyph metrics associated with writing mode 0, horizontal writing.
+The coordinates ll and ur specify the bounding box of the glyph relative to origin 0. w0 is the
+displacement vector that specifies how the text position shall be changed after the glyph is
+painted in writing mode 0; its vertical component shall be 0.
+•    The centre diagram illustrates writing mode 1, vertical writing. w1 shall be the displacement
+vector for writing mode 1; its horizontal component shall be 0.
+•    In the right diagram, v is a position vector defining the position of origin 1 relative to origin 0.
+Figure 55 — Metrics for horizontal and vertical writing modes
+
+#### 1.5: 9.3.1 General
+The text state comprises those graphics state parameters that only affect text. There are nine
+parameters in the text state (see "Table 102 — Text state parameters").
+Table 102 — Text state parameters
+Parameter           Description
+Tc                  Character spacing
+Tw                  Word spacing
+Th                  Horizontal scaling
+Tl                  Leading
+Tf                  Text font
+Tfs                 Text font size
+Tmode               Text rendering mode
+Trise               Text rise
+Tk                  Text knockout
+Except for the previously described Tf and Tfs, these parameters are discussed further in subsequent
+subclauses. (As described in 9.4, "Text objects", three additional text-related parameters may occur
+only within a text object: Tm, the text matrix; Tlm, the text line matrix; and Trm, the text rendering
+matrix.) The values of the text state parameters shall be consulted when text is positioned and shown
+(using the operators described in 9.4.2, "Text-positioning operators" and 9.4.3, "Text-showing
+operators"). In particular, the spacing and scaling parameters shall be used in a computation described
+in 9.4.4, "Text space details". The text state parameters may be set using the operators listed in "Table
+
+103 — Text state operators". All text state parameters shall apply to Type 3 fonts unless otherwise
+stated.
+NOTE           Negative text font size is permitted.
+The text knockout parameter, Tk, shall be set through the TK entry in a graphics state parameter
+dictionary by using the gs operator (see 8.4.5, "Graphics state parameter dictionaries"). There is no
+specific operator for setting this parameter.
+The text state operators may appear outside text objects, and the values they set are retained across
+text objects in a single content stream. Like other graphics state parameters, these parameters shall be
+initialised to their default values at the beginning of each page.
+Table 103 — Text state operators
+Operands        Operator    Description
+charSpace       Tc          Set the character spacing, Tc, to charSpace, which shall be a number
+expressed in unscaled text space units. Character spacing shall be used by
+the Tj, TJ, and ' operators. Initial value: 0.
+wordSpace       Tw          Set the word spacing, Tw, to wordSpace, which shall be a number
+expressed in unscaled text space units. Word spacing shall be used by the
+Tj, TJ, and ' operators. Initial value: 0.
+scale           Tz          Set the horizontal scaling, Th, to (scale ÷ 100). scale shall be a number
+specifying the percentage of the normal width. Initial value: 100 (normal
+width).
+leading         TL          Set the text leading, Tl, to leading, which shall be a number expressed in
+unscaled text space units. Text leading shall be used only by the T*, ', and "
+operators. Initial value: 0.
+font size       Tf          Set the text font, Tf, to font and the text font size, Tfs, to size. font shall be
+the name of a font resource in the Font subdictionary of the current
+resource dictionary; size shall be a number representing a scale factor.
+There is no initial value for either font or size; they shall be specified
+explicitly by using Tf before any text is shown. Zero sized text shall not
+mark or clip any pixels (depending on text render mode).
+render          Tr          Set the text rendering mode, Tmode, to render, which shall be an integer.
+Initial value: 0.
+rise            Ts          Set the text rise, Trise, to rise, which shall be a number expressed in
+unscaled text space units. Initial value: 0.
+Some of these parameters are expressed in unscaled text space units. This means that they shall be
+specified in a coordinate system that shall be defined by the text matrix, Tm but shall not be scaled by
+the font size parameter, Tfs .
+
+#### 1.6: 9.3.2 Character spacing
+The character-spacing parameter, Tc, shall be a number specified in unscaled text space units (although
+it shall be subject to scaling by the Th parameter if the writing mode is horizontal). When the glyph for
+each character in the string is rendered, Tc shall be added to the horizontal or vertical component of the
+glyph’s displacement, depending on the writing mode. See 9.2.4, "Glyph positioning and metrics", for a
+discussion of glyph displacements. In the default coordinate system, horizontal coordinates increase
+from left to right and vertical coordinates from bottom to top. Therefore, for horizontal writing, a
+positive value of Tc has the effect of expanding the distance between glyphs (see "Figure 56 —
+Character spacing in horizontal writing"), whereas for vertical writing, a negative value of Tc has this
+effect.
+Figure 56 — Character spacing in horizontal writing
+
+#### 1.7: 9.3.3 Word spacing
+Word spacing works the same way as character spacing but shall apply only to the ASCII SPACE
+character (20h). The word-spacing parameter, Tw, shall be added to the glyph’s horizontal or vertical
+displacement (depending on the writing mode). For horizontal writing, a positive value for Tw has the
+effect of increasing the spacing between words. For vertical writing, a positive value for Tw decreases
+the spacing between words (and a negative value increases it), since vertical coordinates increase from
+bottom to top. "Figure 57 — Word spacing in horizontal writing" illustrates the effect of word spacing
+in horizontal writing.
+Figure 57 — Word spacing in horizontal writing
+Word spacing shall be applied to every occurrence of the single-byte character code 32 in a string
+when using a simple font (including Type 3) or a composite font that defines code 32 as a single-byte
+code. It shall not apply to occurrences of the byte value 32 in multiple-byte codes.
+
+#### 1.8: 9.3.4 Horizontal scaling           Goto errata
+The horizontal scaling parameter, Th, adjusts the width of glyphs by stretching or compressing them in
+the horizontal direction. Its value shall be specified as a percentage of the normal width of the glyphs,
+with 100 being the normal width. The scaling shall apply to the horizontal coordinate in text space,
+
+independently of the writing mode. It shall affect both the glyph’s shape and its horizontal
+displacement (that is, its displacement vector). If the writing mode is horizontal, it shall also affect the
+spacing parameters Tc and Tw, as well as any positioning adjustments performed by the TJ operator.
+"Figure 58 — Horizontal scaling" shows the effect of horizontal scaling.
+
+Figure 58 — Horizontal scaling
+
+#### 1.9: 9.3.5 Leading
+The leading parameter, Tl, shall be specified in unscaled text space units. It specifies the vertical
+distance between the baselines of adjacent lines of text, as shown in "Figure 59 — Leading".
+Figure 59 — Leading
+The leading parameter shall be used by the TD, T*, ', and " operators; see "Table 106 — Text-
+positioning operators" for a precise description of its effects. This parameter shall apply to the vertical
+coordinate in text space, independently of the writing mode.
+
+#### 1.10: 9.3.6 Text rendering mode
+The text rendering mode, Tmode, determines whether showing text shall cause glyph outlines to be
+stroked, filled, used as a clipping boundary, or some combination of the three. Stroking, filling, and
+clipping shall have the same effects for a text object as they do for a path object (see 8.5.3, "Path-
+painting operators" and 8.5.4, "Clipping path operators"), although they are specified in an entirely
+different way. The graphics state parameters affecting those operations, such as line width, shall be
+interpreted in user space rather than in text space.
+NOTE 1      The text rendering modes are shown in "Table 104 — Text rendering modes". In the examples, a
+stroke colour of black and a fill colour of light gray are used. For the clipping modes (4 to 7), a
+series of lines has been drawn through the glyphs to show where the clipping occurs.
+If the text rendering mode calls for filling, the current nonstroking colour in the graphics state shall be
+used; if it calls for stroking, the current stroking colour shall be used. In modes that perform both filling
+and stroking, the effect shall be as if each glyph outline were filled and then stroked in separate
+operations. If any of the glyphs overlap, the result shall be equivalent to filling and stroking them one at
+a time, producing the appearance of stacked opaque glyphs, rather than first filling and then stroking
+them all at once. In the transparent imaging model, these combined filling and stroking modes shall be
+subject to further considerations; see 11.7.4.4, "Special path-painting considerations".
+The behaviour of the clipping modes requires further explanation. Glyph outlines shall begin
+accumulating if a BT operator is executed while the text rendering mode is set to a clipping mode or if
+it is set to a clipping mode within a text object. Glyphs shall accumulate until the text object is ended by
+an ET operator; the text rendering mode shall not be changed back to a nonclipping mode before that
+point.
+Table 104 — Text rendering modes
+Mode         Example             Description
+0                                Fill text.
+1                                Stroke text.
+2                                Fill, then stroke text.
+3                                Neither fill nor stroke text (invisible).
+4                                Fill text and add to path for clipping.
+5                                Stroke text and add to path for clipping.
+6                                Fill, then stroke text and add to path for
+clipping.
+7                                Add text to path for clipping.
+At the end of the text object identified by the ET operator the accumulated glyph outlines, if any, shall
+be combined into a single path, treating the individual outlines as subpaths of that path and applying
+the non-zero winding number rule (see 8.5.3.3.2, "Non-zero winding number rule"). The current
+clipping path in the graphics state shall be set to the intersection of this path with the previous clipping
+path. As is the case for path objects, this clipping shall occur after all filling and stroking operations for
+the text object have occurred. It remains in effect until a previous clipping path is restored by an
+invocation of the Q operator.
+NOTE 2     Due to the use of non-zero winding number rule, the direction of the paths comprising each
+glyph can cause different output for overlapping glyphs.
+If no glyphs are shown or if the only glyphs shown have no outlines (for example, if they are ASCII
+SPACE characters (20h)), no clipping shall occur.
+
+NOTE 3      Certain degenerate glyph sub-paths that are not visible when filled can become apparent when
+stroking, e.g., a zero line with round end caps will paint a circle according to the current stroke
+width.
+The e and f components of Tm shall be updated for each glyph drawn when using text rendering mode
+3 or 7 in exactly the same way as would be done for other text rendering modes.
+Where text is drawn using a Type 3 font:
+•    if text rendering mode is set to a value of 3 or 7, the text shall not be rendered.
+•    if text rendering mode is set to a value other than 3 or 7, the text shall be rendered using the glyph
+descriptions in the Type 3 font.
+•    If text rendering mode is set to a value of 4, 5, 6 or 7, nothing shall be added to the clipping path.
+
+#### 1.11: 9.3.7 Text rise
+Text rise, Trise, shall specify the distance, in unscaled text space units, to move the baseline up or down
+from its default location. Positive values of text rise shall move the baseline up. "Figure 60 — Text rise"
+illustrates the effect of the text rise. Text rise shall apply to the vertical coordinate in text space,
+regardless of the writing mode.
+NOTE        Adjustments to the baseline are useful for drawing superscripts or subscripts. The default
+location of the baseline can be restored by setting the text rise to 0.
+Figure 60 — Text rise
+
+#### 1.12: 9.3.8 Text knockout
+The text knockout parameter, Tk (PDF 1.4), shall be a boolean value that determines what text elements
+shall be considered elementary objects for purposes of colour compositing in the transparent imaging
+model. Unlike other text state parameters, there is no specific operator for setting this parameter; it
+may be set only through the TK entry in a graphics state parameter dictionary by using the gs operator
+(see 8.4.5, "Graphics state parameter dictionaries"). The text knockout parameter shall apply only to
+entire text objects. Any TK value in a graphics state parameter dictionary installed using the gs
+operator shall be ignored between the BT and ET operators delimiting a text object. The text knockout
+parameter controls the behaviour of glyphs obtained from any font type, including Type 3. Its initial
+value shall be true. If the parameter is false, each glyph in a text object shall be treated as a separate
+elementary object; when glyphs overlap, they shall composite with one another.
+If the parameter is true, the behaviour shall be equivalent to treating the entire text object as if it were
+a non-isolated knockout transparency group; see 11.4.6, "Knockout groups" where each glyph is an
+individual element in that group’s transparency stack. When glyphs overlap, later glyphs shall
+overwrite ("knock out") earlier ones in the area of overlap. The following additional rules shall apply:
+•    Graphics state parameters, including transparency parameters, shall be inherited from the
+context in which the text object appears. They shall not be saved and restored. The transparency
+parameters shall not be reset at the beginning of the transparency group (as they are when a
+transparency group XObject is explicitly invoked). Changes made to graphics state parameters
+within the text object shall persist beyond the end of the text object.
+•    After the implicit transparency group for the text object has been completely evaluated, the group
+results shall be composited with the backdrop, using the Normal blend mode and alpha and soft
+mask values of 1.0.
+NOTE        With the above listed exceptions, the compositing described in 11.4.6, "Knockout groups" applies
+when the text knockout graphics parameter is true including the handling of masks.
+
+#### 1.13: 9.4.1 General
+A PDF text object consists of operators that may show text strings, move the text position, and set text
+state and certain other parameters. In addition, three parameters may be specified only within a text
+object and shall not persist from one text object to the next:
+•    Tm, the text matrix.
+•    Tlm, the text line matrix.
+•    Trm, the text rendering matrix, which is actually just an intermediate result that combines the
+effects of text state parameters, the text matrix (Tm), and the current transformation matrix.
+A text object begins with the BT operator and ends with the ET operator, as shown in the Example, and
+described in "Table 105 — Text object operators".
+NOTE        Although text objects cannot be statically nested, text can be shown using a Type 3 font whose
+glyph descriptions include any graphics objects, including another text object. Likewise, the
+current colour can be a tiling pattern whose pattern cell includes a text object.
+EXAMPLE
+BT
+…Zero or more text operators or other allowed operators…
+ET
+Table 105 — Text object operators
+Operands         Operator       Description
+—                BT             Begin a text object, initializing the text matrix, Tm, and the text line
+matrix, Tlm, to the identity matrix. Text objects shall not be nested;
+a second BT shall not appear before an ET.
+
+Operands             Operator         Description
+—                    ET               End a text object, discarding the text matrix.
+These specific categories of text-related operators may appear in a text object:
+•    Text state operators, described in 9.3, "Text state parameters and operators".
+•    Text-positioning operators, described in 9.4.2, "Text-positioning operators".
+•    Text-showing operators, described in 9.4.3, "Text-showing operators".
+The latter two subclauses also provide further details about these text object parameters. The other
+operators that may appear in a text object are those related to the general graphics state, colour, and
+marked-content, as shown in "Figure 9 — Graphics objects".
+When the graphics state stack operators q and Q (see 8.4.2, "Graphics state stack") are combined with
+the text object operators BT and ET, each pair of matching operators (q … Q) shall be properly
+(separately) nested. Therefore, the sequences
+q
+BT
+…
+ET
+Q
+and
+BT
+q
+…
+Q
+ET
+are valid, but
+q
+BT
+…
+Q
+ET
+and
+BT
+q
+…
+ET
+Q
+are not valid.
+NOTE        The above paragraph and example sequences were added in this document (2020).
+
+#### 1.14: 9.4.2 Text-positioning operators
+Text space is the coordinate system in which text is shown. It shall be defined by the text matrix, Tm,
+and the text state parameters Tfs, Th, and Trise, which together shall determine the transformation from
+text space to user space. Specifically, the origin of the first glyph shown by a text-showing operator
+shall be placed at the origin of text space. If text space has been translated, scaled, or rotated, then the
+position, size, or orientation of the glyph in user space shall be correspondingly altered.
+The text-positioning operators shall only appear within text objects.
+Table 106 — Text-positioning operators
+Operands       Operator      Description
+tx ty          Td            Move to the start of the next line, offset from the start of the
+current line by (tx, ty). tx and ty shall denote numbers
+expressed in unscaled text space units. More precisely, this
+operator shall perform these assignments:
+1         0     0
+𝑇𝑚 = 𝑇𝑙𝑚 = [ 0         1     0] × 𝑇𝑙𝑚
+𝑡𝑥         𝑡𝑦    1
+tx ty          TD            Move to the start of the next line, offset from the start of the
+current line by (tx, ty). As a side effect, this operator shall set
+the leading parameter in the text state. This operator shall
+have the same effect as this code:
+-ty TL
+tx ty Td
+abcdef         Tm            Set the text matrix, Tm, and the text line matrix, Tlm:
+𝑎         𝑏     0
+𝑇𝑚 = 𝑇𝑙𝑚 = [ 𝑐        𝑑     0]
+𝑒        𝑓     1
+The operands shall all be numbers, and the initial value for
+Tm and Tlm shall be the identity matrix, [1 0 0 1 0 0].
+Although the operands specify a matrix, they shall be passed
+to Tm as six separate numbers, not as an array.
+The matrix specified by the operands shall not be
+concatenated onto the current text matrix, but shall replace
+it.
+—              T*            Move to the start of the next line. This operator has the same
+effect as the code
+0 –Tl TD
+where Tl denotes the current leading parameter in the text
+state. The negative of Tl is used here because Tl is the text
+leading expressed as a positive number. Going to the next
+line entails decreasing the y coordinate.
+At the beginning of a text object, Tm shall be the identity matrix; therefore, the origin of text space shall
+be initially the same as that of user space. The text-positioning operators, described in "Table 106 —
+Text-positioning operators" alter Tm and thereby control the placement of glyphs that are subsequently
+painted. Also, the text-showing operators, described in "Table 107 — Text-showing operators", update
+Tm (by altering its e and f translation components) to take into account the horizontal or vertical
+displacement of each glyph painted as well as any character or word-spacing parameters in the text
+state.
+
+Additionally, within a text object, a PDF processor shall keep track of a text line matrix, Tlm, which
+captures the value of Tm at the beginning of a line of text. The text-positioning and text-showing
+operators shall read and set Tlm on specific occasions mentioned in "Table 106 — Text-positioning
+operators" and "Table 107 — Text-showing operators".
+NOTE        This can be used to compactly represent evenly spaced lines of text.
+
+#### 1.15: 9.4.3 Text-showing operators
+The text-showing operators ("Table 107 — Text-showing operators") shall show text on the page,
+repositioning text space as they do so. All of the operators shall interpret the text string and apply the
+text state parameters as described in "Table 107 — Text-showing operators".
+The text-showing operators shall only appear within text objects.
+Table 107 — Text-showing operators
+Operands          Operator       Description
+string            Tj             Show a text string.
+string            '              Move to the next line and show a text string. This operator shall have
+the same effect as the code
+T*
+string Tj
+aw ac string      "              Move to the next line and show a text string, using aw as the word
+spacing and ac as the character spacing (setting the corresponding
+parameters in the text state). aw and ac shall be numbers expressed in
+unscaled text space units. This operator shall have the same effect as
+this code:
+aw Tw
+ac Tc
+string '
+Array             TJ             Show zero or more text strings, allowing individual glyph positioning.
+Each element of array shall be either a string or a number. If the
+element is a string, this operator shall show the string. If it is a
+number, the operator shall adjust the text position by that amount;
+that is, it shall translate the text matrix, Tm . The number shall be
+expressed in thousandths of a unit of text space (see 9.4.4, "Text space
+details"). This amount shall be subtracted from the current horizontal
+or vertical coordinate, depending on the writing mode. In the default
+coordinate system, a positive adjustment has the effect of moving the
+next glyph painted either to the left or down by the given amount.
+"Figure 61 — Operation of the TJ operator in horizontal writing"
+shows an example of the effect of passing offsets to TJ.
+Figure 61 — Operation of the TJ operator in horizontal writing
+A string operand of a text-showing operator shall be interpreted as a sequence of character codes
+identifying the glyphs to be painted.
+With a simple font, each byte of the string shall be treated as a separate character code. The character
+code shall then be looked up in the font’s encoding to select the glyph, as described in 9.6.5, "Character
+encoding".
+With a composite font (PDF 1.2), multiple-byte codes may be used to select glyphs. In this instance, one
+or more consecutive bytes of the string shall be treated as a single character code. The code lengths
+and the mappings from codes to glyphs are defined in a data structure called a CMap, described in 9.7,
+"Composite fonts".
+The strings shall conform to the syntax for string objects. When a string is written by enclosing the data
+in parentheses, bytes whose values are equal to those of the ASCII characters LEFT PARENTHESIS
+(28h), RIGHT PARENTHESIS (29h), and REVERSE SOLIDUS (5Ch) (backslash) shall be preceded by a
+REVERSE SOLIDUS) character. All other byte values between 0 and 255 may be used in a string object.
+These rules apply to each individual byte in a string object, whether the string is interpreted by the
+text-showing operators as single-byte or multiple-byte character codes.
+Strings presented to the text-showing operators may be of any length — even an empty string or a
+single character code per string — and may be placed on the page in any order. The grouping of glyphs
+into strings has no significance for the display of text. Showing multiple glyphs with one invocation of a
+text-showing operator such as Tj shall produce the same results as showing them with a separate
+invocation for each glyph.
+NOTE 1     Use of longer text strings is generally more efficient.
+NOTE 2     In some cases, the text that is extracted can vary depending on the grouping of glyphs into
+strings. See, for example, 14.8.2.5.3, "Reverse-order show strings".
+NOTE 3     Empty strings are valid.
+
+#### 1.16: 9.4.4 Text space details
+As stated in 9.4.2, "Text-positioning operators", text shall be shown in text space, defined by the
+combination of the text matrix, Tm, and the text state parameters Tfs, Th, and Trise . This determines how
+text coordinates are transformed into user space. Both the glyph’s shape and its displacement
+(horizontal or vertical) shall be interpreted in text space.
+NOTE 1     Glyphs are actually defined in glyph space, whose definition varies according to the font type as
+discussed in 9.2.4, "Glyph positioning and metrics". Glyph coordinates are first transformed from
+glyph space to text space before being subjected to the transformations described in Note 2.
+
+NOTE 2      Conceptually, the entire transformation from text space to device space can be represented by a
+text rendering matrix, Trm :
+𝑇𝑓𝑠 × 𝑇ℎ   0     0
+𝑇𝑟𝑚 = [ 0          𝑇𝑓𝑠 0] × 𝑇𝑚 × 𝐶𝑇𝑀
+0    𝑇𝑟𝑖𝑠𝑒 1
+Trm is a temporary matrix; conceptually, it is recomputed before each glyph is painted during a
+text-showing operation.
+After the glyph is painted, the text matrix shall be updated according to the glyph displacement and any
+spacing parameters that apply. First, a combined displacement shall be computed, denoted by tx in
+horizontal writing mode or ty in vertical writing mode (the variable corresponding to the other writing
+mode shall be set to 0):
+𝑇𝑗
+𝑡𝑥 = ((𝑤0 −      ) × 𝑇𝑓𝑠 + 𝑇𝑐 + 𝑇𝑤 ) × 𝑇ℎ
+1000
+𝑇𝑗
+𝑡𝑦 = (𝑤1 −       ) × 𝑇𝑓𝑠 + 𝑇𝑐 + 𝑇𝑤
+1000
+where
+w0 and w1 denote the glyph’s horizontal and vertical displacements
+Tj denotes a number in a TJ array, if any, which specifies a position adjustment
+Tfs and Th denote the current text font size and horizontal scaling parameters in the graphics state
+Tc and Tw denote the current character-and word-spacing parameters in the graphics state, if
+applicable
+The text matrix then shall be updated as follows:
+1      0    0
+𝑇𝑚 = [ 0      1    0] × 𝑇𝑚
+𝑡𝑥      𝑡𝑦   1
+9.5      Introduction to font data structures
+
+### Requirement 2: 9.5      Introduction to font data structures
+name, its encoding, and information that can be used to provide a substitute when the font program is
+not available. Optionally, the font program (more commonly known as font files) may be embedded as
+a stream object in the PDF file.
+NOTE 1      See 9.2, "Organisation and use of fonts" for more introductory information.
+"Table 108 — Font types" lists the types of fonts that are supported in ISO 32000 along with the value
+that shall be used for the Subtype key in the font dictionary that represents the font. No values for
+Subtype other than those listed in the table are valid. Type 0 fonts are called composite fonts; other
+types of fonts are called simple fonts. In addition to fonts, PDF supports two classes of font-related
+objects, called CIDFonts and CMaps, described in 9.7.2, "CID-Keyed fonts overview". CIDFonts are listed
+in "Table 108 — Font types" because, like fonts, they are collections of glyphs; however, a CIDFont
+shall not be used directly but only as a component of a Type 0 font.
+Table 108 — Font types
+Type            Subtype Value     Description
+Type 0          Type0             (PDF 1.2) A composite font — a font composed of glyphs
+from a descendant CIDFont (see 9.7, "Composite fonts")
+Type 1          Type1             A font that defines glyph shapes using Type 1 font
+technology (see 9.6.2, "Type 1 fonts").
+MMType1           A multiple master font — an extension of the Type 1 font
+that allows the generation of a wide variety of typeface
+styles from a single font (see 9.6.2.3, "Multiple master fonts")
+Type 3          Type3             A font that defines glyphs with streams of PDF graphics
+operators (see 9.6.4, "Type 3 fonts")
+TrueType        TrueType          A font based on the TrueType font format (see 9.6.3,
+"TrueType fonts") and with glyph descriptions based on
+TrueType glyph technology.
+CIDFont         CIDFontType0      (PDF 1.2) A CIDFont whose glyph descriptions are based on
+CFF font technology (see 9.7.4, "CIDFonts")
+CIDFontType2      (PDF 1.2) A CIDFont whose glyph descriptions are based on
+TrueType glyph technology (see 9.7.4, "CIDFonts")
+NOTE 2     Embedding of OpenType font programs (files) in PDF is described in "Table 124 — Embedded
+font organisation for various font types" when the value of the FontFile3 key is OpenType. The
+font dictionary that refers to it can have a Subtype of TrueType, Type1, CIDFontType0, or
+CIDFontType2, depending upon the glyph technology used in the OpenType font and other
+details provided in that table.
+For all font types, the term font dictionary refers to a PDF dictionary containing information about the
+font; likewise, a CIDFont dictionary contains information about a CIDFont. Except for Type 3, this
+dictionary is distinct from the font program that defines the font’s glyphs. That font program may be
+embedded in the PDF file as a stream object or be obtained from some external source.
+NOTE 3     This terminology differs from that used in the PostScript language. In PostScript, a font
+dictionary is a PostScript data structure that is created as a direct result of interpreting a font
+program. In PDF, a font program is always treated as if it were a separate file, even when its
+content is embedded in the PDF file. The font program is interpreted by a specialised font
+interpreter when necessary; its contents never materialize as PDF objects.
+NOTE 4     Most font programs (and related programs, such as CIDFonts and CMaps) conform to external
+specifications, such as the Adobe Type 1 Font Format. This document does not include those
+specifications. See 2, "Normative references" for more information about the specifications
+mentioned in this clause.
+NOTE 5     The most predictable and dependable results are produced when all font programs used to show
+text are embedded in the PDF file. See 9.9, "Embedded font programs" for the precise description
+of how to do so. If a PDF file refers to font programs that are not embedded, the results depend
+on the availability of fonts in the PDF processor’s environment. See 9.8, "Font descriptors" for
+some conventions for referring to external font programs. However, some details of font naming,
+font substitution, and glyph selection are implementation-dependent and can vary among
+different PDF processors and operating system environments.
+
+9.6      Simple fonts
+9.6.1 General
+
+#### 2.1: 9.6.1 General
+•    Glyphs in the font shall be selected by single-byte character codes obtained from a string that is
+shown by the text-showing operators (see 9.4.3, "Text-showing operators"). Logically, these
+codes index into a table of 256 glyphs; the mapping from codes to glyphs is called the font’s
+encoding. Under some circumstances, the encoding may be altered by means described in 9.6.5,
+"Character encoding".
+•    Each glyph shall have a single set of metrics, including a horizontal displacement or width, as
+described in 9.2.4, "Glyph positioning and metrics"; that is, simple fonts support only horizontal
+writing mode.
+•    Except for Type 0 fonts, Type 3 fonts in non-tagged PDF documents, and certain standard Type
+1 fonts, every font dictionary shall contain a subsidiary dictionary, the font descriptor,
+containing font-wide metrics and other attributes of the font; see 9.8, "Font descriptors".
+Among those attributes is an optional, but strongly recommended, font file stream containing
+the font program.
+9.6.2 Type 1 fonts
+9.6.2.1           General
+
+#### 2.2: 9.6.2.1           General
+compact encoding for the glyph descriptions, and it includes hint information that enables high-quality
+rendering even at small sizes and low resolutions.
+NOTE 1      Details on this format are provided in a separate specification, Adobe Type 1 Font Format. An
+alternative, more compact but functionally equivalent representation of a Type 1 font program is
+documented in Adobe Technical Note #5176, The Compact Font Format Specification.
+NOTE 2      Although a Type 1 font program uses PostScript language syntax, using it does not require a full
+PostScript language compatible interpreter; a specialised Type 1 font interpreter suffices.
+A Type 1 font dictionary may contain the entries listed in "Table 109 — Entries in a Type 1 font
+dictionary".
+Table 109 — Entries in a Type 1 font dictionary
+Key                Type           Value
+Type               name           (Required) The type of PDF object that this dictionary describes; shall be Font for
+a font dictionary.
+Subtype            name           (Required) The type of font; shall be Type1 for a Type 1 font.
+Name               name           (Required in PDF 1.0; optional in PDF 1.1 through 1.7, deprecated in PDF 2.0) The
+name by which this font is referenced in the Font subdictionary of the current
+resource dictionary.
+Key               Type         Value
+BaseFont          name         (Required) The PostScript language name of the font. For Type 1 fonts, this is
+always the value of the FontName entry in the font program; for more
+information, see Section 5.2 of the PostScript Language Reference, Third Edition.
+The PostScript language name of the font may be used to find the font program in
+the PDF processor or its environment. It is also the name that is used when
+printing to a PostScript language compatible output device.
+FirstChar         integer      (Required; optional in PDF 1.0-1.7 for the standard 14 fonts) The first character
+code defined in the font’s Widths array.
+LastChar          integer      (Required; optional in PDF 1.0-1.7 for the standard 14 fonts) The last character
+code defined in the font’s Widths array.
+Widths            array        (Required; optional in PDF 1.0-1.7 for the standard 14 fonts; indirect reference
+preferred) An array of (LastChar - FirstChar + 1) numbers, each element being
+the glyph width for the character code that equals FirstChar plus the array index.
+For character codes outside the range FirstChar to LastChar, the value of
+MissingWidth from the FontDescriptor entry for this font shall be used. The
+glyph widths shall be measured in units in which 1000 units correspond to 1 unit
+in text space. These widths shall be consistent with the actual widths given in the
+font program. For more information on glyph widths and other glyph metrics, see
+9.2.4, "Glyph positioning and metrics".
+FontDescriptor dictionary (Required; optional in PDF 1.0-1.7 for the standard 14 fonts; shall be an indirect
+reference) A font descriptor describing the font’s metrics other than its glyph
+widths (see 9.8, "Font descriptors").
+For the standard 14 fonts, the entries FirstChar, LastChar, Widths, and
+FontDescriptor shall either all be present or all be absent. Ordinarily, these
+dictionary keys may be absent; specifying them enables a standard font to be
+overridden; see 9.6.2.2, "Standard Type 1 fonts (standard 14 fonts) (PDF 1.0-
+1.7)".
+Encoding          name or    (Optional) A specification of the font’s character encoding if different from its
+dictionary built-in encoding. The value of Encoding shall be either the name of a predefined
+encoding (MacRomanEncoding, MacExpertEncoding, or WinAnsiEncoding, as
+described in Annex D, "Character sets and encodings") or an encoding dictionary
+that shall specify differences from the font’s built-in encoding or from a specified
+predefined encoding (see 9.6.5, "Character encoding").
+ToUnicode         stream       (Optional; PDF 1.2) A stream containing a CMap file that maps character codes to
+Unicode values (see 9.10.3, "ToUnicode CMaps").
+PDF versions 1.0 to 1.7 did not require Type 1 font dictionaries to include FirstChar, LastChar,
+Widths and FontDescriptor entries as described in 9.6.2.2, "Standard Type 1 fonts (standard 14 fonts)
+(PDF 1.0-1.7)". For compatibility reasons PDF processors shall provide glyph widths and font
+descriptor data for those standard fonts for use in processing PDF files when the entries are absent.
+EXAMPLE        This example shows the font dictionary for the Adobe Garamond® Semibold font. The font has an encoding
+dictionary (object 25), however neither the encoding dictionary nor the font descriptor (object 7) is shown.
+14 0 obj
+<</Type /Font
+/Subtype /Type1
+/BaseFont /AGaramond-Semibold
+
+/FirstChar 0
+/LastChar 255
+/Widths 21 0 R
+/FontDescriptor 7 0 R
+/Encoding 25 0 R
+>>
+endobj
+21 0 obj
+[ 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255
+255 255 255 255 255 255 255 255 255 255 255 255 255 255 255 255
+255 280 438 510 510 868 834 248 320 320 420 510 255 320 255 347
+510 510 510 510 510 510 510 510 510 510 255 255 510 510 510 330
+781 627 627 694 784 580 533 743 812 354 354 684 560 921 780 792
+588 792 656 504 682 744 650 968 648 590 638 320 329 320 510 500
+380 420 510 400 513 409 301 464 522 268 259 484 258 798 533 492
+516 503 349 346 321 520 434 684 439 448 390 320 255 320 510 255
+627 627 694 580 780 792 744 420 420 420 420 420 420 402 409 409
+409 409 268 268 268 268 533 492 492 492 492 492 520 520 520 520
+486 400 510 510 506 398 520 555 800 800 1044 360 380 549 846 792
+713 510 549 549 510 522 494 713 823 549 274 354 387 768 615 496
+330 280 510 549 510 549 612 421 421 1000 255 627 627 792 1016 730
+500 1000 438 438 248 248 510 494 448 590 100 510 256 256 539 539
+486 255 248 438 1174 627 580 627 580 580 354 354 354 354 792 792
+790 792 744 744 744 268 380 380 380 380 380 380 380 380 380 380
+]
+endobj
+9.6.2.2           Standard Type 1 fonts (standard 14 fonts) (PDF 1.0-1.7)
+
+#### 2.3: 9.6.2.2           Standard Type 1 fonts (standard 14 fonts) (PDF 1.0-1.7)
+Times-Roman, Helvetica, Courier, Symbol, Times-Bold, Helvetica-Bold, Courier-Bold, ZapfDingbats,
+Times-Italic, Helvetica-Oblique, Courier-Oblique, Times-BoldItalic, Helvetica-BoldOblique, Courier-
+BoldOblique.
+In PDF 1.0 to PDF 1.7, the FirstChar, LastChar, Widths and FontDescriptor (see “Table 109 —
+Entries in a Type 1 font dictionary") were optional in Type 1 font dictionaries for the standard 14 fonts.
+PDF processors supporting PDF 1.0 to PDF 1.7 files shall have these fonts, or their font metrics and
+suitable substitution fonts, available.
+These fonts, or their font metrics and suitable substitution fonts, shall be available to the PDF
+processor.
+9.6.2.3           Multiple master fonts
+
+#### 2.4: 9.6.2.3           Multiple master fonts
+Technical Note #5015, Type 1 Font Format Supplement, that allows the generation of a wide variety of
+typeface styles from a single font program. This is accomplished through the presence of various
+design dimensions in the font.
+EXAMPLE 1         Examples of design dimensions are weight (light to extra-bold) and width (condensed to expanded).
+Coordinates along these design dimensions (such as the degree of boldness) are specified by numbers.
+A particular choice of numbers selects an instance of the multiple master font. PDFs can contain
+multiple master instances.
+The font dictionary for a multiple master font instance contains the same entries as a Type 1 font
+dictionary (see "Table 109 — Entries in a Type 1 font dictionary"), with these differences:
+•    The value of Subtype shall be MMType1.
+•    If the PostScript language name of the instance contains SPACEs (20h), the SPACEs shall be
+replaced by LOW LINEs (underscores) (5Fh) in the value of BaseFont. For instance, as illustrated
+in this example, the name "MinionMM 366 465 11 " (which ends with a SPACE character)
+becomes /MinionMM_366_465_11_.
+EXAMPLE 2
+7 0 obj
+<</Type /Font
+/Subtype /MMType1
+/BaseFont /MinionMM_366_465_11_
+/FirstChar 32
+/LastChar 255
+/Widths 19 0 R
+/FontDescriptor 6 0 R
+/Encoding 5 0 R
+>>
+endobj
+19 0 obj
+[187 235 317 430 427 717 607 168 326 326 421 619 219 317 219 282 427
+… Omitted data …
+569 0 569 607 607 607 239 400 400 400 400 253 400 400 400 400 400
+]
+endobj
+This example illustrates a convention for including the numeric values of the design coordinates as
+part of the instance’s BaseFont name.
+NOTE        This convention is commonly used for accessing multiple master font instances from an external
+source in the PDF processor’s environment; it is documented in Adobe Technical Note #5088,
+Font Naming Issues. However, this convention is not prescribed as part of this specification.
+If the font program for a multiple master font instance is embedded in the PDF file, it shall be an
+ordinary Type 1 font program, not a multiple master font program. This font program is called a
+snapshot of the multiple master font instance that incorporates the chosen values of the design
+coordinates.
+9.6.3 TrueType fonts
+
+#### 2.5: 9.6.3 TrueType fonts
+this type shall support both the TrueType font format (see Apple Computer, Inc., TrueType Reference
+Manual) as well as the OpenType font format (as defined by ISO/IEC 14496-22).
+A TrueType font dictionary may contain the same entries as a Type 1 font dictionary (see "Table 109 —
+Entries in a Type 1 font dictionary"), with these differences:
+•    The value of Subtype shall be TrueType.
+•    The value of Encoding is subject to limitations that are described in 9.6.5.4, "Encodings for
+TrueType fonts".
+•    The value of BaseFont is derived differently.
+The PostScript language name for the value of BaseFont should be determined in one of two ways:
+
+•    If the TrueType or OpenType font program's "name" table contains a PostScript language name, it
+should be used.
+•    In the absence of a PostScript language name in the "name" table, a PostScript language name
+should be derived from the name by which the font is known in the host operating system.
+NOTE 1      The OpenType font format (also known as Open Font Format, or ISO/IEC 14496-22) was
+developed jointly by Microsoft and Adobe. It extends the TrueType font format, developed by
+Apple, to include more metadata about the glyphs and text layout as well as supporting both the
+TrueType glyph technology and the CFF glyph technology (see Adobe Technical Note #5176, The
+Compact Font Format Specification). OpenType is available on most modern operating systems.
+NOTE 2      A TrueType or an OpenType font program can be embedded directly in a PDF file as a stream
+object.
+NOTE 3      The Type 42 font format that is defined for the PostScript language does not apply to PDF.
+NOTE 4      For CJK (Chinese, Japanese, and Korean) fonts, the host font system’s font name is often encoded
+in the host operating system’s script. For instance, a Japanese font can have a name that is
+written in Japanese using some (unidentified) Japanese encoding. Thus, TrueType font names
+can contain multiple-byte character codes, each of which requires multiple characters to
+represent in a PDF name object (using the # notation to quote special characters as needed).
+9.6.4 Type 3 fonts
+
+#### 2.6: 9.6.4 Type 3 fonts
+contain information about the font and refer to a separate font program for the actual glyph
+descriptions; a Type 3 font dictionary contains the glyph descriptions. In Type 3 fonts, glyphs shall be
+defined by streams of PDF graphics operators. These streams shall be associated with glyph names. A
+separate encoding entry shall map character codes to the appropriate glyph names for the glyphs.
+NOTE 1      Type 3 fonts are more flexible than Type 1 fonts because the glyph descriptions can contain
+arbitrary PDF graphics operators. However, Type 3 fonts have no hinting mechanism for
+improving output at small sizes or low resolutions.
+A Type 3 font dictionary may contain the entries listed in "Table 110 — Entries in a Type 3 font
+dictionary".
+Table 110 — Entries in a Type 3 font dictionary
+Key                 Type          Value
+Type                name          (Required) The type of PDF object that this dictionary describes; shall be Font
+for a font dictionary.
+Subtype             name          (Required) The type of font; shall be Type3 for a Type 3 font.
+Name                name          (Required in PDF 1.0; optional otherwise) See "Table 109 — Entries in a Type 1
+font dictionary".
+Key            Type         Value
+FontBBox       rectangle    (Required) A rectangle (see 7.9.5, "Rectangles") expressed in the glyph
+coordinate system, specifying the font bounding box. This is the smallest
+rectangle enclosing all marks that would result if all of the glyphs of the font
+were placed with their origins coincident and their descriptions executed.
+If all four elements of the rectangle are zero, a PDF processor shall make no
+assumptions about glyph sizes based on the font bounding box. If any element
+is non-zero, the font bounding box shall be accurate. If any glyph’s marks fall
+outside this bounding box, behaviour is implementation dependent and may
+not match the creator’s expectations.
+FontMatrix     array        (Required) An array of six numbers specifying the font matrix, mapping glyph
+space to text space (see 9.2.4, "Glyph positioning and metrics").
+NOTE      A common practice is to define glyphs in terms of a 1000-unit glyph
+coordinate system, in which case the font matrix is [0.001 0 0 0.001 0 0].
+CharProcs      dictionary   (Required) A dictionary in which each key shall be a glyph name and the value
+associated with that key shall be a content stream that constructs and paints
+the glyph for that character. The stream shall include as its first operator
+either d0 or d1, followed by operators describing one or more graphics
+objects. See below for more details about Type 3 glyph descriptions.
+Encoding       dictionary   (Required) An encoding dictionary whose Differences array shall specify the
+complete character encoding for this font (see 9.6.5, "Character encoding").
+FirstChar      integer      (Required) The first character code defined in the font’s Widths array.
+LastChar       integer      (Required) The last character code defined in the font’s Widths array.
+Widths         array        (Required; should be an indirect reference) An array of (LastChar - FirstChar +
+1) numbers, each element being the glyph width for the character code that
+equals FirstChar plus the array index. For character codes outside the range
+FirstChar to LastChar, the width shall be 0. These widths shall be interpreted
+in glyph space as specified by FontMatrix (unlike the widths of a Type 1 font,
+which are in thousandths of a unit of text space).
+If FontMatrix specifies a rotation, only the horizontal component of the
+transformed width shall be used. That is, the resulting displacement shall be
+horizontal in text space, as is the case for all simple fonts.
+FontDescriptor dictionary   (Required in Tagged PDF documents; shall be an indirect reference) A font
+descriptor describing the font’s default metrics other than its glyph widths
+(see 9.8, "Font descriptors").
+NOTE      (2020) The conditions for when the FontDescriptor key is required were
+corrected in this document to match ISO 32000-1:2008.
+Resources      dictionary   (Optional but should be used; PDF 1.2) A list of the named resources, such as
+fonts and images, required by the glyph descriptions in this font (see 7.8.3,
+"Resource dictionaries"). If any glyph descriptions refer to named resources
+but this dictionary is absent, the names shall be looked up in the resource
+dictionary of the page on which the font is used.
+ToUnicode      stream       (Optional; PDF 1.2) A stream containing a CMap file that maps character codes
+to Unicode values (see 9.10.3, "ToUnicode CMaps").
+
+For each character code shown by a text-showing operator that uses a Type 3 font, the PDF processor
+shall:
+a) Look up the character code in the font’s Encoding entry, as described in 9.6.5, "Character encoding" to
+obtain a glyph name.
+b) Look up the glyph name in the font’s CharProcs dictionary to obtain a stream object containing a glyph
+description. If the name is not present as a key in CharProcs, no glyph shall be painted.
+c) Invoke the glyph description. The graphics state shall be saved before this invocation and shall be
+restored afterward; therefore, any changes the glyph description makes to the graphics state do not
+persist after it finishes.
+d) If any glyph descriptions refer to named resources they shall be looked up in the Resources entry of the
+Type 3 font dictionary. If any glyph descriptions refer to named resources but this dictionary is absent,
+the names shall be looked up in the resource dictionary of the page on which the font is used.
+When the glyph description begins execution, the current transformation matrix (CTM) shall be the
+concatenation of the font matrix (FontMatrix in the current font dictionary) and the text space that
+was in effect at the time the text-showing operator was invoked (see 9.4.4, "Text space details"). This
+means that shapes described in the glyph coordinate system are transformed into the user coordinate
+system and appear in the appropriate size and orientation on the page. The glyph description shall
+describe the glyph in terms of absolute coordinates in the glyph coordinate system, placing the glyph
+origin at (0, 0) in this space. It shall make no assumptions about the initial text position.
+Aside from the CTM, the graphics state shall be inherited from the graphics state at the point of
+invocation of the text-showing operator that caused the glyph description to be invoked. To ensure
+predictable results, the glyph description shall initialise any graphics state parameters on which it
+depends. In particular, if it invokes any operator from "Table 59 — Path-painting operators" which
+performs stroking, it shall explicitly set the line width, line join, line cap, and dash pattern to
+appropriate values. The TK flag (see 9.3.8, "Text knockout") of the graphics state controls the
+behaviour of glyphs obtained from any font type, including Type 3.
+NOTE 2      Normally, it is unnecessary and undesirable to initialise the current colour parameters because
+the text-showing operators are designed to paint glyphs with the current colours.
+The glyph description shall execute one of the operators described in "Table 111 — Type 3 font
+operators" to pass width and bounding box information to the font machinery. This shall precede the
+execution of any path construction or path-painting operators describing the glyph.
+NOTE 3      Type 3 fonts in PDF are very similar to those in the PostScript language. Some of the information
+provided in Type 3 font dictionaries and glyph descriptions, although seemingly redundant or
+unnecessary, is nevertheless required for correct results when a PDF processor prints to a
+PostScript language compatible output device. This applies particularly to the operands of the d0
+and d1 operators, which are the equivalent of PostScript's setcharwidth and setcachedevice.
+For further explanation, see clause 5.7 of the PostScript Language Reference, Third Edition.
+Table 111 — Type 3 font operators
+Operands                Operator Description
+wx wy                   d0          Set width information for the glyph and declare that the glyph description
+specifies both its shape and its colour.
+NOTE 1 This operator name ends in the digit 0.
+wx denotes the horizontal displacement in the glyph coordinate system; it shall
+be consistent with the corresponding width in the font’s Widths array. wy shall
+be 0 (see 9.2.4, "Glyph positioning and metrics").
+This operator shall only be permitted as the first operator in a content stream
+appearing in a Type 3 font’s CharProcs dictionary. It is typically used only if the
+glyph description executes operators to set the colour or other colour-related
+parameters explicitly.
+NOTE 2 An image does set the colour space and colour explicitly; an image mask does
+not and requires explicit operators to do so for it.
+wx wy llx lly urx ury   d1          Set width and bounding box information for the glyph and declare that the glyph
+description specifies only shape, not colour.
+NOTE 3 This operator name ends in the digit 1.
+wx denotes the horizontal displacement in the glyph coordinate system; it shall
+be consistent with the corresponding width in the font’s Widths array. wy shall
+be 0 (see 9.2.4, "Glyph positioning and metrics").
+llx and lly denote the coordinates of the lower-left corner, and urx and ury denote
+the upper-right corner, of the glyph bounding box. The glyph bounding box is
+the smallest rectangle, oriented with the axes of the glyph coordinate system,
+that completely encloses all marks placed on the page as a result of executing the
+glyph’s description. The declared bounding box shall be correct — in other
+words, sufficiently large to enclose the entire glyph. If any marks fall outside this
+bounding box, the result is implementation-dependent.
+A glyph description that begins with the d1 operator should not execute any
+operators that set the colour (or other colour-related parameters including
+transparency) in the graphics state; any use of such operators shall be ignored
+and the glyph stream continues to be processed without error (see 8.6.8, "Colour
+operators"). The glyph description is executed solely to determine the glyph’s
+shape. Its colour shall be determined by the graphics state in effect each time
+this glyph is painted by a text-showing operator. For the same reason, the glyph
+description shall not include an image; however, an image mask is acceptable,
+since it merely defines a region of the page to be painted with the current colour.
+This operator shall be used only in a content stream appearing in a Type 3 font’s
+CharProcs dictionary.
+EXAMPLE            This example shows the definition of a Type 3 font with only two glyphs — a filled square and a filled triangle,
+selected by the character codes a and b. "Figure 62 — Output from the example” shows the result of showing
+
+the string ( ababab ) using this font.
+Figure 62 — Output from the example
+%Snippet of page content stream that places several Type 3 font strings onto the page
+…
+0.2 0.8 0.0 rg
+0.1 0.4 0.0 RG
+BT
+/FT3 15 Tf
+300 400 Td
+(ab) Tj
+0.8 0.2 0.0 rg
+0.4 0.1 0.0 RG
+(ab) Tj
+0.8 0.8 0.2 rg
+0.4 0.4 0.1 RG
+(ab) Tj
+ET
+…
+%Type 3 font definition encoding two glyphs, 'a' and 'b'.
+4 0 obj
+<<
+/Type /Font
+/Subtype /Type3
+/FontBBox [-36 -36 786 786]
+/FontMatrix [0.001 0 0 0.001 0 0]
+/CharProcs 10 0 R
+/Encoding 9 0 R
+/FirstChar 97
+/LastChar 104
+/Widths [1000 1000]
+>>
+endobj
+9 0 obj
+<<
+/Type /Encoding
+/Differences [97 /square /triangle]
+>>
+endobj
+10 0 obj
+<<
+/square 11 0 R
+/triangle 12 0 R
+>>
+endobj
+%Type 3 "square" glyph description
+11 0 obj
+<</Length …>>
+stream
+1000 0 -36 -36 786 786 d1                          %uncoloured glyph - defines only shape
+72 w
+0 0 750 750 re
+B
+endstream
+endobj
+%Type 3 "triangle" glyph description
+12 0 obj
+<</Length …>>
+stream
+1000 0 d0                                          %coloured glyph - defines colour and shape
+72 w
+0.2 0.6 0.8 rg
+0.1 0.3 0.4 RG
+0 0 m
+375 750 l
+750 0 l
+b
+endstream
+endobj
+9.6.5 Character encoding
+9.6.5.1         General
+
+#### 2.7: 9.6.5.1         General
+shown) and glyph descriptions. This subclause describes the character encoding scheme used with
+simple PDF fonts. Composite fonts (Type 0) use a different character mapping algorithm, as discussed
+in 9.7, "Composite fonts".
+Except for Type 3 fonts, every font program shall have a built-in encoding. Under certain
+circumstances, a PDF font dictionary may change the encoding used with the font program to match
+the requirements of the PDF writer generating the text being shown.
+This flexibility in character encoding is valuable for two reasons:
+•    It permits showing text that is encoded according to any of the various existing conventions. For
+example, the Microsoft WindowsTM and Apple Mac OS operating systems use different standard
+encodings for Latin text, and many PDF writers use their own special-purpose encodings.
+•    It permits PDF writers to specify how characters selected from a large character set are to be
+encoded.
+Some character sets consist of more than 256 characters, including ligatures, accented characters, and
+other symbols required for high-quality typography or non-Latin writing systems. Different encodings
+may select different subsets of the same character set.
+One commonly used font encoding for Latin-text font programs is often referred to as
+StandardEncoding. The name StandardEncoding shall have no special meaning in PDF, but this
+encoding does play a role as a default encoding (as shown in "Table 112 — Entries in an encoding
+dictionary"). The regular encodings used for Latin-text fonts on Mac OS and Microsoft WindowsTM
+systems shall be named MacRomanEncoding and WinAnsiEncoding, respectively. An encoding named
+MacExpertEncoding may be used with "expert" fonts that contain additional characters useful for
+
+sophisticated typography. Complete details of these encodings and of the characters present in typical
+fonts are provided in Annex D, "Character sets and encodings".
+In PDF, a font is classified as either nonsymbolic or symbolic according to whether all of its characters
+are members of the standard Latin character set; see D.2, "Latin character set and encodings". This
+shall be indicated by flags in the font descriptor; see 9.8.2, "Font descriptor flags". Symbolic fonts
+contain other character sets, to which the encodings mentioned previously ordinarily do not apply.
+Such font programs have built-in encodings that are usually unique to each font. The standard 14 fonts
+include two symbolic fonts, Symbol and ZapfDingbats, whose encodings and character sets are
+documented in Annex D, "Character sets and encodings".
+A font program’s built-in encoding may be overridden by including an Encoding entry in the PDF font
+dictionary. The possible encoding modifications depend on the font type. The value of the Encoding
+entry shall be either a named encoding (the name of one of the predefined encodings
+MacRomanEncoding, MacExpertEncoding, or WinAnsiEncoding) or an encoding dictionary. An encoding
+dictionary contains the entries listed in "Table 112 — Entries in an encoding dictionary".
+Table 112 — Entries in an encoding dictionary
+Key                    Type           Value
+Type                   name           (Optional) The type of PDF object that this dictionary describes; if
+present, shall be Encoding for an encoding dictionary.
+BaseEncoding           name           (Optional) The base encoding — that is, the encoding from which the
+Differences entry (if present) describes differences — shall be the
+name of one of the predefined encodings MacRomanEncoding,
+MacExpertEncoding, or WinAnsiEncoding (see Annex D, "Character
+sets and encodings").
+If this entry is absent, the Differences entry shall describe differences
+from a default base encoding. For a font program that is embedded in
+the PDF file, the default base encoding shall be the font program’s
+built-in encoding, as described in 9.6.5, "Character encoding" and
+further elaborated in the subclauses on specific font types. Otherwise,
+for a nonsymbolic font, it shall be StandardEncoding, and for a
+symbolic font, it shall be the font’s built-in encoding.
+Differences            array          (Optional; should not be used with TrueType fonts) An array describing
+the differences from the encoding specified by BaseEncoding or, if
+BaseEncoding is absent from a default base encoding. The
+Differences array is described in subsequent subclauses.
+The value of the Differences entry shall be an array of character codes and character names organised
+as follows:
+code1 name1,1 name1,2 …
+code2 name2,1 name2,2 …
+…
+coden namen,1 namen,2 …
+Each code shall be the first index in a sequence of character codes to be changed. The first character
+name after the code becomes the name corresponding to that code. Subsequent names replace
+consecutive code indices until the next code appears in the array or the array ends. These sequences
+may be specified in any order but shall not overlap.
+EXAMPLE          In the encoding dictionary in this example, the name quotesingle ( ' ) is associated with character code 39,
+Adieresis (Ä) with code 128, Aring (Å) with 129, and trademark (™) with 170.
+25 0 obj
+<</Type /Encoding
+/Differences
+[39 /quotesingle
+96 /grave
+128 /Adieresis /Aring /Ccedilla /Eacute /Ntilde /Odieresis /Udieresis
+/aacute /agrave /acircumflex /adieresis /atilde /aring /ccedilla
+/eacute /egrave /ecircumflex /edieresis /iacute /igrave /icircumflex
+/idieresis /ntilde /oacute /ograve /ocircumflex /odieresis /otilde
+/uacute /ugrave /ucircumflex /udieresis /dagger /degree /cent
+/sterling /section /bullet /paragraph /germandbls /registered
+/copyright /trademark /acute /dieresis
+174 /AE /Oslash
+177 /plusminus
+180 /yen /mu
+187 /ordfeminine /ordmasculine
+190 /ae /oslash /questiondown /exclamdown /logicalnot
+196 /florin
+199 /guillemotleft /guillemotright /ellipsis
+203 /Agrave /Atilde /Otilde /OE /oe /endash /emdash /quotedblleft
+/quotedblright /quoteleft /quoteright /divide
+216 /ydieresis /Ydieresis /fraction /currency /guilsinglleft /guilsinglright
+/fi /fl /daggerdbl /periodcentered /quotesinglbase /quotedblbase
+/perthousand /Acircumflex /Ecircumflex /Aacute /Edieresis /Egrave
+/Iacute /Icircumflex /Idieresis /Igrave /Oacute /Ocircumflex
+241 /Ograve /Uacute /Ucircumflex /Ugrave /dotlessi /circumflex /tilde
+/macron /breve /dotaccent /ring /cedilla /hungarumlaut /ogonek /caron
+]
+>>
+endobj
+9.6.5.2          Encodings for Type 1 fonts
+
+#### 2.8: 9.6.5.2          Encodings for Type 1 fonts
+names are ordinary PDF name objects. Descriptions of Latin alphabetic characters are normally
+associated with names consisting of single letters, such as A or a. Other characters are associated with
+names composed of words, such as three, ampersand, or parenleft. A Type 1 font’s built-in encoding
+shall be defined by an “encoding” array that is part of the font program, not to be confused with the
+Encoding entry in the PDF font dictionary.
+
+An Encoding entry in the PDF font dictionary, if present, shall override a Type 1 font’s mapping from
+character codes to character names. The Differences array maps codes to the names of glyph
+descriptions that exist in the font program, regardless of whether those glyphs are referenced by the
+font’s built-in encoding or by the encoding specified in the BaseEncoding entry.
+All Type 1 font programs shall contain an actual glyph named .notdef. The effect produced by showing
+the .notdef glyph is at the discretion of the font designer. If an encoding maps to a character name that
+does not exist in the Type 1 font program, the .notdef glyph shall be substituted.
+NOTE      If a font has no .notdef glyph definition, the results are implementation dependent.
+9.6.5.3        Encodings for Type 3 fonts
+
+#### 2.9: 9.6.5.3        Encodings for Type 3 fonts
+case, they appear as explicit keys in the font’s CharProcs dictionary. A Type 3 font’s mapping from
+character codes to glyph names shall be entirely defined by its Encoding entry, which is required for
+Type 3 fonts.
+NOTE      Type 3 fonts do not support the concept of a default glyph name.
+9.6.5.4        Encodings for TrueType fonts
+
+#### 2.10: 9.6.5.4        Encodings for TrueType fonts
+descriptions by means of an internal data structure called a "cmap" (not to be confused with the CMap
+described in 9.7.5, "CMaps"). This subclause describes how the PDF font dictionary’s Encoding entry
+shall be used in conjunction with a "cmap" to map from a character code in a string to a glyph
+description in a TrueType/OpenType font program.
+A "cmap" table may contain one or more subtables that represent multiple encodings intended for use
+on different platforms (such as Mac OS and Microsoft WindowsTM). Each subtable shall be identified by
+the two numbers, such as (3, 1), that represent a combination of a platform ID and a platform-specific
+encoding ID, respectively.
+Glyph names are not required in TrueType/OpenType fonts, although some font programs have an
+optional "post" table listing glyph names for the glyphs. If the PDF processor needs to select glyph
+descriptions by name, it translates from glyph names to codes in one of the encodings given in the font
+program’s "cmap" table. When there is no character code in the "cmap" that corresponds to a glyph
+name, the "post" table shall be used to select a glyph description directly from the glyph name.
+Because some aspects of TrueType/OpenType glyph selection are dependent on the PDF processor or
+the operating system, PDF files that use TrueType/OpenType fonts should follow certain guidelines to
+ensure predictable behaviour across all PDF processors:
+•   The font program should be embedded.
+•   A nonsymbolic font should specify MacRomanEncoding or WinAnsiEncoding as the value of its
+Encoding entry, with no Differences array. See also D.2 "Latin character set and encodings"
+notes 5 and 6 for situations when a Differences array is required.
+•   A font that is used to display glyphs that do not use MacRomanEncoding or WinAnsiEncoding
+should not specify an Encoding entry. The font descriptor’s Symbolic flag (see "Table 121 — Font
+flags") should be set, and its font program’s "cmap" table should contain a (1, 0) subtable. It may
+also contain a (3, 0) subtable; if present, this subtable should map from character codes in the
+range 0xF000 to 0xF0FF by prepending the single-byte codes in the (1, 0) subtable with 0xF0 and
+mapping to the corresponding glyph descriptions.
+NOTE 1     Some popular TrueType/OpenType font programs contain incorrect encoding information.
+Implementations of TrueType/OpenType font interpreters have evolved heuristics for dealing
+with such problems; those heuristics are not described here. For maximum portability, only well-
+formed TrueType/OpenType font programs can be used in PDF files. Therefore, a
+TrueType/OpenType font program to be used in a PDF file could need modification to conform
+to these guidelines.
+NOTE 2     Not all glyphs of a TrueType/OpenType font are always accessible with simple PDF font
+resources. A Type 0 PDF font resource can be used to access those glyphs.
+The following paragraphs describe the treatment of TrueType font encodings beginning with PDF 1.3.
+If the font has a named Encoding entry of either MacRomanEncoding or WinAnsiEncoding, or if the font
+descriptor’s Nonsymbolic flag (see "Table 121 — Font flags") is set, the PDF processor shall create a
+table that maps from character codes to glyph names:
+•    If the Encoding entry is one of the names MacRomanEncoding or WinAnsiEncoding, the table shall
+be initialised with the mappings described in Annex D, "Character sets and encodings".
+•    If the Encoding entry is a dictionary, the table shall be initialised with the entries from the
+dictionary’s BaseEncoding entry (see "Table 112 — Entries in an encoding dictionary"). Any
+entries in the Differences array shall be used to update the table. Finally, any undefined entries in
+the table shall be filled using StandardEncoding.
+If a (3, 1) "cmap" subtable (Microsoft Unicode) is present:
+•    A character code shall be first mapped to a glyph name using the table described above.
+•    The glyph name shall then be mapped to a Unicode value by consulting the Adobe Glyph List and
+Adobe Glyph List for New Fonts.
+•    Finally, the Unicode value shall be mapped to a glyph description according to the (3, 1) subtable.
+If no (3, 1) subtable is present but a (1, 0) subtable (Macintosh Roman) is present:
+•    A character code shall be first mapped to a glyph name using the table described above.
+•    The glyph name shall then be mapped back to a character code according to the standard Roman
+encoding used on Mac OS.
+•    Finally, the code shall be mapped to a glyph description according to the (1, 0) subtable.
+In any of these cases, if the glyph name cannot be mapped as specified, the glyph name shall be looked
+up in the font program’s "post" table (if one is present) and the associated glyph description shall be
+used.
+The standard Roman encoding that is used on Mac OS is the same as the MacRomanEncoding described
+in Annex D, "Character sets and encodings" with the addition of 15 entries and the replacement of the
+currency glyph with the Euro glyph, as shown in "Table 113 — Additional entries in Mac OS Roman
+encoding not in MacRomanEncoding".
+
+Table 113 — Additional entries in Mac OS Roman encoding not in MacRomanEncoding
+Name                         Code (Octal)                 Code (Decimal)
+notequal                     255                          173
+infinity                     260                          176
+lessequal                    262                          178
+greaterequal                 263                          179
+partialdiff                  266                          182
+summation                    267                          183
+product                      270                          184
+pi                           271                          185
+integral                     272                          186
+Omega                        275                          189
+radical                      303                          195
+approxequal                  305                          197
+Delta                        306                          198
+lozenge                      327                          215
+Euro                         333                          219
+apple                        360                          240
+When the font has no Encoding entry, or the font descriptor’s Symbolic flag is set (in which case the
+Encoding entry is ignored), this shall occur:
+•    If the font contains a (3, 0) subtable, the range of character codes shall be one of these: 0x0000 -
+0x00FF, 0xF000 - 0xF0FF, 0xF100 - 0xF1FF, or 0xF200 - 0xF2FF. Depending on the range of
+codes, each byte from the string shall be prepended with the high byte of the range, to form a two-
+byte character, which shall be used to select the associated glyph description from the subtable.
+•    Otherwise, if the font contains a (1, 0) subtable, single bytes from the string shall be used to look
+up the associated glyph descriptions from the subtable.
+If a character cannot be mapped in any of the ways described previously, a PDF processor may supply a
+mapping of its choosing.
+9.7      Composite fonts
+9.7.1 General
+
+#### 2.11: 9.7.1 General
+called a CIDFont. A composite font shall be represented by a font dictionary whose Subtype value is
+Type0. The Type 0 font is known as the root font, and its associated CIDFont is called its descendant.
+NOTE 1     Composite fonts in PDF are analogous to composite fonts in PostScript but with some limitations.
+In particular, PDF requires that the character encoding be defined by a CMap, which is only one
+of several encoding methods available in PostScript. Also, the PostScript language allows a Type
+0 font to have multiple descendants, which can also be Type 0 fonts. PDF supports only a single
+descendant, which are always a CIDFont.
+When the current font is composite, the text-showing operators shall behave differently than with
+simple fonts. For simple fonts, each byte of a string to be shown selects one glyph, whereas for
+composite fonts, a sequence of one or more bytes are decoded to select a glyph from the descendant
+CIDFont.
+NOTE 2     This facility supports the use of very large character sets, such as those for the Chinese, Japanese,
+and Korean languages. It also simplifies the organisation of fonts that have complex encoding
+requirements.
+This subclause first introduces the architecture of CID-keyed fonts, which are the only kind of
+composite font supported in PDF. Then it describes the CIDFont and CMap dictionaries, which are the
+PDF objects that represent the correspondingly named components of a CID-keyed font. Finally, it
+describes the Type 0 font dictionary, which combines a CIDFont and a CMap to produce a font whose
+glyphs may be accessed by means of variable-length character codes in a string to be shown.
+9.7.2 CID-Keyed fonts overview
+
+#### 2.12: 9.7.2 CID-Keyed fonts overview
+encodings and fonts with a large number of glyphs. These capabilities provide great flexibility for
+representing text in writing systems for languages with large character sets, such as Chinese, Japanese,
+and Korean (CJK).
+The CID-keyed font architecture specifies the external representation of certain font programs, called
+CMap and CIDFont files, along with some conventions for combining and using those files. As
+mentioned earlier, PDF does not support the entire CID-keyed font architecture, which is independent
+of PDF; CID-keyed fonts may be used in other environments.
+NOTE       For complete documentation on the architecture and the file formats, see Adobe Technical Note
+#5092, CID-Keyed Font Technology Overview, and Adobe Technical Note #5014, Adobe CMap and
+CIDFont Files Specification. This subclause describes only the PDF objects that represent these
+font programs.
+The term CID-keyed font reflects the fact that CID (character identifier) numbers are used to index and
+access the glyph descriptions in the font. This method is more efficient for large fonts than the method
+of accessing by character name, as is used for some simple fonts. CIDs range from 0 to a maximum
+value that may be subject to implementation limits (see Annex C, "Advice on maximising portability").
+A character collection is an ordered set of glyphs. The order of the glyphs in the character collection
+shall determine the CID number for each glyph. Each CID-keyed font shall explicitly reference the
+character collection on which its CID numbers are based; see 9.7.3, "CIDSystemInfo dictionaries".
+A CMap (character map) file shall specify the correspondence between character codes and the CID
+numbers used to identify glyphs. It is equivalent to the concept of an encoding in simple fonts. Whereas
+a simple font allows a maximum of 256 glyphs to be encoded and accessible at one time, a CMap can
+
+describe a mapping from multiple-byte codes to thousands of glyphs in a large CID-keyed font.
+EXAMPLE           A CMap can describe Shift-JIS, one of several widely used encodings for Japanese.
+A CMap file may reference an entire character collection or a subset of a character collection. The CMap
+file’s mapping yields a font number (which in PDF shall be 0) and a character selector (which in PDF
+shall be a CID). Furthermore, a CMap file may incorporate another CMap file by reference, without
+having to duplicate it. These features enable character collections to be combined or supplemented and
+make all the constituent characters accessible to text-showing operations through a single encoding.
+A CIDFont contains the glyph descriptions for a character collection. The glyph descriptions themselves
+are typically in a format similar to those used in simple fonts, such as Type 1. However, they are
+identified by CIDs rather than by names, and they are organised differently.
+In PDF, the data from a CMap file and CIDFont shall be represented by PDF objects as described in
+9.7.4, "CIDFonts" and 9.7.5, "CMaps". The CMap file and CIDFont programs themselves may be either
+referenced by name or embedded as stream objects in the PDF file.
+A CID-keyed font, then, shall be the combination of a CMap with a CIDFont containing glyph
+descriptions. It shall be represented as a Type 0 font. It contains an Encoding entry whose value shall
+be a CMap dictionary, and its DescendantFonts entry shall reference the CIDFont dictionary with
+which the CMap has been combined.
+9.7.3 CIDSystemInfo dictionaries
+
+#### 2.13: 9.7.3 CIDSystemInfo dictionaries
+assumed by the CIDFont associated with the CMap — that is, the interpretation of the CID numbers
+used by the CIDFont. A character collection shall be uniquely identified by the Registry, Ordering, and
+Supplement entries in the CIDSystemInfo dictionary, as described in "Table 114 — Entries in a
+CIDSystemInfo dictionary". In order for a CIDFont and a CMap to be compatible, their Registry and
+Ordering values shall be the same. Identity CMaps (Identity-H and Identity-V) are compatible with all
+CIDFonts.
+The CIDSystemInfo entry in a CIDFont is a dictionary that shall specify the CIDFont’s character
+collection. The CIDFont need not contain glyph descriptions for all the CIDs in a collection; it may
+contain a subset. The CIDSystemInfo entry in a CMap file shall be either a single dictionary or an array
+of dictionaries, depending on whether it associates codes with a single character collection or with
+multiple character collections; see 9.7.5, "CMaps".
+For proper behaviour, the CIDSystemInfo entry of a CMap shall be compatible with that of the CIDFont
+or CIDFonts with which it is used.
+Table 114 — Entries in a CIDSystemInfo dictionary
+Key              Type            Value
+Registry         ASCII string    (Required) A string identifying the issuer of the character
+collection. The string shall begin with the 4 or 5 characters of a
+registered developer prefix followed by a LOW LINE (5Fh)
+followed by any other identifying characters chosen by the issuer.
+See Annex E, "Extending PDF", for how to obtain a unique
+developer prefix.
+Ordering         ASCII string    (Required) A string that uniquely names the character collection
+within the specified registry.
+Supplement       integer         (Required) The supplement number of the character collection. An
+original character collection has a supplement number of 0.
+Whenever additional CIDs are assigned in a character collection,
+the supplement number shall be increased. Supplements shall not
+alter the ordering of existing CIDs in the character collection. This
+value shall not be used in determining compatibility between
+character collections.
+9.7.4 CIDFonts
+9.7.4.1           General
+
+#### 2.14: 9.7.4.1           General
+There are two types of CIDFonts:
+•    A Type 0 CIDFont contains glyph descriptions based on CFF
+NOTE         The term "Type 0" when applied to a CIDFont has a different meaning than for a "Type 0 font".
+•    A Type 2 CIDFont contains glyph descriptions based on the TrueType glyph technology.
+A CIDFont dictionary is a PDF object that contains information about a CIDFont program. Although its
+Type value is Font, a CIDFont is not actually a font. It does not have an Encoding entry, it may not be
+listed in the Font subdictionary of a resource dictionary, and it may not be used as the operand of the
+Tf operator. It shall be used only as a descendant of a Type 0 font. The CMap in the Type 0 font shall be
+what defines the encoding that maps character codes to CIDs in the CIDFont. "Table 115 — Entries in a
+CIDFont dictionary" lists the entries in a CIDFont dictionary.
+Table 115 — Entries in a CIDFont dictionary
+Key                  Type        Value
+Type                 name        (Required) The type of PDF object that this dictionary describes;
+shall be Font for a CIDFont dictionary.
+Subtype              name        (Required) The type of CIDFont shall be CIDFontType0 or
+CIDFontType2.
+
+Key                    Type           Value
+BaseFont               name           (Required) The PostScript name of the CIDFont. For Type 0
+CIDFonts, this shall be the value of the CIDFontName entry in the
+CIDFont program. For Type 2 CIDFonts, it shall be derived the
+same way as for a simple TrueType font; see 9.6.3, "TrueType
+fonts". In either case, the name may have a subset prefix if
+appropriate; see 9.9.2, "Font subsets".
+CIDSystemInfo          dictionary     (Required) A dictionary containing entries that define the
+character collection of the CIDFont. See "Table 114 — Entries in a
+CIDSystemInfo dictionary".
+FontDescriptor         dictionary     (Required; shall be an indirect reference) A font descriptor
+describing the CIDFont’s default metrics other than its glyph
+widths (see 9.8, "Font descriptors").
+DW                     number         (Optional) The default width for glyphs in the CIDFont (see
+9.7.4.3, "Glyph metrics in CIDFonts"). Default value: 1000.
+W                      array          (Optional) A description of the widths for the glyphs in the
+CIDFont.
+NOTE      The array’s elements have a variable format that can specify
+individual widths for consecutive CIDs or one width for a range
+of CIDs (see 9.7.4.3, "Glyph metrics in CIDFonts").
+Default value: none (the DW value shall be used for all glyphs).
+DW2                    array          (Optional; applies only to CIDFonts used for vertical writing) An
+array of two numbers specifying the default metrics for vertical
+writing (see 9.7.4.3, "Glyph metrics in CIDFonts"). Default value:
+[880 -1000].
+W2                     array          (Optional; applies only to CIDFonts used for vertical writing) A
+description of the metrics for vertical writing for the glyphs in the
+CIDFont (see 9.7.4.3, "Glyph metrics in CIDFonts"). Default value:
+none (the DW2 value shall be used for all glyphs).
+CIDToGIDMap            stream or      (Required for Type 2 CIDFonts with embedded font programs) A
+name           specification of the mapping from CIDs to glyph indices. If the
+value is a stream, the bytes in the stream shall contain the
+mapping from CIDs to glyph indices: the glyph index for a
+particular CID value c shall be a 2-byte value stored in bytes
+2 × 𝑐 and 2 × 𝑐 + 1, where the first byte shall be the high-order
+byte. If the value of CIDToGIDMap is a name, it shall be Identity,
+indicating that the mapping between CIDs and glyph indices is the
+identity mapping.
+9.7.4.2           Glyph selection in CIDFonts
+
+#### 2.15: 9.7.4.2           Glyph selection in CIDFonts
+different ways. For Type 0, the CIDFont program contains glyph descriptions that are identified by
+CIDs. The CIDFont program identifies the character collection by a CIDSystemInfo dictionary, which
+should be copied into the PDF CIDFont dictionary. CIDs shall be interpreted uniformly in all CIDFont
+programs supporting a given character collection, whether the program is embedded in the PDF file or
+obtained from an external source.
+When the CIDFont contains an embedded font program that is represented in the Compact Font
+Format (CFF), the FontFile3 entry in the font descriptor (see "Table 124 — Embedded font
+organisation for various font types") shall be either CIDFontType0C or OpenType. There are two cases,
+depending on the contents of the font program:
+•    The "CFF" font program has a Top DICT that uses CIDFont operators: The CIDs shall be used to
+determine the GID value for the glyph procedure using the charset table in the CFF program. The
+GID value shall then be used to look up the glyph procedure using the CharStrings INDEX table (as
+defined by Adobe Technical Note #5177, The Type 2 Charstring Format).
+NOTE       Although in many fonts the CID value and GID value are the same, the CID and GID values can
+differ.
+•    The "CFF" font program has a Top DICT that does not use CIDFont operators: The CIDs shall be
+used directly as GID values, and the glyph procedure shall be retrieved using the CharStrings
+INDEX (refer to Adobe Technical Note #5177, The Type 2 Charstring Format).
+For Type 2, the CIDFont program is actually a TrueType font program, which has no native notion of
+CIDs. In a TrueType font program, glyph descriptions are identified by glyph index values. Glyph indices
+are internal to the font and are not defined consistently from one font to another. Instead, a TrueType
+font program contains a "cmap" table that provides mappings directly from character codes to glyph
+indices for one or more predefined encodings.
+TrueType font programs are integrated with the CID-keyed font architecture in one of two ways,
+depending on whether the font program is embedded in the PDF file:
+•    If the TrueType font program is embedded, the Type 2 CIDFont dictionary shall contain a
+CIDToGIDMap entry that maps CIDs to the glyph indices for the appropriate glyph descriptions in
+that font program.
+•    If the TrueType font program is not embedded but is referenced by name, and the Type 2 CIDFont
+dictionary contains a CIDToGIDMap entry, the CIDToGIDMap entry shall be ignored, since it is
+not meaningful to refer to glyph indices in an external font program. In this case, CIDs shall not
+participate in glyph selection, and only predefined CMaps may be used with this CIDFont (see
+9.7.5, "CMaps"). The PDF processor shall select glyphs by translating characters from the
+encoding specified by the predefined CMap to one of the encodings in the TrueType font’s "cmap"
+table. The means by which this is accomplished are implementation-dependent.
+Even though the CIDs are not used to select glyphs in a Type 2 CIDFont, they shall always be used to
+determine the glyph metrics, as described in the next subclause.
+Every CIDFont shall contain a glyph description for CID 0, which is analogous to the .notdef character
+name in simple fonts (see 9.7.6.3, "Handling undefined characters").
+9.7.4.3         Glyph metrics in CIDFonts
+
+#### 2.16: 9.7.4.3         Glyph metrics in CIDFonts
+displacement between the origin of the glyph and the origin of the next glyph when writing in
+horizontal mode. In this mode, the vertical displacement between origins shall be 0. Widths for a
+CIDFont are defined using the DW and W entries in the CIDFont dictionary. These widths shall be
+consistent with the actual widths given in the CIDFont program.
+
+The W array allows the definition of widths for individual CIDs. The elements of the W array shall be
+numbers organised in groups of two or three, where each group shall be in one of these two formats:
+c [w1 w2… wn]
+cfirst clast w
+In the first format, c shall be an integer specifying a starting CID value; it shall be followed by an array
+of n numbers that shall specify the widths for n consecutive CIDs, starting with c. The second format
+shall define the same width, w, as a number, for all CIDs in the range cfirst to clast. Specifying a given CID
+value more than once should not be done. In the case where it is done, the first specification is the one
+that shall be used.
+EXAMPLE 1          In this example, the glyphs having CIDs 120, 121, and 122 are 400, 325, and 500 units wide, respectively.
+CIDs in the range 7080 through 8032 inclusive all have a width of 1000 units.
+W entry example:
+/W [120     [400 325 500]
+7080 8032 1000
+]
+Glyphs from a CIDFont may be shown in vertical writing mode. This is selected by the WMode entry in
+the associated CMap dictionary; see 9.7.5, "CMaps". To be used in this way, the CIDFont shall define the
+vertical displacement for each glyph and the position vector that relates the horizontal and vertical
+writing origins.
+The default position vector and vertical displacement vector shall be specified by the DW2 entry in the
+CIDFont dictionary. DW2 shall be an array of two values: the vertical component of the position vector
+v and the vertical component of the displacement vector w1 (see "Figure 55 — Metrics for horizontal
+and vertical writing modes"). The horizontal component of the position vector shall be half the glyph
+width, and that of the displacement vector shall be 0.
+EXAMPLE 2          If the DW2 entry is
+/DW2 [880 -1000]
+then a glyph’s position vector and vertical displacement vector are
+v = (w0 ÷ 2, 880)
+w1 = (0, −1000)
+where w0 is the width (horizontal displacement) for the same glyph.
+NOTE         A negative value for the vertical component places the origin of the next glyph below the current
+glyph because vertical coordinates in a standard coordinate system increase from bottom to top.
+The W2 array shall define vertical metrics for individual CIDs. The elements of the array shall be
+organised in groups of two or five, where each group shall be in one of these two formats:
+c [ w11y v1x v1y w12y v2x v2y … ]
+cfirst clast w11y v1x v1y
+In the first format, c is a starting CID and shall be followed by an array containing numbers interpreted
+in groups of three. Each group shall consist of the vertical component of the vertical displacement
+vector w1 (whose horizontal component shall be 0) followed by the horizontal and vertical
+components for the position vector v. Successive groups shall define the vertical metrics for
+consecutive CIDs starting with c. The second format defines a range of CIDs from cfirst to clast, that
+shall be followed by three numbers that define the vertical metrics for all CIDs in this range.
+EXAMPLE 3       This W2 entry defines the vertical displacement vector for the glyph with CID 120 as (0, -1000) and the
+position vector as (250, 772). It also defines the displacement vector for CIDs in the range 7080 through
+8032 as (0, -1000) and the position vector as (500, 900).
+/W2 [120 [-1000 250 772]
+7080 8032 -1000 500 900
+]
+9.7.5 CMaps
+9.7.5.1          General
+
+#### 2.17: 9.7.5.1          General
+selectors shall be CIDs in a CIDFont (as mentioned earlier, PostScript CMaps can use names or codes as
+well). A CMap serves a function analogous to the Encoding dictionary for a simple font. The CMap shall
+not refer directly to a specific CIDFont; instead, it shall be combined with it as part of a CID-keyed font,
+represented in PDF as a Type 0 font dictionary (see 9.7.6, "Type 0 font dictionaries"). Within the CMap,
+the character mappings shall refer to the associated CIDFont by font number, which in PDF shall be 0.
+PDF also uses a special type of CMap to map character codes to Unicode values (see 9.10.3, "ToUnicode
+CMaps").
+A CMap shall specify the writing mode — horizontal or vertical — for any CIDFont with which the
+CMap is combined. The writing mode determines which metrics shall be used when glyphs are painted
+from that font.
+NOTE        Writing mode is specified as part of the CMap because, in some cases, different shapes are used
+when writing horizontally and vertically. In such cases, the horizontal and vertical variants of a
+CMap specify different CIDs for a given character code.
+A CMap shall be specified in one of two ways:
+•    As a name object identifying a predefined CMap, whose value shall be one of the predefined CMap
+names defined in "Table 116 — Predefined CJK CMap names".
+•    As a stream object whose contents shall be a CMap file.
+9.7.5.2          Predefined CMaps
+
+#### 2.18: 9.7.5.2          Predefined CMaps
+appearing in a text string shall be represented in big-endian order (high-order byte first). CMap names
+containing "UCS2" use UCS-2 encoding; names containing "UTF16" use UTF-16BE (big-endian)
+encoding.
+NOTE 1      "Table 116 — Predefined CJK CMap names" lists the names of the predefined CMaps. These
+CMaps map character codes to CIDs in a single descendant CIDFont. CMaps whose names end in
+H specify horizontal writing mode; those ending in V specify vertical writing mode.
+
+Table 116 — Predefined CJK CMap names
+Name                    Description
+Chinese (Simplified)
+GB-EUC-H                Microsoft Code Page 936 (lfCharSet 0x86), GB 2312-80 character set, EUC-CN
+encoding
+GB-EUC-V                Vertical version of GB-EUC-H
+GBpc-EUC-H              Mac OS, GB 2312-80 character set, EUC-CN encoding, Script Manager code 19
+GBpc-EUC-V              Vertical version of GBpc-EUC-H
+GBK-EUC-H               Microsoft Code Page 936 (lfCharSet 0x86), GBK character set, GBK encoding
+GBK-EUC-V               Vertical version of GBK-EUC-H
+GBKp-EUC-H              Same as GBK-EUC-H but replaces half-width Latin characters with proportional
+forms and maps character code 0x24 to a dollar sign ($) instead of a yuan symbol
+(¥)
+GBKp-EUC-V              Vertical version of GBKp-EUC-H
+GBK2K-H                 GB 18030-2000 character set, mixed 1-, 2-, and 4-byte encoding
+GBK2K-V                 Vertical version of GBK2K-H
+UniGB-UCS2-H            Unicode (UCS-2) encoding for the Adobe-GB1 character collection
+UniGB-UCS2-V            Vertical version of UniGB-UCS2-H
+UniGB-UTF16-H           Unicode (UTF-16BE) encoding for the Adobe-GB1 character collection; contains
+mappings for all characters in the GB18030-2000 character set
+UniGB-UTF16-V           Vertical version of UniGB-UTF16-H
+Chinese (Traditional)
+B5pc-H                  Mac OS, Big Five character set, Big Five encoding, Script Manager code 2
+B5pc-V                  Vertical version of B5pc-H
+HKscs-B5-H              Hong Kong SCS, an extension to the Big Five character set and encoding
+HKscs-B5-V              Vertical version of HKscs-B5-H
+ETen-B5-H               Microsoft Code Page 950 (lfCharSet 0x88), Big Five character set with ETen
+extensions
+ETen-B5-V               Vertical version of ETen-B5-H
+ETenms-B5-H             Same as ETen-B5-H but replaces half-width Latin characters with proportional
+forms
+ETenms-B5-V             Vertical version of ETenms-B5-H
+Name               Description
+CNS-EUC-H          CNS 11643-1992 character set, EUC-TW encoding
+CNS-EUC-V          Vertical version of CNS-EUC-H
+UniCNS-UCS2-H      Unicode (UCS-2) encoding for the Adobe-CNS1-6 character collection
+UniCNS-UCS2-V      Vertical version of UniCNS-UCS2-H
+UniCNS-UTF16-H     Unicode (UTF-16BE) encoding for the Adobe-CNS1-6 character collection;
+contains mappings for all the characters in the HKSCS-2001 character set and
+contains both 2- and 4-byte character codes
+UniCNS-UTF16-V     Vertical version of UniCNS-UTF16-H
+Japanese
+83pv-RKSJ-H        Mac OS, JIS X 0208 character set with KanjiTalk6 extensions, Shift-JIS encoding,
+Script Manager code 1
+90ms-RKSJ-H        Microsoft Code Page 932 (lfCharSet 0x80), JIS X 0208 character set with NEC and
+IBM® extensions
+90ms-RKSJ-V        Vertical version of 90ms-RKSJ-H
+90msp-RKSJ-H       Same as 90ms-RKSJ-H but replaces half-width Latin characters with proportional
+forms
+90msp-RKSJ-V       Vertical version of 90msp-RKSJ-H
+90pv-RKSJ-H        Mac OS, JIS X 0208 character set with KanjiTalk7 extensions, Shift-JIS encoding,
+Script Manager code 1
+Add-RKSJ-H         JIS X 0208 character set with Fujitsu FMR extensions, Shift-JIS encoding
+Add-RKSJ-V         Vertical version of Add-RKSJ-H
+EUC-H              JIS X 0208 character set, EUC-JP encoding
+EUC-V              Vertical version of EUC-H
+Ext-RKSJ-H         JIS C 6226 (JIS78) character set with NEC extensions, Shift-JIS encoding
+Ext-RKSJ-V         Vertical version of Ext-RKSJ-H
+H                  JIS X 0208 character set, ISO-2022-JP encoding
+V                  Vertical version of H
+UniJIS-UCS2-H      Unicode (UCS-2) encoding for the Adobe-Japan1 character collection
+UniJIS-UCS2-V      Vertical version of UniJIS-UCS2-H
+UniJIS-UCS2-HW-H Same as UniJIS-UCS2-H but replaces proportional Latin characters with half-width
+forms
+
+Name                   Description
+UniJIS-UCS2-HW-V Vertical version of UniJIS-UCS2-HW-H
+UniJIS-UTF16-H         Unicode (UTF-16BE) encoding for the Adobe-Japan1 character collection;
+contains mappings for all characters in the JIS X 0213:1000 character set
+UniJIS-UTF16-V         Vertical version of UniJIS-UTF16-H
+Korean
+KSC-EUC-H              KS X 1001:1992 character set, EUC-KR encoding
+KSC-EUC-V              Vertical version of KSC-EUC-H
+KSCms-UHC-H           Microsoft Code Page 949 (lfCharSet 0x81), KS X 1001:1992 character set plus
+8822 additional hangul, Unified Hangul Code (UHC) encoding
+KSCms-UHC-V            Vertical version of KSCms-UHC-H
+KSCms-UHC-HW-H Same as KSCms-UHC-H but replaces proportional Latin characters with half-width
+forms
+KSCms-UHC-HW-V Vertical version of KSCms-UHC-HW-H
+KSCpc-EUC-H            Mac OS, KS X 1001:1992 character set with Mac OS KH extensions, Script Manager
+Code 3
+UniKS-UCS2-H           Unicode (UCS-2) encoding for the Adobe-Korea1 character collection
+UniKS-UCS2-V           Vertical version of UniKS-UCS2-H
+UniKS-UTF16-H          Unicode (UTF-16BE) encoding for the Adobe-Korea1 character collection
+UniKS-UTF16-V          Vertical version of UniKS-UTF16-H
+Generic
+Identity-H             The horizontal identity mapping for 2-byte CIDs; may be used with CIDFonts
+using any Registry, Ordering, and Supplement values. It maps 2-byte character
+codes ranging from 0 to 65,535 to the same 2-byte CID value, interpreted high-
+order byte first.
+Identity-V             Vertical version of Identity-H. The mapping is the same as for Identity-H.
+NOTE 2      The Identity-H and Identity-V CMaps can be used to refer to glyphs directly by their CIDs when
+showing a text string.
+When the current font is a Type 0 font whose Encoding entry is Identity-H or Identity-V, the string to
+be shown shall contain pairs of bytes representing CIDs, high-order byte first. When the descendant
+font of a Type 0 font is a Type 2 CIDFont in which the CIDToGIDMap entry is Identity and if the
+TrueType font is embedded in the PDF file, the 2-byte CID values shall be identical glyph indices for the
+glyph descriptions in the TrueType font program.
+Table 117 — Character collections for predefined CMaps, by PDF version
+Table intentionally empty to retain table numbering in this document (2020).
+Information is now located in the appropriate normative reference for each character collection.
+A PDF processor shall support Adobe-CNS1-7, Adobe-GB1-5, Adobe-Japan1-7 and Adobe-KR-9
+character collections. ". Adobe-Japan2-0 and Adobe-Korea1-2 are deprecated in this document (2020).
+As noted in 9.7.3, "CIDSystemInfo dictionaries", a character collection is identified by registry,
+ordering, and supplement number, and supplements are cumulative; that is, a higher-numbered
+supplement includes the CIDs contained in lower-numbered supplements, as well as some additional
+CIDs. Consequently, text encoded according to the predefined CMaps for a given PDF version shall be
+valid when interpreted by a PDF processor supporting the same or a later PDF version. When
+interpreted by a PDF processor supporting an earlier PDF version, such text causes an error if a CMap
+is encountered that is not predefined for that PDF version. If character codes are encountered that
+were added in a higher-numbered supplement than the one corresponding to the supported PDF
+version, no characters are displayed for those codes; see 9.7.6.3, "Handling undefined characters".
+Other supplements of these character collections may be used, but if the supplement is higher-
+numbered than the one corresponding to the supported PDF version, only the CIDs in the latter
+supplement are considered to be standard CIDs.
+The Identity-H and Identity-V CMaps shall not be used with a non-embedded font. Only standardized
+character sets may be used.
+NOTE 4     If a PDF processor producing a PDF file encounters text to be included that uses CIDs from a
+higher-numbered supplement than the one corresponding to the PDF version being generated,
+the application will need to embed the CMap for the higher-numbered supplement rather than
+refer to the predefined CMap.
+The CMap programs that define the predefined CMaps are available through a variety of online sources.
+9.7.5.3          Embedded CMap files
+
+#### 2.19: 9.7.5.3          Embedded CMap files
+CMap. In addition to the standard entries for streams (listed in "Table 5 — Entries common to all
+stream dictionaries"), the CMap stream dictionary contains the entries listed in "Table 118 —
+Additional entries in a CMap stream dictionary". The data in the stream defines the mapping from
+character codes to a font number and a character selector. The data shall follow the syntax defined in
+Adobe Technical Note #5014, Adobe CMap and CIDFont Files Specification.
+Table 118 — Additional entries in a CMap stream dictionary
+Key                   Type          Value
+Type                  name          (Required) The type of PDF object that this dictionary describes; shall be
+CMap for a CMap dictionary.
+CMapName              name          (Required) The name of the CMap. It shall be the same as the value of
+CMapName in the CMap file.
+
+Key                    Type            Value
+CIDSystemInfo          dictionary      (Required) A dictionary (see 9.7.3, "CIDSystemInfo dictionaries")
+containing entries that define the character collection for the CIDFont or
+CIDFonts associated with the CMap. The value of this entry shall be the
+same as the value of CIDSystemInfo in the CMap file. (However, it does
+not need to match the values of CIDSystemInfo for the Identity-H or
+Identity-V CMaps.)
+WMode                  integer         (Optional) A code that specifies the writing mode for any CIDFont with
+which this CMap is combined. The value shall be 0 for horizontal or 1 for
+vertical. Default value: 0. The value of this entry shall be the same as the
+value of WMode in the CMap file.
+UseCMap                name or         (Optional) The name of a predefined CMap, or a stream containing a
+stream          CMap. If this entry is present, the referencing CMap shall specify only the
+character mappings that differ from the referenced CMap.
+9.7.5.4           CMap example and operator summary
+
+#### 2.20: 9.7.6.1        General
+dictionary".
+
+Table 119 — Entries in a Type 0 font dictionary
+Key                   Type         Value
+Type                  name         (Required) The type of PDF object that this dictionary describes; shall be
+Font for a font dictionary.
+Subtype               name         (Required) The type of font; shall be Type0 for a Type 0 font.
+BaseFont              name         (Required) The name of the font. If the descendant is a Type 0 CIDFont, this
+name should be the concatenation of the CIDFont’s BaseFont name, a
+hyphen, and the CMap name given in the Encoding entry (or the
+CMapName entry in the CMap). If the descendant is a Type 2 CIDFont, this
+name should be the same as the CIDFont’s BaseFont name.
+NOTE     In principle, this is an arbitrary name, since there is no font program
+associated directly with a Type 0 font dictionary. The conventions
+described here ensure maximum compatibility with existing PDF
+processors.
+Encoding              name or       (Required) The name of a predefined CMap, or a stream containing a CMap
+stream       that maps character codes to font numbers and CIDs. If the descendant is a
+Type 2 CIDFont whose associated TrueType font program is not embedded
+in the PDF file, the Encoding entry shall be a predefined CMap name (see
+9.7.4.2, "Glyph selection in CIDFonts").
+DescendantFonts array              (Required) A one-element array specifying the CIDFont dictionary that is the
+descendant of this Type 0 font.
+ToUnicode             stream       (Optional) A stream containing a CMap file that maps character codes to
+Unicode values (see 9.9.2, "Font subsets").
+EXAMPLE           This code sample shows a Type 0 font.
+14 0 obj
+<</Type /Font
+/Subtype /Type0
+/BaseFont /HeiseiMin-W5-90ms-RKSJ-H
+/Encoding /90ms-RKSJ-H
+/DescendantFonts [15 0 R]
+>>
+endobj
+9.7.6.2           CMap mapping
+
+#### 2.21: 9.7.6.2           CMap mapping
+operators (such as Tj) shall interpret the bytes in the string to be shown when the current font is the
+Type 0 font. This subclause describes how the characters in the string shall be decoded and mapped
+into character selectors, which in PDF are always CIDs.
+The codespace ranges in the CMap (delimited by begincodespacerange and endcodespacerange)
+specify how many bytes are extracted from the string for each successive character code. A codespace
+range shall be specified by a pair of codes of some particular length giving the lower and upper bounds
+of that range. A code shall be considered to match the range if it is the same length as the bounding
+codes and the value of each of its bytes lies between the corresponding bytes of the lower and upper
+bounds. The code length shall not be greater than 4.
+A sequence of one or more bytes shall be extracted from the string and matched against the codespace
+ranges in the CMap. That is, the first byte shall be matched against 1-byte codespace ranges; if no
+match is found, a second byte shall be extracted, and the 2-byte code shall be matched against 2-byte
+codespace ranges. This process continues for successively longer codes until a match is found or all
+codespace ranges have been tested. There will be at most one match because codespace ranges shall
+not overlap.
+The code extracted from the string shall be looked up in the character code mappings for codes of that
+length. (These are the mappings defined by beginbfchar, endbfchar, begincidchar, endcidchar, and
+corresponding operators for ranges.) Failing that, it shall be looked up in the notdef mappings, as
+described in the next subclause.
+The results of the CMap mapping algorithm are a font number and a character selector. The font
+number shall be used as an index into the Type 0 font’s DescendantFonts array to select a CIDFont. In
+PDF, the font number shall be 0 and the character selector shall be a CID; this is the only case described
+here. The CID shall then be used to select a glyph in the CIDFont. If the CIDFont contains no glyph for
+that CID, the notdef mappings shall be consulted, as described in 9.7.6.3, "Handling undefined
+characters".
+9.7.6.3         Handling undefined characters
+
+#### 2.22: 9.7.6.3         Handling undefined characters
+those reasons and what happens when they occur.
+If a code maps to a CID for which no such glyph exists in the descendant CIDFont, the notdef mappings
+in the CMap shall be consulted to obtain a substitute character selector. These mappings are delimited
+by the operators beginnotdefchar, endnotdefchar, beginnotdefrange, and endnotdefrange within
+an embedded CMap file. They shall always map to a CID. If a matching notdef mapping is found, the CID
+selects a glyph in the associated descendant, which shall be a CIDFont. If no glyph exists for that CID,
+the glyph for CID 0 (which shall be present) shall be substituted.
+NOTE       The notdef mappings are similar to the .notdef character mechanism in simple fonts.
+If the CMap does not contain either a character mapping or a notdef mapping for the code, descendant
+0 shall be selected and the glyph for CID 0 shall be substituted from the associated CIDFont.
+If the code is invalid — that is, the bytes extracted from the string to be shown do not match any
+codespace range in the CMap — a substitute glyph is chosen as just described. The character mapping
+algorithm shall be reset to its original position in the string, and a modified mapping algorithm chooses
+the best partially matching codespace range:
+a) If the first byte extracted from the string to be shown does not match the first byte of any codespace
+range, the range having the shortest codes shall be chosen.
+b) Otherwise (that is, if there is a partial match), for each additional byte extracted, the code accumulated so
+far shall be matched against the beginnings of all longer codespace ranges until the longest such partial
+match has been found. If multiple codespace ranges have partial matches of the same length, the one
+having the shortest codes shall be chosen.
+The length of the codes in the chosen codespace range determines the total number of bytes to
+consume from the string for the current mapping operation.
+
+For an embedded TrueType font with a CIDtoGIDMap stream, if a (character) code does not have a
+corresponding GID in the CIDtoGIDMap stream, the glyph for CID 0 shall be substituted.
+9.8      Font descriptors
+9.8.1 General
+
+#### 2.23: 9.8.1 General
+distinct from the metrics of individual glyphs. These font metrics provide information that enables a
+PDF processor to synthesise a substitute font or select a similar font when the font program is
+unavailable. The font descriptor may also be used to embed the font program in the PDF file.
+Font descriptors shall not be used with Type 0 fonts. Beginning with PDF 1.5, font descriptors may be
+used with Type 3 fonts.
+A font descriptor is a dictionary whose entries specify various font attributes. The entries common to
+all font descriptors — for both simple fonts and CIDFonts — are listed in "Table 120 — Entries
+common to all font descriptors". Additional entries in the font descriptor for a CIDFont are described in
+9.8.3, "Font descriptors for CIDFonts". All dimensional values shall be units in glyph space. The
+conversion from glyph space to text space is described in 9.2.4, "Glyph positioning and metrics".
+Table 120 — Entries common to all font descriptors
+Key                 Type                Value
+Type                name                (Required) The type of PDF object that this dictionary describes; shall be
+FontDescriptor for a font descriptor.
+FontName            name                (Required) The PostScript name of the font. This name shall be the same
+as the value of BaseFont in the font or CIDFont dictionary that refers to
+this font descriptor.
+FontFamily          byte string         (Optional; PDF 1.5) A byte string specifying the preferred font family
+name.
+EXAMPLE 1          For the font Times Bold Italic, the FontFamily is Times.
+FontStretch         name                (Optional; PDF 1.5) The font stretch value. It shall be one of these names
+(ordered from narrowest to widest): UltraCondensed, ExtraCondensed,
+Condensed, SemiCondensed, Normal, SemiExpanded, Expanded,
+ExtraExpanded or UltraExpanded.
+The specific interpretation of these values varies from font to font.
+EXAMPLE 2          Condensed in one font might appear most similar to Normal in
+another.
+Key           Type        Value
+FontWeight    number      (Optional; PDF 1.5) The weight (thickness) component of the fully-
+qualified font name or font specifier. If present, the value shall be one of
+100, 200, 300, 400, 500, 600, 700, 800, or 900, where each number
+indicates a weight that is at least as dark as its predecessor. A value of
+400 shall indicate a normal weight; 700 shall indicate bold.
+The specific interpretation of these values varies from font to font.
+EXAMPLE 3         300 in one font might appear most similar to 500 in another.
+Flags         integer     (Required) A collection of flags defining various characteristics of the font
+(see 9.8.2, "Font descriptor flags").
+FontBBox      rectangle   (Required except for Type 3 fonts) A rectangle (see 7.9.5, "Rectangles"),
+expressed in the glyph coordinate system, that shall specify the font
+bounding box. This should be the smallest rectangle enclosing the shape
+that would result if all of the glyphs of the font were placed with their
+origins coincident and then filled.
+ItalicAngle   number      (Required) The angle, expressed in degrees counterclockwise from the
+vertical, of the dominant vertical strokes of the font.
+EXAMPLE 4         The 9-o’clock position is 90 degrees, and the 3-o’clock position
+is –90 degrees.
+The value shall be negative for fonts that slope to the right, as almost all
+italic fonts do
+Ascent        number      (Required, except for Type 3 fonts) The maximum height above the
+baseline reached by glyphs in this font. The height of glyphs for accented
+characters shall be excluded.
+Descent       number      (Required, except for Type 3 fonts) The maximum depth below the
+baseline reached by glyphs in this font. The value shall be a negative
+number.
+Leading       number      (Optional) The spacing between baselines of consecutive lines of text.
+Default value: 0.
+CapHeight     number      (Required for fonts that have Latin characters, except for Type 3 fonts) The
+vertical coordinate of the top of flat capital letters, measured from the
+baseline.
+XHeight       number      (Optional) The font’s x height: the vertical coordinate of the top of flat
+nonascending lowercase letters (like the letter x), measured from the
+baseline, in fonts that have Latin characters. Default value: 0.
+StemV         number      (Required except for Type 3 fonts) The thickness measured horizontally,
+of the dominant vertical stems of glyphs in the font. Values shall be
+positive. A value of 0 indicates an unknown stem thickness.
+StemH         number      (Optional) The thickness measured vertically of the dominant horizontal
+stems of glyphs in the font. Values shall be positive. A value of 0 indicates
+an unknown stem thickness. Default value: 0.
+AvgWidth      number      (Optional) The average width of glyphs in the font. Default value: 0.
+
+Key                  Type               Value
+MaxWidth             number             (Optional) The maximum width of glyphs in the font. Default value: 0.
+MissingWidth         number             (Optional) The width to use for character codes whose widths are not
+specified in a font dictionary’s Widths array. This shall have a
+predictable effect only if all such codes map to glyphs whose actual
+widths are the same as the value of the MissingWidth entry. Default
+value: 0.
+FontFile             stream             (Optional) A stream containing a Type 1 font program (see 9.9,
+"Embedded font programs").
+FontFile2            stream             (Optional; PDF 1.1) A stream containing a TrueType font program (see
+9.9, "Embedded font programs").
+FontFile3            stream             (Optional; PDF 1.2) A stream containing a font program whose format is
+specified by the Subtype entry in the stream dictionary (see "Table 124
+— Embedded font organisation for various font types").
+CharSet              ASCII string or (Optional; meaningful only in Type 1 fonts; PDF 1.1; deprecated in PDF 2.0)
+byte string     A string listing the character names defined in a font subset. The names
+in this string shall be in PDF syntax — that is, each name preceded by a
+slash (/). The names may appear in any order. The name .notdef shall be
+omitted; it shall exist in the font subset. If this entry is absent, the only
+indication of a font subset shall be the subset tag in the FontName entry
+(see 9.9.2, "Font subsets").
+At most, only one of the FontFile, FontFile2, and FontFile3 entries shall be present.
+9.8.2 Font descriptor flags
+
+#### 2.24: 9.8.2 Font descriptor flags
+specifying various characteristics of the font. Bit positions within the flag word are numbered from 1
+(low-order) to 32 (high-order). "Table 121 — Font flags" shows the meanings of the flags; all
+undefined flag bits are reserved and shall be set to 0 by PDF writers. "Figure 63 — Characteristics
+represented in the Flags entry of a font descriptor" shows examples of fonts with these characteristics.
+Table 121 — Font flags
+Bit position    Name             Meaning
+1               FixedPitch       All glyphs have the same width (as opposed to proportional or
+variable-pitch fonts, which have different widths).
+2               Serif            Glyphs have serifs, which are short strokes drawn at an angle on the
+top and bottom of glyph stems. (Sans serif fonts do not have serifs.)
+3               Symbolic         Font contains glyphs outside the Standard Latin character set. This
+flag and the Nonsymbolic flag shall not both be set or both be clear.
+4               Script           Glyphs resemble cursive handwriting.
+Bit position   Name          Meaning
+6              Nonsymbolic Font uses the Standard Latin character set or a subset of it. This flag
+and the Symbolic flag shall not both be set or both be clear.
+7              Italic        Glyphs have dominant vertical strokes that are slanted.
+17             AllCap        Font contains no lowercase letters; typically used for display
+purposes, such as for titles or headlines.
+18             SmallCap      Font contains both uppercase and lowercase letters. The uppercase
+letters are similar to those in the regular version of the same typeface
+family. The glyphs for the lowercase letters have the same shapes as
+the corresponding uppercase letters, but they are sized and their
+proportions adjusted so that they have the same size and stroke
+weight as lowercase glyphs in the same typeface family.
+19             ForceBold     See description after Note 1 in this subclause.
+The Nonsymbolic flag (bit 6 in the Flags entry) indicates that the font’s character set is the Standard
+Latin character set (or a subset of it) and that it uses the standard names for those glyphs. This
+character set is shown in D.2, "Latin character set and encodings". If the font contains any glyphs
+outside this set, the Symbolic flag shall be set and the Nonsymbolic flag shall be clear. In other words,
+any font whose character set is not a subset of the Standard character set is considered to be symbolic.
+This influences the font’s default base encoding and may affect a PDF processor’s font substitution
+strategies.
+The use of the two flags to represent a single binary choice is a historical accident. A PDF processor
+should always check the Symbolic flag to determine whether the state is Symbolic or NonSymbolic.
+PDF writers should still set the NonSymbolic flag to be the inverse of the Symbolic flag for backward
+compatibility.
+NOTE 1     This classification of nonsymbolic and symbolic fonts is peculiar to PDF. A font can contain
+additional characters that are used in Latin writing systems but are outside the Standard Latin
+character set; PDF considers such a font to be symbolic.
+The ForceBold flag (bit 19) shall determine whether bold glyphs shall be painted with extra pixels even
+at very small text sizes by a PDF processor. If the ForceBold flag is set, features of bold glyphs may be
+thickened at small text sizes.
+NOTE 2     Typically, when glyphs are painted at small sizes on very low-resolution devices such as display
+screens, features of bold glyphs can appear only 1 pixel wide. Because this is the minimum
+feature width on a pixel-based device, ordinary (nonbold) glyphs also appear with 1-pixel-wide
+features and therefore cannot be distinguished from bold glyphs.
+
+Figure 63 — Characteristics represented in the Flags entry of a font descriptor
+EXAMPLE           This code sample illustrates a font descriptor whose Flags entry has the Serif, Nonsymbolic, and ForceBold
+flags (bits 2, 6, and 19) set.
+7 0 obj
+<</Type /FontDescriptor
+/FontName /AGaramond-Semibold
+/Flags 262178                                                         %Bits 2, 6, and 19
+/FontBBox [-177 -269 1123 866]
+/MissingWidth 255
+/StemV 105
+/StemH 45
+/CapHeight 660
+/XHeight 394
+/Ascent 720
+/Descent -270
+/Leading 83
+/MaxWidth 1212
+/AvgWidth 478
+/ItalicAngle 0
+>>
+endobj
+9.8.3 Font descriptors for CIDFonts
+9.8.3.1           General
+
+#### 2.25: 9.8.3.1           General
+dictionaries of CIDFonts may contain the entries listed in "Table 122 — Additional font descriptor
+entries for CIDFonts".
+Table 122 — Additional font descriptor entries for CIDFonts
+Key            Type             Value
+Style          dictionary       (Optional) A dictionary containing entries that describe the style of the
+glyphs in the font (see 9.8.3.2, "Style").
+Lang           name             (Optional; PDF 1.5) A name specifying the language of the font, which
+may be used for encodings where the language is not implied by the
+encoding itself. The value shall be a Language-Tag as defined in BCP 47.
+If this entry is absent, such absence provides no information as to the
+language of the document; in particular, an absence of this entry does
+not by itself mean the language of the document is unknown.
+FD             dictionary       (Optional) A dictionary whose keys identify a class of glyphs in a
+CIDFont.
+Each value shall be a dictionary containing entries that shall override
+the corresponding values in the main font descriptor dictionary for that
+class of glyphs (see 9.8.3.3, "FD").
+CIDSet         stream           (Optional; deprecated in PDF 2.0) A stream identifying which CIDs are
+present in the CIDFont file. If this entry is present, the CIDFont shall
+contain only a subset of the glyphs in the character collection defined by
+the CIDSystemInfo dictionary. If it is absent, the only indication of a
+CIDFont subset shall be the subset tag in the FontName entry (see 9.9.2,
+"Font subsets").
+The stream’s data shall be organised as a table of bits indexed by CID.
+The bits shall be stored in bytes with the high-order bit first. Each bit
+shall correspond to a CID. The most significant bit of the first byte shall
+correspond to CID 0, the next bit to CID 1, and so on.
+9.8.3.2         Style
+
+#### 2.26: 9.8.3.2         Style
+Panose entry is defined. The value of Panose shall be a 12-byte string consisting of these elements:
+•    The font family class and subclass ID bytes, given in the FamilyClass field of the "OS/2" table in a
+TrueType font. This field is documented in Microsoft’s TrueType 1.0 Font Files Technical
+Specification.
+•    Ten bytes for the PANOSE classification number for the font. The PANOSE classification system is
+documented in Hewlett-Packard Company’s PANOSE Classification Metrics Guide.
+See 2, "Normative references" for more information about these documents.
+EXAMPLE         This is an example of a Style entry in the font descriptor:
+/Style <</Panose <01 05 02 02 03 00 00 00 00 00 00 00>>>
+9.8.3.3         FD
+A CIDFont may be made up of different classes of glyphs, each class requiring different sets of the font-
+wide attributes that appear in font descriptors.
+
+EXAMPLE 1         Latin glyphs, for example, may require different attributes than kanji glyphs.
+The font descriptor shall define a set of default attributes that apply to all glyphs in the CIDFont. The
+FD entry in the font descriptor shall contain exceptions to these defaults.
+The key for each entry in an FD dictionary shall be the name of a class of glyphs — that is, a particular
+subset of the CIDFont’s character collection. The entry’s value shall be a font descriptor whose contents
+shall override the font-wide attributes for that class only. This font descriptor shall contain entries for
+metric information only; it shall not include FontFile, FontFile2, FontFile3, or any of the entries listed
+in “Table 120 — Entries common to all font descriptors”.
+The FD dictionary should contain at least the metrics for the proportional Latin glyphs. With the
+information for these glyphs, a more accurate substitution font can be created.
+The names of the glyph classes depend on the character collection, as identified by the Registry,
+Ordering, and Supplement entries in the CIDSystemInfo dictionary. "Table 123 — Glyph classes in
+CJK fonts" lists the valid keys for the Adobe-GB1, Adobe-CNS1, Adobe-Japan1, Adobe-Japan2
+(deprecated in PDF 2.0 (2020)), Adobe-Korea1 (deprecated in PDF 2.0 (2020)) and Adobe-KR (added in
+PDF 2.0 (2020)) character collections.
+Table 123 — Glyph classes in CJK fonts
+Character Collection                Class                  Glyphs in Class
+Adobe-GB1                           Alphabetic             Full-width Latin, Greek, and Cyrillic glyphs
+Dingbats               Special symbols
+Generic                Typeface-independent glyphs, such as line-drawing
+Hanzi                  Full-width hanzi (Chinese) glyphs
+HRoman                 Half-width Latin glyphs
+HRomanRot              Same as HRoman but rotated for use in vertical writing
+Kana                   Japanese kana (katakana and hiragana) glyphs
+Proportional           Proportional Latin glyphs
+ProportionalRot        Same as Proportional but rotated for use in vertical writing
+Adobe-CNS1                          Alphabetic             Full-width Latin, Greek, and Cyrillic glyphs
+Dingbats               Special symbols
+Generic                Typeface-independent glyphs, such as line-drawing
+Hanzi                  Full-width hanzi (Chinese) glyphs
+HRoman                 Half-width Latin glyphs
+HRomanRot              Same as HRoman but rotated for use in vertical writing
+Kana                   Japanese kana (katakana and hiragana) glyphs
+Proportional           Proportional Latin glyphs
+ProportionalRot        Same as Proportional but rotated for use in vertical writing
+Character Collection             Class                  Glyphs in Class
+Adobe-Japan1                     Alphabetic             Full-width Latin, Greek, and Cyrillic glyphs
+AlphaNum               Numeric glyphs
+Dingbats               Special symbols
+DingbatsRot            Same as Dingbats but rotated for use in vertical writing
+Generic                Typeface-independent glyphs, such as line-drawing
+GenericRot             Same as Generic but rotated for use in vertical writing
+HKana                  Half-width kana (katakana and hiragana) glyphs
+HKanaRot               Same as HKana but rotated for use in vertical writing
+HRoman                 Half-width Latin glyphs
+HRomanRot              Same as HRoman but rotated for use in vertical writing
+Kana                   Full-width kana (katakana and hiragana) glyphs
+Kanji                  Full-width kanji (Chinese) glyphs
+Proportional           Proportional Latin glyphs
+ProportionalRot        Same as Proportional but rotated for use in vertical writing
+Ruby                   Glyphs used for setting ruby (small glyphs that serve to
+annotate other glyphs with meanings or readings)
+Adobe-Japan2 (deprecated in      Alphabetic             Full-width Latin, Greek, and Cyrillic glyphs
+PDF 2.0 (2020))                  Dingbats               Special symbols
+HojoKanji              Full-width kanji glyphs
+Adobe-Korea1 (deprecated in      Alphabetic             Full-width Latin, Greek, and Cyrillic glyphs
+PDF 2.0 (2020))                  Dingbats               Special symbols
+Adobe-KR (added in PDF 2.0       Generic                Typeface-independent glyphs, such as line-drawing
+(2020))
+Hangul                 Hangul and jamo glyphs
+Hanja                  Full-width hanja (Chinese) glyphs
+HRoman                 Half-width Latin glyphs
+HRomanRot              Same as HRoman but rotated for use in vertical writing
+Kana                   Japanese kana (katakana and hiragana) glyphs
+Proportional           Proportional Latin glyphs
+ProportionalRot        Same as Proportional but rotated for use in vertical writing
+EXAMPLE 2      This example illustrates an FD dictionary containing two entries.
+/FD   <</Proportional 25 0 R
+/HKana 26 0 R
+>>
+25 0 obj
+<</Type /FontDescriptor
+/FontName /HeiseiMin-W3-Proportional
+/Flags 2
+/AvgWidth 478
+/MaxWidth 1212
+/MissingWidth 250
+/StemV 105
+/StemH 45
+/CapHeight 660
+/XHeight 394
+/Ascent 720
+
+/Descent -270
+/Leading 83
+>>
+endobj
+26 0 obj
+<</Type /FontDescriptor
+/FontName /HeiseiMin-W3-HKana
+/Flags 3
+/AvgWidth 500
+/MaxWidth 500
+/MissingWidth 500
+/StemV 50
+/StemH 75
+/Ascent 720
+/Descent 0
+/Leading 83
+>>
+endobj
+9.9      Embedded font programs
+9.9.1 General
+
+#### 2.27: 9.9.1 General
+stream object.
+For text in text rendering mode 3, font programs may be embedded. For text in other text rendering
+modes, font programs should be embedded.
+NOTE 1      Such a stream object is also called a font file by analogy with font programs that are available
+from sources external to PDF processors.
+Font programs are subject to copyright, and the copyright owner may impose conditions under which
+a font program may be used. These permissions are recorded either in the font program or as part of a
+separate license. One of the conditions may be that the font program cannot be embedded, in which
+case it should not be incorporated into a PDF file. A font program may allow embedding for the sole
+purpose of viewing and printing the document but not for creating new or modified text that uses the
+font (in either the same document or other documents). The latter operation would require the user
+performing the operation to have a licensed copy of the font program, not a copy extracted from the
+PDF file. In the absence of explicit information to the contrary, embedded font programs shall be used
+only to view and print the document and not for any other purposes.
+"Table 124 — Embedded font organisation for various font types" summarises the ways in which font
+programs shall be embedded in a PDF file, depending on the representation of the font program. The
+key shall be the name used in the font descriptor to refer to the font file stream; the subtype shall be
+the value of the Subtype key, if present, in the font file stream dictionary.
+Table 124 — Embedded font organisation for various font types
+Key         Subtype         Description
+FontFile    —               Type 1 font program, in the original (noncompact) format described in
+Adobe Type 1 Font Format. This entry may appear in the font descriptor
+for a Type1 or MMType1 font dictionary.
+The font program provided as the value of this key shall conform to the
+Adobe Type 1 Font Format and/or Adobe Technical Note #5015, Type 1
+Font Format Supplement.
+FontFile2   —               (PDF 1.1) TrueType font program, as described in the TrueType Reference
+Manual. This entry may appear in the font descriptor for a TrueType font
+dictionary or (PDF 1.3) for a CIDFontType2 CIDFont dictionary.
+The font program provided as the value of this key shall conform to the
+TrueType Reference Manual. The font program shall include these tables:
+"glyf", "head", "hhea", "hmtx", "loca", and "maxp". The "cvt " (notice the
+trailing SPACE), "fpgm", and "prep" tables shall also be included if they
+are required by the font instructions.
+FontFile3   Type1C          (PDF 1.2) Type 1–equivalent font program represented in the Compact
+Font Format (CFF), as described in Adobe Technical Note #5176, The
+Compact Font Format Specification. This entry may appear in the font
+descriptor for a Type1 or MMType1 font dictionary.
+The font program provided as the value of this key shall conform to
+Adobe Technical Note #5176.
+FontFile3   CIDFontType0C (PDF 1.3) Type 0 CIDFont program represented in the Compact Font
+Format (CFF), as described in Adobe Technical Note #5176, The Compact
+Font Format Specification. This entry may appear in the font descriptor
+for a CIDFontType0 CIDFont dictionary.
+The font program provided as the value of this key shall conform to
+Adobe Technical Note #5176.
+
+Key           Subtype              Description
+FontFile3     OpenType             (PDF 1.6) OpenType font program, as described in ISO/IEC 14496-22.
+OpenType is an extension of TrueType that allows inclusion of font
+programs that use the Compact Font Format (CFF).
+•   A TrueType font dictionary or a CIDFontType2 CIDFont dictionary, if the
+embedded font program contains a "glyf" table. In addition to the "glyf"
+table, the font program shall include these tables: "head", "hhea", "hmtx",
+"loca", and "maxp". The "cvt " (notice the trailing SPACE), "fpgm", and
+"prep" tables shall also be included if they are required by the font
+instructions.
+•   A CIDFontType0 CIDFont dictionary, if the embedded font program
+contains a "CFF " table (notice the trailing SPACE) with a Top DICT that
+uses CIDFont operators (this is equivalent to subtype CIDFontType0C). In
+addition to the "CFF " table, the font program shall include the "cmap"
+table.
+•   A Type1 font dictionary or CIDFontType0 CIDFont dictionary, if the
+embedded font program contains a "CFF " table without CIDFont operators.
+In addition to the "CFF " table, the font program shall include the "cmap"
+table.
+A FontFile3 entry with an OpenType subtype may appear in the font
+descriptor for these types of font dictionaries.
+ISO/IEC 14496-22 describes a set of required tables; however, not all
+tables are required in the font file, as described for each type of font
+dictionary that can include this entry.
+The font program provided as the value of this key shall conform to
+ISO/IEC 14496-22:2019.
+NOTE    The absence of some optional tables (such as those used for advanced
+line layout) can prevent editing of text containing the font.
+The stream dictionary for a font file shall contain the normal entries for a stream, such as Length and
+Filter (listed in "Table 5 — Entries common to all stream dictionaries"), plus the additional entries
+listed in "Table 125 — Additional entries in an embedded font stream dictionary".
+Table 125 — Additional entries in an embedded font stream dictionary
+Key           Type          Value
+Length1       integer       (Required for Type 1 and TrueType font programs) The length in bytes of the
+clear-text portion of the Type 1 font program, or the entire TrueType font
+program, after it has been decoded using the filters specified by the stream’s
+Filter entry, if any.
+Length2       integer       (Required for Type 1 font programs) The length in bytes of the encrypted
+portion of the Type 1 font program after it has been decoded using the filters
+specified by the stream’s Filter entry.
+Length3       integer       (Required for Type 1 font programs) The length in bytes of the fixed-content
+portion of the Type 1 font program after it has been decoded using the filters
+specified by the stream’s Filter entry. If Length3 is 0, it indicates that the
+512 zeros and cleartomark have not been included in the FontFile font
+program and shall be added by the PDF processor.
+Key          Type       Value
+Subtype      name       (Required if referenced from FontFile3; PDF 1.2) A name specifying the
+format of the embedded font program. The name shall be Type1C for Type 1
+compact fonts, CIDFontType0C for Type 0 compact CIDFonts, or OpenType
+for OpenType fonts.
+NOTE 2      A standard Type 1 font program, as described in the Adobe Type 1 Font Format specification,
+consists of three parts: a clear-text portion (written using PostScript syntax), an encrypted
+portion, and a fixed-content portion. The fixed-content portion contains 512 ASCII zeros
+followed by a cleartomark operator, and perhaps followed by additional data. Although the
+encrypted portion of a standard Type 1 font can be in binary or ASCII hexadecimal format, PDF
+supports only the binary format. However, the entire font program can be encoded using any
+filters.
+EXAMPLE         This code shows the structure of an embedded standard Type 1 font.
+12 0 obj
+<</Filter /ASCII85Decode
+/Length 41116
+/Length1 2526
+/Length2 32393
+/Length3 570
+>>
+stream
+,p>`rDKJj'E+LaU0eP.@+AH9dBOu$hFD55nC
+… Omitted data…
+JJQ&Nt')<=^p&mGf(%:%h1%9c//K(/*o=.C>UXkbVGTrr~>
+endstream
+endobj
+As noted in "Table 124 — Embedded font organisation for various font types", a Type 1–equivalent
+font program or a Type 0 CIDFont program may be represented in the Compact Font Format (CFF). The
+Length1, Length2, and Length3 entries are not needed in that case and shall not be present. Although
+CFF enables multiple font or CIDFont programs to be bundled together in a single file, an embedded
+CFF font file in PDF shall consist of exactly one font or CIDFont (as appropriate for the associated font
+dictionary).
+According to the Adobe Type 1 Font Format specification, a Type 1 font program may contain a
+PaintType entry specifying whether the glyphs’ outlines are to be filled or stroked. For fonts
+embedded in a PDF file, this entry shall be ignored; the decision whether to fill or stroke glyph outlines
+is entirely determined by the PDF text rendering mode parameter (see 9.3.6, "Text rendering mode").
+This shall also apply to Type 1 compact fonts and Type 0 compact CIDFonts.
+A TrueType font program may be used as part of either a font or a CIDFont. Although the basic font file
+format is the same in both cases, there are different requirements for what information shall be
+present in the font program. These TrueType tables shall always be present if present in the original
+TrueType font program: "head", "hhea", "loca", "maxp", "cvt ", "prep", "glyf", "hmtx", and "fpgm". If used
+with a simple font dictionary, the font program shall additionally contain a "cmap" table defining one
+or more encodings, as discussed in 9.6.5.4, "Encodings for TrueType fonts". If used with a CIDFont
+dictionary, the "cmap" table is not needed and shall not be present, since the mapping from character
+codes to glyph descriptions is provided separately.
+
+The "vhea" and "vmtx" tables that specify vertical metrics shall never be used by a PDF processor. The
+only way to specify vertical metrics in PDF shall be by means of the DW2 and W2 entries in a CIDFont
+dictionary.
+NOTE 3      Beginning with PDF 1.6, font programs can be embedded using the OpenType format, which is an
+extension of the TrueType format that allows inclusion of font programs using the Compact Font
+Format (CFF). It also allows inclusion of data to describe glyph substitutions, kerning, and
+baseline adjustments. In addition to rendering glyphs, PDF processors can use the data in
+OpenType fonts to do advanced line layout, automatically substitute ligatures, provide selections
+of alternative glyphs to users, and handle complex writing scripts.
+The process of finding glyph descriptions in OpenType fonts by a PDF processor shall be the following:
+•    For Type 1 fonts using "CFF " tables, the process shall be as described in 9.6.5.2, "Encodings for
+Type 1 fonts".
+•    For TrueType fonts using "glyf" tables, the process shall be as described in 9.6.5.4, "Encodings for
+TrueType fonts". Since this process sometimes produces ambiguous results, PDF writers, instead
+of using a simple font, should use a Type 0 font with an Identity-H encoding and use the glyph
+indices as character codes, as described following "Table 116 — Predefined CJK CMap names".
+•    For CIDFontType0 fonts using "CFF " tables, the process shall be as described in the discussion of
+embedded Type 0 CIDFonts in 9.7.4.2, "Glyph selection in CIDFonts".
+•    For CIDFontType2 fonts using "glyf" tables, the process shall be as described in the discussion of
+embedded Type 2 CIDFonts in 9.7.4.2, "Glyph selection in CIDFonts".
+9.9.2 Font subsets
+
+#### 2.28: 9.9.2 Font subsets
+font and font descriptor that describe a font subset are slightly different from those of ordinary fonts.
+These differences allow a PDF processor to recognise font subsets and to merge documents containing
+different subsets of the same font. (For more information on font descriptors, see 9.8, "Font
+descriptors".)
+For a font subset, the PostScript name of the font, that is, the value of the font’s BaseFont entry and the
+font descriptor’s FontName entry, shall begin with a tag followed by a plus sign (+) followed by the
+PostScript name of the font from which the subset was created. The tag shall consist of exactly six
+uppercase letters; the choice of letters is arbitrary, but different subsets of the same font in the same
+PDF file shall have different tags. The glyph name .notdef shall be defined in the font subset.
+NOTE        It is recommended that PDF processors treat multiple subset fonts as completely independent
+entities, even if they appear to have been created from the same original font.
+EXAMPLE           EOODIA+Poetica is the name of a subset of Poetica®, a Type 1 font.
+9.10 Extraction of text content
+9.10.1            General
+
+#### 2.29: 9.10.1            General
+on the page. In addition to rendering text, PDF processors often need to determine the information
+content of text — that is, its meaning according to some standard character identification as opposed
+to its rendered appearance. This need arises during operations such as searching, indexing, and
+exporting of text to other file formats.
+Unicode defines a system for numbering all of the common characters used in a large number of
+languages. It is a suitable scheme for representing the information content of text, but not its
+appearance, since Unicode values identify characters, not glyphs. For information about Unicode, see
+the Unicode Standard by the Unicode Consortium.
+When extracting character content, a PDF processor can easily convert text to Unicode values if a font’s
+characters are identified according to a standard character set that is known to the PDF processor. This
+character identification can occur if either the font uses a standard named encoding or the characters
+in the font are identified by standard character names or CIDs in a well-known collection. 9.10.2,
+"Mapping character codes to Unicode values", describes in detail the overall algorithm for mapping
+character codes to Unicode values.
+If a font is not defined in one of these ways, the glyphs can still be shown, but the characters cannot be
+converted to Unicode values without additional information using the following methods:
+•    This information can be provided as an optional ToUnicode entry in the font dictionary (PDF 1.2;
+see 9.10.3, "ToUnicode CMaps"), whose value shall be a stream object containing a special kind of
+CMap file that maps character codes to Unicode values.
+•    An ActualText entry for a structure element or marked-content sequence (see 14.9.4,
+"Replacement text") may be used to specify the text content directly.
+9.10.2          Mapping character codes to Unicode values
+
+#### 2.30: 9.10.2          Mapping character codes to Unicode values
+value. Tagged PDF documents, in particular, shall provide at least one of these methods (see 14.8.2.6,
+"Unicode mapping in tagged PDF"):
+•    If the font dictionary contains a ToUnicode CMap (see 9.10.3, "ToUnicode CMaps"), use that CMap
+to convert the character code to Unicode.
+•    If the font is a simple font and the glyph selection algorithm (see 9.6.5, "Character encoding") uses
+a glyph name, that name can be looked up in the Adobe Glyph List and Adobe Glyph List for New
+Fonts to obtain the corresponding Unicode value.
+•    If the font is a composite font that uses one of the predefined CMaps listed in "Table 116 —
+Predefined CJK CMap names" (except Identity–H and Identity–V) or whose descendant CIDFont
+uses the Adobe-GB1, Adobe-CNS1, Adobe-Japan1, Adobe-Korea1 (deprecated in PDF 2.0 (2020)) or
+Adobe-KR (added in PDF 2.0 (2020)) character collection:
+a. Map the character code to a character identifier (CID) according to the font’s CMap.
+b. Obtain the registry and ordering of the character collection used by the font’s CMap (for
+example, Adobe and Japan1) from its CIDSystemInfo dictionary.
+c.   Construct a second CMap name by concatenating the registry and ordering obtained in step (b)
+in the format registry–ordering–UCS2 (for example, Adobe–Japan1–UCS2).
+d. Obtain the CMap with the name constructed in step (c) (available from a variety of online
+sources, e.g. https://github.com/adobe-type-tools/mapping-resources-pdf).
+e. Map the CID obtained in step (a) according to the CMap obtained in step (d), producing a
+Unicode value.
+Type 0 fonts whose descendant CIDFonts use the Adobe-GB1, Adobe-CNS1, Adobe-Japan1, Adobe-
+
+Korea1 (deprecated in PDF 2.0 (2020)) or Adobe-KR (added in PDF 2.0 (2020)) character collection (as
+specified in the CIDSystemInfo dictionary) shall have a supplement number corresponding to the
+version of PDF supported by the PDF processor.
+If these methods fail to produce a Unicode value, there is no way to determine what the character code
+represents in which case a PDF processor may choose a character code of their choosing.
+9.10.3            ToUnicode CMaps
+
+#### 2.31: 9.10.3            ToUnicode CMaps
+introduced in 9.7.5, "CMaps" and fully documented in Adobe Technical Note #5014, Adobe CMap and
+CIDFont Files Specification. This CMap differs from an ordinary one in these ways:
+•    The only pertinent entry in the CMap stream dictionary (see "Table 118 — Additional entries in a
+CMap stream dictionary") is UseCMap, which may be used if the CMap is based on another
+ToUnicode CMap.
+•    The CMap file shall contain begincodespacerange and endcodespacerange operators that are
+consistent with the encoding that the font uses. In particular, for a simple font, the codespace shall
+be one byte long.
+•    It shall use the beginbfchar, endbfchar, beginbfrange, and endbfrange operators to define the
+mapping from character codes to Unicode character sequences expressed in UTF-16BE encoding.
+For simple fonts, character codes shall be written as 1 byte in the ToUnicode CMap.
+For CID keyed fonts character codes may have 1 byte, 2 bytes, or more than 2 bytes in the ToUnicode
+CMap.
+EXAMPLE 1         This example illustrates a Type 0 font that uses the Identity-H CMap to map from character codes to CIDs
+and whose descendant CIDFont uses the Identity mapping from CIDs to TrueType glyph indices. Text strings
+shown using this font simply use a 2-byte glyph index for each glyph. In the absence of a ToUnicode entry,
+no information would be available about what the glyphs mean.
+14 0 obj
+<</Type /Font
+/Subtype /Type0
+/BaseFont /Ryumin-Light
+/Encoding /Identity-H
+/DescendantFonts [15 0 R]
+/ToUnicode 16 0 R
+>>
+endobj
+15 0 obj
+<</Type /Font
+/Subtype /CIDFontType2
+/BaseFont /Ryumin-Light
+/CIDSystemInfo 17 0 R
+/FontDescriptor 18 0 R
+/CIDToGIDMap /Identity
+>>
+endobj
+EXAMPLE 2         In this example, the value of the ToUnicode entry is a stream object that contains the definition of the CMap.
+The begincodespacerange and endcodespacerange operators define the source character code range to
+be the 2-byte character codes from <00 00> to <FF FF>. The specific mappings for several of the character
+codes are shown.
+16 0 obj
+<<
+/Type /CMap
+/CMapName /Adobe-Identity-UCS2
+/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS2) /Supplement 0 >>
+/Length 433
+>>
+stream
+/CIDInit /ProcSet findresource begin
+12 dict begin
+begincmap
+/CIDSystemInfo
+<</Registry (Adobe)
+/Ordering (UCS2)
+/Supplement 0
+>> def
+/CMapName /Adobe-Identity-UCS2 def
+/CMapType 2 def
+1 begincodespacerange
+<0000>      <FFFF>
+endcodespacerange
+2 beginbfrange
+<0000>      <005E>      <0020>
+<005F>      <0061>      [<00660066> <00660069> <00660066006C>]
+endbfrange
+1 beginbfchar
+<3A51>      <D840DC3E>
+endbfchar
+endcmap
+CMapName currentdict /CMap defineresource pop
+end
+end
+endstream
+endobj
+<00 00> to <00 5E> are mapped to the Unicode values SPACE (U+0020) to TILDE (U+007E) This is followed
+by the definition of a mapping where each character code represents more than one Unicode value:
+<005F> <0061> [<00660066> <00660069> <00660066006C>]
+In this case, the original character codes are the glyph indices for the ligatures ff, fi, and ffl. The entry defines
+the mapping from the character codes <00 5F>, <00 60>, and <00 61> to the strings of Unicode values with
+a Unicode scalar value for each character in the ligature: LATIN SMALL LETTER F (U+0066) LATIN SMALL
+LETTER F (U+0066) are the Unicode values for the character sequence f f, LATIN SMALL LETTER F (U+0066)
+LATIN SMALL LETTER I (U+0069) for f i, and LATIN SMALL LETTER F (U+0066) LATIN SMALL LETTER F
+(U+0066) LATIN SMALL LETTER L (U+006c) for f f l.
+Finally, the character code <3A 51> is mapped to the Unicode value UNICODE HAN CHARACTER ‘U+2003E’
+(U+2003E), which is expressed by the byte sequence <D840DC3E> in UTF-16BE encoding.
+Example 2 in this subclause illustrates several extensions to the way destination values may be
+defined. To support mappings from a source code to a string of destination codes, this extension has
+been made to the ranges defined after a beginbfchar operator:
+n beginbfchar
+srcCode dstString
+endbfchar
+where dstString may be a string of up to 512 bytes. Likewise, mappings after the beginbfrange
+operator may be defined as:
+
+n beginbfrange
+srcCode1 srcCode2 dstString
+endbfrange
+In this case, the last byte of the string shall be incremented for each consecutive code in the source
+code range.
+When defining ranges of this type, the value of the last byte in the string shall be less than or equal to
+255 - (srcCode2 - srcCode1). This ensures that the last byte of the string shall not be incremented past
+255; otherwise, the result of mapping is undefined.
+To support more compact representations of mappings from a range of source character codes to a
+discontiguous range of destination codes, the CMaps used for the ToUnicode entry may use this syntax
+for the mappings following a beginbfrange definition.
+n beginbfrange
+srcCode1 srcCode2 [dstString1 dstString2…dstStringm]
+endbfrange
+Consecutive codes starting with srcCode1 and ending with srcCode2 shall be mapped to the destination
+strings in the array starting with dstString1 and ending with dstStringm . The value of dstString can be
+a string of up to 512 bytes. The value of m represents the number of continuous character codes in the
+source character code range.
+𝑚 = 𝑠𝑟𝑐𝐶𝑜𝑑𝑒2 − 𝑠𝑟𝑐𝐶𝑜𝑑𝑒1 + 1
+NOTE        If number of dstString in array is different from m, the result of mapping is undefined.
+
