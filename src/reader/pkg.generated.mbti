@@ -86,6 +86,9 @@ pub struct PdfDocument {
 }
 pub fn PdfDocument::catalog(Self) -> PdfCatalog
 pub fn PdfDocument::open(Bytes) -> Self raise PdfDocumentError
+pub fn PdfDocument::page(Self, Int) -> PdfPage raise PdfDocumentError
+pub fn PdfDocument::page_count(Self) -> Int raise PdfDocumentError
+pub fn PdfDocument::pages(Self) -> Array[PdfPage] raise PdfDocumentError
 
 pub struct PdfFile {
   bytes : Bytes
@@ -115,7 +118,11 @@ pub(all) struct PdfHeader {
 } derive(Eq, @debug.Debug)
 
 pub struct PdfPage {
+  // private fields
 }
+pub fn PdfPage::index(Self) -> Int
+pub fn PdfPage::object_id(Self) -> @objects.ObjectId
+pub fn PdfPage::parent_ref(Self) -> @objects.ObjectId?
 
 pub(all) struct PdfRectangle {
   left : Double

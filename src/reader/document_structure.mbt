@@ -31,3 +31,46 @@ fn ensure_page_index(document : PdfDocument) -> PageTreeIndex raise PdfDocumentE
     }
   }
 }
+
+///|
+pub fn PdfDocument::page_count(self : PdfDocument) -> Int raise PdfDocumentError {
+  ensure_page_index(self).pages.length()
+}
+
+///|
+pub fn PdfDocument::pages(self : PdfDocument) -> Array[PdfPage] raise PdfDocumentError {
+  let index = ensure_page_index(self)
+  let pages : Array[PdfPage] = []
+  for record in index.pages {
+    pages.push(PdfPage::{ record })
+  }
+  pages
+}
+
+///|
+pub fn PdfDocument::page(
+  self : PdfDocument,
+  index : Int,
+) -> PdfPage raise PdfDocumentError {
+  let page_index = ensure_page_index(self)
+  let count = page_index.pages.length()
+  if index < 0 || index >= count {
+    raise PdfDocumentError::PageIndexOutOfRange(index, count)
+  }
+  PdfPage::{ record: page_index.pages[index] }
+}
+
+///|
+pub fn PdfPage::index(self : PdfPage) -> Int {
+  self.record.index
+}
+
+///|
+pub fn PdfPage::object_id(self : PdfPage) -> @objects.ObjectId {
+  self.record.object_id
+}
+
+///|
+pub fn PdfPage::parent_ref(self : PdfPage) -> @objects.ObjectId? {
+  self.record.parent_ref
+}

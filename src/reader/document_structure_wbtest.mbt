@@ -64,6 +64,66 @@ test "document facade wraps file errors and catalog errors" {
 }
 
 ///|
+test "document pages expose zero-based identity and count" {
+  let document = PdfDocument::open(build_document_structure_single_page_fixture())
+
+  assert_eq(document.page_count(), 1)
+
+  let page = document.page(0)
+  assert_eq(page.index(), 0)
+  assert_eq(page.object_id() == oid(3), true)
+  match page.parent_ref() {
+    Some(parent_ref) => assert_eq(parent_ref == oid(2), true)
+    None => fail("expected parent reference")
+  }
+}
+
+///|
+test "document pages preserve order and reuse cached traversal" {
+  let document = PdfDocument::open(build_document_structure_nested_page_tree_fixture())
+
+  let first = document.pages()
+  assert_eq(first.length(), 2)
+  assert_eq(first[0].index(), 0)
+  assert_eq(first[0].object_id() == oid(4), true)
+  assert_eq(first[1].index(), 1)
+  assert_eq(first[1].object_id() == oid(5), true)
+
+  document.file.cache.clear()
+  document.file.xref_index[oid(4)] = ObjectLocation::Uncompressed(0L, 0)
+  document.file.xref_index[oid(5)] = ObjectLocation::Uncompressed(0L, 0)
+
+  let second = document.pages()
+  assert_eq(second.length(), 2)
+  assert_eq(second[0].object_id() == oid(4), true)
+  assert_eq(second[1].object_id() == oid(5), true)
+  assert_eq(document.page_count(), 2)
+}
+
+///|
+test "document page bounds errors include requested index and count" {
+  let document = PdfDocument::open(build_document_structure_single_page_fixture())
+
+  let negative : Result[PdfPage, PdfDocumentError] = try? document.page(-1)
+  match negative {
+    Err(PageIndexOutOfRange(requested, count)) => {
+      assert_eq(requested, -1)
+      assert_eq(count, 1)
+    }
+    _ => fail("expected negative index failure")
+  }
+
+  let out_of_range : Result[PdfPage, PdfDocumentError] = try? document.page(1)
+  match out_of_range {
+    Err(PageIndexOutOfRange(requested, count)) => {
+      assert_eq(requested, 1)
+      assert_eq(count, 1)
+    }
+    _ => fail("expected out of range failure")
+  }
+}
+
+///|
 fn build_document_structure_lazy_pages_fixture() -> Bytes {
   let (bytes, header_base) = build_document_structure_fixture_prefix()
 

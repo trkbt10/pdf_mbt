@@ -17,7 +17,9 @@ pub struct PdfCatalog {
 
 ///|
 /// Public page handle placeholder for later page access methods.
-pub struct PdfPage {}
+pub struct PdfPage {
+  priv record : PageTreeRecord
+}
 
 ///|
 /// Four-number page rectangle normalized from page-box arrays.

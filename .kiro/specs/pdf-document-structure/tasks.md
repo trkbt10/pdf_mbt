@@ -47,7 +47,7 @@
   - _Requirements: 2.4, 6.1, 6.2, 6.4_
   - _Boundary: PageTreeIndex_
 
-- [ ] 3.3 Return pages by zero-based index with count and bounds errors
+- [x] 3.3 Return pages by zero-based index with count and bounds errors
   - Report page count from the cached page index.
   - Return all pages in document order and return one page for a valid zero-based index.
   - Raise a document page-index error for negative and out-of-range indices.
