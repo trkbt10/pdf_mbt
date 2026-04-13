@@ -1,4 +1,6 @@
 ///|
+/// Resolves the optional Names entry in the Catalog dictionary as a name
+/// dictionary.
 pub fn PdfDocument::names_dict(
   self : PdfDocument,
 ) -> @objects.PdfDictionary? raise PdfDocumentError {
@@ -9,6 +11,8 @@ pub fn PdfDocument::names_dict(
 }
 
 ///|
+/// Returns the name-tree root for a Names dictionary category such as Dests,
+/// AP, JavaScript, Pages, Templates, EmbeddedFiles, or AlternatePresentations.
 pub fn PdfDocument::name_tree_root(
   self : PdfDocument,
   category : NameTreeCategory,
@@ -20,6 +24,8 @@ pub fn PdfDocument::name_tree_root(
 }
 
 ///|
+/// Looks up a string key in a Catalog Names dictionary name tree and returns
+/// the mapped value, including Dests, AP, JavaScript, and Pages trees.
 pub fn PdfDocument::lookup_name(
   self : PdfDocument,
   category : NameTreeCategory,

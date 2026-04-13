@@ -25,6 +25,8 @@ fn load_catalog(file : PdfFile) -> PdfCatalog raise PdfDocumentError {
 }
 
 ///|
+/// Returns a Catalog dictionary entry such as Type, Pages, PageLabels, Names,
+/// Outlines, Metadata, MarkInfo, StructTreeRoot, or Lang.
 pub fn PdfCatalog::entry(
   self : PdfCatalog,
   key : @objects.PdfName,
@@ -33,6 +35,8 @@ pub fn PdfCatalog::entry(
 }
 
 ///|
+/// Returns the optional Names entry from the Catalog dictionary for name
+/// dictionary access.
 pub fn PdfCatalog::names_entry(self : PdfCatalog) -> @objects.PdfObject? {
   self.entry(@objects.PdfName::new(b"Names"))
 }

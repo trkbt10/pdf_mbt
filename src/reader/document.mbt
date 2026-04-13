@@ -27,16 +27,21 @@ pub fn PdfFile::open(input : Bytes) -> PdfFile raise PdfReaderError {
 }
 
 ///|
+/// Returns the parsed PDF header version for the opened file.
 pub fn PdfFile::version(self : PdfFile) -> PdfVersion {
   self.header.version
 }
 
 ///|
+/// Returns trailer metadata from the latest cross-reference section, including
+/// the Root entry used by the document-structure Catalog.
 pub fn PdfFile::trailer(self : PdfFile) -> TrailerInfo {
   self.trailer
 }
 
 ///|
+/// Returns the trailer Root indirect reference that identifies the Catalog
+/// dictionary for document structure access.
 pub fn PdfFile::root_ref(self : PdfFile) -> @objects.ObjectId {
   self.trailer.root
 }
