@@ -56,7 +56,7 @@
   - _Boundary: DocumentFacade_
 
 - [ ] 4. Implement page structural access and inheritance
-- [ ] 4.1 Provide direct page entry access and on-demand reference resolution
+- [x] 4.1 Provide direct page entry access and on-demand reference resolution
   - Validate page dictionaries as `/Type /Page` before exposing page entry behavior.
   - Provide direct access to structural entries such as parent, contents, user unit, and annotations without applying inheritance.
   - Resolve direct references, and top-level references in array-valued entries, only when explicit resolution is requested.

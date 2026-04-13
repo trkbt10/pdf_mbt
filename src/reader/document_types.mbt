@@ -18,6 +18,7 @@ pub struct PdfCatalog {
 ///|
 /// Public page handle placeholder for later page access methods.
 pub struct PdfPage {
+  priv file : PdfFile
   priv record : PageTreeRecord
 }
 

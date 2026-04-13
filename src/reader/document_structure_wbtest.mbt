@@ -1,6 +1,8 @@
 ///|
 test "PdfDocument::open validates catalog but leaves page tree unresolved" {
-  let document = PdfDocument::open(build_document_structure_single_page_fixture())
+  let document = PdfDocument::open(
+    build_document_structure_single_page_fixture(),
+  )
   let catalog = document.catalog()
 
   assert_eq(catalog.object_id == oid(1), true)
@@ -34,7 +36,9 @@ test "PdfFile::document exposes the same validated catalog" {
 
 ///|
 test "document creation does not require page tree traversal" {
-  let document = PdfDocument::open(build_document_structure_lazy_pages_fixture())
+  let document = PdfDocument::open(
+    build_document_structure_lazy_pages_fixture(),
+  )
   assert_eq(document.catalog().pages_ref == oid(2), true)
 }
 
@@ -65,7 +69,9 @@ test "document facade wraps file errors and catalog errors" {
 
 ///|
 test "document pages expose zero-based identity and count" {
-  let document = PdfDocument::open(build_document_structure_single_page_fixture())
+  let document = PdfDocument::open(
+    build_document_structure_single_page_fixture(),
+  )
 
   assert_eq(document.page_count(), 1)
 
@@ -80,7 +86,9 @@ test "document pages expose zero-based identity and count" {
 
 ///|
 test "document pages preserve order and reuse cached traversal" {
-  let document = PdfDocument::open(build_document_structure_nested_page_tree_fixture())
+  let document = PdfDocument::open(
+    build_document_structure_nested_page_tree_fixture(),
+  )
 
   let first = document.pages()
   assert_eq(first.length(), 2)
@@ -102,7 +110,9 @@ test "document pages preserve order and reuse cached traversal" {
 
 ///|
 test "document page bounds errors include requested index and count" {
-  let document = PdfDocument::open(build_document_structure_single_page_fixture())
+  let document = PdfDocument::open(
+    build_document_structure_single_page_fixture(),
+  )
 
   let negative : Result[PdfPage, PdfDocumentError] = try? document.page(-1)
   match negative {
@@ -121,6 +131,77 @@ test "document page bounds errors include requested index and count" {
     }
     _ => fail("expected out of range failure")
   }
+}
+
+///|
+test "page accessor exposes raw direct entries without inheritance" {
+  let document = PdfDocument::open(
+    build_document_structure_inherited_resources_fixture(),
+  )
+  let page = document.page(0)
+
+  assert_eq(
+    page.entry(@objects.PdfName::new(b"Parent")) ==
+    Some(@objects.PdfObject::Ref(oid(2))),
+    true,
+  )
+  assert_eq(page.entry(@objects.PdfName::new(b"Resources")) is None, true)
+  assert_eq(page.entry(@objects.PdfName::new(b"Contents")) is None, true)
+  assert_eq(page.entry(@objects.PdfName::new(b"Annots")) is None, true)
+}
+
+///|
+test "page accessor resolves direct references only on demand" {
+  let document = PdfDocument::open(build_page_access_resolution_fixture())
+  let page = document.page(0)
+
+  assert_eq(
+    page.contents() ==
+    Some(
+      @objects.PdfObject::Array([
+        @objects.PdfObject::Ref(oid(4)),
+        @objects.PdfObject::Ref(oid(5)),
+      ]),
+    ),
+    true,
+  )
+  assert_eq(
+    page.annots() ==
+    Some(@objects.PdfObject::Array([@objects.PdfObject::Ref(oid(6))])),
+    true,
+  )
+  assert_eq(
+    page.entry(@objects.PdfName::new(b"UserUnit")) ==
+    Some(@objects.PdfObject::Real(2.5)),
+    true,
+  )
+  assert_eq(document.file.cache.get(oid(4)) is None, true)
+  assert_eq(document.file.cache.get(oid(5)) is None, true)
+  assert_eq(document.file.cache.get(oid(6)) is None, true)
+
+  let resolved_contents = page.resolve_entry(@objects.PdfName::new(b"Contents"))
+  match resolved_contents {
+    Some(@objects.PdfObject::Array(values)) => {
+      assert_eq(values.length(), 2)
+      assert_eq(values[0] is @objects.PdfObject::Stream(_), true)
+      assert_eq(values[1] is @objects.PdfObject::Stream(_), true)
+    }
+    _ => fail("expected resolved contents array")
+  }
+  assert_eq(document.file.cache.get(oid(4)) is Some(_), true)
+  assert_eq(document.file.cache.get(oid(5)) is Some(_), true)
+
+  let resolved_annots = page.resolve_entry(@objects.PdfName::new(b"Annots"))
+  match resolved_annots {
+    Some(@objects.PdfObject::Array(values)) => {
+      assert_eq(values.length(), 1)
+      assert_eq(values[0] is @objects.PdfObject::Dictionary(_), true)
+    }
+    _ => fail("expected resolved annotations array")
+  }
+  assert_eq(document.file.cache.get(oid(6)) is Some(_), true)
+
+  assert_eq(page.resolve_entry(@objects.PdfName::new(b"Missing")) is None, true)
 }
 
 ///|
@@ -147,6 +228,49 @@ fn build_document_structure_lazy_pages_fixture() -> Bytes {
   xref_entry_line(page_offset, 0, b'n') +
   b"trailer\r\n" +
   b"<< /Size 4 /Root 1 0 R >>\r\n" +
+  b"startxref\r\n" +
+  decimal_bytes(xref_offset) +
+  b"\r\n%%EOF\r\n"
+}
+
+///|
+fn build_page_access_resolution_fixture() -> Bytes {
+  let (bytes, header_base) = build_document_structure_fixture_prefix()
+
+  let (bytes, catalog_offset) = append_indirect_object(
+    bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R >>",
+  )
+  let (bytes, pages_offset) = append_indirect_object(
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+  )
+  let (bytes, page_offset) = append_indirect_object(
+    bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /Contents [4 0 R 5 0 R] /Annots [6 0 R] /UserUnit 2.5 >>",
+  )
+  let content_one = build_stream_object_body(b"<< /Length 3 >>", b"One")
+  let (bytes, content_one_offset) = append_indirect_object(
+    bytes, header_base, 4, 0, content_one,
+  )
+  let content_two = build_stream_object_body(b"<< /Length 3 >>", b"Two")
+  let (bytes, content_two_offset) = append_indirect_object(
+    bytes, header_base, 5, 0, content_two,
+  )
+  let (bytes, annot_offset) = append_indirect_object(
+    bytes, header_base, 6, 0, b"<< /Subtype /Text /Contents (note) >>",
+  )
+
+  let xref_offset = object_offset(bytes, header_base)
+  bytes +
+  b"xref\r\n" +
+  b"0 7\r\n" +
+  xref_entry_line(0L, 65535, b'f') +
+  xref_entry_line(catalog_offset, 0, b'n') +
+  xref_entry_line(pages_offset, 0, b'n') +
+  xref_entry_line(page_offset, 0, b'n') +
+  xref_entry_line(content_one_offset, 0, b'n') +
+  xref_entry_line(content_two_offset, 0, b'n') +
+  xref_entry_line(annot_offset, 0, b'n') +
+  b"trailer\r\n" +
+  b"<< /Size 7 /Root 1 0 R >>\r\n" +
   b"startxref\r\n" +
   decimal_bytes(xref_offset) +
   b"\r\n%%EOF\r\n"
