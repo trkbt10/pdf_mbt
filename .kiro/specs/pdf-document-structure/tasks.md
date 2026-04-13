@@ -7,7 +7,7 @@
   - The completed foundation lets document APIs report malformed required structures with document-specific errors while optional and absent values remain representable.
   - _Requirements: 1.2, 2.3, 3.1, 4.1, 5.3, 6.3_
 
-- [ ] 1.2 Create reusable document-structure fixture coverage for synthetic PDFs
+- [x] 1.2 Create reusable document-structure fixture coverage for synthetic PDFs
   - Provide complete synthetic PDF bytes for a valid catalog, a single page, nested page trees, inherited resources, and name dictionary cases.
   - Keep the fixtures compatible with the existing file reader so tests exercise real trailer, xref, and indirect-object loading behavior.
   - The completed fixtures can open through the current reader and expose the structural shapes needed by catalog, page tree, inheritance, names, and example validation tests.
