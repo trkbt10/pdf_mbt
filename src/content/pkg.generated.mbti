@@ -1,0 +1,29 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/content"
+
+import {
+  "trkbt10/pdf/src/lexer",
+  "trkbt10/pdf/src/objects",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct ContentInput {
+  cursor : @lexer.ByteCursor
+}
+pub fn ContentInput::new(Bytes) -> Self
+pub fn ContentInput::offset(Self) -> Int64
+pub fn ContentInput::peek(Self) -> Byte?
+pub fn ContentInput::peek_n(Self, Int) -> Byte?
+pub fn ContentInput::read_byte(Self) -> Byte? raise @objects.PdfParseError
+pub fn ContentInput::read_bytes(Self, Int64) -> Bytes raise @objects.PdfParseError
+pub fn ContentInput::read_eol(Self) -> Bool
+pub fn ContentInput::require_stream_eol(Self) -> Unit raise @objects.PdfParseError
+
+// Type aliases
+
+// Traits
+

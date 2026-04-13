@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. Foundation: content package setup and diagnostics
-- [ ] 1.1 Establish the content parsing package and byte-offset foundation
+- [x] 1.1 Establish the content parsing package and byte-offset foundation
   - Add the package manifest with only the allowed dependencies needed for content parsing.
   - Align decoded-byte inputs with the existing byte cursor and offset conventions used by lower parsing layers.
   - Add package-local build and test scaffolding so later parser, operator, image, and resource work can be validated independently.
