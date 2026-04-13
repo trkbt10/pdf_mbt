@@ -44,6 +44,11 @@ pub fn ContentInput::read_bytes(Self, Int64) -> Bytes raise @objects.PdfParseErr
 pub fn ContentInput::read_eol(Self) -> Bool
 pub fn ContentInput::require_stream_eol(Self) -> Unit raise @objects.PdfParseError
 
+pub(all) enum ContentInstruction {
+  Operation(ContentOperation)
+  InlineImage(PdfInlineImage)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct ContentOperandReader {
   cursor : @lexer.ByteCursor
   lexer : @lexer.Lexer
@@ -57,6 +62,10 @@ pub(all) struct ContentOperation {
   offset : Int64
 } derive(Eq, @debug.Debug)
 
+pub(all) struct ContentStream {
+  instructions : Array[ContentInstruction]
+} derive(Eq, @debug.Debug)
+
 pub(all) struct ContentStreamParser {
   reader : ContentOperandReader
   operands : Array[@objects.PdfObject]
@@ -64,6 +73,8 @@ pub(all) struct ContentStreamParser {
 }
 pub fn ContentStreamParser::compatibility_depth(Self) -> Int
 pub fn ContentStreamParser::new(Bytes) -> Self
+pub fn ContentStreamParser::parse_all(Self) -> ContentStream raise PdfContentError
+pub fn ContentStreamParser::parse_next(Self) -> ContentInstruction? raise PdfContentError
 pub fn ContentStreamParser::parse_next_operation(Self) -> ContentOperation? raise PdfContentError
 
 pub(all) struct InlineImageReader {

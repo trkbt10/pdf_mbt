@@ -53,8 +53,25 @@ pub(all) struct ContentOperation {
 } derive(Eq, Debug)
 
 ///|
+/// Public content stream instruction model. Normal operators carry an ordered
+/// array of PdfObject operands and an operator name, while inline image data
+/// introduced by `BI`, `ID`, and `EI` is returned as a distinct instruction.
+pub(all) enum ContentInstruction {
+  Operation(ContentOperation)
+  InlineImage(PdfInlineImage)
+} derive(Eq, Debug)
+
+///|
+/// Parsed decoded content stream aggregate preserving source order for every
+/// operation and inline image instruction emitted by the iteration API.
+pub(all) struct ContentStream {
+  instructions : Array[ContentInstruction]
+} derive(Eq, Debug)
+
+///|
 /// Iterates decoded content stream bytes, collecting PDF object operands until
-/// a recognized operator keyword emits one content operation.
+/// a recognized operator keyword or inline image sequence emits one parsed
+/// instruction.
 pub(all) struct ContentStreamParser {
   reader : ContentOperandReader
   operands : Array[@objects.PdfObject]
@@ -81,12 +98,13 @@ pub fn ContentStreamParser::compatibility_depth(
 }
 
 ///|
-/// Reads the next normal content operation. Unknown operators raise outside
-/// compatibility sections and are skipped with their accumulated operands
-/// while a balanced `BX`/`EX` compatibility section is active.
-pub fn ContentStreamParser::parse_next_operation(
+/// Reads the next content stream instruction one at a time from decoded bytes.
+/// Operands are cleared after each emitted instruction, source order and
+/// operator offsets are preserved, and inline images are delegated to the
+/// inline image reader.
+pub fn ContentStreamParser::parse_next(
   self : ContentStreamParser,
-) -> ContentOperation? raise PdfContentError {
+) -> ContentInstruction? raise PdfContentError {
   while true {
     match self.reader.read_next() {
       Operand(object) => self.operands.push(object)
@@ -118,18 +136,57 @@ pub fn ContentStreamParser::parse_next_operation(
 }
 
 ///|
+/// Parses all decoded content bytes into an ordered content stream aggregate.
+pub fn ContentStreamParser::parse_all(
+  self : ContentStreamParser,
+) -> ContentStream raise PdfContentError {
+  let instructions : Array[ContentInstruction] = []
+  while self.parse_next() is Some(instruction) {
+    instructions.push(instruction)
+  }
+  ContentStream::{ instructions, }
+}
+
+///|
+/// Reads the next normal content operation for callers that are not consuming
+/// inline image instructions. Inline images are still recognized as special
+/// content stream syntax and reported as a typed inline-image failure here.
+pub fn ContentStreamParser::parse_next_operation(
+  self : ContentStreamParser,
+) -> ContentOperation? raise PdfContentError {
+  match self.parse_next() {
+    Some(Operation(operation)) => Some(operation)
+    Some(InlineImage(image)) =>
+      raise InlineImageFailure(
+        image.start_offset,
+        "inline image instruction is not a normal operation",
+      )
+    None => None
+  }
+}
+
+///|
 fn ContentStreamParser::handle_operator(
   self : ContentStreamParser,
   operator : StandardContentOperator,
   offset : Int64,
-) -> ContentOperation raise PdfContentError {
+) -> ContentInstruction raise PdfContentError {
   match operator {
+    BeginInlineImage => {
+      self.operands.clear()
+      let image = InlineImageReader::{ reader: self.reader }.parse(offset)
+      return InlineImage(image)
+    }
+    BeginInlineImageData | EndInlineImage =>
+      raise InlineImageFailure(
+        offset, "ID and EI inline image markers must appear inside a BI sequence",
+      )
     BeginCompatibility => self.compatibility.begin()
     EndCompatibility => self.compatibility.end(offset)
     _ => ()
   }
   let operands = self.take_operands()
-  ContentOperation::{ operator, operands, offset }
+  Operation(ContentOperation::{ operator, operands, offset })
 }
 
 ///|
