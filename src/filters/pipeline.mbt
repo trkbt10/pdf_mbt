@@ -25,6 +25,14 @@ fn execute_pipeline(
   spec : FilterSpec,
   data : Bytes,
 ) -> Bytes raise PdfFilterError {
-  data |> ignore
-  raise PdfFilterError::UnsupportedFilter(spec.name.to_text())
+  match spec.name {
+    ASCIIHexDecode => decode_ascii_hex(data)
+    ASCII85Decode =>
+      raise PdfFilterError::UnsupportedFilter(spec.name.to_text())
+    FlateDecode => raise PdfFilterError::UnsupportedFilter(spec.name.to_text())
+    LZWDecode => raise PdfFilterError::UnsupportedFilter(spec.name.to_text())
+    RunLengthDecode =>
+      raise PdfFilterError::UnsupportedFilter(spec.name.to_text())
+    Unsupported(name) => raise PdfFilterError::UnsupportedFilter(name)
+  }
 }
