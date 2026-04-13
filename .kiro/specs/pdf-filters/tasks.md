@@ -88,7 +88,7 @@
   - Tests decode valid stored-block streams and reject invalid length pairs.
   - _Requirements: 4.1_
 
-- [ ] 4.3 Decode fixed-Huffman DEFLATE blocks
+- [x] 4.3 Decode fixed-Huffman DEFLATE blocks
   - Build the fixed literal/length and distance code tables required by DEFLATE.
   - Decode literals, end-of-block markers, and length/distance back-references.
   - Reject distance references that reach before already produced output.

@@ -10,6 +10,7 @@ fn decode_deflate(data : Bytes) -> Bytes raise PdfFilterError {
 
     match block_type {
       0 => decode_stored_block(reader, output)
+      1 => decode_fixed_huffman_block(reader, output)
       _ =>
         raise PdfFilterError::DecodeError(
           "FlateDecode", "unsupported DEFLATE block type",
@@ -19,6 +20,7 @@ fn decode_deflate(data : Bytes) -> Bytes raise PdfFilterError {
     final_block_seen = is_final == 1
   }
 
+  reader.align_to_byte()
   if reader.byte_position() != data.length() {
     raise PdfFilterError::DecodeError(
       "FlateDecode", "trailing data after final DEFLATE block",
@@ -55,6 +57,49 @@ fn decode_stored_block(
   while remaining > 0 {
     output.push(reader.read_bits(8).to_byte())
     remaining = remaining - 1
+  }
+}
+
+///|
+fn decode_fixed_huffman_block(
+  reader : LsbBitReader,
+  output : Array[Byte],
+) -> Unit raise PdfFilterError {
+  let literal_length_table = build_fixed_literal_length_table()
+  let distance_table = build_fixed_distance_table()
+
+  while true {
+    let symbol = literal_length_table.decode_symbol(reader)
+    if symbol < 256 {
+      output.push(symbol.to_byte())
+    } else if symbol == 256 {
+      break
+    } else {
+      let length = decode_fixed_length(symbol, reader)
+      let distance_symbol = distance_table.decode_symbol(reader)
+      let distance = decode_fixed_distance(distance_symbol, reader)
+      copy_back_reference(output, length, distance)
+    }
+  }
+}
+
+///|
+fn copy_back_reference(
+  output : Array[Byte],
+  length : Int,
+  distance : Int,
+) -> Unit raise PdfFilterError {
+  if distance > output.length() {
+    raise PdfFilterError::DecodeError(
+      "FlateDecode", "distance reference reaches before already produced output",
+    )
+  }
+
+  let start = output.length() - distance
+  let mut copied = 0
+  while copied < length {
+    output.push(output[start + copied])
+    copied = copied + 1
   }
 }
 

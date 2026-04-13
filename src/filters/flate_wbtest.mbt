@@ -58,6 +58,108 @@ test "decode_deflate rejects truncated stored block payloads" {
 }
 
 ///|
+test "decode_deflate decodes a fixed Huffman block of literals" {
+  let data = Bytes::from_array([b'\x73', b'\x74', b'\x72', b'\x06', b'\x00'])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_deflate(data)
+  match decoded {
+    Ok(bytes) => assert_eq(bytes, Bytes::from_array([b'A', b'B', b'C']))
+    _ => fail("expected fixed Huffman literal output to decode")
+  }
+}
+
+///|
+test "decode_zlib_stored accepts non-zero unused final-byte bits after a fixed Huffman block" {
+  let data = Bytes::from_array([
+    b'\x78', b'\x9c', b'\x73', b'\x74', b'\x72', b'\x06', b'\x80', b'\x01', b'\x8d',
+    b'\x00', b'\xc7',
+  ])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_zlib_stored(data)
+  match decoded {
+    Ok(bytes) => assert_eq(bytes, Bytes::from_array([b'A', b'B', b'C']))
+    _ => fail("expected non-zero unused final-byte bits to be ignored")
+  }
+}
+
+///|
+test "decode_deflate rejects whole trailing bytes after the final fixed block" {
+  let data = Bytes::from_array([
+    b'\x73', b'\x74', b'\x72', b'\x06', b'\x80', b'\x00',
+  ])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_deflate(data)
+  match decoded {
+    Err(DecodeError(filter_name, reason)) => {
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("trailing"), true)
+    }
+    _ => fail("expected trailing whole bytes to be rejected")
+  }
+}
+
+///|
+test "decode_deflate decodes a fixed Huffman block with distance copies" {
+  let data = Bytes::from_array([
+    b'\x4b', b'\x4c', b'\x4a', b'\x4e', b'\x84', b'\x21', b'\x00',
+  ])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_deflate(data)
+  match decoded {
+    Ok(bytes) =>
+      assert_eq(
+        bytes,
+        Bytes::from_array([
+          b'a', b'b', b'c', b'a', b'b', b'c', b'a', b'b', b'c', b'a', b'b', b'c',
+        ]),
+      )
+    _ => fail("expected fixed Huffman distance copies to decode")
+  }
+}
+
+///|
+test "decode_deflate rejects a reserved fixed Huffman length code" {
+  let data = Bytes::from_array([b'\x1b', b'\x03'])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_deflate(data)
+  match decoded {
+    Err(DecodeError(filter_name, reason)) => {
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("reserved"), true)
+    }
+    _ => fail("expected reserved length code to fail")
+  }
+}
+
+///|
+test "decode_deflate rejects distance references before any output exists" {
+  let data = Bytes::from_array([b'\x03', b'\x02'])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_deflate(data)
+  match decoded {
+    Err(DecodeError(filter_name, reason)) => {
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("distance"), true)
+    }
+    _ => fail("expected invalid distance reference to fail")
+  }
+}
+
+///|
+test "decode_deflate rejects a reserved fixed Huffman distance code" {
+  let data = Bytes::from_array([b'\x73', b'\x04', b'\x3e'])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_deflate(data)
+  match decoded {
+    Err(DecodeError(filter_name, reason)) => {
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("reserved"), true)
+    }
+    _ => fail("expected reserved distance code to fail")
+  }
+}
+
+///|
 test "decode_zlib_stored returns stored-block bytes only after checksum verification" {
   let data = Bytes::from_array([
     b'\x78', b'\x01', b'\x01', b'\x03', b'\x00', b'\xfc', b'\xff', b'a', b'b', b'c',
