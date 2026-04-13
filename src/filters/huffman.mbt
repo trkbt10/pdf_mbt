@@ -23,9 +23,20 @@ let fixed_distance_extra_bits : Array[Int] = [
 ]
 
 ///|
+let code_length_order : Array[Int] = [
+  16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
+]
+
+///|
 priv struct HuffmanTable {
   rows : Array[Array[Int?]]
   max_bits : Int
+}
+
+///|
+priv struct DynamicHuffmanTables {
+  literal_length_table : HuffmanTable
+  distance_table : HuffmanTable
 }
 
 ///|
@@ -100,6 +111,22 @@ fn build_huffman_table(
     symbol = symbol + 1
   }
 
+  let mut left = 1
+  let mut bits = 1
+  while bits <= max_bits {
+    left = (left << 1) - counts[bits]
+    if left < 0 {
+      raise PdfFilterError::DecodeError(
+        "FlateDecode", "over-subscribed Huffman table",
+      )
+    }
+    bits = bits + 1
+  }
+
+  if left != 0 {
+    raise PdfFilterError::DecodeError("FlateDecode", "incomplete Huffman table")
+  }
+
   let rows : Array[Array[Int?]] = []
   let mut bits = 0
   while bits <= max_bits {
@@ -146,6 +173,134 @@ fn build_huffman_table(
 }
 
 ///|
+fn build_dynamic_huffman_tables(
+  reader : LsbBitReader,
+) -> DynamicHuffmanTables raise PdfFilterError {
+  let literal_length_count = reader.read_bits(5) + 257
+  let distance_count = reader.read_bits(5) + 1
+  let code_length_count = reader.read_bits(4) + 4
+
+  let code_length_lengths = Array::make(19, 0)
+  let mut index = 0
+  while index < code_length_count {
+    let symbol = code_length_order[index]
+    code_length_lengths[symbol] = reader.read_bits(3)
+    index = index + 1
+  }
+
+  let code_length_table = build_huffman_table(code_length_lengths, 7)
+  let total_length_count = literal_length_count + distance_count
+  let combined_lengths = decode_code_lengths(
+    reader, code_length_table, total_length_count,
+  )
+
+  let literal_length_lengths = Array::make(literal_length_count, 0)
+  let mut literal_index = 0
+  while literal_index < literal_length_count {
+    literal_length_lengths[literal_index] = combined_lengths[literal_index]
+    literal_index = literal_index + 1
+  }
+
+  if literal_length_lengths[256] == 0 {
+    raise PdfFilterError::DecodeError(
+      "FlateDecode", "missing end-of-block code",
+    )
+  }
+
+  let distance_lengths = Array::make(distance_count, 0)
+  let mut distance_index = 0
+  while distance_index < distance_count {
+    distance_lengths[distance_index] = combined_lengths[literal_length_count +
+      distance_index]
+    distance_index = distance_index + 1
+  }
+
+  DynamicHuffmanTables::{
+    literal_length_table: build_huffman_table(literal_length_lengths, 15),
+    distance_table: build_huffman_table(distance_lengths, 15),
+  }
+}
+
+///|
+fn decode_code_lengths(
+  reader : LsbBitReader,
+  code_length_table : HuffmanTable,
+  total_count : Int,
+) -> Array[Int] raise PdfFilterError {
+  let lengths = Array::make(total_count, 0)
+  let mut index = 0
+  let mut last_length : Int? = None
+
+  while index < total_count {
+    let symbol = code_length_table.decode_symbol(reader)
+    match symbol {
+      0..<16 => {
+        lengths[index] = symbol
+        last_length = Some(symbol)
+        index = index + 1
+      }
+      16 =>
+        match last_length {
+          Some(previous_length) => {
+            let repeat_count = reader.read_bits(2) + 3
+            if index + repeat_count > total_count {
+              raise PdfFilterError::DecodeError(
+                "FlateDecode", "repeated Huffman code lengths exceed the declared table size",
+              )
+            }
+            let mut copied = 0
+            while copied < repeat_count {
+              lengths[index] = previous_length
+              index = index + 1
+              copied = copied + 1
+            }
+          }
+          None =>
+            raise PdfFilterError::DecodeError(
+              "FlateDecode", "repeat code length without a previous length",
+            )
+        }
+      17 => {
+        let repeat_count = reader.read_bits(3) + 3
+        if index + repeat_count > total_count {
+          raise PdfFilterError::DecodeError(
+            "FlateDecode", "repeated Huffman code lengths exceed the declared table size",
+          )
+        }
+        let mut copied = 0
+        while copied < repeat_count {
+          lengths[index] = 0
+          index = index + 1
+          copied = copied + 1
+        }
+        last_length = Some(0)
+      }
+      18 => {
+        let repeat_count = reader.read_bits(7) + 11
+        if index + repeat_count > total_count {
+          raise PdfFilterError::DecodeError(
+            "FlateDecode", "repeated Huffman code lengths exceed the declared table size",
+          )
+        }
+        let mut copied = 0
+        while copied < repeat_count {
+          lengths[index] = 0
+          index = index + 1
+          copied = copied + 1
+        }
+        last_length = Some(0)
+      }
+      _ =>
+        raise PdfFilterError::DecodeError(
+          "FlateDecode", "invalid Huffman code-length symbol",
+        )
+    }
+  }
+
+  lengths
+}
+
+///|
 fn decode_fixed_length(
   symbol : Int,
   reader : LsbBitReader,
@@ -163,6 +318,14 @@ fn decode_fixed_length(
 }
 
 ///|
+fn decode_length_symbol(
+  symbol : Int,
+  reader : LsbBitReader,
+) -> Int raise PdfFilterError {
+  decode_fixed_length(symbol, reader)
+}
+
+///|
 fn decode_fixed_distance(
   symbol : Int,
   reader : LsbBitReader,
@@ -176,6 +339,14 @@ fn decode_fixed_distance(
   let extra_bits = fixed_distance_extra_bits[symbol]
   let base_distance = fixed_distance_base[symbol]
   base_distance + read_optional_bits(reader, extra_bits)
+}
+
+///|
+fn decode_distance_symbol(
+  symbol : Int,
+  reader : LsbBitReader,
+) -> Int raise PdfFilterError {
+  decode_fixed_distance(symbol, reader)
 }
 
 ///|

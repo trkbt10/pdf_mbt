@@ -95,7 +95,7 @@
   - Tests decode fixed-Huffman streams with literals and repeated distance copies.
   - _Requirements: 4.1_
 
-- [ ] 4.4 Decode dynamic-Huffman DEFLATE blocks
+- [x] 4.4 Decode dynamic-Huffman DEFLATE blocks
   - Parse code-length alphabets, repeated code-length instructions, and dynamic literal/distance tables.
   - Reject over-subscribed, incomplete, or otherwise invalid Huffman table definitions.
   - Decode dynamic blocks through the same literal, length, and distance execution path as fixed blocks.

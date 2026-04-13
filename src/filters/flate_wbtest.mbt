@@ -342,3 +342,90 @@ test "adler32 computes and validates checksums" {
     _ => fail("expected checksum mismatch to fail")
   }
 }
+
+///|
+fn repeat_utf8(text : String, count : Int) -> Bytes {
+  let chunk = @utf8.encode(text)
+  let output : Array[Byte] = []
+  let mut index = 0
+  while index < count {
+    output.append(chunk.to_array())
+    index = index + 1
+  }
+  Bytes::from_array(output)
+}
+
+///|
+test "decode_deflate decodes a dynamic Huffman block with distance copies" {
+  let data = Bytes::from_array([
+    b'\xed', b'\xcb', b'\xc1', b'\x09', b'\x00', b'\x21', b'\x0c', b'\x04', b'\xc0',
+    b'\x56', b'\xb6', b'\x80', b'\xe3', b'\x2a', b'\xb1', b'\x09', b'\xd1', b'\x20',
+    b'\x01', b'\x35', b'\x92', b'\xc4', b'\xfe', b'\xaf', b'\x8d', b'\x7b', b'\xec',
+    b'\xfc', b'\xa7', b'\x98', b'\xcb', b'\x82', b'\x9e', b'\xb8', b'\x0b', b'\xdd',
+    b'\xa6', b'\x39', b'\x42', b'\x13', b'\x75', b'\x49', b'\x3e', b'\x68', b'\xb6',
+    b'\x43', b'\x5a', b'\x4a', b'\x5e', b'\x47', b'\xed', b'\x7a', b'\x34', b'\x9a',
+    b'\xee', b'\x01', b'\x99', b'\x9a', b'\x2f', b'\x0a', b'\x23', b'\x23', b'\x23',
+    b'\x23', b'\x23', b'\x23', b'\x23', b'\xe3', b'\xbf', b'\xe3', b'\x07',
+  ])
+  let expected = repeat_utf8(
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. ", 40,
+  )
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_deflate(data)
+  match decoded {
+    Ok(bytes) => assert_eq(bytes, expected)
+    _ => fail("expected dynamic Huffman blocks to decode")
+  }
+}
+
+///|
+test "decode_deflate decodes a dynamic Huffman block that crosses literal/length into distance code lengths" {
+  let data = Bytes::from_array([
+    b'\x05', b'\xa3', b'\x05', b'\x09', b'\x00', b'\x00', b'\x00', b'\x80', b'\xb0',
+    b'\x4d', b'\xfd', b'\xff', b'\xc9', b'\x10', b'\x1b',
+  ])
+
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_deflate(data)
+  match decoded {
+    Ok(bytes) => assert_eq(bytes, Bytes::from_array([b'A', b'B', b'C']))
+    _ => fail("expected boundary-crossing dynamic Huffman block to decode")
+  }
+}
+
+///|
+test "build_dynamic_huffman_tables rejects a repeat code without a previous length" {
+  let reader = LsbBitReader::new(
+    Bytes::from_array([
+      b'\x00', b'\x78', b'\x00', b'\x01', b'\x00', b'\x00', b'\x00', b'\x00', b'\x04',
+    ]),
+  )
+
+  let parsed : Result[DynamicHuffmanTables, PdfFilterError] = try? build_dynamic_huffman_tables(
+    reader,
+  )
+  match parsed {
+    Err(DecodeError(filter_name, reason)) => {
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("previous length"), true)
+    }
+    _ => fail("expected repeat-16 without a previous length to fail")
+  }
+}
+
+///|
+test "build_dynamic_huffman_tables rejects incomplete code-length tables" {
+  let reader = LsbBitReader::new(
+    Bytes::from_array([b'\x00', b'\x40', b'\x00', b'\x00']),
+  )
+
+  let parsed : Result[DynamicHuffmanTables, PdfFilterError] = try? build_dynamic_huffman_tables(
+    reader,
+  )
+  match parsed {
+    Err(DecodeError(filter_name, reason)) => {
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("incomplete"), true)
+    }
+    _ => fail("expected incomplete code-length tables to fail")
+  }
+}

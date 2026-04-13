@@ -11,6 +11,7 @@ fn decode_deflate(data : Bytes) -> Bytes raise PdfFilterError {
     match block_type {
       0 => decode_stored_block(reader, output)
       1 => decode_fixed_huffman_block(reader, output)
+      2 => decode_dynamic_huffman_block(reader, output)
       _ =>
         raise PdfFilterError::DecodeError(
           "FlateDecode", "unsupported DEFLATE block type",
@@ -67,7 +68,30 @@ fn decode_fixed_huffman_block(
 ) -> Unit raise PdfFilterError {
   let literal_length_table = build_fixed_literal_length_table()
   let distance_table = build_fixed_distance_table()
+  decode_huffman_block(reader, output, literal_length_table, distance_table)
+}
 
+///|
+fn decode_dynamic_huffman_block(
+  reader : LsbBitReader,
+  output : Array[Byte],
+) -> Unit raise PdfFilterError {
+  let tables = build_dynamic_huffman_tables(reader)
+  decode_huffman_block(
+    reader,
+    output,
+    tables.literal_length_table,
+    tables.distance_table,
+  )
+}
+
+///|
+fn decode_huffman_block(
+  reader : LsbBitReader,
+  output : Array[Byte],
+  literal_length_table : HuffmanTable,
+  distance_table : HuffmanTable,
+) -> Unit raise PdfFilterError {
   while true {
     let symbol = literal_length_table.decode_symbol(reader)
     if symbol < 256 {
@@ -75,9 +99,9 @@ fn decode_fixed_huffman_block(
     } else if symbol == 256 {
       break
     } else {
-      let length = decode_fixed_length(symbol, reader)
+      let length = decode_length_symbol(symbol, reader)
       let distance_symbol = distance_table.decode_symbol(reader)
-      let distance = decode_fixed_distance(distance_symbol, reader)
+      let distance = decode_distance_symbol(distance_symbol, reader)
       copy_back_reference(output, length, distance)
     }
   }
