@@ -23,6 +23,15 @@ pub(all) suberror PdfContentError {
 } derive(Eq, @debug.Debug)
 
 // Types and methods
+pub(all) struct CompatibilityTracker {
+  mut depth : Int
+} derive(Eq, @debug.Debug)
+pub fn CompatibilityTracker::begin(Self) -> Unit
+pub fn CompatibilityTracker::depth(Self) -> Int
+pub fn CompatibilityTracker::end(Self, Int64) -> Unit raise PdfContentError
+pub fn CompatibilityTracker::is_active(Self) -> Bool
+pub fn CompatibilityTracker::new() -> Self
+
 pub(all) struct ContentInput {
   cursor : @lexer.ByteCursor
 }
@@ -41,6 +50,21 @@ pub(all) struct ContentOperandReader {
 }
 pub fn ContentOperandReader::new(Bytes) -> Self
 pub fn ContentOperandReader::read_next(Self) -> OperandReadResult raise PdfContentError
+
+pub(all) struct ContentOperation {
+  operator : StandardContentOperator
+  operands : Array[@objects.PdfObject]
+  offset : Int64
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ContentStreamParser {
+  reader : ContentOperandReader
+  operands : Array[@objects.PdfObject]
+  compatibility : CompatibilityTracker
+}
+pub fn ContentStreamParser::compatibility_depth(Self) -> Int
+pub fn ContentStreamParser::new(Bytes) -> Self
+pub fn ContentStreamParser::parse_next_operation(Self) -> ContentOperation? raise PdfContentError
 
 pub(all) enum OperandReadResult {
   Operand(@objects.PdfObject)

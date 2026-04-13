@@ -59,7 +59,9 @@ test "operator and resource diagnostics preserve offsets and reasons" {
     _ => fail("expected an unknown operator error")
   }
 
-  let resource_error = PdfContentError::ResourceFailure(11L, "missing /Resources")
+  let resource_error = PdfContentError::ResourceFailure(
+    11L, "missing /Resources",
+  )
   match resource_error {
     ResourceFailure(offset, reason) => {
       assert_eq(offset, 11L)

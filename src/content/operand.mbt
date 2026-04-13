@@ -38,8 +38,7 @@ fn ContentOperandReader::read_direct_operand(
     Operand(object) => object
     OperatorCandidate(_, offset) =>
       raise IllegalOperand(offset, "operator keyword in operand position")
-    EndOfInput(offset) =>
-      raise MalformedSyntax(offset, "unterminated operand")
+    EndOfInput(offset) => raise MalformedSyntax(offset, "unterminated operand")
   }
 }
 
@@ -58,9 +57,8 @@ fn ContentOperandReader::read_value(
       }
       Operand(@objects.PdfObject::String(bytes))
     }
-    Some(b'<') if self.cursor.peek_n(1) == Some(b'<') => {
+    Some(b'<') if self.cursor.peek_n(1) == Some(b'<') =>
       Operand(@objects.PdfObject::Dictionary(self.read_dictionary()))
-    }
     Some(b'<') => {
       let bytes = @lexer.read_hex_string(self.cursor) catch {
         error => raise wrap_parse_error(error)
@@ -81,17 +79,16 @@ fn ContentOperandReader::read_value(
       match token {
         Regular(lexeme, token_offset) =>
           self.classify_regular_token(
-            lexeme,
-            token_offset,
-            allow_operator_candidate,
+            lexeme, token_offset, allow_operator_candidate,
           )
         Delimiter(_, token_offset) =>
           raise MalformedSyntax(token_offset, "unexpected delimiter")
-        DictStart(token_offset) => {
-          Operand(@objects.PdfObject::Dictionary(self.read_dictionary_body(
-            token_offset,
-          )))
-        }
+        DictStart(token_offset) =>
+          Operand(
+            @objects.PdfObject::Dictionary(
+              self.read_dictionary_body(token_offset),
+            ),
+          )
         DictEnd(token_offset) =>
           raise MalformedSyntax(token_offset, "unexpected dictionary end")
         HeaderMarker(_, _, token_offset) =>
@@ -146,8 +143,7 @@ fn ContentOperandReader::read_array(
         self.read_byte() |> ignore
         break
       }
-      None =>
-        raise MalformedSyntax(offset, "unterminated array")
+      None => raise MalformedSyntax(offset, "unterminated array")
       _ => values.push(self.read_direct_operand())
     }
   }
@@ -177,19 +173,14 @@ fn ContentOperandReader::read_dictionary_body(
         self.consume_dictionary_end()
         break
       }
-      None =>
-        raise MalformedSyntax(offset, "unterminated dictionary")
+      None => raise MalformedSyntax(offset, "unterminated dictionary")
       _ => ()
     }
 
     let key_offset = self.cursor.offset()
     let key = match self.read_direct_operand() {
       Name(name) => name
-      _ =>
-        raise MalformedSyntax(
-          key_offset,
-          "dictionary key must be a name",
-        )
+      _ => raise MalformedSyntax(key_offset, "dictionary key must be a name")
     }
     if seen.get(key) is Some(_) {
       raise MalformedSyntax(key_offset, "duplicate dictionary key")
@@ -201,8 +192,7 @@ fn ContentOperandReader::read_dictionary_body(
     match self.cursor.peek() {
       Some(b'>') if self.cursor.peek_n(1) == Some(b'>') =>
         raise MalformedSyntax(value_offset, "dictionary key is missing a value")
-      None =>
-        raise MalformedSyntax(value_offset, "unterminated dictionary")
+      None => raise MalformedSyntax(value_offset, "unterminated dictionary")
       _ => ()
     }
 
@@ -311,8 +301,13 @@ fn parse_error_offset(error : @objects.PdfParseError) -> Int64 {
 ///|
 fn is_stream_like_keyword(lexeme : Bytes) -> Bool {
   match lexeme {
-    b"obj" | b"endobj" | b"stream" | b"endstream" | b"xref" | b"trailer" |
-    b"startxref" => true
+    b"obj"
+    | b"endobj"
+    | b"stream"
+    | b"endstream"
+    | b"xref"
+    | b"trailer"
+    | b"startxref" => true
     _ => false
   }
 }
@@ -378,7 +373,10 @@ fn is_digit(byte : Byte) -> Bool {
 }
 
 ///|
-fn parse_int64_lexeme(lexeme : Bytes, offset : Int64) -> Int64 raise PdfContentError {
+fn parse_int64_lexeme(
+  lexeme : Bytes,
+  offset : Int64,
+) -> Int64 raise PdfContentError {
   @string.parse_int64(bytes_to_text(lexeme).to_string_view()) catch {
     _ => raise MalformedSyntax(offset, "invalid number")
   }

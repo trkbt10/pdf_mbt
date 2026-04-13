@@ -1,5 +1,7 @@
 ///|
-fn collect_operand_reads(input : Bytes) -> Array[OperandReadResult] raise PdfContentError {
+fn collect_operand_reads(
+  input : Bytes,
+) -> Array[OperandReadResult] raise PdfContentError {
   let reader = ContentOperandReader::new(input)
   let reads : Array[OperandReadResult] = []
   while true {
@@ -37,7 +39,8 @@ test "content operand reader parses direct operands before operator candidates" 
     _ => fail("expected hexadecimal string operand")
   }
   match reads[4] {
-    Operand(Name(name)) => assert_eq(name == @objects.PdfName::new(b"Name"), true)
+    Operand(Name(name)) =>
+      assert_eq(name == @objects.PdfName::new(b"Name"), true)
     _ => fail("expected name operand")
   }
   match reads[5] {
