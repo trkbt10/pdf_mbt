@@ -83,7 +83,7 @@
   - _Depends: 4.2_
 
 - [ ] 5. Implement catalog name dictionary lookup
-- [ ] 5.1 (P) Resolve optional name dictionary category roots
+- [x] 5.1 (P) Resolve optional name dictionary category roots
   - Treat a missing catalog `Names` entry as absence rather than an error.
   - Resolve direct or indirect `Names` entries to a dictionary when present.
   - Recognize `Dests`, `AP`, `JavaScript`, `Pages`, `Templates`, `EmbeddedFiles`, and `AlternatePresentations` category roots without interpreting their values.
