@@ -50,6 +50,7 @@ pub fn PdfPage::graphics_initial_state(
       Some(value) => value
       None => 0
     },
+    colour_restriction: @graphics.ColourRestriction::Normal,
   }
 }
 

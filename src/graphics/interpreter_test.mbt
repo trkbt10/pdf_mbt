@@ -66,8 +66,8 @@ test "interpret content classifies deferred domains in input order" {
     _ => fail("expected shading event")
   }
   match program.events[5] {
-    ColorOperatorSeen(_, @content.StandardContentOperator::SetNonstrokingGray) =>
-      ()
+    StateChanged(_, ColourChanged(Nonstroking, Device(DeviceGray), value), _) =>
+      assert_eq(value.components, [0.5])
     _ => fail("expected color event")
   }
 }

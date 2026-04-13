@@ -8,9 +8,21 @@ import {
 }
 
 // Values
+pub fn effective_black_point_compensation(RenderingIntent, BlackPointCompensation) -> BlackPointCompensation
+
 pub fn interpret_content(@content.ContentStream, GraphicsInitialState) -> GraphicsProgram raise PdfGraphicsError
 
+pub fn parse_colour_space_object(@objects.PdfObject, ColourDefaults, Int64) -> ColourSpace raise PdfGraphicsError
+
+pub fn rendering_intent_from_name(@objects.PdfName) -> RenderingIntent
+
+pub fn resolve_content_colour_space(@content.ContentResources, @objects.PdfName, Int64) -> ColourSpace raise PdfGraphicsError
+
+pub fn resolve_default_device_space(@content.ContentResources, DeviceColourSpace, Int64) -> ColourSpace raise PdfGraphicsError
+
 pub fn resolve_ext_gstate(@content.ContentResources, @objects.PdfName, Int64) -> ExtGStatePatch raise PdfGraphicsError
+
+pub fn validate_icc_profile_stream(@objects.PdfStream, Int64) -> IccProfileInfo raise PdfGraphicsError
 
 // Errors
 pub(all) suberror PdfGraphicsError {
@@ -24,6 +36,25 @@ pub(all) suberror PdfGraphicsError {
 } derive(Eq, @debug.Debug)
 
 // Types and methods
+pub(all) enum BlackPointCompensation {
+  BlackPointOn
+  BlackPointOff
+  BlackPointDefault
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CalGrayParams {
+  white_point : Array[Double]
+  black_point : Array[Double]
+  gamma : Double
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CalRGBParams {
+  white_point : Array[Double]
+  black_point : Array[Double]
+  gamma : Array[Double]
+  matrix : Array[Double]
+} derive(Eq, @debug.Debug)
+
 pub(all) struct ClipEntry {
   path : GraphicsPath
   rule : FillRule
@@ -37,6 +68,58 @@ pub fn ClipState::append_clip(Self, GraphicsPath, FillRule) -> Self
 pub fn ClipState::copy(Self) -> Self
 pub fn ClipState::new(GraphicsPath?) -> Self
 
+pub(all) struct ColourDefaults {
+  default_gray : @objects.PdfObject?
+  default_rgb : @objects.PdfObject?
+  default_cmyk : @objects.PdfObject?
+} derive(Eq, @debug.Debug)
+pub fn ColourDefaults::empty() -> Self
+
+pub(all) struct ColourRange {
+  min : Double
+  max : Double
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ColourRestriction {
+  Normal
+  UncolouredTilingPattern
+  Type3Glyph
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ColourSpace {
+  Device(DeviceColourSpace)
+  CalGray(CalGrayParams)
+  CalRGB(CalRGBParams)
+  Lab(LabParams)
+  ICCBased(IccBasedParams)
+  Pattern(PatternParams)
+  Indexed(IndexedParams)
+  Separation(SeparationParams)
+  DeviceN(DeviceNParams)
+} derive(Eq, @debug.Debug)
+pub fn ColourSpace::component_count(Self) -> Int
+pub fn ColourSpace::component_ranges(Self) -> Array[ColourRange]
+pub fn ColourSpace::copy(Self) -> Self
+pub fn ColourSpace::initial_value(Self) -> ColourValue
+
+pub(all) struct ColourState {
+  colour_space : ColourSpace
+  colour_value : ColourValue
+} derive(Eq, @debug.Debug)
+pub fn ColourState::copy(Self) -> Self
+pub fn ColourState::initial() -> Self
+
+pub(all) enum ColourUse {
+  Stroking
+  Nonstroking
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ColourValue {
+  components : Array[Double]
+  pattern : @objects.PdfName?
+} derive(Eq, @debug.Debug)
+pub fn ColourValue::copy(Self) -> Self
+
 type CurrentPath derive(Eq, @debug.Debug)
 
 pub(all) struct DashPattern {
@@ -46,13 +129,33 @@ pub(all) struct DashPattern {
 pub fn DashPattern::from_values(Array[Double], Double, Int64) -> Self raise PdfGraphicsError
 pub fn DashPattern::solid() -> Self
 
+pub(all) enum DeviceColourSpace {
+  DeviceGray
+  DeviceRGB
+  DeviceCMYK
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DeviceNAttributes {
+  subtype : @objects.PdfName?
+  colorants : Map[@objects.PdfName, @objects.PdfObject]?
+  process : Map[@objects.PdfName, @objects.PdfObject]?
+  mixing_hints : Map[@objects.PdfName, @objects.PdfObject]?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DeviceNParams {
+  colorants : Array[@objects.PdfName]
+  alternate : ColourSpace
+  tint_transform : @objects.PdfObject
+  attributes : DeviceNAttributes?
+} derive(Eq, @debug.Debug)
+
 pub(all) struct ExtGStatePatch {
   line_width : Double?
   line_cap : LineCapStyle?
   line_join : LineJoinStyle?
   miter_limit : Double?
   dash_pattern : DashPattern?
-  rendering_intent : @objects.PdfName?
+  rendering_intent : RenderingIntent?
   flatness : Double?
   stroke_adjustment : Bool?
   overprint_stroking : Bool?
@@ -64,7 +167,7 @@ pub(all) struct ExtGStatePatch {
   alpha_nonstroking : Double?
   alpha_source : Bool?
   text_knockout : Bool?
-  black_point_compensation : @objects.PdfName?
+  black_point_compensation : BlackPointCompensation?
   halftone_origin : GraphicsPoint?
   raw_entries : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
@@ -86,7 +189,6 @@ pub(all) enum GraphicsEvent {
   InlineImageSeen(@content.PdfInlineImage)
   ShadingSeen(Int64, @objects.PdfName)
   MarkedContentSeen(Int64, @content.StandardContentOperator)
-  ColorOperatorSeen(Int64, @content.StandardContentOperator)
   IgnoredFutureDomainOperator(Int64, @content.StandardContentOperator)
 } derive(Eq, @debug.Debug)
 
@@ -95,6 +197,7 @@ pub(all) struct GraphicsInitialState {
   initial_clip : GraphicsPath?
   user_unit : Double
   page_rotate : Int
+  colour_restriction : ColourRestriction
 } derive(Eq, @debug.Debug)
 pub fn GraphicsInitialState::default() -> Self
 pub fn GraphicsInitialState::from_clip(GraphicsPath, Double, Int) -> Self
@@ -152,16 +255,14 @@ pub fn GraphicsRect::new(Double, Double, Double, Double) -> Self
 pub(all) struct GraphicsState {
   mut ctm : GraphicsMatrix
   mut clipping_path : ClipState
-  mut stroking_color_space : @objects.PdfObject
-  mut nonstroking_color_space : @objects.PdfObject
-  mut stroking_color : @objects.PdfObject
-  mut nonstroking_color : @objects.PdfObject
+  mut stroking_colour : ColourState
+  mut nonstroking_colour : ColourState
   mut line_width : Double
   mut line_cap : LineCapStyle
   mut line_join : LineJoinStyle
   mut miter_limit : Double
   mut dash_pattern : DashPattern
-  mut rendering_intent : @objects.PdfName
+  mut rendering_intent : RenderingIntent
   mut flatness : Double
   mut stroke_adjustment : Bool
   mut overprint_stroking : Bool
@@ -173,16 +274,21 @@ pub(all) struct GraphicsState {
   mut alpha_nonstroking : Double
   mut alpha_source : Bool
   mut text_knockout : Bool
-  mut black_point_compensation : @objects.PdfName
+  mut black_point_compensation : BlackPointCompensation
   mut halftone_origin : GraphicsPoint?
   mut deferred_entries : Map[@objects.PdfName, @objects.PdfObject]
   user_unit : Double
   page_rotate : Int
+  colour_restriction : ColourRestriction
 } derive(Eq, @debug.Debug)
 pub fn GraphicsState::apply_ext_gstate(Self, ExtGStatePatch, Int64) -> Unit raise PdfGraphicsError
+pub fn GraphicsState::apply_ext_gstate_non_colour(Self, ExtGStatePatch, Int64) -> Unit raise PdfGraphicsError
+pub fn GraphicsState::colour_state(Self, ColourUse) -> ColourState
 pub fn GraphicsState::concat_ctm(Self, GraphicsMatrix) -> Unit
 pub fn GraphicsState::copy(Self) -> Self
 pub fn GraphicsState::initial(GraphicsInitialState) -> Self
+pub fn GraphicsState::set_colour_space(Self, ColourUse, ColourSpace) -> Unit
+pub fn GraphicsState::set_colour_value(Self, ColourUse, ColourValue, Int64) -> Unit raise PdfGraphicsError
 pub fn GraphicsState::set_flatness(Self, Double, Int64) -> Unit raise PdfGraphicsError
 pub fn GraphicsState::set_line_width(Self, Double, Int64) -> Unit raise PdfGraphicsError
 pub fn GraphicsState::set_miter_limit(Self, Double, Int64) -> Unit raise PdfGraphicsError
@@ -194,12 +300,44 @@ pub(all) enum GraphicsStateChange {
   LineJoin(LineJoinStyle)
   MiterLimit(Double)
   DashPattern(DashPattern)
-  RenderingIntent(@objects.PdfName)
+  RenderingIntent(RenderingIntent)
+  ColourChanged(ColourUse, ColourSpace, ColourValue)
   Flatness(Double)
   ExtGStateApplied(@objects.PdfName)
 } derive(Eq, @debug.Debug)
 
 type GraphicsStateStack derive(Eq, @debug.Debug)
+
+pub(all) struct IccBasedParams {
+  source : IccProfileSource
+  component_count : Int
+  range : Array[ColourRange]
+  alternate : ColourSpace?
+  metadata : @objects.PdfObject?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct IccProfileInfo {
+  component_count : Int
+  data_colour_space : @objects.PdfName
+  decoded_length : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum IccProfileSource {
+  DirectProfile(IccProfileInfo)
+  IndirectProfile(@objects.ObjectId)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct IndexedParams {
+  base : ColourSpace
+  hival : Int
+  lookup : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct LabParams {
+  white_point : Array[Double]
+  black_point : Array[Double]
+  range : Array[Double]
+} derive(Eq, @debug.Debug)
 
 pub(all) enum LineCapStyle {
   ButtCap
@@ -235,6 +373,23 @@ pub(all) struct PathSubpath {
   segments : Array[PathSegment]
   current : GraphicsPoint
   closed : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PatternParams {
+  underlying : ColourSpace?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum RenderingIntent {
+  AbsoluteColorimetric
+  RelativeColorimetric
+  Saturation
+  Perceptual
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SeparationParams {
+  colorant : @objects.PdfName
+  alternate : ColourSpace
+  tint_transform : @objects.PdfObject
 } derive(Eq, @debug.Debug)
 
 // Type aliases

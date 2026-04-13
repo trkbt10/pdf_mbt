@@ -2,4 +2,5 @@ import {
   "moonbitlang/core/math",
   "trkbt10/pdf/src/objects",
   "trkbt10/pdf/src/content",
+  "trkbt10/pdf/src/filters",
 }

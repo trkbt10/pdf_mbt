@@ -7,7 +7,8 @@ pub(all) enum GraphicsStateChange {
   LineJoin(LineJoinStyle)
   MiterLimit(Double)
   DashPattern(DashPattern)
-  RenderingIntent(@objects.PdfName)
+  RenderingIntent(RenderingIntent)
+  ColourChanged(ColourUse, ColourSpace, ColourValue)
   Flatness(Double)
   ExtGStateApplied(@objects.PdfName)
 } derive(Eq, Debug)
@@ -44,7 +45,6 @@ pub(all) enum GraphicsEvent {
   InlineImageSeen(@content.PdfInlineImage)
   ShadingSeen(Int64, @objects.PdfName)
   MarkedContentSeen(Int64, @content.StandardContentOperator)
-  ColorOperatorSeen(Int64, @content.StandardContentOperator)
   IgnoredFutureDomainOperator(Int64, @content.StandardContentOperator)
 } derive(Eq, Debug)
 
@@ -138,6 +138,8 @@ fn GraphicsInterpreter::accept_operation(
   let op = operation.operator
   if is_graphics_state_operator(op) {
     self.apply_graphics_state_operator(operation)
+  } else if is_color_operator(op) {
+    self.apply_colour_operator(operation)
   } else if is_path_construction_operator(op) {
     self.apply_path_construction_operator(operation)
   } else if is_clipping_operator(op) {
@@ -252,11 +254,15 @@ fn GraphicsInterpreter::apply_graphics_state_operator(
     }
     SetRenderingIntent => {
       let name = single_name_operand(operation, "rendering intent")
-      self.state.rendering_intent = name
+      if self.state.colour_restriction.is_restricted() {
+        return
+      }
+      let value = rendering_intent_from_name(name)
+      self.state.rendering_intent = value
       self.events.push(
         GraphicsEvent::StateChanged(
           offset,
-          GraphicsStateChange::RenderingIntent(name),
+          GraphicsStateChange::RenderingIntent(value),
           self.state.copy(),
         ),
       )
@@ -275,7 +281,11 @@ fn GraphicsInterpreter::apply_graphics_state_operator(
     SetExtGState => {
       let name = single_name_operand(operation, "ExtGState name")
       let patch = resolve_ext_gstate(self.resources, name, offset)
-      self.state.apply_ext_gstate(patch, offset)
+      if self.state.colour_restriction.is_restricted() {
+        self.state.apply_ext_gstate_non_colour(patch, offset)
+      } else {
+        self.state.apply_ext_gstate(patch, offset)
+      }
       self.events.push(
         GraphicsEvent::StateChanged(
           offset,
@@ -451,15 +461,13 @@ fn GraphicsInterpreter::classify_deferred_operator(
     }
     PaintShading => {
       let name = single_name_operand(operation, "shading name")
-      self.events.push(GraphicsEvent::ShadingSeen(operation.offset, name))
+      if !self.state.colour_restriction.is_restricted() {
+        self.events.push(GraphicsEvent::ShadingSeen(operation.offset, name))
+      }
     }
     _ if is_marked_content_operator(operation.operator) =>
       self.events.push(
         GraphicsEvent::MarkedContentSeen(operation.offset, operation.operator),
-      )
-    _ if is_color_operator(operation.operator) =>
-      self.events.push(
-        GraphicsEvent::ColorOperatorSeen(operation.offset, operation.operator),
       )
     _ if is_text_domain_operator(operation.operator) =>
       self.events.push(

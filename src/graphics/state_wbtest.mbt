@@ -12,9 +12,15 @@ test "initial graphics state preserves page clip user unit and rotate" {
   assert_eq(state.miter_limit, 10.0)
   assert_eq(state.dash_pattern == DashPattern::solid(), true)
   assert_eq(
-    state.rendering_intent == @objects.PdfName::new(b"RelativeColorimetric"),
+    state.rendering_intent == RenderingIntent::RelativeColorimetric,
     true,
   )
+  assert_eq(
+    state.stroking_colour.colour_space ==
+    ColourSpace::Device(DeviceColourSpace::DeviceGray),
+    true,
+  )
+  assert_eq(state.stroking_colour.colour_value.components, [0.0])
 }
 
 ///|
@@ -52,9 +58,20 @@ test "graphics state stack restores state without path ownership" {
   let stack = GraphicsStateStack::new()
   stack.save(state)
   state.set_line_width(4.0, 1L)
+  state.set_colour_space(
+    ColourUse::Nonstroking,
+    ColourSpace::Device(DeviceColourSpace::DeviceRGB),
+  )
+  state.set_colour_value(
+    ColourUse::Nonstroking,
+    ColourValue::{ components: [0.1, 0.2, 0.3], pattern: None },
+    1L,
+  )
   let restored = stack.restore(2L)
   assert_eq(restored.line_width, 1.0)
+  assert_eq(restored.nonstroking_colour.colour_value.components, [0.0])
   assert_eq(state.line_width, 4.0)
+  assert_eq(state.nonstroking_colour.colour_value.components, [0.1, 0.2, 0.3])
   let underflow : Result[GraphicsState, PdfGraphicsError] = try? stack.restore(
     3L,
   )

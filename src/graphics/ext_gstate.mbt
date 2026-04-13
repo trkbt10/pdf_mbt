@@ -1,4 +1,21 @@
 ///|
+
+///|
+pub(all) enum RenderingIntent {
+  AbsoluteColorimetric
+  RelativeColorimetric
+  Saturation
+  Perceptual
+} derive(Eq, Debug)
+
+///|
+pub(all) enum BlackPointCompensation {
+  BlackPointOn
+  BlackPointOff
+  BlackPointDefault
+} derive(Eq, Debug)
+
+///|
 /// Cumulative graphics state parameter dictionary patch resolved from an
 /// ExtGState resource. Known simple keys are typed; later-phase entries remain
 /// raw so rendering, transparency, font, transfer, halftone, and colour
@@ -9,7 +26,7 @@ pub(all) struct ExtGStatePatch {
   line_join : LineJoinStyle?
   miter_limit : Double?
   dash_pattern : DashPattern?
-  rendering_intent : @objects.PdfName?
+  rendering_intent : RenderingIntent?
   flatness : Double?
   stroke_adjustment : Bool?
   overprint_stroking : Bool?
@@ -21,7 +38,7 @@ pub(all) struct ExtGStatePatch {
   alpha_nonstroking : Double?
   alpha_source : Bool?
   text_knockout : Bool?
-  black_point_compensation : @objects.PdfName?
+  black_point_compensation : BlackPointCompensation?
   halftone_origin : GraphicsPoint?
   raw_entries : @objects.PdfDictionary
 } derive(Eq, Debug)
@@ -129,6 +146,37 @@ pub fn GraphicsState::apply_ext_gstate(
 }
 
 ///|
+pub fn GraphicsState::apply_ext_gstate_non_colour(
+  self : GraphicsState,
+  patch : ExtGStatePatch,
+  offset : Int64,
+) -> Unit raise PdfGraphicsError {
+  let colourless = ExtGStatePatch::{
+    line_width: patch.line_width,
+    line_cap: patch.line_cap,
+    line_join: patch.line_join,
+    miter_limit: patch.miter_limit,
+    dash_pattern: patch.dash_pattern,
+    rendering_intent: None,
+    flatness: patch.flatness,
+    stroke_adjustment: patch.stroke_adjustment,
+    overprint_stroking: None,
+    overprint_nonstroking: None,
+    overprint_mode: None,
+    blend_mode: patch.blend_mode,
+    soft_mask: patch.soft_mask,
+    alpha_stroking: patch.alpha_stroking,
+    alpha_nonstroking: patch.alpha_nonstroking,
+    alpha_source: patch.alpha_source,
+    text_knockout: patch.text_knockout,
+    black_point_compensation: None,
+    halftone_origin: patch.halftone_origin,
+    raw_entries: patch.raw_entries,
+  }
+  self.apply_ext_gstate(colourless, offset)
+}
+
+///|
 fn parse_ext_gstate_dictionary(
   dictionary : @objects.PdfDictionary,
   offset : Int64,
@@ -146,20 +194,20 @@ fn parse_ext_gstate_dictionary(
     line_join: optional_line_join(dictionary, offset),
     miter_limit: optional_number(dictionary, b"ML", offset),
     dash_pattern: optional_dash(dictionary, offset),
-    rendering_intent: optional_name(dictionary, b"RI", offset),
+    rendering_intent: optional_rendering_intent(dictionary, offset),
     flatness: optional_number(dictionary, b"FL", offset),
     stroke_adjustment: optional_bool(dictionary, b"SA", offset),
     overprint_stroking: optional_bool(dictionary, b"OP", offset),
     overprint_nonstroking: optional_bool(dictionary, b"op", offset),
-    overprint_mode: optional_int(dictionary, b"OPM", offset),
+    overprint_mode: optional_overprint_mode(dictionary, offset),
     blend_mode: optional_raw(dictionary, b"BM"),
     soft_mask: optional_raw(dictionary, b"SMask"),
     alpha_stroking: optional_number(dictionary, b"CA", offset),
     alpha_nonstroking: optional_number(dictionary, b"ca", offset),
     alpha_source: optional_bool(dictionary, b"AIS", offset),
     text_knockout: optional_bool(dictionary, b"TK", offset),
-    black_point_compensation: optional_name(
-      dictionary, b"UseBlackPtComp", offset,
+    black_point_compensation: optional_black_point_compensation(
+      dictionary, offset,
     ),
     halftone_origin: optional_halftone_origin(dictionary, offset),
     raw_entries,
@@ -243,6 +291,88 @@ fn optional_name(
         offset,
         @objects.PdfName::new(key).to_text() + " ExtGState entry must be a name",
       )
+  }
+}
+
+///|
+pub fn rendering_intent_from_name(name : @objects.PdfName) -> RenderingIntent {
+  if name == @objects.PdfName::new(b"AbsoluteColorimetric") {
+    RenderingIntent::AbsoluteColorimetric
+  } else if name == @objects.PdfName::new(b"Saturation") {
+    RenderingIntent::Saturation
+  } else if name == @objects.PdfName::new(b"Perceptual") {
+    RenderingIntent::Perceptual
+  } else {
+    RenderingIntent::RelativeColorimetric
+  }
+}
+
+///|
+pub fn effective_black_point_compensation(
+  intent : RenderingIntent,
+  value : BlackPointCompensation,
+) -> BlackPointCompensation {
+  match intent {
+    AbsoluteColorimetric => BlackPointCompensation::BlackPointOff
+    _ => value
+  }
+}
+
+///|
+fn optional_rendering_intent(
+  dictionary : @objects.PdfDictionary,
+  offset : Int64,
+) -> RenderingIntent? raise PdfGraphicsError {
+  match optional_name(dictionary, b"RI", offset) {
+    None => None
+    Some(name) => Some(rendering_intent_from_name(name))
+  }
+}
+
+///|
+fn optional_black_point_compensation(
+  dictionary : @objects.PdfDictionary,
+  offset : Int64,
+) -> BlackPointCompensation? raise PdfGraphicsError {
+  match optional_name(dictionary, b"UseBlackPtComp", offset) {
+    None => None
+    Some(name) => Some(black_point_compensation_from_name(name, offset))
+  }
+}
+
+///|
+fn black_point_compensation_from_name(
+  name : @objects.PdfName,
+  offset : Int64,
+) -> BlackPointCompensation raise PdfGraphicsError {
+  if name == @objects.PdfName::new(b"ON") {
+    BlackPointCompensation::BlackPointOn
+  } else if name == @objects.PdfName::new(b"OFF") {
+    BlackPointCompensation::BlackPointOff
+  } else if name == @objects.PdfName::new(b"Default") {
+    BlackPointCompensation::BlackPointDefault
+  } else {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "UseBlackPtComp must be ON, OFF, or Default",
+    )
+  }
+}
+
+///|
+fn optional_overprint_mode(
+  dictionary : @objects.PdfDictionary,
+  offset : Int64,
+) -> Int? raise PdfGraphicsError {
+  match optional_int(dictionary, b"OPM", offset) {
+    None => None
+    Some(value) => {
+      if value != 0 && value != 1 {
+        raise PdfGraphicsError::InvalidGraphicsState(
+          offset, "OPM ExtGState entry must be 0 or 1",
+        )
+      }
+      Some(value)
+    }
   }
 }
 

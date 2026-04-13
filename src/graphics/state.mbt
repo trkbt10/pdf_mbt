@@ -31,6 +31,7 @@ pub(all) struct GraphicsInitialState {
   initial_clip : GraphicsPath?
   user_unit : Double
   page_rotate : Int
+  colour_restriction : ColourRestriction
 } derive(Eq, Debug)
 
 ///|
@@ -43,16 +44,14 @@ pub(all) struct GraphicsInitialState {
 pub(all) struct GraphicsState {
   mut ctm : GraphicsMatrix
   mut clipping_path : ClipState
-  mut stroking_color_space : @objects.PdfObject
-  mut nonstroking_color_space : @objects.PdfObject
-  mut stroking_color : @objects.PdfObject
-  mut nonstroking_color : @objects.PdfObject
+  mut stroking_colour : ColourState
+  mut nonstroking_colour : ColourState
   mut line_width : Double
   mut line_cap : LineCapStyle
   mut line_join : LineJoinStyle
   mut miter_limit : Double
   mut dash_pattern : DashPattern
-  mut rendering_intent : @objects.PdfName
+  mut rendering_intent : RenderingIntent
   mut flatness : Double
   mut stroke_adjustment : Bool
   mut overprint_stroking : Bool
@@ -64,11 +63,12 @@ pub(all) struct GraphicsState {
   mut alpha_nonstroking : Double
   mut alpha_source : Bool
   mut text_knockout : Bool
-  mut black_point_compensation : @objects.PdfName
+  mut black_point_compensation : BlackPointCompensation
   mut halftone_origin : GraphicsPoint?
   mut deferred_entries : @objects.PdfDictionary
   user_unit : Double
   page_rotate : Int
+  colour_restriction : ColourRestriction
 } derive(Eq, Debug)
 
 ///|
@@ -117,6 +117,7 @@ pub fn GraphicsInitialState::default() -> GraphicsInitialState {
     initial_clip: None,
     user_unit: 1.0,
     page_rotate: 0,
+    colour_restriction: ColourRestriction::Normal,
   }
 }
 
@@ -131,6 +132,7 @@ pub fn GraphicsInitialState::from_clip(
     initial_clip: Some(clip.copy()),
     user_unit,
     page_rotate,
+    colour_restriction: ColourRestriction::Normal,
   }
 }
 
@@ -139,20 +141,14 @@ pub fn GraphicsState::initial(initial : GraphicsInitialState) -> GraphicsState {
   GraphicsState::{
     ctm: initial.ctm,
     clipping_path: ClipState::new(initial.initial_clip),
-    stroking_color_space: @objects.PdfObject::Name(
-      @objects.PdfName::new(b"DeviceGray"),
-    ),
-    nonstroking_color_space: @objects.PdfObject::Name(
-      @objects.PdfName::new(b"DeviceGray"),
-    ),
-    stroking_color: @objects.PdfObject::Integer(0L),
-    nonstroking_color: @objects.PdfObject::Integer(0L),
+    stroking_colour: ColourState::initial(),
+    nonstroking_colour: ColourState::initial(),
     line_width: 1.0,
     line_cap: LineCapStyle::ButtCap,
     line_join: LineJoinStyle::MiterJoin,
     miter_limit: 10.0,
     dash_pattern: DashPattern::solid(),
-    rendering_intent: @objects.PdfName::new(b"RelativeColorimetric"),
+    rendering_intent: RenderingIntent::RelativeColorimetric,
     flatness: 1.0,
     stroke_adjustment: false,
     overprint_stroking: false,
@@ -164,11 +160,12 @@ pub fn GraphicsState::initial(initial : GraphicsInitialState) -> GraphicsState {
     alpha_nonstroking: 1.0,
     alpha_source: false,
     text_knockout: true,
-    black_point_compensation: @objects.PdfName::new(b"Default"),
+    black_point_compensation: BlackPointCompensation::BlackPointDefault,
     halftone_origin: None,
     deferred_entries: Map::new(),
     user_unit: initial.user_unit,
     page_rotate: initial.page_rotate,
+    colour_restriction: initial.colour_restriction,
   }
 }
 
@@ -177,10 +174,8 @@ pub fn GraphicsState::copy(self : GraphicsState) -> GraphicsState {
   GraphicsState::{
     ctm: self.ctm,
     clipping_path: self.clipping_path.copy(),
-    stroking_color_space: self.stroking_color_space,
-    nonstroking_color_space: self.nonstroking_color_space,
-    stroking_color: self.stroking_color,
-    nonstroking_color: self.nonstroking_color,
+    stroking_colour: self.stroking_colour.copy(),
+    nonstroking_colour: self.nonstroking_colour.copy(),
     line_width: self.line_width,
     line_cap: self.line_cap,
     line_join: self.line_join,
@@ -206,6 +201,7 @@ pub fn GraphicsState::copy(self : GraphicsState) -> GraphicsState {
     deferred_entries: self.deferred_entries.copy(),
     user_unit: self.user_unit,
     page_rotate: self.page_rotate,
+    colour_restriction: self.colour_restriction,
   }
 }
 
