@@ -49,6 +49,148 @@ test "decode_stream_bytes decodes RunLength streams" {
 }
 
 ///|
+test "decode_stream_bytes decodes Flate streams without predictors" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"FlateDecode"),
+  )
+  let data = Bytes::from_array([
+    b'\x78', b'\xda', b'K', b'L', b'J', b'\x06', b'\x00', b'\x02', b'M', b'\x01',
+    b'\x27',
+  ])
+
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Ok(bytes) => assert_eq(bytes, Bytes::from_array([b'a', b'b', b'c']))
+    _ => fail("expected FlateDecode to decode stored zlib bytes")
+  }
+}
+
+///|
+test "decode_stream_bytes decodes Flate streams with TIFF predictors" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"FlateDecode"),
+  )
+  let params : @objects.PdfDictionary = Map::new()
+  params[@objects.PdfName::new(b"Predictor")] = @objects.PdfObject::Integer(2L)
+  params[@objects.PdfName::new(b"Columns")] = @objects.PdfObject::Integer(4L)
+  params[@objects.PdfName::new(b"Colors")] = @objects.PdfObject::Integer(1L)
+  params[@objects.PdfName::new(b"BitsPerComponent")] = @objects.PdfObject::Integer(
+    8L,
+  )
+  dict[@objects.PdfName::new(b"DecodeParms")] = @objects.PdfObject::Dictionary(
+    params,
+  )
+  let data = Bytes::from_array([
+    b'\x78', b'\xda', b'\xe3', b'\x12', b'\x91', b'\xd3', b'`', b'\x04', b'\x02',
+    b'\x00', b'\x02', b'j', b'\x00', b'i',
+  ])
+
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Ok(bytes) =>
+      assert_eq(
+        bytes,
+        Bytes::from_array([
+          b'\n', b'\x1e', b'<', b'd', b'\x01', b'\x02', b'\x03', b'\x04',
+        ]),
+      )
+    _ => fail("expected TIFF predictor reconstruction to be applied")
+  }
+}
+
+///|
+test "decode_stream_bytes decodes Flate streams with PNG predictors" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"FlateDecode"),
+  )
+  let params : @objects.PdfDictionary = Map::new()
+  params[@objects.PdfName::new(b"Predictor")] = @objects.PdfObject::Integer(15L)
+  params[@objects.PdfName::new(b"Columns")] = @objects.PdfObject::Integer(3L)
+  params[@objects.PdfName::new(b"Colors")] = @objects.PdfObject::Integer(1L)
+  params[@objects.PdfName::new(b"BitsPerComponent")] = @objects.PdfObject::Integer(
+    8L,
+  )
+  dict[@objects.PdfName::new(b"DecodeParms")] = @objects.PdfObject::Dictionary(
+    params,
+  )
+  let data = Bytes::from_array([
+    b'\x78', b'\xda', b'c', b'\xe0', b'\xe2', b'\xe6', b'\x61', b'\x62', b'\x60',
+    b'd', b'\x02', b'\x00', b'\x00', b'\xd8', b'\x00', b'\x27',
+  ])
+
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Ok(bytes) =>
+      assert_eq(
+        bytes,
+        Bytes::from_array([b'\n', b'\x0b', b'\x0c', b'\n', b'\x0c', b'\x0e']),
+      )
+    _ => fail("expected PNG predictor reconstruction to be applied")
+  }
+}
+
+///|
+test "decode_stream_bytes reports FlateDecode on malformed zlib, DEFLATE, and checksum data" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"FlateDecode"),
+  )
+
+  let bad_zlib = Bytes::from_array([
+    b'\x70', b'\x01', b'\x01', b'\x03', b'\x00', b'\xfc', b'\xff', b'a', b'b', b'c',
+    b'\x02', b'M', b'\x01', b'\'',
+  ])
+  let bad_deflate = Bytes::from_array([
+    b'\x78', b'\x01', b'\x03', b'\x02', b'\x00', b'\x00', b'\x00', b'\x00',
+  ])
+  let bad_checksum = Bytes::from_array([
+    b'\x78', b'\xda', b'K', b'L', b'J', b'\x06', b'\x00', b'\x02', b'M', b'\x01',
+    b'\x28',
+  ])
+
+  let zlib_result : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, bad_zlib,
+  )
+  let deflate_result : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, bad_deflate,
+  )
+  let checksum_result : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, bad_checksum,
+  )
+
+  match zlib_result {
+    Err(DecodeError(filter_name, reason)) => {
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("method"), true)
+    }
+    _ => fail("expected invalid zlib data to be rejected")
+  }
+  match deflate_result {
+    Err(DecodeError(filter_name, reason)) => {
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("distance"), true)
+    }
+    _ => fail("expected malformed DEFLATE data to be rejected")
+  }
+  match checksum_result {
+    Err(DecodeError(filter_name, reason)) => {
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("checksum"), true)
+    }
+    _ => fail("expected checksum failures to be rejected")
+  }
+}
+
+///|
 test "decode_stream_bytes rejects a null filter entry" {
   let dict : @objects.PdfDictionary = Map::new()
   dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Null

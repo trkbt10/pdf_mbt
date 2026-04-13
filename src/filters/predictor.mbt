@@ -1,6 +1,5 @@
 ///|
 priv struct PredictorContext {
-  predictor : Int
   colors : Int
   bits_per_component : Int
   columns : Int
@@ -13,18 +12,11 @@ fn DecodeParams::predictor_context(
   filter_name : String,
 ) -> PredictorContext raise PdfFilterError {
   let raw = self.raw
-  let predictor = read_predictor_value(filter_name, raw)
   let colors = read_positive_parameter(filter_name, raw, "Colors", 1)
   let bits_per_component = read_bits_per_component(filter_name, raw)
   let columns = read_positive_parameter(filter_name, raw, "Columns", 1)
   let row_bytes = row_byte_width(colors, bits_per_component, columns)
-  PredictorContext::{
-    predictor,
-    colors,
-    bits_per_component,
-    columns,
-    row_bytes,
-  }
+  PredictorContext::{ colors, bits_per_component, columns, row_bytes }
 }
 
 ///|
@@ -33,8 +25,7 @@ fn apply_predictor(
   data : Bytes,
   params : DecodeParams,
 ) -> Bytes raise PdfFilterError {
-  let predictor = read_predictor_value(filter_name, params.raw)
-  match predictor {
+  match read_predictor_value(filter_name, params.raw) {
     1 => data
     2 =>
       reconstruct_tiff_predictor(

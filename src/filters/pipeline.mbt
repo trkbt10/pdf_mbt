@@ -28,7 +28,7 @@ fn execute_pipeline(
   match spec.name {
     ASCIIHexDecode => decode_ascii_hex(data)
     ASCII85Decode => decode_ascii85(data)
-    FlateDecode => raise PdfFilterError::UnsupportedFilter(spec.name.to_text())
+    FlateDecode => decode_flate(data, spec.params)
     LZWDecode => raise PdfFilterError::UnsupportedFilter(spec.name.to_text())
     RunLengthDecode => decode_run_length(data)
     Unsupported(name) => raise PdfFilterError::UnsupportedFilter(name)

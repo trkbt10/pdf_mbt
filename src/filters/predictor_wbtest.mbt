@@ -239,7 +239,6 @@ test "predictor context applies defaults and rounds row width" {
   let params = DecodeParams::{ raw: None }
   let context = params.predictor_context("FlateDecode")
 
-  assert_eq(context.predictor, 1)
   assert_eq(context.colors, 1)
   assert_eq(context.bits_per_component, 8)
   assert_eq(context.columns, 1)
@@ -261,13 +260,14 @@ test "predictor context rounds row width from colors bits and columns" {
 }
 
 ///|
-test "predictor context rejects unsupported predictor values" {
+test "apply_predictor rejects unsupported predictor values" {
   let raw : @objects.PdfDictionary = Map::new()
   raw[@objects.PdfName::new(b"Predictor")] = @objects.PdfObject::Integer(9L)
   let params = DecodeParams::{ raw: Some(raw) }
+  let data = Bytes::from_array([b'\x01', b'\x02'])
 
-  let result : Result[PredictorContext, PdfFilterError] = try? params.predictor_context(
-    "FlateDecode",
+  let result : Result[Bytes, PdfFilterError] = try? apply_predictor(
+    "FlateDecode", data, params,
   )
   match result {
     Err(InvalidDecodeParms(filter_name, reason)) => {

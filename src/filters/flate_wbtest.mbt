@@ -75,7 +75,7 @@ test "decode_zlib_stored accepts non-zero unused final-byte bits after a fixed H
     b'\x00', b'\xc7',
   ])
 
-  let decoded : Result[Bytes, PdfFilterError] = try? decode_zlib_stored(data)
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_zlib_stream(data)
   match decoded {
     Ok(bytes) => assert_eq(bytes, Bytes::from_array([b'A', b'B', b'C']))
     _ => fail("expected non-zero unused final-byte bits to be ignored")
@@ -166,7 +166,7 @@ test "decode_zlib_stored returns stored-block bytes only after checksum verifica
     b'\x02', b'M', b'\x01', b'\'',
   ])
 
-  let decoded : Result[Bytes, PdfFilterError] = try? decode_zlib_stored(data)
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_zlib_stream(data)
   match decoded {
     Ok(bytes) => assert_eq(bytes, Bytes::from_array([b'a', b'b', b'c']))
     _ => fail("expected zlib-wrapped stored blocks to decode")
@@ -180,7 +180,7 @@ test "decode_zlib_stored rejects checksum mismatches after stored block decoding
     b'\x02', b'M', b'\x01', b'(',
   ])
 
-  let decoded : Result[Bytes, PdfFilterError] = try? decode_zlib_stored(data)
+  let decoded : Result[Bytes, PdfFilterError] = try? decode_zlib_stream(data)
   match decoded {
     Err(DecodeError(filter_name, reason)) => {
       assert_eq(filter_name, "FlateDecode")

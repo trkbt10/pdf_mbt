@@ -32,7 +32,16 @@ fn decode_deflate(data : Bytes) -> Bytes raise PdfFilterError {
 }
 
 ///|
-fn decode_zlib_stored(data : Bytes) -> Bytes raise PdfFilterError {
+fn decode_flate(
+  data : Bytes,
+  params : DecodeParams,
+) -> Bytes raise PdfFilterError {
+  let decoded = decode_zlib_stream(data)
+  apply_predictor("FlateDecode", decoded, params)
+}
+
+///|
+fn decode_zlib_stream(data : Bytes) -> Bytes raise PdfFilterError {
   let zlib = parse_zlib_stream(data)
   let decoded = decode_deflate(zlib.deflate_data)
   validate_adler32("FlateDecode", decoded, zlib.expected_adler32)

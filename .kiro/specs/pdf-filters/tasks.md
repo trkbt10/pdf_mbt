@@ -102,7 +102,7 @@
   - Tests cover valid dynamic-Huffman streams and bounded rejection of malformed table definitions.
   - _Requirements: 4.1_
 
-- [ ] 4.5 Apply Flate predictors and expose FlateDecode behavior through the pipeline
+- [x] 4.5 Apply Flate predictors and expose FlateDecode behavior through the pipeline
   - Pass decompressed bytes through predictor reconstruction when `Predictor` is greater than 1.
   - Surface malformed zlib, DEFLATE, checksum, and predictor failures as named FlateDecode errors.
   - Pipeline tests decode Flate streams with no predictor, TIFF predictor, and PNG predictors.
