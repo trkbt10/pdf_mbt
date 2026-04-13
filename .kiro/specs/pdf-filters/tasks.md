@@ -147,7 +147,7 @@
   - Pipeline tests demonstrate Flate and LZW predictor parameters are applied only to their corresponding filter stage.
   - _Requirements: 1.3, 1.4, 4.2, 5.4_
 
-- [ ] 6.3 Preserve unsupported-filter safety
+- [x] 6.3 Preserve unsupported-filter safety
   - Return descriptive unsupported-filter errors for CCITTFaxDecode, JBIG2Decode, DCTDecode, JPXDecode, and Crypt.
   - Return the same category for unknown filter names while preserving the name in the diagnostic.
   - Never treat unsupported filters as identity transforms or silently skip them in a chain.

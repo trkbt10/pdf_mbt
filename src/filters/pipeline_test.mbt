@@ -495,6 +495,61 @@ test "decode_stream_bytes rejects indirect decode parms before filters" {
 }
 
 ///|
+test "decode_stream_bytes rejects all named unsupported filters with their names" {
+  let filter_names : Array[@objects.PdfName] = [
+    @objects.PdfName::new(b"CCITTFaxDecode"),
+    @objects.PdfName::new(b"JBIG2Decode"),
+    @objects.PdfName::new(b"DCTDecode"),
+    @objects.PdfName::new(b"JPXDecode"),
+    @objects.PdfName::new(b"Crypt"),
+  ]
+  let expected_names : Array[String] = [
+    "CCITTFaxDecode", "JBIG2Decode", "DCTDecode", "JPXDecode", "Crypt",
+  ]
+  let mut index = 0
+  while index < filter_names.length() {
+    let dict : @objects.PdfDictionary = Map::new()
+    dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(
+      filter_names[index],
+    )
+    let data = Bytes::from_array([b'X', b'Y'])
+    let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+      dict, data,
+    )
+    match decoded {
+      Err(UnsupportedFilter(filter_name)) =>
+        assert_eq(filter_name, expected_names[index])
+      _ =>
+        fail(
+          "expected unsupported filter " +
+          expected_names[index] +
+          " to fail with a named diagnostic",
+        )
+    }
+    index = index + 1
+  }
+}
+
+///|
+test "decode_stream_bytes rejects unknown filters before later stages run" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Name(@objects.PdfName::new(b"TotallyUnknownFilter")),
+    @objects.PdfObject::Name(@objects.PdfName::new(b"ASCIIHexDecode")),
+  ])
+  let data = Bytes::from_array([b'4', b'1', b'4', b'2', b'>'])
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Err(UnsupportedFilter(filter_name)) =>
+      assert_eq(filter_name, "TotallyUnknownFilter")
+    _ =>
+      fail("expected unknown filters to fail before later stages are decoded")
+  }
+}
+
+///|
 test "typed filter errors expose category name and reason fields" {
   let invalid_spec = @filters.PdfFilterError::InvalidFilterSpec(
     "bad filter shape",
