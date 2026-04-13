@@ -1,0 +1,152 @@
+# Implementation Plan
+
+- [ ] 1. Foundation for pattern and shading validation
+- [ ] 1.1 Establish shared validation primitives for resource dictionaries and streams
+  - Add reusable checks for required and optional names, integers, numbers, booleans, arrays, rectangles, matrices, dictionaries, streams, and indirect references used by pattern and shading resources.
+  - Normalize malformed pattern and shading inputs into deterministic graphics errors with the caller-supplied resource offset or content operation offset.
+  - Preserve existing ordinary colour-space and content-stream behavior while introducing only the allowed graphics dependencies.
+  - Done when malformed field fixtures can assert stable error categories and existing graphics checks still pass.
+  - _Requirements: 0.2, 0.3, 0.6, 0.8_
+- [ ] 1.2 Establish public resource summaries and package boundary prerequisites
+  - Add inspectable summaries for pattern definitions, shading definitions, matrices, bounds, and mesh validation results according to the design contracts.
+  - Ensure graphics remains independent of reader, and reader remains the only layer that loads indirect objects.
+  - Keep package dependencies limited to the approved object, content, filter, math, graphics, and reader directions.
+  - Done when public interface generation reports only the intended model and event additions and no graphics-to-reader dependency exists.
+  - _Requirements: 0.1, 0.2, 0.6, 0.7_
+
+- [ ] 2. Pattern resource and tiling validation
+- [ ] 2.1 Implement common Pattern resource dispatch
+  - Validate the required pattern type, optional `/Pattern` type marker, pattern matrix defaulting, and direct versus indirect source representation.
+  - Dispatch direct Type 1 resources to tiling validation and direct Type 2 resources to shading pattern validation.
+  - Preserve unresolved indirect resources as named references without attempting object loading in graphics.
+  - Done when direct pattern dictionaries or streams produce typed pattern definitions and indirect entries produce named reference summaries.
+  - _Requirements: 0.1, 0.2, 0.6_
+- [ ] 2.2 Validate Type 1 tiling pattern stream dictionaries
+  - Require stream-backed tiling patterns with valid paint type, tiling type, bounding box, nonzero horizontal and vertical steps, direct resource dictionary, and matrix defaulting.
+  - Preserve zero-width or zero-height bounding boxes as legal structural values while still rejecting malformed rectangle arrays.
+  - Reject invalid paint types, tiling types, missing resources, non-stream Type 1 objects, and zero step values with graphics errors.
+  - Done when valid coloured and uncoloured tiling streams produce complete tiling summaries and each malformed required entry has a failing test case.
+  - _Requirements: 0.3_
+- [ ] 2.3 Validate tiling cell prerequisites and uncoloured tiling restrictions
+  - Decode tiling pattern streams through the existing filter pipeline when cell content validation is requested.
+  - Validate cell content using the pattern's own resource dictionary while keeping the parent graphics state isolated.
+  - Apply the uncoloured tiling restriction so colour-related operators inside the cell are ignored without corrupting surrounding interpretation.
+  - Done when uncoloured cell validation ignores colour-setting operators and coloured cells retain explicit colour operations in their validated content flow.
+  - _Requirements: 0.3, 0.5_
+
+- [ ] 3. Shading pattern and common shading validation
+- [ ] 3.1 Validate Type 2 shading pattern wrappers
+  - Require Type 2 pattern dictionaries to contain a shading object or reference and accept optional matrix and graphics-state dictionaries.
+  - Default the shading pattern matrix to identity and preserve direct graphics-state dictionaries without applying transparency or rendering behavior.
+  - Preserve indirect shading entries inside shading patterns as references when graphics cannot load them.
+  - Done when Type 2 pattern wrappers validate direct shading objects, preserve indirect shading references, and reject malformed wrapper fields.
+  - _Requirements: 0.6_
+- [ ] 3.2 Validate common shading dictionary entries and colour-space rules
+  - Require shading type and colour space, reject Pattern colour spaces, and validate background component counts, bounding boxes, and anti-alias defaults.
+  - Apply Indexed colour-space restrictions whenever a function-bearing shading or shading type forbids Indexed interpolation.
+  - Preserve function objects unevaluated while validating their required presence by shading type.
+  - Done when common shading validation accepts complete dictionaries, applies defaults, and rejects Pattern or forbidden Indexed colour spaces.
+  - _Requirements: 0.8, 0.9, 0.10_
+
+- [ ] 4. Shading type and mesh validation
+- [ ] 4.1 (P) Validate function-based, axial, and radial shading geometry
+  - Validate Type 1 domains, matrices, and required functions with default domain and matrix behavior.
+  - Validate Type 2 axis coordinates, domain defaults, required functions, and extend defaults, including the coincident-axis no-paint structural case.
+  - Validate Type 3 circle coordinates, nonnegative radii, domain defaults, required functions, and extend defaults.
+  - Done when Type 1 through Type 3 dictionaries produce typed shading summaries with defaults applied and malformed geometry rejected.
+  - _Requirements: 0.10, 0.11, 0.12, 0.13_
+  - _Boundary: ShadingModel_
+  - _Depends: 3.2_
+- [ ] 4.2 (P) Build packed mesh stream reading and shared mesh dictionary validation
+  - Validate allowed bit widths for coordinates, components, and flags across mesh and patch shading streams.
+  - Validate decode-array length from coordinate ranges plus either colour component ranges or a single parametric range when a function is present.
+  - Read packed stream data from high-order to low-order bits and account for per-record byte padding without retaining rendered geometry.
+  - Done when complete and truncated packed records produce deterministic mesh summaries or structural errors.
+  - _Requirements: 0.14, 0.15, 0.16, 0.17_
+  - _Boundary: MeshDataParser_
+  - _Depends: 3.2_
+- [ ] 4.3 Validate Type 4 and Type 5 triangle mesh semantics
+  - Validate Type 4 free-form mesh edge flags, whole-triangle record sequences, and continuation rules for flags 0, 1, and 2.
+  - Validate Type 5 lattice meshes with at least two vertices per row, complete row records, and derived triangle counts.
+  - Preserve function-backed parametric values separately from full colour component records.
+  - Done when Type 4 and Type 5 stream dictionaries produce vertex and triangle summaries and reject incomplete or illegal record sequences.
+  - _Requirements: 0.14, 0.15_
+  - _Depends: 4.2_
+- [ ] 4.4 Validate Type 6 and Type 7 patch mesh semantics
+  - Validate patch edge flags 0 through 3, at least one complete patch, and the implicit edge data required after nonzero flags.
+  - Distinguish Coons patch control point counts from tensor-product patch control point counts while sharing colour and decode validation.
+  - Preserve function-backed corner parameters separately from full corner colour component records.
+  - Done when Type 6 and Type 7 streams produce patch summaries and reject incomplete, illegal, or first-patch implicit-edge sequences.
+  - _Requirements: 0.16, 0.17_
+  - _Depends: 4.2_
+
+- [ ] 5. Graphics interpreter and resource integration
+- [ ] 5.1 Connect Pattern colour selection to validated Pattern resources
+  - Resolve Pattern resources for special colour operators when direct resources or unresolved references are available.
+  - Accept coloured tiling and shading patterns only with a bare pattern name in a Pattern colour space without an underlying colour space.
+  - Accept uncoloured tiling patterns only with a non-Pattern underlying colour space and matching numeric components before the pattern name.
+  - Emit typed pattern selection events while preserving existing colour-state component and pattern-name invariants.
+  - Done when valid coloured and uncoloured selections update state and events, while paint-type and operand mismatches fail deterministically.
+  - _Requirements: 0.1, 0.4, 0.5, 0.6_
+  - _Depends: 2.1, 2.2, 3.1_
+- [ ] 5.2 Connect the shading paint operator to validated Shading resources
+  - Resolve named Shading resources from the current content resources and validate direct dictionaries or streams immediately.
+  - Emit a typed shading paint event for direct and unresolved indirect resources without using or mutating the current colour state.
+  - Ignore the shading background for direct shading-operator painting while preserving the parsed background for pattern usage.
+  - Done when the shading paint operator produces a validated event and before/after colour states compare equal.
+  - _Requirements: 0.7, 0.8, 0.9_
+  - _Depends: 3.2, 4.1, 4.3, 4.4_
+- [ ] 5.3 Add reader bridge helpers for indirect Pattern and Shading resources
+  - Use page resources and object loading to materialize Pattern and Shading resource entries before delegating to graphics validation.
+  - Provide name-specific resource inspection and collection helpers with document-level error mapping for missing resources, loading failures, and malformed definitions.
+  - Keep recursive pattern execution, renderer planning, and general resource preloading out of reader helpers.
+  - Done when page-level helpers load indirect pattern and shading resources and return the same validated summaries as direct graphics validation.
+  - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17_
+  - _Depends: 5.1, 5.2_
+
+- [ ] 6. Focused tests for pattern and shading behavior
+- [ ] 6.1 Cover Pattern and tiling validation cases
+  - Test missing and wrong pattern type, optional type mismatch, invalid matrix, invalid bounding box, invalid paint type, invalid tiling type, missing resources, and zero steps.
+  - Test coloured and uncoloured pattern colour selection operands against Pattern colour spaces with and without underlying colour spaces.
+  - Test tiling cell validation with decoded content and uncoloured colour-operator restrictions.
+  - Done when valid and invalid Pattern and tiling fixtures assert both typed summaries and expected graphics failures.
+  - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5_
+  - _Depends: 2.3, 5.1_
+- [ ] 6.2 (P) Cover shading pattern, common shading, and Type 1 through Type 3 cases
+  - Test Type 2 shading pattern wrapper defaults, direct shading entries, indirect references, and graphics-state dictionary shape.
+  - Test common shading entries, Pattern colour-space rejection, background component counts, Indexed restrictions, and required function presence.
+  - Test Type 1, Type 2, and Type 3 defaults plus malformed domains, coordinates, extend arrays, and radii.
+  - Done when shading dictionary fixtures cover every accepted default and every required-field rejection for non-mesh shadings.
+  - _Requirements: 0.6, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13_
+  - _Boundary: ShadingModel tests_
+  - _Depends: 4.1_
+- [ ] 6.3 (P) Cover mesh and patch stream validation cases
+  - Test allowed and rejected bit widths, decode lengths, packed bit consumption, record padding, truncated streams, and valid summaries.
+  - Test Type 4 edge-flag triangle sequences and Type 5 lattice row constraints.
+  - Test Type 6 and Type 7 patch flags, first-patch requirements, implicit edge data, and control point count differences.
+  - Done when mesh and patch fixtures prove complete streams are summarized and incomplete or illegal streams fail without renderer output.
+  - _Requirements: 0.14, 0.15, 0.16, 0.17_
+  - _Boundary: MeshDataParser tests_
+  - _Depends: 4.4_
+- [ ] 6.4 Cover interpreter and reader integration flows
+  - Test content streams that select direct Pattern resources and assert final colour state plus typed pattern events.
+  - Test direct shading paint operations and assert the current colour state is unchanged while a shading event is emitted.
+  - Test reader helpers that load indirect Pattern and Shading resources from page resources and delegate validation to graphics.
+  - Done when integration fixtures cover direct graphics resources, unresolved indirect graphics resources, and reader-loaded indirect resources.
+  - _Requirements: 0.1, 0.4, 0.5, 0.6, 0.7, 0.8, 0.14, 0.15, 0.16, 0.17_
+  - _Depends: 5.3, 6.1, 6.2, 6.3_
+
+- [ ] 7. Final validation and robustness gates
+- [ ] 7.1 Validate mesh robustness and allocation boundaries
+  - Reject unreasonable component counts, decode arrays, record counts, and stream shapes before allocating large result structures.
+  - Verify large but valid mesh streams produce structural summaries without per-pixel, tessellated, or rendered geometry.
+  - Validate truncated streams and streams with legal padding bits as separate robustness cases.
+  - Done when robustness tests demonstrate bounded allocation behavior and deterministic failures for malformed packed data.
+  - _Requirements: 0.14, 0.15, 0.16, 0.17_
+  - _Depends: 6.3_
+- [ ] 7.2 Run project validation commands and refresh public interfaces
+  - Run formatting, package checks, targeted graphics tests, targeted reader tests, and public interface generation.
+  - Review generated interface changes for unintended public API growth outside the pattern, shading, event, and reader helper contracts.
+  - Done when validation commands pass and generated public interfaces are consistent with the approved design boundaries.
+  - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17_
+  - _Depends: 7.1_
