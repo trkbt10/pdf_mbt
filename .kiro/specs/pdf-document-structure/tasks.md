@@ -64,7 +64,7 @@
   - _Requirements: 3.1, 3.3, 3.4, 6.2, 7.1_
   - _Boundary: PageAccessor_
 
-- [ ] 4.2 (P) Resolve inherited page attributes through ancestor nodes
+- [x] 4.2 (P) Resolve inherited page attributes through ancestor nodes
   - Search the page first and then parent `Pages` nodes for `Resources`, `MediaBox`, `CropBox`, and `Rotate`.
   - Return the nearest definition as-is, return absence when no ancestor defines the key, and never merge composite values.
   - Detect malformed parent objects and parent-chain cycles.

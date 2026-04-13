@@ -124,9 +124,11 @@ pub fn PdfPage::annots(Self) -> @objects.PdfObject?
 pub fn PdfPage::contents(Self) -> @objects.PdfObject?
 pub fn PdfPage::entry(Self, @objects.PdfName) -> @objects.PdfObject?
 pub fn PdfPage::index(Self) -> Int
+pub fn PdfPage::inherited_entry(Self, @objects.PdfName) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfPage::object_id(Self) -> @objects.ObjectId
 pub fn PdfPage::parent_ref(Self) -> @objects.ObjectId?
 pub fn PdfPage::resolve_entry(Self, @objects.PdfName) -> @objects.PdfObject? raise PdfDocumentError
+pub fn PdfPage::resources(Self) -> @objects.PdfObject? raise PdfDocumentError
 
 pub(all) struct PdfRectangle {
   left : Double
