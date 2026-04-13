@@ -8,7 +8,7 @@
   - The package builds as an independent layer and exposes only the intended decoding surface.
   - _Requirements: 1.5, 8.3_
 
-- [ ] 1.2 Define typed filter diagnostics
+- [x] 1.2 Define typed filter diagnostics
   - Distinguish malformed filter specifications, invalid decode parameters, malformed encoded data, and unsupported filters.
   - Include the responsible filter name for unsupported filters and filter-specific decode failures.
   - Keep reader offsets out of filter errors so callers can wrap failures with their own context.
