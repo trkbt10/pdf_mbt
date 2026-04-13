@@ -15,23 +15,28 @@ priv struct LzwDecoder {
   reader : MsbBitReader
   mut table : Array[Array[Byte]?]
   mut next_code : Int
+  mut code_width : Int
+  early_change : Int
   mut previous_sequence : Array[Byte]?
 }
 
 ///|
 fn decode_lzw(
   data : Bytes,
-  _params : DecodeParams,
+  params : DecodeParams,
 ) -> Bytes raise PdfFilterError {
-  LzwDecoder::new(data).decode()
+  let early_change = read_lzw_early_change(params)
+  LzwDecoder::new(data, early_change).decode()
 }
 
 ///|
-fn LzwDecoder::new(data : Bytes) -> LzwDecoder {
+fn LzwDecoder::new(data : Bytes, early_change : Int) -> LzwDecoder {
   LzwDecoder::{
     reader: MsbBitReader::new(data),
     table: build_lzw_table(),
     next_code: lzw_end_of_data_code + 1,
+    code_width: lzw_initial_code_width,
+    early_change,
     previous_sequence: None,
   }
 }
@@ -80,17 +85,9 @@ fn LzwDecoder::decode_code(
   code : Int,
   output : Array[Byte],
 ) -> Unit raise PdfFilterError {
-  if code < 0 || code >= self.table.length() {
-    raise PdfFilterError::DecodeError("LZWDecode", "invalid LZW code")
-  }
-
-  match self.table[code] {
-    Some(sequence) => {
-      output.append(sequence)
-      self.record_sequence(sequence)
-    }
-    None => raise PdfFilterError::DecodeError("LZWDecode", "invalid LZW code")
-  }
+  let sequence = self.resolve_sequence(code)
+  output.append(sequence)
+  self.record_sequence(sequence)
 }
 
 ///|
@@ -121,6 +118,7 @@ fn LzwDecoder::extend_table(
       self.table[self.next_code] = Some(new_entry)
     }
     self.next_code = self.next_code + 1
+    self.maybe_grow_code_width()
   }
 }
 
@@ -128,12 +126,63 @@ fn LzwDecoder::extend_table(
 fn LzwDecoder::reset_state(self : LzwDecoder) -> Unit {
   self.table = build_lzw_table()
   self.next_code = lzw_end_of_data_code + 1
+  self.code_width = lzw_initial_code_width
   self.previous_sequence = None
 }
 
 ///|
 fn LzwDecoder::read_code(self : LzwDecoder) -> Int? {
-  self.reader.read_bits(lzw_initial_code_width)
+  self.reader.read_bits(self.code_width)
+}
+
+///|
+fn LzwDecoder::resolve_sequence(
+  self : LzwDecoder,
+  code : Int,
+) -> Array[Byte] raise PdfFilterError {
+  if code == self.next_code {
+    match self.previous_sequence {
+      Some(previous_sequence) => build_current_sequence(previous_sequence)
+      None => raise PdfFilterError::DecodeError("LZWDecode", "invalid LZW code")
+    }
+  } else if code >= 0 && code < self.table.length() {
+    match self.table[code] {
+      Some(sequence) => sequence
+      None => raise PdfFilterError::DecodeError("LZWDecode", "invalid LZW code")
+    }
+  } else {
+    raise PdfFilterError::DecodeError("LZWDecode", "invalid LZW code")
+  }
+}
+
+///|
+fn build_current_sequence(previous_sequence : Array[Byte]) -> Array[Byte] {
+  let sequence : Array[Byte] = []
+  sequence.append(previous_sequence)
+  sequence.push(previous_sequence[0])
+  sequence
+}
+
+///|
+fn LzwDecoder::maybe_grow_code_width(self : LzwDecoder) -> Unit {
+  if self.code_width < 12 {
+    let threshold = (1 << self.code_width) - self.early_change
+    if self.next_code == threshold {
+      self.code_width = self.code_width + 1
+    }
+  }
+}
+
+///|
+fn read_lzw_early_change(params : DecodeParams) -> Int raise PdfFilterError {
+  match read_integer_parameter("LZWDecode", params.raw, "EarlyChange", 1) {
+    0 => 0
+    1 => 1
+    _ =>
+      raise PdfFilterError::InvalidDecodeParms(
+        "LZWDecode", "EarlyChange must be 0 or 1",
+      )
+  }
 }
 
 ///|

@@ -117,7 +117,7 @@
   - Tests cover clear-table startup, normal byte sequence output, table reset, and missing end-of-data failures.
   - _Requirements: 5.1, 5.2_
 
-- [ ] 5.2 Handle LZW code-width growth and EarlyChange
+- [x] 5.2 Handle LZW code-width growth and EarlyChange
   - Increase code width up to 12 bits as the table reaches the configured threshold.
   - Implement the special current-code case using the previous sequence plus its first byte.
   - Support `EarlyChange` values 0 and 1, defaulting to 1, and reject unsupported values.
