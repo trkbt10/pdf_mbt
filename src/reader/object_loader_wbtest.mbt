@@ -56,6 +56,28 @@ fn make_object_stream_file() -> PdfFile {
 }
 
 ///|
+fn make_flate_object_stream_file() -> PdfFile {
+  let xref_index : XrefIndex = Map::new()
+  xref_index[@objects.ObjectId::{ object_number: 1, generation_number: 0 }] = ObjectLocation::Uncompressed(
+    0L, 0,
+  )
+  xref_index[@objects.ObjectId::{ object_number: 10, generation_number: 0 }] = ObjectLocation::Compressed(
+    1, 0,
+  )
+  xref_index[@objects.ObjectId::{ object_number: 20, generation_number: 0 }] = ObjectLocation::Compressed(
+    1, 1,
+  )
+  make_reader_file(
+    b"1 0 obj\r\n" +
+    b"<< /Type /ObjStm /N 2 /First 10 /Filter /FlateDecode /Length 27 >>\r\n" +
+    b"stream\r\n" +
+    b"\x78\xda\x33\x34\x50\x30\x50\x30\x02\x22\x05\x43\x05\x1b\x1b\x05\x7d\x47\x20\x6d\x67\x07\x00\x2b\x87\x03\xec" +
+    b"\r\nendstream endobj",
+    xref_index,
+  )
+}
+
+///|
 test "load_object returns null for missing and generation-mismatched references" {
   let file = make_uncompressed_object_file()
   assert_eq(
@@ -145,6 +167,76 @@ test "load_object resolves compressed objects and caches object stream tables" {
   assert_eq(file.cache.get(first_id) == Some(first), true)
   assert_eq(file.cache.get(second_id) == Some(second), true)
   assert_eq(file.cache.length(), 3)
+}
+
+///|
+test "load_object resolves Flate compressed objects and caches object stream tables" {
+  let file = make_flate_object_stream_file()
+  let first_id = @objects.ObjectId::{ object_number: 10, generation_number: 0 }
+  let second_id = @objects.ObjectId::{ object_number: 20, generation_number: 0 }
+  let object_stream_id = @objects.ObjectId::{
+    object_number: 1,
+    generation_number: 0,
+  }
+
+  let first = file.load_object(first_id)
+  match first {
+    @objects.PdfObject::Integer(value) => assert_eq(value, 1L)
+    _ => fail("expected first compressed object")
+  }
+  assert_eq(file.object_stream_tables.length(), 1)
+  assert_eq(file.cache.get(object_stream_id) is Some(_), true)
+
+  let second = file.load_object(second_id)
+  match second {
+    @objects.PdfObject::Dictionary(dict) =>
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"A")) ==
+        Some(@objects.PdfObject::Integer(1L)),
+        true,
+      )
+    _ => fail("expected second compressed object")
+  }
+
+  assert_eq(file.object_stream_tables.length(), 1)
+  assert_eq(file.cache.get(first_id) == Some(first), true)
+  assert_eq(file.cache.get(second_id) == Some(second), true)
+  assert_eq(file.cache.length(), 3)
+}
+
+///|
+test "load_object propagates compressed object stream decode failures" {
+  let xref_index : XrefIndex = Map::new()
+  let object_stream_id = @objects.ObjectId::{
+    object_number: 1,
+    generation_number: 0,
+  }
+  let invalid_member_id = @objects.ObjectId::{
+    object_number: 10,
+    generation_number: 0,
+  }
+  xref_index[object_stream_id] = ObjectLocation::Uncompressed(0L, 0)
+  xref_index[invalid_member_id] = ObjectLocation::Compressed(1, 0)
+  let file = make_reader_file(
+    b"1 0 obj\r\n" +
+    b"<< /Type /ObjStm /N 2 /First 10 /Filter /FlateDecode /Length 14 >>\r\n" +
+    b"stream\r\n" +
+    b"\x70\x01\x01\x03\x00\xfc\xffabc\x02M\x01'" +
+    b"\r\nendstream endobj",
+    xref_index,
+  )
+
+  let result : Result[@objects.PdfObject, PdfReaderError] = try? file.load_object(
+    invalid_member_id,
+  )
+  match result {
+    Err(DecodeStreamError(offset, @filters.PdfFilterError::DecodeError(filter_name, reason))) => {
+      assert_eq(offset, 0L)
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("method"), true)
+    }
+    _ => fail("expected compressed object stream decode failure to propagate")
+  }
 }
 
 ///|

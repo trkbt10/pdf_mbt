@@ -169,7 +169,7 @@
   - Integration tests load FlateDecode-compressed xref streams and observe parsed xref entries.
   - _Requirements: 8.2, 8.3, 8.4_
 
-- [ ] 7.3 Decode compressed object streams on demand
+- [x] 7.3 Decode compressed object streams on demand
   - Delegate supported object stream filters to the filter pipeline.
   - Feed decoded object stream bytes into the existing object member extraction path.
   - Propagate chain failures with the filter name and reader offset when object stream decoding fails.
