@@ -97,6 +97,47 @@ test "decode_stream_bytes decodes LZW streams without predictors" {
 }
 
 ///|
+test "decode_stream_bytes applies filters in array order" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Name(@objects.PdfName::new(b"ASCIIHexDecode")),
+    @objects.PdfObject::Name(@objects.PdfName::new(b"RunLengthDecode")),
+  ])
+  let data = Bytes::from_array([
+    b'0', b'3', b'4', b'1', b'4', b'2', b'4', b'3', b'4', b'4', b'8', b'0', b'>',
+  ])
+
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Ok(bytes) => assert_eq(bytes, Bytes::from_array([b'A', b'B', b'C', b'D']))
+    _ => fail("expected chained filters to return the fully decoded bytes")
+  }
+}
+
+///|
+test "decode_stream_bytes validates the full filter pipeline before decoding" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Name(@objects.PdfName::new(b"ASCIIHexDecode")),
+    @objects.PdfObject::Null,
+  ])
+  let data = Bytes::from_array([
+    b'0', b'3', b'4', b'1', b'4', b'2', b'4', b'3', b'4', b'4', b'8', b'0', b'>',
+  ])
+
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream_bytes(
+    dict, data,
+  )
+  match decoded {
+    Err(InvalidFilterSpec(reason)) =>
+      assert_eq(reason.contains("Filter array entries"), true)
+    _ => fail("expected malformed later filters to fail before decoding begins")
+  }
+}
+
+///|
 test "decode_stream_bytes decodes LZW streams with TIFF predictors" {
   let dict : @objects.PdfDictionary = Map::new()
   dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(

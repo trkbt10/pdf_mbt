@@ -25,6 +25,7 @@
 
 ## Implementation Notes
 - `Filter` null entries are rejected as malformed input; only an absent `Filter` entry is treated as an identity decode path.
+- Pipeline normalization completes before any filter is applied, so malformed later entries fail before partial output can be produced.
 
 - [ ] 2. Implement independent byte-oriented filters
 - [x] 2.1 (P) Decode ASCII hexadecimal streams
@@ -132,7 +133,7 @@
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
 - [ ] 6. Complete the filter pipeline behavior
-- [ ] 6.1 Apply single and chained filters in dictionary order
+- [x] 6.1 Apply single and chained filters in dictionary order
   - Execute a single named filter against the raw stream bytes.
   - Execute a filter array in order, passing each decoded result into the next stage.
   - Validate the full pipeline before the first transform so malformed later entries do not produce partial output.

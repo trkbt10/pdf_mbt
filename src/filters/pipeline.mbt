@@ -14,23 +14,24 @@ pub fn decode_stream_bytes(
   data : Bytes,
 ) -> Bytes raise PdfFilterError {
   let pipeline = normalize_pipeline(dict)
-  match pipeline.get(0) {
-    None => data
-    Some(spec) => execute_pipeline(spec, data)
-  }
+  execute_pipeline(pipeline, data)
 }
 
 ///|
 fn execute_pipeline(
-  spec : FilterSpec,
+  pipeline : Array[FilterSpec],
   data : Bytes,
 ) -> Bytes raise PdfFilterError {
-  match spec.name {
-    ASCIIHexDecode => decode_ascii_hex(data)
-    ASCII85Decode => decode_ascii85(data)
-    FlateDecode => decode_flate(data, spec.params)
-    LZWDecode => decode_lzw(data, spec.params)
-    RunLengthDecode => decode_run_length(data)
-    Unsupported(name) => raise PdfFilterError::UnsupportedFilter(name)
+  let mut current = data
+  for spec in pipeline {
+    current = match spec.name {
+      ASCIIHexDecode => decode_ascii_hex(current)
+      ASCII85Decode => decode_ascii85(current)
+      FlateDecode => decode_flate(current, spec.params)
+      LZWDecode => decode_lzw(current, spec.params)
+      RunLengthDecode => decode_run_length(current)
+      Unsupported(name) => raise PdfFilterError::UnsupportedFilter(name)
+    }
   }
+  current
 }
