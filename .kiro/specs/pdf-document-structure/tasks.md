@@ -116,7 +116,7 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 2.4, 6.4_
   - _Boundary: CatalogResolver, PageTreeWalker, PageTreeIndex tests_
 
-- [ ] 6.3 (P) Cover page access and inheritance behavior with whitebox tests
+- [x] 6.3 (P) Cover page access and inheritance behavior with whitebox tests
   - Assert page type validation, direct page entries, on-demand entry resolution, typed page boxes, rotation, user unit, annotations, and malformed page entry errors.
   - Assert inherited resources, media box, crop box, and rotate prefer the page value, then nearest ancestor, return absence when undefined, and never merge dictionaries.
   - The completed tests fail on page accessor or inheritance regressions and include the inherited-resources acceptance scenario.
