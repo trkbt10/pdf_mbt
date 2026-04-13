@@ -1,4 +1,3 @@
-///|
 priv enum StructuralStreamPurpose {
   XrefStream
   ObjectStream
@@ -12,74 +11,61 @@ fn decode_structural_stream(
 ) -> Bytes raise PdfReaderError {
   match purpose {
     XrefStream =>
-      match xref_stream_rejection_reason(stream.dict, offset) {
+      match xref_stream_rejection_reason(stream.dict) {
         Some(reason) => raise PdfReaderError::UnsupportedFilter(offset, reason)
         None => ()
       }
     ObjectStream => ()
   }
 
-  match structural_stream_filter_reason(stream.dict, offset) {
-    Some(reason) => raise PdfReaderError::UnsupportedFilter(offset, reason)
-    None => stream.data
+  let decoded_result : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream(
+    stream,
+  )
+  match decoded_result {
+    Ok(decoded) => decoded
+    Err(error) => raise PdfReaderError::DecodeStreamError(offset, error)
   }
 }
 
 ///|
 fn xref_stream_rejection_reason(
   dict : @objects.PdfDictionary,
-  offset : Int64,
-) -> String? raise PdfReaderError {
+) -> String? {
   let encrypt_key = @objects.PdfName::new(b"Encrypt")
   match dict.get(encrypt_key) {
     Some(_) => Some("Encrypt")
-    None => structural_stream_filter_reason(dict, offset)
+    None =>
+      match dict.get(@objects.PdfName::new(b"Filter")) {
+        Some(@objects.PdfObject::Name(name)) => {
+          let crypt_name = @objects.PdfName::new(b"Crypt")
+          if name == crypt_name {
+            Some("Crypt")
+          } else {
+            None
+          }
+        }
+        Some(@objects.PdfObject::Array(values)) =>
+          xref_stream_rejection_reason_from_array(values)
+        _ => None
+      }
   }
 }
 
 ///|
-fn structural_stream_filter_reason(
-  dict : @objects.PdfDictionary,
-  offset : Int64,
-) -> String? raise PdfReaderError {
-  let filter_key = @objects.PdfName::new(b"Filter")
-  match dict.get(filter_key) {
-    None => None
-    Some(@objects.PdfObject::Name(name)) => Some(name.to_text())
-    Some(@objects.PdfObject::Array(values)) =>
-      structural_stream_filter_reason_from_array(values, offset)
-    Some(_) => Some("Filter")
-  }
-}
-
-///|
-fn structural_stream_filter_reason_from_array(
+fn xref_stream_rejection_reason_from_array(
   values : Array[@objects.PdfObject],
-  offset : Int64,
-) -> String? raise PdfReaderError {
-  if values.length() == 0 {
-    raise PdfReaderError::UnsupportedFilter(offset, "Filter")
-  }
-
+) -> String? {
   let crypt_name = @objects.PdfName::new(b"Crypt")
-  let mut first_name : String? = None
   for value in values {
     match value {
       @objects.PdfObject::Name(name) => {
-        let text = name.to_text()
         if name == crypt_name {
-          return Some(text)
-        }
-        if first_name is None {
-          first_name = Some(text)
+          return Some("Crypt")
         }
       }
-      _ => raise PdfReaderError::UnsupportedFilter(offset, "Filter")
+      _ => ()
     }
   }
 
-  match first_name {
-    Some(reason) => Some(reason)
-    None => raise PdfReaderError::UnsupportedFilter(offset, "Filter")
-  }
+  None
 }

@@ -155,7 +155,7 @@
   - _Requirements: 7.1, 7.2, 7.3_
 
 - [ ] 7. Integrate filter decoding with structural stream reading
-- [ ] 7.1 Wrap filter failures in reader structural-stream errors
+- [x] 7.1 Wrap filter failures in reader structural-stream errors
   - Add the reader dependency on the filter layer without changing parser or object ownership.
   - Preserve xref-specific encryption and Crypt rejection before general filter decoding.
   - Wrap filter failures with the structural stream offset while preserving the filter name and reason.

@@ -134,6 +134,17 @@ fn expect_valid_section_chain(
       fail(
         "expected valid xref section chain, got UnsupportedFilter \{offset} \{reason}",
       )
+    Err(DecodeStreamError(offset, error)) =>
+      match error {
+        @filters.PdfFilterError::DecodeError(_, _) =>
+          fail("expected valid xref section chain, got DecodeStreamError \{offset}")
+        @filters.PdfFilterError::UnsupportedFilter(_) =>
+          fail("expected valid xref section chain, got DecodeStreamError \{offset}")
+        @filters.PdfFilterError::InvalidFilterSpec(_) =>
+          fail("expected valid xref section chain, got DecodeStreamError \{offset}")
+        @filters.PdfFilterError::InvalidDecodeParms(_, _) =>
+          fail("expected valid xref section chain, got DecodeStreamError \{offset}")
+      }
   }
 }
 

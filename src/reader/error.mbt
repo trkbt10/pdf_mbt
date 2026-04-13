@@ -7,6 +7,7 @@ pub(all) suberror PdfReaderError {
   InvalidObjectStream(Int64, String)
   InvalidObjectLocation(@objects.ObjectId, String)
   UnsupportedFilter(Int64, String)
+  DecodeStreamError(Int64, @filters.PdfFilterError)
   PrevChainCycle(Int64)
   ParseObjectError(Int64, @objects.PdfParseError)
 } derive(Eq, Debug)

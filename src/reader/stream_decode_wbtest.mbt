@@ -64,6 +64,54 @@ fn expect_unsupported_structural_stream(
 }
 
 ///|
+test "decode_structural_stream wraps filter decode failures with offset" {
+  let stream = make_structural_stream(
+    Bytes::from_array([
+      b'\x70', b'\x01', b'\x01', b'\x03', b'\x00', b'\xfc', b'\xff', b'a', b'b',
+      b'c', b'\x02', b'M', b'\x01', b'\'',
+    ]),
+    b"ObjStm",
+    Some(@objects.PdfObject::Name(@objects.PdfName::new(b"FlateDecode"))),
+  )
+
+  let result : Result[Bytes, PdfReaderError] = try? decode_structural_stream(
+    stream,
+    ObjectStream,
+    offset=37L,
+  )
+  match result {
+    Err(DecodeStreamError(actual_offset, @filters.PdfFilterError::DecodeError(filter_name, reason))) => {
+      assert_eq(actual_offset, 37L)
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("method"), true)
+    }
+    _ => fail("expected filter decode failures to be wrapped with offset")
+  }
+}
+
+///|
+test "decode_structural_stream wraps unsupported filter names from the filter layer" {
+  let stream = make_structural_stream(
+    b"0 1 2",
+    b"ObjStm",
+    Some(@objects.PdfObject::Name(@objects.PdfName::new(b"DCTDecode"))),
+  )
+
+  let result : Result[Bytes, PdfReaderError] = try? decode_structural_stream(
+    stream,
+    ObjectStream,
+    offset=41L,
+  )
+  match result {
+    Err(DecodeStreamError(actual_offset, @filters.PdfFilterError::UnsupportedFilter(filter_name))) => {
+      assert_eq(actual_offset, 41L)
+      assert_eq(filter_name, "DCTDecode")
+    }
+    _ => fail("expected unsupported filter failures to be wrapped with offset")
+  }
+}
+
+///|
 test "decode_structural_stream passes through unfiltered xref stream bytes unchanged" {
   let stream = make_structural_stream(b"0 1 2", b"XRef", None)
   let decoded = expect_decoded_structural_stream(stream, XrefStream, 17L)
@@ -126,21 +174,38 @@ test "decode_structural_stream rejects xref array filters with crypt and unsuppo
       ]),
     ),
   )
-  let unsupported_reason = expect_unsupported_structural_stream(
+  let unsupported_result : Result[Bytes, PdfReaderError] = try? decode_structural_stream(
     unsupported_stream,
     XrefStream,
-    53L,
+    offset=53L,
   )
-  assert_eq(unsupported_reason.contains("DCTDecode"), true)
+  match unsupported_result {
+    Err(DecodeStreamError(actual_offset, @filters.PdfFilterError::UnsupportedFilter(filter_name))) => {
+      assert_eq(actual_offset, 53L)
+      assert_eq(filter_name, "DCTDecode")
+    }
+    _ => fail("expected wrapped unsupported filter failure")
+  }
 }
 
 ///|
-test "decode_structural_stream rejects unsupported structural stream filters before entry parsing" {
+test "decode_structural_stream wraps unsupported structural stream filters before entry parsing" {
   let stream = make_structural_stream(
     b"not a decoded structural stream",
     b"ObjStm",
     Some(@objects.PdfObject::Name(@objects.PdfName::new(b"FlateDecode"))),
   )
-  let reason = expect_unsupported_structural_stream(stream, ObjectStream, 99L)
-  assert_eq(reason.contains("FlateDecode"), true)
+  let result : Result[Bytes, PdfReaderError] = try? decode_structural_stream(
+    stream,
+    ObjectStream,
+    offset=99L,
+  )
+  match result {
+    Err(DecodeStreamError(actual_offset, @filters.PdfFilterError::DecodeError(filter_name, reason))) => {
+      assert_eq(actual_offset, 99L)
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("method"), true)
+    }
+    _ => fail("expected unsupported structural stream filters to be wrapped")
+  }
 }

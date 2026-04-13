@@ -38,28 +38,6 @@ fn expect_malformed_invalid_trailer(
   }
 }
 
-///|
-fn expect_malformed_unsupported_structural_stream(
-  stream : @objects.PdfStream,
-  purpose : StructuralStreamPurpose,
-  offset : Int64,
-  reason_fragment : String,
-) -> Unit raise {
-  let result : Result[Bytes, PdfReaderError] = try? decode_structural_stream(
-    stream,
-    purpose,
-    offset~,
-  )
-  match result {
-    Err(UnsupportedFilter(actual_offset, reason)) => {
-      assert_eq(actual_offset, offset)
-      assert_eq(reason.contains(reason_fragment), true)
-    }
-    _ => fail("expected unsupported structural stream")
-  }
-}
-
-///|
 fn expect_malformed_invalid_object_stream(
   stream : @objects.PdfStream,
   offset : Int64,
@@ -130,14 +108,24 @@ test "reader rejects unsupported structural stream filters and malformed object 
   )
   let xref_stream = @objects.PdfStream::{
     dict: xref_stream_dict,
-    data: b"0 1 2",
+    data: Bytes::from_array([
+      b'\x70', b'\x01', b'\x01', b'\x03', b'\x00', b'\xfc', b'\xff', b'a', b'b',
+      b'c', b'\x02', b'M', b'\x01', b'\'',
+    ]),
   }
-  expect_malformed_unsupported_structural_stream(
+  let xref_result : Result[Bytes, PdfReaderError] = try? decode_structural_stream(
     xref_stream,
     XrefStream,
-    88L,
-    "FlateDecode",
+    offset=88L,
   )
+  match xref_result {
+    Err(DecodeStreamError(actual_offset, @filters.PdfFilterError::DecodeError(filter_name, reason))) => {
+      assert_eq(actual_offset, 88L)
+      assert_eq(filter_name, "FlateDecode")
+      assert_eq(reason.contains("method"), true)
+    }
+    _ => fail("expected wrapped structural stream decode failure")
+  }
 
   let obj_stream_dict : @objects.PdfDictionary = Map::new()
   obj_stream_dict[@objects.PdfName::new(b"Type")] = @objects.PdfObject::Name(
