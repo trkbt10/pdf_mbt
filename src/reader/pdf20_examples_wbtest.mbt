@@ -4,6 +4,7 @@ fn oid(object_number : Int) -> @objects.ObjectId {
 }
 
 ///|
+/// Validates the bundled PDF 2.0 example file through public APIs.
 test "PdfFile::open reads bundled Simple PDF 2.0 file" {
   let file = PdfFile::open(simple_pdf20_file)
   let trailer = file.trailer()
@@ -39,6 +40,8 @@ test "PdfFile::open reads bundled Simple PDF 2.0 file" {
 }
 
 ///|
+/// Validates the bundled PDF 2.0 example created by incremental save, ensuring
+/// incremental updates resolve to the latest objects.
 test "PdfFile::open follows bundled incremental updates to latest objects" {
   let file = PdfFile::open(incremental_pdf20_file)
   let trailer = file.trailer()

@@ -836,6 +836,9 @@ test "PdfFile::open resolves compressed xref stream members and rejects invalid 
 }
 
 ///|
+/// Validates ISO 32000-2 Annex H sample coverage for the Annex H.2 minimal PDF:
+/// Catalog, Pages, Page, Content stream, and Metadata are accessed through
+/// public APIs.
 test "PdfFile::open reads Annex H.2 fixtures through public APIs" {
   let file = PdfFile::open(build_annex_h2_fixture())
   let trailer = file.trailer()
@@ -962,6 +965,8 @@ test "PdfFile::open reads Annex H.2 fixtures through public APIs" {
 }
 
 ///|
+/// Continues ISO 32000-2 Annex H sample validation with the text example's
+/// Pages tree, font resources, Content stream, and Metadata access.
 test "PdfFile::open reads Annex H.3 resources and text stream objects" {
   let file = PdfFile::open(build_annex_h3_fixture())
   let trailer = file.trailer()

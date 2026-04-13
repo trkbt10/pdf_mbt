@@ -1,4 +1,8 @@
 ///|
+/// Finds the latest cross-reference byte offset by reverse parsing the file
+/// tail, per ISO 32000-2 section 7.5.5.
+/// The scan uses the final %%EOF marker and preceding startxref keyword so
+/// incremental updates resolve to the newest cross-reference section.
 fn find_latest_startxref(source : ByteSource) -> Int64 raise PdfReaderError {
   let tail = source.slice_from_pdf_offset(0L)
   let eof_index = find_last_marker_before(tail, b"%%EOF", tail.length())
@@ -20,6 +24,8 @@ fn find_latest_startxref(source : ByteSource) -> Int64 raise PdfReaderError {
 }
 
 ///|
+/// Parses the byte offset following the startxref keyword and validates that
+/// only tail whitespace separates it from the %%EOF marker.
 fn read_startxref_offset(
   tail : Bytes,
   startxref_index : Int,
@@ -103,6 +109,7 @@ fn has_startxref_prefix_boundary(tail : Bytes, startxref_index : Int) -> Bool {
 }
 
 ///|
+/// Searches backward for the startxref keyword during reverse parsing.
 fn find_last_startxref_before(tail : Bytes, exclusive_end : Int) -> Int? {
   let needle = b"startxref"
   let needle_length = needle.length()
@@ -155,6 +162,7 @@ fn is_tail_whitespace(byte : Byte) -> Bool {
 }
 
 ///|
+/// Searches backward for a marker such as the %%EOF marker.
 fn find_last_marker_before(
   haystack : Bytes,
   needle : Bytes,
