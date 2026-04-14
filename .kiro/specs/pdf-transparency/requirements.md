@@ -1,0 +1,1891 @@
+# SDD Draft
+
+Generated from:
+- `spec/extracted/11-transparency.spec.txt`
+
+## Requirements
+
+### Requirement 1: 11.1 General
+The PDF imaging model includes the notion of transparency. Transparent objects do not necessarily
+obey a strict opaque painting model but may blend (composite) in interesting ways with other
+overlapping objects. This clause describes the general transparency model but does not cover how it is
+implemented. At various points it uses implementation-like descriptions to describe how things work,
+for the purpose of elucidating the behaviour of the model, but a processor need not implement these
+exactly provided the results are equivalent.
+NOTE        Transparency was added to PDF in version 1.4.
+The following 6 clauses are organised as follows:
+•    11.2, "Overview of transparency" introduces the basic concepts of the transparency model and its
+associated terminology.
+•    11.3, "Basic compositing computations" describes the mathematics involved in compositing a
+single object with its backdrop.
+•    11.4, "Transparency groups" introduces the concept of transparency groups and describes their
+properties and behaviour.
+•    11.5, "Soft masks" covers the creation and use of masks to specify position-dependent shape and
+opacity.
+•    11.6, "Specifying transparency in PDF" describes how transparency properties are represented in
+a PDF document.
+•    11.7, "Colour space and rendering issues" deals with some specific interactions between
+transparency and other aspects of colour specification and rendering.
+
+### Requirement 2: 11.2 Overview of transparency
+The original PDF imaging model paints objects (fills, strokes, text, and images), possibly clipped by a
+path, opaquely onto a page. The colour of the page at any point shall be that of the topmost enclosing
+object, disregarding any previous objects it may overlap. This effect may be — and often is — realised
+simply by rendering objects directly to the page in the order in which they are specified, with each
+object completely overwriting any others that it overlaps.
+In the transparent imaging model, all of the objects on a page may potentially contribute to the result.
+Objects at a given point form a transparency stack (or stack for short). The objects are arranged from
+bottom to top in the order in which they are specified. The colour of the page at each point shall be
+determined by combining the colours of all enclosing objects in the stack according to compositing
+rules defined by the transparency model.
+NOTE 1      The order in which objects are specified determines the stacking order but not necessarily the
+order in which the objects are actually painted onto the page. In particular, the transparency
+model does not require a PDF processor to rasterize objects immediately or to commit to a
+raster representation at any time before rendering the entire stack onto the page. This is
+important, since rasterization often causes significant loss of information and precision that is
+best avoided during intermediate stages of the transparency computation.
+Annex Q, "Method for determining transparency on a page" defines a standardised method for
+determining if transparency is present on a page. This method is not required by this document,
+however other PDF-related standards may wish to mandate the use of this algorithm to ensure
+consistent behaviour.
+A given object shall be composited with a backdrop. Ordinarily, the backdrop consists of the stack of all
+objects that have been specified previously. The result of compositing shall then be treated as the
+backdrop for the next object. However, within certain kinds of transparency groups (see 11.4,
+"Transparency groups"), a different backdrop may be chosen.
+During the compositing of an object with its backdrop, the colour at each point shall be computed using
+a specified blend mode, which is a function of both the object’s colour and the backdrop colour. The
+blend mode shall determine how colours interact; different blend modes may be used to achieve a
+variety of useful effects. A single blend mode shall be in effect for compositing all of a given object, but
+different blend modes may be applied to different objects.
+Two scalar quantities called shape and opacity mediate compositing of an object with its backdrop.
+Conceptually, for each object, these quantities shall be defined at every point in the plane, just as if they
+were additional colour components. (In actual practice, they may be obtained from auxiliary sources
+rather than being intrinsic to the object.)
+Both shape and opacity vary from 0.0 (no contribution) to 1.0 (maximum contribution). At any point
+where either the shape or the opacity of an object is equal to 0.0, its colour shall be undefined. At
+points where the shape is equal to 0.0, the opacity shall also be undefined. The shape and opacity shall
+be subject to compositing rules; therefore, the stack as a whole also has a shape and opacity at each
+point.
+An object’s opacity, in combination with the backdrop’s opacity, shall determine the relative
+contributions of the backdrop colour, the object’s colour, and the blended colour to the resulting
+composite colour. The object’s shape shall then determine the degree to which the composite colour
+replaces the backdrop colour. Shape values of 0.0 and 1.0 identify points that lie outside and inside a
+conventional sharp-edged object; intermediate values are useful in defining soft-edged objects.
+Shape and opacity are conceptually very similar. In fact, they can usually be combined into a single
+value, called alpha, which controls both the colour compositing computation and the fading between an
+object and its backdrop. However, there are a few situations in which they shall be treated separately;
+see 11.4.6, “Knockout groups”.
+NOTE 2     Raster-based implementations could need to maintain a separate shape parameter to do anti-
+aliasing properly; it is therefore convenient to have shape as an explicit part of the model.
+One or more consecutive objects in a stack may be collected together into a transparency group (often
+referred to hereafter simply as a group). The group as a whole may have various properties that modify
+the compositing behaviour of objects within the group and their interactions with the group backdrop.
+An additional blend mode, blending colour space, shape, and opacity may also be associated with the
+group as a whole and used when compositing the objects inside of the group as well as the group itself
+with the group backdrop. Groups may be nested within other groups, forming a tree-structured
+hierarchy.
+
+Figure 71 — Transparency groups
+EXAMPLE        "Figure 71 — Transparency groups" illustrates the effects of transparency grouping. In the upper two
+figures, three coloured circles are painted as independent objects with no grouping. At the upper left, the
+three objects are painted opaquely (opacity = 1.0); each object completely replaces its backdrop (including
+previously painted objects) with its own colour. At the upper right, the same three independent objects are
+painted with an opacity of 0.5, causing them to composite with each other and with the gray and white
+backdrop. In the lower two figures, the three objects are combined as a transparency group. At the lower
+left, the individual objects have an opacity of 1.0 within the group, but the group as a whole is painted in the
+Normal blend mode with an opacity of 0.5. The objects thus completely overwrite each other within the
+group, but the resulting group then composites transparently with the gray and white backdrop. At the lower
+right, the objects have an opacity of 0.5 within the group and thus composite with each other. The group as
+a whole is painted against the backdrop with an opacity of 1.0 but in a different blend mode (HardLight),
+producing a different visual effect.
+The colour result of compositing a group may be converted to a single-component luminosity value
+and treated as a soft mask. Such a mask may then be used as an additional source of shape or opacity
+values for subsequent compositing operations. When the mask is used as a shape, this technique is
+known as soft clipping; it is a generalization of the current clipping path in the opaque imaging model
+(see 8.5.4, "Clipping path operators").
+
+#### 2.1: 11.3.1         General
+This subclause describes the basic computations for compositing a single object with its backdrop.
+These computations are extended in 11.4, "Transparency groups" to cover groups consisting of
+multiple objects.
+
+#### 2.2: 11.3.2         Basic notation for compositing computations
+In general, variable names in this clause consisting of a lowercase letter denote a scalar quantity, such
+as an opacity. Uppercase letters denote a value with multiple scalar components, such as a colour. In
+the descriptions of the basic colour compositing computations, colour values are generally denoted by
+the letter 𝐶, with a mnemonic subscript indicating which of several colour values is being referred to;
+for instance, 𝐶𝑠 stands for "source colour." Shape and opacity values are denoted respectively by the
+letters 𝑓 (for "form factor") and 𝑞 (for "opaqueness")—again with a mnemonic subscript, such as 𝑞𝑠 for
+"source opacity." The symbol α (alpha) stands for a product of shape and opacity values.
+In certain computations, one or more variables may have undefined values; for instance, when opacity
+is equal to zero, the corresponding colour is undefined. A quantity can also be undefined if it results
+from division by zero. In any formula that uses such an undefined quantity, the quantity has no effect
+on the ultimate result because it is subsequently multiplied by zero or otherwise cancelled out. It is
+significant that although any arbitrary value may be chosen for such an undefined quantity, the
+computation shall not malfunction because of exceptions caused by overflow or division by zero. In
+addition, the convention that 0 ÷ 0 = 0 shall also be adopted.
+
+#### 2.3: 11.3.3          Basic compositing formula
+The primary change in the imaging model to accommodate transparency is in how colours are painted.
+In the transparent model, the result of painting (the result colour) is a function of both the colour being
+painted (the source colour) and the colour it is painted over (the backdrop colour). Both of these
+colours may vary as a function of position on the page; however, this subclause focuses on some fixed
+point on the page and assumes a fixed backdrop and source colour.
+This computation uses two other parameters: alpha, which controls the relative contributions of the
+backdrop and source colours, and the blend function, which specifies how they shall be combined in the
+painting operation. The resulting basic colour compositing formula (or just basic compositing formula
+for short) shall determine the result colour produced by the painting operation:
+𝛼           𝛼
+𝐶𝑟 = (1 − 𝛼𝑠 ) × 𝐶𝑏 + 𝛼𝑠 × ((1 − 𝛼𝑏 ) × 𝐶𝑠 + 𝛼𝑏 × 𝐵(𝐶𝑏 , 𝐶𝑠 ))
+𝑟           𝑟
+where the variables have the meanings shown in "Table 133 — Variables used in the basic compositing
+formula".
+NOTE       This formula represents a simplified form of the compositing formula in which the shape and
+opacity values are combined and represented as a single alpha value; the more general form is
+presented later. This function is based on the over operation defined in the article "Compositing
+Digital Images" by Porter and Duff, extended to include a blend mode in the region of
+overlapping coverage.
+Table 133 — Variables used in the basic compositing formula
+Variable                Meaning
+𝐶𝑏          Backdrop colour
+𝐶𝑠          Source colour
+𝐶𝑟          Result colour
+𝛼𝑏           Backdrop alpha
+𝛼𝑠          Source alpha
+𝛼𝑟          Result alpha
+
+Variable                    Meaning
+𝐵(𝐶𝑏 , 𝐶𝑠 )         Blend function
+The following subclauses elaborate on the meaning and implications of this formula.
+11.3.4            Blending colour space
+
+#### 2.4: 11.3.4            Blending colour space
+the colours it operates on are represented in the form of n-element vectors, where n denotes the
+number of components required by the colour space used in the compositing process. The ith
+component of the result colour 𝐶𝑟 shall be obtained by applying the compositing formula to the ith
+components of the constituent colours 𝐶𝑏 , Cs , and 𝐵(𝐶𝑏 , 𝐶𝑠 ). The result of the computation thus
+depends on the colour space in which the colours are represented. For this reason, the colour space
+used for compositing, called the blending colour space, is explicitly made part of the transparent
+imaging model. The backdrop and source colours are normally converted to the blending colour space
+before the compositing computation.
+Of the PDF colour spaces described in 8.6, "Colour spaces", the following shall be supported as blending
+colour spaces:
+•    DeviceGray
+•    DeviceRGB
+•    DeviceCMYK
+•    CalGray
+•    CalRGB
+•    ICCBased bi-directional ‘GRAY’, ‘RGB ’, and ‘CMYK’ colour spaces
+The Lab space and ICCBased spaces that represent lightness and chromaticity separately (such as
+L*a*b*, L*u*v*, and HSV) shall not be used as blending colour spaces because the compositing
+computations in such spaces do not give meaningful results when applied separately to each
+component. In addition, an ICCBased space used as a blending colour space shall be bi-directional; that
+is, the ICC profile shall be capable of both device to PCS and PCS to device transformations.
+When performing blending, process colours (see 10.2, "Raster output device native colour") shall be
+converted to the blending colour space. Although blending may also be done on individual spot colours
+specified in a Separation or DeviceN colour space, such colours shall not be converted to a blending
+colour space (except in the case where they first revert to their alternate colour space, as described
+under 8.6.6.4, "Separation colour spaces" and 8.6.6.5, "DeviceN colour spaces"). Instead, the specified
+colour components shall be blended individually with the corresponding components of the backdrop.
+The blend functions for the various blend modes are defined such that the range for each colour
+component shall be 0.0 to 1.0 and that the colour space shall be additive. When performing blending
+operations in subtractive colour spaces (DeviceCMYK, ICCBased ‘CMYK’, Separation, and DeviceN),
+the colour component values shall be complemented (subtracted from 1.0) before the blend function is
+applied and the results of the function shall then be complemented back before being used.
+11.3.5         Blend mode
+11.3.5.1       General
+
+#### 2.5: 11.3.5.1       General
+result may be used as a blend function 𝐵(𝐶𝑏 , 𝐶𝑠 ), in the compositing formula to customise the blending
+operation. PDF defines a standard set of named blend functions, or blend modes, listed in "Table 134 —
+Standard separable blend modes" and "Table 135 — Standard non-separable blend modes". "Figure 72
+— RGB blend modes" and "Figure 73 — CMYK blend modes" illustrate the resulting visual effects for
+RGB and CMYK colours, respectively.
+Figure 72 — RGB blend modes
+
+Figure 73 — CMYK blend modes
+11.3.5.2          Separable blend modes
+
+#### 2.6: 11.3.5.2          Separable blend modes
+the corresponding components of the constituent backdrop and source colours — that is, if the blend
+mode function B is applied separately to each set of corresponding components:
+𝑐𝑟 = 𝐵(𝑐𝑏 , 𝑐𝑠 )
+where the lowercase variables 𝑐𝑟 , 𝑐𝑏 , and 𝑐𝑠 denote corresponding components of the colours 𝐶𝑟 , 𝐶𝑏 ,
+and 𝐶𝑠 , expressed in additive form. A separable blend mode may be used with any colour space, since it
+applies independently to any number of components. Only white-preserving separable blend modes
+shall be used for blending spot colours as discussed in 11.7.3, "Spot colours and transparency".
+NOTE      Theoretically, a blend mode could have a different function for each colour component and still
+be separable; however, none of the standard PDF blend modes have this property.
+"Table 134 — Standard separable blend modes" lists the standard separable blend modes available in
+PDF and the algorithms/formulas that shall be used in the calculation of blended colours.
+Table 134 — Standard separable blend modes
+Name         Result
+Normal       𝐵(𝑐𝑏 , 𝑐𝑠 ) = 𝑐𝑠
+NOTE 1 Selects the source colour, ignoring the backdrop.
+Compatible   (Deprecated in PDF 2.0) Same as Normal. This mode was introduced in an earlier
+PDF version and shall not be used by PDF writers.
+Multiply     𝐵(𝑐𝑏 , 𝑐𝑠 ) = 𝑐𝑏 × 𝑐𝑠
+NOTE 2 Multiplies the backdrop and source colour values.
+NOTE 3 The result colour is always at least as dark as either of the two constituent
+colours. When working with additive colours, multiplying any colour with black
+produces black while multiplying with white leaves the original colour
+unchanged. For subtractive colours, the maximum tint value used for all
+colourants of the colour space acts as black does for additive spaces. Painting
+successive overlapping objects with a colour other than black or white produces
+progressively darker colours.
+Screen       𝐵(𝑐𝑏 , 𝑐𝑠 ) = 1 − ((1 − 𝑐𝑏 ) × (1 − 𝑐𝑠 )) = 𝑐𝑏 + 𝑐𝑠 − (𝑐𝑏 × 𝑐𝑠 )
+NOTE 4 Multiplies the complements of the backdrop and source colour values, then
+complements the result.
+NOTE 5 The result colour is always at least as light as either of the two constituent
+colours. When working with additive colours, screening any colour with white
+produces white while screening with black leaves the original colour unchanged.
+For subtractive colours, the maximum tint value of all colourants of the color
+space acts as black does for additive spaces. The effect is similar to projecting
+multiple photographic slides simultaneously onto a single screen.
+Darken       𝐵(𝑐𝑏 , 𝑐𝑠 ) = 𝑚𝑖𝑛(𝑐𝑏 , 𝑐𝑠 )
+NOTE 6 Selects the darker of the backdrop and source colours.
+NOTE 7 The backdrop is replaced with the source where the source is darker; otherwise,
+it is left unchanged.
+Lighten      𝐵(𝑐𝑏 , 𝑐𝑠 ) = 𝑚𝑎𝑥(𝑐𝑏 , 𝑐𝑠 )
+NOTE 8 Selects the lighter of the backdrop and source colours.
+NOTE 9 The backdrop is replaced with the source where the source is lighter; otherwise,
+it is left unchanged.
+
+Name             Result
+ColorDodge                      0             if 𝑐𝑏 = 0
+𝐵(𝑐𝑏 , 𝑐𝑠 ) = {1             if 𝑐𝑏 ≥ 1 − 𝑐𝑠
+𝑐𝑏 /(1 − 𝑐𝑠 ) otherwise
+NOTE 10        Brightens the backdrop colour to reflect the source colour. Painting with
+black produces no change.
+NOTE 11         This function is formulated in a different way here than it is in ISO
+32000-1:2008. However, it produces the same results except in one special edge
+case. For ColorDodge, the special case is cb = 0 and cs = 1, where the result is now
+0 instead of 1. The rationale for the change is that for any given cb, the result
+should be a continuous function of cs.
+ColorBurn                      1                   if 𝑐𝑏 = 1
+)
+𝐵(𝑐𝑏 , 𝑐𝑠 = { 0                   if 1 − 𝑐𝑏 ≥ 𝑐𝑠
+1 − ((1 − 𝑐𝑏 )/𝑐𝑠 ) otherwise
+NOTE 12        Darkens the backdrop colour to reflect the source colour. Painting with
+white produces no change.
+NOTE 13         This function is formulated in a different way here than it is in ISO
+32000-1:2008. However, it produces the same results except in one special edge
+case. For ColorBurn, the special case is cb = 1 and cs = 0, where the result is now 1
+instead of 0. The rationale for the change is that for any given cb, the result should
+be a continuous function of cs.
+HardLight                       Multiply(𝑐𝑏 , 2 × 𝑐𝑠 ) if 𝑐𝑠 ≤ 0.5
+𝐵(𝑐𝑏 , 𝑐𝑠 ) = {
+Screen(𝑐𝑏 , 2 × 𝑐𝑠 − 1) if 𝑐𝑠 > 0.5
+NOTE 14        Multiplies or screens the colours, depending on the source colour value.
+The effect is similar to shining a harsh spotlight on the backdrop.
+SoftLight                          𝑐𝑏 − (1 − 2 × 𝑐𝑠 ) × 𝑐𝑏 × (1 − 𝑐𝑏 ) if 𝑐𝑠 ≤ 0.5
+𝐵(𝑐𝑏 , 𝑐𝑠 ) = {
+𝑐𝑏 + (2 × 𝑐𝑠 − 1) × (𝐷(𝑐𝑏 ) − 𝑐𝑏 ) if 𝑐𝑠 > 0.5
+((16 × 𝑥 − 12) × 𝑥 + 4) × 𝑥 if 𝑥 ≤ 0.25
+𝐷(𝑥) = {
+√𝑥                          if 𝑥 > 0.25
+NOTE 15        Darkens or lightens the colours, depending on the source colour value.
+The effect is similar to shining a diffused spotlight on the backdrop.
+Overlay          𝐵(𝑐𝑏 , 𝑐𝑠 ) = HardLight(𝑐𝑠 , 𝑐𝑏 )
+NOTE 16         Multiplies or screens the colours, depending on the backdrop colour
+value. Source colours overlay the backdrop while preserving its highlights and
+shadows. The backdrop colour is not replaced but is mixed with the source colour
+to reflect the lightness or darkness of the backdrop.
+Difference       𝐵(𝑐𝑏 , 𝑐𝑠 ) = |𝑐𝑏 − 𝑐𝑠 |
+NOTE 17        Subtracts the darker of the two constituent colours from the lighter
+colour:
+Painting with white inverts the backdrop colour; painting with black produces no
+change. For subtractive colours, the maximum tint value for all colourants of the
+colour space acts as black does for additive spaces.
+NOTE 18              This blend mode is not white-preserving.
+Name            Result
+Exclusion       𝐵(𝑐𝑏 , 𝑐𝑠 ) = 𝑐𝑏 + 𝑐𝑠 − 2 × 𝑐𝑏 × 𝑐𝑠
+NOTE 19         Produces an effect similar to that of the Difference mode but lower in
+contrast. Painting with white inverts the backdrop colour; painting with black
+produces no change.
+For subtractive colours, the maximum tint value for all colourants of the colour
+space acts as black does for additive spaces.
+NOTE 20          This blend mode is not white-preserving.
+11.3.5.3        Non-separable blend modes
+"Table 135 — Standard non-separable blend modes" lists the standard non-separable blend modes.
+Since the non-separable blend modes consider all colour components in combination, their
+
+#### 2.7: 11.3.5.3        Non-separable blend modes
+may be applied to all colour spaces that are allowed as blending colour spaces (see 11.3.4, "Blending
+colour space").
+All of the non-separable blend modes conceptually entail the following steps:
+•    Convert the backdrop and source colours from the blending colour space to an intermediate HSL
+(hue-saturation-luminosity) representation.
+•    Create a new colour from some combination of hue, saturation, and luminosity components
+selected from the backdrop and source colours.
+•    Convert the result back to the (blending) colour space.
+However, the following formulas do not actually perform these conversions. Instead, they start with
+whichever colour (backdrop or source) is providing the hue for the result; then they adjust this colour
+to have the proper saturation and luminosity.
+The non-separable blend mode formulas make use of several auxiliary functions. These functions
+operate on colours that are assumed to have red, green, and blue components. Blending in gray colour
+spaces (DeviceGray, CalGray and ICCBased gray) shall be done by conversion to RGB, blending in
+RGB, and then converting back to gray. Blending of CMYK colour spaces requires special treatment, and
+is described later in this subclause. The following formulas apply to RGB spaces (including DeviceRGB,
+CalRGB and ICCBased 'RGB '):
+These functions shall have the following definitions:
+Lum(C) = 0.3 × Cred + 0.59 × Cgreen + 0.11 × Cblue
+SetLum(C, 𝑙 )
+let 𝑑 = 𝑙 − Lum(𝐶 )
+𝐶red = 𝐶red + 𝑑
+𝐶green = 𝐶green + 𝑑
+𝐶blue = 𝐶blue + 𝑑
+
+return ClipColor(𝐶)
+ClipColor(𝐶 )
+let 𝑙 = Lum(𝐶 )
+let 𝑛 = 𝑚𝑖𝑛(𝐶red , 𝐶green , 𝐶blue )
+let 𝑥 = 𝑚𝑎𝑥(𝐶red, 𝐶green , 𝐶blue )
+if 𝑛 < 0.0
+𝐶red = 𝑙 + (((𝐶red − 𝑙) × 𝑙)/(𝑙 − 𝑛))
+𝐶green = 𝑙 + (((𝐶green − 𝑙) × 𝑙) /(𝑙 − 𝑛))
+𝐶blue = 𝑙 + (((𝐶blue − 𝑙) × 𝑙)/(𝑙 − 𝑛))
+endif
+if 𝑥 > 1.0
+𝐶red = 𝑙 + (((𝐶red − 𝑙) × (1 − 𝑙))/(𝑥 − 𝑙))
+𝐶green = 𝑙 + (((𝐶green − 𝑙) × (1 − 𝑙)) /(𝑥 − 𝑙))
+𝐶blue = 𝑙 + (((𝐶blue − 𝑙) × (1 − 𝑙))/(𝑥 − 𝑙))
+endif
+return 𝐶
+Sat(𝐶 ) = 𝑚𝑎𝑥 (𝐶red , 𝐶green , 𝐶blue ) − 𝑚𝑖𝑛(𝐶red , 𝐶green , 𝐶blue )
+The subscripts min, mid, and max (in the next function) refer to the colour components having the
+minimum, middle, and maximum values upon entry to the function.
+SetSat(𝐶, 𝑠)
+if 𝐶max > 𝐶min
+𝐶mid = (((𝐶mid − 𝐶min ) × 𝑠)/(𝐶max − 𝐶min ))
+𝐶max = 𝑠
+else
+𝐶mid = 𝐶max = 0.0
+endif
+𝐶min = 0.0
+return 𝐶
+NOTE       The SetSat algorithm has a distinct discontinuity between neutral and near neutral colours
+which makes it very sensitive to variations between implementations with respect to colour
+management and quantisation of colour values. Therefore the visual appearance of elements can
+be very different between different PDF processors used for viewing or printing pages
+containing elements that use the Hue and Saturation blend modes that use the SetSat algorithm.
+Table 135 — Standard non-separable blend modes
+Name          Result
+Hue           𝐵(𝐶𝑏 , 𝐶𝑠 ) = SetLum (SetSat(𝐶𝑠 ,Sat(𝐶𝑏 )),Lum(𝐶𝑏 ))
+NOTE 1 Creates a colour with the hue of the source colour and the saturation and
+luminosity of the backdrop colour.
+Saturation    𝐵(𝐶𝑏 , 𝐶𝑠 ) = SetLum (SetSat(𝐶𝑏 ,Sat(𝐶𝑠 )),Lum(𝐶𝑏 ))
+NOTE 2 Creates a colour with the saturation of the source colour and the hue and
+luminosity of the backdrop colour. Painting with this mode in an area of the
+backdrop that is a pure gray (no saturation) produces no change.
+Color         𝐵(𝐶𝑏 , 𝐶𝑠 ) = SetLum(𝐶𝑠 , Lum(𝐶𝑏 ))
+NOTE 3 Creates a colour with the hue and saturation of the source colour and the
+luminosity of the backdrop colour. This preserves the gray levels of the backdrop
+and is useful for colouring monochrome images or tinting colour images.
+Luminosity    𝐵(𝐶𝑏 , 𝐶𝑠 ) = SetLum(𝐶𝑏 , Lum(𝐶𝑠 ))
+NOTE 4 Creates a colour with the luminosity of the source colour and the hue and
+saturation of the backdrop colour. This produces an inverse effect to that of the
+Color mode.
+The formulas in this subclause apply to RGB spaces (including DeviceRGB, CalRGB and ICCBased
+RGB). Blending in CMYK spaces (including both DeviceCMYK and ICCBased CMYK spaces) shall be
+handled in the following way:
+•    The C, M and Y components shall be converted to their complementary R, G and B components by
+subtracting each from 1.0. The formulae in this subclause shall be applied to the RGB colour
+values. The results shall be complemented back to C, M and Y in the same way.
+•    For the K component, the result shall be the K component of Cb for the Hue, Saturation, and
+Color blend modes; it shall be the K component of Cs for the Luminosity blend mode.
+11.3.6           Interpretation of alpha
+The colour compositing formula
+𝛼𝑠         𝛼𝑠
+𝐶𝑟 = (1 −      ) × 𝐶𝑏 + × ((1 − 𝛼𝑏 ) × 𝐶𝑠 + 𝛼𝑏 × 𝐵(𝐶𝑏 , 𝐶𝑠 ))
+𝛼𝑟         𝛼𝑟
+produces a result colour that is a weighted average of the backdrop colour, the source colour, and the
+blended 𝐵(𝐶𝑏 , 𝐶𝑠 ) term, with the weighting determined by the backdrop and source alphas 𝛼𝑏 and 𝛼𝑠 .
+
+#### 2.8: 11.3.6           Interpretation of alpha
+contributions of backdrop, source, and blended colours in a more straightforward way:
+
+𝛼𝑟 × 𝐶𝑟 = ((1 − 𝛼𝑠 ) × 𝛼𝑏 × 𝐶𝑏 ) + (((1 − 𝛼𝑏 ) × 𝛼𝑠 × 𝐶𝑠 ) + (𝛼𝑏 × 𝛼𝑠 × 𝐵(𝐶𝑏 , 𝐶𝑠 )))
+For the simplest blend mode, Normal, defined by
+𝐵(𝐶𝑏 , 𝐶𝑠 ) = 𝐶𝑠
+the compositing formula collapses to a simple weighted average of the backdrop and source colours,
+controlled by the backdrop and source alpha values. For more interesting blend functions, the
+backdrop and source alphas control whether the effect of the blend mode is fully realised or is toned
+down by mixing the result with the backdrop and source colours.
+The result alpha, αr , actually represents a computed result, described in 11.3.7, "Shape and opacity
+computations". The result colour shall be normalised by the result alpha, ensuring that when this
+colour and alpha are subsequently used together in another compositing operation, the colour’s
+contribution is correctly represented.
+NOTE 2      If 𝛼𝑟 is zero, the result colour is undefined.
+The simplification requires a substitution based on the alpha compositing formula, which is presented
+in 11.3.7.3, "Result shape and opacity". Thus, mathematically, the backdrop and source alphas control
+the influence of the backdrop and source colours, respectively, while their product controls the
+influence of the blend function. An alpha value of αs = 0.0 or αb = 0.0 results in no blend mode effect;
+setting αs = 1.0 and αb = 1.0 results in maximum blend mode effect.
+11.3.7           Shape and opacity computations
+11.3.7.1         General
+As stated earlier, the alpha values that control the compositing process shall be defined as the product
+of shape and opacity:
+𝛼𝑏 = 𝑓𝑏 × 𝑞𝑏
+𝛼𝑟 = 𝑓𝑟 × 𝑞𝑟
+𝛼𝑠 = 𝑓𝑠 × 𝑞𝑠
+This subclause examines the various shape and opacity values individually. Once again, keep in mind
+that conceptually these values are computed for every point on the page.
+11.3.7.2         Source shape and opacity
+
+#### 2.9: 11.3.7.1         General
+independent sources for each. However, the PDF representation imposes some limitations on the
+ability to specify all of these sources independently (see 11.6.4, "Specifying shape and opacity").
+•    Object shape. Elementary objects such as strokes, fills, and text have an intrinsic shape, whose
+
+#### 2.10: 11.3.7.2         Source shape and opacity
+mask (see 8.9.6.3, "Explicit masking") has a shape that shall be 1.0 in the unmasked portions and
+0.0 in the masked portions. The shape of a group object shall be the union (as defined in 11.3.7.3,
+"Result shape and opacity") of the shapes of the objects it contains.
+NOTE 1      Mathematically, elementary objects have "hard" edges, with a shape value of either 0.0 or 1.0 at
+every point. However, when such objects are rasterized to device pixels, the shape values along
+the boundaries can be anti-aliased, taking on fractional values representing fractional coverage
+of those pixels. When such anti-aliasing is performed, it is important to treat the fractional
+coverage as shape rather than opacity.
+•    Mask shape. Shape values for compositing an object may be taken from an additional source, or
+soft mask, independent of the object itself, as described in 11.5, "Soft masks".
+NOTE 2     The use of a soft mask to modify the shape of an object or group, called soft clipping, can produce
+effects such as a gradual transition between an object and its backdrop, as in a vignette.
+•    Constant shape. The source shape may be modified at every point by a scalar shape constant.
+NOTE 3     This is merely a convenience, since the same effect could be achieved with a shape mask whose
+value is the same everywhere.
+•    Object opacity. Elementary objects have an opacity of 1.0 everywhere. The opacity of a group
+object shall be the result of the opacity computations for all of the objects it contains.
+•    Mask opacity. Opacity values, like shape values, may be provided by a soft mask independent of
+the object being composited.
+•    Constant opacity. The source opacity may be modified at every point by a scalar opacity constant.
+NOTE 4     It is useful to think of this value as the "current opacity", analogous to the current colour used
+when painting elementary objects.
+All of the shape and opacity inputs shall have values in the range 0.0 to 1.0 (inclusive), with a default
+value of 1.0.
+The three shape inputs shall be multiplied together, producing an intermediate value called the source
+shape.
+𝑓𝑠 = 𝑓𝑗 × 𝑓𝑚 × 𝑓𝑘
+The three opacity inputs shall be multiplied together, producing an intermediate value called the
+source opacity.
+𝑞𝑠 = 𝑞𝑗 × 𝑞𝑚 × 𝑞𝑘
+Where the variables have the meanings shown in "Table 136 — Variables used in the source shape and
+opacity formulas".
+Table 136 — Variables used in the source shape and opacity formulas
+Variable                 Meaning
+𝒇𝒔            Source shape
+𝒇𝒋            Object shape
+𝒇𝒎            Mask shape
+𝒇𝒌            Constant shape
+𝒒𝒔            Source opacity
+𝒒𝒋            Object opacity
+
+Variable                       Meaning
+𝒒𝒎               Mask opacity
+𝒒𝒌               Constant opacity
+NOTE 5      The effect of each of these inputs is that the painting operation becomes more transparent as the
+input values decreases.
+When an object is painted with a tiling pattern, the object shape and object opacity for points in the
+object’s interior are determined by those of corresponding points in the pattern, rather than being 1.0
+everywhere (see 11.6.7, "Patterns and transparency").
+11.3.7.3          Result shape and opacity
+In addition to a result colour, the painting operation shall also compute an associated result shape and
+result opacity. These computations shall be based on the union function
+Union(𝑏, 𝑠) = 1 − ((1 − 𝑏) × (1 − 𝑠))
+= 𝑏 + 𝑠 − (𝑏 × 𝑠)
+where b and s shall be the backdrop and source values to be composited.
+NOTE 1      This is a generalization of the conventional concept of union for opaque shapes, and it can be
+
+#### 2.11: 11.3.7.3          Result shape and opacity
+complemented. The result tends toward 1.0: if either input is 1.0, the result is 1.0.
+The result shape and opacity shall be given by
+𝑓𝑟 = Union(𝑓𝑏 , 𝑓𝑠 )
+Union(𝑓𝑏 × 𝑞𝑏 , 𝑓𝑠 × 𝑞𝑠 )
+𝑞𝑟 =
+𝑓𝑟
+where the variables have the meanings shown in "Table 137 — Variables used in the result shape and
+opacity formulas".
+Table 137 — Variables used in the result shape and opacity formulas
+Variable              Meaning
+𝑓𝒓            Result shape
+𝑓𝑏            Backdrop shape
+𝑓𝑠            Source shape
+𝑞𝑟            Result opacity
+𝑞𝑏            Backdrop opacity
+𝑞𝑠            Source opacity
+These formulas shall be interpreted as follows:
+•    The result shape shall be the union of the backdrop and source shapes.
+•    The result opacity shall be the union of the backdrop and source opacities, weighted by their
+respective shapes. The result shall then be divided by (normalised by) the result shape.
+NOTE 2       Since alpha is just the product of shape and opacity, it can easily be shown that
+𝛼𝑟 = Union(𝛼𝑏 , 𝛼𝑠 )
+This formula can be used whenever the independent shape and opacity are not needed.
+11.3.8            Summary of basic compositing computations
+This subclause is a summary of all the computations presented in subclause 11.3.1 through subclause
+11.3.7. They are given in an order such that no variable is used before it is computed; also, some of the
+formulas have been rearranged to simplify them. See "Table 133 — Variables used in the basic
+compositing formula", "Table 136 — Variables used in the source shape and opacity formulas", and
+"Table 137 — Variables used in the result shape and opacity formulas" for the meanings of the
+
+#### 2.12: 11.3.8            Summary of basic compositing computations
+Union(𝑏, 𝑠) = 1 − ((1 − 𝑏) × (1 − 𝑠))
+= 𝑏 + 𝑠 − (𝑏 × 𝑠)
+𝑓𝑠 = 𝑓𝑗 × 𝑓𝑚 × 𝑓𝑘
+𝑞𝑠 = 𝑞𝑗 × 𝑞𝑚 × 𝑞𝑘
+𝑓𝑟 = Union(𝑓𝑏 , 𝑓𝑠 )
+𝛼𝑏 = 𝑓𝑏 × 𝑞𝑏
+
+#### 2.13: 11.3.7. They are given in an order such that no variable is used before it is computed; also, some of the
+𝛼𝑟 = Union(𝛼𝑏 , 𝛼𝑠 )
+𝛼𝑟
+𝑞𝑟 =
+𝑓𝑟
+𝛼𝑠         𝛼𝑠
+𝐶𝑟 = (1 −      ) × 𝐶𝑏 + × ((1 − 𝛼𝑏 ) × 𝐶𝑠 + 𝛼𝑏 × 𝐵(𝐶𝑏 , 𝐶𝑠 ))
+𝛼𝑟         𝛼𝑟
+11.4 Transparency groups
+11.4.1            General
+A transparency group is a sequence of consecutive objects in a transparency stack that shall be
+collected together and composited to produce a single colour, shape, and opacity at each point. The
+result shall then be treated as if it were a single object for subsequent compositing operations. Groups
+may be nested within other groups to form a tree-structured group hierarchy.
+NOTE         This facilitates creating independent pieces of artwork, each composed of multiple objects, and
+then combining them, possibly with additional transparency effects applied during the
+
+#### 2.14: 11.4.1            General
+stack. The objects in the stack shall be composited against an initial backdrop (discussed later),
+producing a composite colour, shape, and opacity for the group as a whole. The result is an object
+whose shape is the union of the shapes of its constituent objects and whose colour and opacity are the
+result of the compositing operations. This object shall then be composited with the group’s backdrop in
+the usual way.
+In addition to its computed colour, shape, and opacity, the group as a whole may have several further
+attributes:
+•    All of the input variables that affect the compositing computation for individual objects may also
+be applied when compositing the group with its backdrop. These variables include mask and
+constant shape, mask and constant opacity, and blend mode.
+•    The group may be isolated or non-isolated, which shall determine the initial backdrop against
+which its stack is composited. An isolated group may specify its own blending colour space,
+independent of that of the group’s backdrop.
+•    The group may be knockout or non-knockout, which shall determine whether the objects within
+the group stack are composited with one another or only with the group’s backdrop.
+•    Instead of being composited onto the current page, a group’s results may be used as a source of
+shape or opacity values for creating a soft mask (see 11.5, "Soft masks").
+11.4.2            Notation for group compositing computations
+This subclause introduces some notation for dealing with group compositing. Subsequent subclauses
+describe the group compositing formulas for a non-isolated, non-knockout group and the special
+properties of isolated and knockout groups.
+Since multiple objects are being dealt with at a time, it is useful to have some notation for
+distinguishing among them. Accordingly, the variables introduced earlier are altered to include a
+second-level subscript denoting an object’s position in the transparency stack.
+
+#### 2.15: 11.4.2            Notation for group compositing computations
+backdrop; subscripts 1 to n denote the bottommost to topmost objects in an n-element stack. In
+addition, the subscripts b and r are dropped from the variables Cb , fb , qb , αb , Cr , fr , qr , and α𝑟 ; other
+variables retain their mnemonic subscripts.
+These conventions permit the compositing formulas to be restated as recurrence relations among the
+elements of a stack. For instance, the result of the colour compositing computation for object i is
+denoted by Ci (formerly Cr ). This computation takes as one of its inputs the immediate backdrop
+colour, which is the result of the colour compositing computation for object i - 1; this is denoted by Ci-1
+(formerly Cb).
+The revised formulas for a simple n-element stack (not including any groups) shall be, for i = 1, …, n:
+𝑓𝑠𝑖 = 𝑓𝑗𝑖 × 𝑓𝑚𝑖 × 𝑓𝑘𝑖
+𝑞𝑠𝑖 = 𝑞𝑗𝑖 × 𝑞𝑚𝑖 × 𝑞𝑘𝑖
+𝛼𝑠𝑖 = 𝑓𝑠𝑖 × 𝑞𝑠𝑖
+𝛼𝑖 = Union(𝛼𝑖−1 , 𝛼𝑠𝑖 )
+𝑓𝑖 = Union(𝑓𝑖−1 , 𝑓𝑠𝑖 )
+𝛼𝑖
+𝑞𝑖 =
+𝑓𝑖
+𝛼𝑠𝑖           𝛼𝑠
+𝐶𝑖 = (1 −       ) × 𝐶𝑖−1 + 𝑖 × ((1 − 𝛼𝑖−1 ) × 𝐶𝑠𝑖 + 𝛼𝑖−1 × 𝐵𝑖 (𝐶𝑖−1 , 𝐶𝑠𝑖 ))
+𝛼𝑖            𝛼𝑖
+where the variables have the meanings shown in "Table 138 — Revised variables for the basic
+compositing formulas".
+NOTE      Compare these formulas with those shown in 11.3.8, "Summary of basic compositing
+computations".
+Table 138 — Revised variables for the basic compositing formulas
+Variable                  Meaning
+𝑓𝑠𝑖                       Source shape for object i
+𝑓𝑗𝑖                       Object shape for object i
+𝑓𝑚𝑖                       Mask shape for object i
+𝑓𝑘𝑖                       Constant shape for object i
+𝑓𝑖                        Result shape after compositing object i
+𝑞𝑠𝑖                       Source opacity for object i
+𝑞𝑗𝑖                       Object opacity for object i
+𝑞𝑚𝑖                       Mask opacity for object i
+𝑞𝑘𝑖                       Constant opacity for object i
+𝑞𝑖                        Result opacity after compositing object i
+𝛼𝑠𝑖                       Source alpha for object i
+𝛼𝑖                        Result alpha after compositing object i
+𝑐𝑠𝑖                       Source colour for object i
+𝐶𝑖                        Result colour after compositing object i
+Bi (Ci−1 , Csi )          Blend function for object i
+
+11.4.3            Group structure and nomenclature
+As stated earlier, the elements of a group shall be treated as a separate transparency stack, referred to
+as the group stack. These objects shall be composited against a selected initial backdrop and the
+resulting colour, shape, and opacity shall then be treated as if they belonged to a single object. The
+resulting object is in turn composited with the group’s backdrop in the usual way.
+NOTE        This computation entails interpreting the stack as a tree. For an n-element group that begins at
+position i in the stack, it treats the next n objects as an n-element substack, whose elements are
+given an independent numbering of 1 to n. These objects are then removed from the object
+
+#### 2.16: 11.4.3            Group structure and nomenclature
+followed by the remaining objects to be painted on top of the group, renumbered starting at i + 1.
+This operation applies recursively to any nested subgroups.
+The term element (denoted Ei ) refers to a member of some group; it can be either an individual object
+or a contained subgroup.
+From the perspective of a particular element in a nested group, there are three different backdrops of
+interest:
+•    The group backdrop is the result of compositing all elements up to but not including the first
+element in the group. (This definition is altered if the parent group is a knockout group; see
+11.4.6, “Knockout groups”).
+•    The initial backdrop is a backdrop that is selected for compositing the group’s first element. This
+is either the same as the group backdrop (for a non-isolated group) or a fully transparent
+backdrop (for an isolated group).
+•    The immediate backdrop is the result of compositing all elements in the group up to but not
+including the current element.
+When all elements in a group have been composited, the result shall be treated as if the group were a
+single object, which shall then be composited with the group backdrop. This operation shall occur
+whether the initial backdrop chosen for compositing the elements of the group was the group
+backdrop or a transparent backdrop. A PDF processor shall ensure that the backdrop’s contribution to
+the overall result is applied only once.
+11.4.4            Group compositing computations
+The colour and opacity of a group shall be defined by the group compositing function:
+⟨𝐶, 𝑓, 𝛼⟩ = Composite(𝐶0 , 𝛼0 , 𝐺)
+where the variables have the meanings shown in "Table 139 — Arguments and results of the group
+compositing function".
+Table 139 — Arguments and results of the group compositing function
+Variable        Meaning
+𝐺               The transparency group: a compound object consisting of all elements E1,…,
+En of the group — the n constituent objects’ colours, shapes, opacities, and
+blend modes
+Variable       Meaning
+𝐶0             Colour of the group’s backdrop
+𝐶              Computed colour of the group, which shall be used as the source colour
+when the group is treated as an object
+
+#### 2.17: 11.4.4            Group compositing computations
+the group is treated as an object
+𝛼0             Alpha of the group’s backdrop
+𝛼              Computed alpha of the group, which shall be used as the object alpha when
+the group is treated as an object
+NOTE 1      The opacity is not given explicitly as an argument or result of this function. Almost all of the
+computations use the product of shape and opacity (alpha) rather than opacity alone; therefore,
+it is usually convenient to work directly with shape and alpha rather than shape and opacity.
+When needed, the opacity can be computed by dividing the alpha by the associated shape.
+The result of applying the group compositing function shall then be treated as if it were a single object,
+which in turn is composited with the group’s backdrop according to the formulas defined in this
+subclause. In those formulas, the colour, shape, and alpha (C, 𝑓, and α) calculated by the group
+compositing function shall be used, respectively, as the source colour 𝐶𝑠 , the object shape 𝑓j , and the
+object alpha αj .
+The group compositing formulas for a non-isolated, non-knockout group are defined as follows:
+•    Initialization:
+𝑓𝑔0 = α𝑔0 = 0.0
+•    For each group element 𝐸𝑖 ∈ 𝐺 (𝑖 = 1, … , 𝑛):
+Composite(𝐶𝑖−1 , 𝛼𝑖−1 , 𝐸𝑖 )                        if 𝐸𝑖 is a group
+⟨𝐶𝑠𝑖 , 𝑓𝑗𝑖 , 𝛼𝑗𝑖 ⟩ = {
+intrinsic color, shape, and (shape × opacity) of 𝐸𝑖 otherwise
+𝑓𝑠𝑖 = 𝑓𝑗𝑖 × 𝑓𝑚𝑖 × 𝑓𝑘𝑖
+𝛼𝑠𝑖 = 𝛼𝑗𝑖 × (𝑓𝑚𝑖 × 𝑞𝑚𝑖 ) × (𝑓𝑘𝑖 × 𝑞𝑘𝑖 )
+𝑓𝑔𝑖 = Union(𝑓𝑔𝑖−1 , 𝑓𝑠𝑖 )
+𝛼𝑔𝑖 = Union(𝛼𝑔𝑖−1 , 𝛼𝑠𝑖 )
+𝛼𝑖 = Union(α0 , 𝛼𝑔𝑖 )
+αsi           αs
+Ci = (1 −       ) × Ci−1 + i × ((1 − αi−1 ) × Csi + αi−1 × Bi (Ci−1 , Csi ))
+αi            αi
+•    Result:
+𝛼0
+𝐶 = 𝐶𝑛 + (𝐶𝑛 − 𝐶0 ) × (         − 𝛼0 )
+𝛼𝑔𝑛
+𝑓 = 𝑓𝑔𝑛
+𝛼 = 𝛼𝑔𝑛
+
+where the variables have the meanings shown in "Table 140 — Variables used in the group
+compositing formulas" (in addition to those in "Table 139 — Arguments and results of the group
+compositing function").
+For an element Ei that is an elementary object, the colour, shape, and alpha values Csi, 𝑓𝑗 , and αji are
+intrinsic attributes of the object. For an element that is a group, the group compositing function shall
+be applied recursively to the subgroup and the resulting C, 𝑓, and α values shall be used for its 𝐶𝑆 i, 𝑓𝑗 i,
+and 𝛼𝑗 i in the calculations for the parent group.
+Table 140 — Variables used in the group compositing formulas
+Variable           Meaning
+𝐸𝑖                 Element i of the group: a compound variable representing the element’s
+colour, shape, opacity, and blend mode
+𝑓𝑠𝑖                Source shape for element Ei
+𝑓𝑗𝑖                Object shape for element Ei
+𝑓𝑚𝑖                Mask shape for element Ei
+𝑓𝑘𝑖                Constant shape for element Ei
+𝑓𝑔𝑖                Group shape: the accumulated source shapes of group elements E1 to Ei,
+excluding the initial backdrop
+𝑞𝑚𝑖                Mask opacity for element Ei
+𝑞𝑘𝑖                Constant opacity for element Ei
+𝛼𝑠𝑖                Source alpha for element Ei
+𝛼𝑗𝑖                Object alpha for element Ei : the product of its object shape and object
+opacity
+𝛼𝑔𝑖                Group alpha: the accumulated source alphas of group elements E1 to Ei,
+excluding the initial backdrop
+𝛼𝑖                 Accumulated alpha after compositing element Ei, including the initial
+backdrop
+𝑐𝑠𝑖                Source colour for element Ei
+𝑐𝑖                 Accumulated colour after compositing element Ei, including the initial
+backdrop
+Bi (ci−1 , csi )   Blend function for element Ei
+NOTE 2      The elements of a group are composited onto a backdrop that includes the group’s initial
+backdrop. This is done to achieve the correct effects of the blend modes, most of which are
+dependent on both the backdrop and source colours being blended. This feature is what
+distinguishes non-isolated groups from isolated groups, discussed in the next subclause.
+NOTE 3      Special attention is directed to the formulas at the end that compute the final results C, 𝑓, and α,
+of the group compositing function. Essentially, these formulas remove the contribution of the
+group backdrop from the computed results. This ensures that when the group is subsequently
+composited with that backdrop (possibly with additional shape or opacity inputs or a different
+blend mode), the backdrop’s contribution is included only once.
+For colour, the backdrop removal is accomplished by an explicit calculation, whose effect is essentially
+the reverse of compositing with the Normal blend mode. The formula is a simplification of the
+following formulas, which present this operation more intuitively:
+(1 − αgn ) × α0
+ϕb =
+Union(α0 , αgn )
+𝐶𝑛 − 𝜙𝑏 × 𝐶0
+𝐶=
+1 − 𝜙𝑏
+where 𝜙𝑏 is the backdrop fraction, the relative contribution of the backdrop colour to the overall
+colour.
+NOTE 4      For shape and alpha, backdrop removal can be accomplished by maintaining two sets of
+variables to hold the accumulated values. There is never any need to compute the corresponding
+complete shape, fi, that includes the backdrop contribution.
+The group shape and alpha, 𝑓g i and αg i, shall accumulate only the shape and alpha of the group
+elements, excluding the group backdrop. Their final values shall become the group results returned by
+the group compositing function. The complete alpha, 𝛼𝑖 , includes the backdrop contribution as well; its
+value is used in the colour compositing computations.
+NOTE 5      As a result of these corrections, the effect of compositing objects as a group is the same as that of
+compositing them separately (without grouping) if the following conditions hold:
+The group is non-isolated and has the same knockout attribute as its parent group (see 11.4.5,
+"Isolated groups" and 11.4.6, “Knockout groups”).
+When compositing the group’s results with the group backdrop, the Normal blend mode is used, and
+the shape and opacity inputs are always 1.0.
+11.4.5           Isolated groups
+An isolated group is one whose elements shall be composited onto a fully transparent initial backdrop
+rather than onto the group’s backdrop. The resulting source colour, object shape, and object alpha for
+the group shall be therefore independent of the group backdrop. The only interaction with the group
+backdrop shall occur when the group’s computed colour, shape, and alpha are composited with the
+group backdrop.
+In particular, the special effects produced by the blend modes of objects within the group take into
+account only the intrinsic colours and opacities of those objects; they shall not be influenced by the
+group’s backdrop.
+EXAMPLE         Applying the Multiply blend mode to an object in the group produces a darkening effect on other objects
+
+lower in the group’s stack but not on the group’s backdrop.
+Figure 74 — Isolated and knockout groups
+
+#### 2.18: 11.4.5           Isolated groups
+groups") illustrates this effect for a group consisting of four overlapping circles in a light gray colour (C
+= M = Y = 0.0; K = 0.15). The circles are painted within the group with opacity 1.0 in the Multiply blend
+mode; the group itself is painted against its backdrop in Normal blend mode. In the top row, the group
+is isolated and thus does not interact with the rainbow backdrop. In the bottom row, the group is non-
+isolated and composites with the backdrop. The figure also illustrates the difference between knockout
+and non-knockout groups (see 11.4.6, "Knockout groups").
+NOTE 1      Conceptually, the effect of an isolated group could be represented by a simple object that directly
+specifies a colour, shape, and opacity at each point. This flattening of an isolated group is
+sometimes useful for importing and exporting fully composited artwork in applications.
+For an isolated group, the group compositing formulas shall be altered by adding one statement to the
+initialization:
+𝑎0 = 0.0 if the group is isolated
+That is, the initial backdrop on which the elements of the group are composited shall be transparent
+rather than inherited from the group’s backdrop.
+NOTE 2      This substitution also makes 𝐶0 undefined, but the normal compositing formulas take care of
+that. Also, the result computation for C automatically simplifies to 𝐶 = 𝐶𝑛 , since there is no
+backdrop contribution to be factored out.
+When compositing the group’s results with the group backdrop, any required colour conversion from
+the blending space to the colour space in effect for the back drop shall use the rendering intent and
+black point compensation values specified in the current graphics state (see 8.4, "Graphics state") at
+the time the group was invoked.
+11.4.6            Knockout groups
+In a knockout group, each individual element shall be composited with the group’s initial backdrop
+rather than with the stack of preceding elements in the group. When objects have binary shapes (1.0
+for inside, 0.0 for outside), each object shall overwrite (knocks out) the effects of any earlier elements
+it overlaps within the same group. At any given point, only the topmost object enclosing the point shall
+contribute to the result colour and opacity of the group as a whole.
+EXAMPLE           "Figure 74 — Isolated and knockout groups" illustrates the difference between knockout and non-knockout
+groups. In the left column, the four overlapping circles are defined as a knockout group and therefore do not
+composite with each other within the group. In the right column, the circles form a non-knockout group and
+
+#### 2.19: 11.4.6            Knockout groups
+non-isolated group, respectively.
+NOTE 1        This model is similar to the opaque imaging model, except that the "topmost object wins" rule
+applies to both the colour and the opacity. Knockout groups are useful in composing a piece of
+artwork from a collection of overlapping objects, where the topmost object in any overlap
+completely obscures those beneath. At the same time, the topmost object interacts with the
+group’s initial backdrop in the usual way, with its opacity and blend mode applied as
+appropriate.
+The concept of knockout is generalized to accommodate fractional shape values. In that case, the
+immediate backdrop shall be only partially knocked out and shall be replaced by only a fraction of the
+result of compositing the object with the initial backdrop.
+The restated group compositing formulas deal with knockout groups by introducing a new variable, b,
+which is a subscript that specifies which previous result to use as the backdrop in the compositing
+computations: 0 in a knockout group or i - 1 in a non-knockout group. When b = i - 1, the formulas
+simplify to the ones given in 11.4.4, "Group compositing computations".
+In the general case, the computation shall proceed in two stages:
+a) Composite the source object with the group’s initial backdrop, disregarding the object’s shape and using
+a source shape value of 1.0 everywhere. This produces unnormalised temporary alpha and colour
+results, αt and Ct.
+NOTE 2        For colour, this computation is essentially the same as the unsimplified colour compositing
+formula given in 11.3.6, "Interpretation of alpha" but using a source shape of 1.0.
+𝛼𝑡 = Union(𝛼𝑔𝑏 , 𝑞𝑠𝑖 )
+𝐶𝑡 = (1 − 𝑞𝑠𝑖 ) × 𝛼𝑏 × 𝐶𝑏 + 𝑞𝑠𝑖 × ((1 − 𝛼𝑏 ) × 𝐶𝑠𝑖 + 𝛼𝑏 × B𝑖 (𝐶𝑏 , 𝐶𝑠𝑖 ))
+b) Compute a weighted average of this result with the object’s immediate backdrop, using the source shape
+as the weighting factor. Then normalise the result colour by the result alpha:
+𝛼𝑔𝑖 = (1 − 𝑓𝑠𝑖 ) × 𝛼𝑔𝑖−1 + 𝑓𝑠𝑖 × 𝛼𝑡
+𝛼𝑖 = Union(𝛼0 , 𝛼𝑔𝑖 )
+(1 − 𝑓si ) × αi−1 × Ci−1 + 𝑓si × Ct
+Ci =
+αi
+This averaging computation shall be performed for both colour and alpha.
+NOTE 3        The preceding formulas show this averaging directly. The formulas in 11.4.8, "Summary of group
+compositing computations" are slightly altered to use source shape and alpha rather than source
+shape and opacity, avoiding the need to compute a source opacity value explicitly.
+NOTE 4        Ct in Group Compositing Computations is slightly different from the preceding Ct: it is
+premultiplied by 𝑓si.
+
+NOTE 5      The extreme values of the source shape produce the straightforward knockout effect. That is, a
+shape value of 1.0 (inside) yields the colour and opacity that result from compositing the object
+with the initial backdrop. A shape value of 0.0 (outside) leaves the previous group results
+unchanged.
+The existence of the knockout feature is the main reason for maintaining a separate shape value rather
+than only a single alpha that combines shape and opacity. The separate shape value shall be computed
+in any group that is subsequently used as an element of a knockout group.
+A knockout group may be isolated or non-isolated; that is, isolated and knockout are independent
+attributes. A non-isolated knockout group composites its topmost enclosing element with the group’s
+backdrop. An isolated knockout group composites the element with a transparent backdrop.
+NOTE 6      When a non-isolated group is nested within a knockout group, the initial backdrop of the inner
+group is the same as that of the outer group; it is not the immediate backdrop of the inner group.
+This behaviour, although perhaps unexpected, is a consequence of the group compositing
+formulas when b = 0.
+11.4.7            Page group
+All of the elements painted directly onto a page — both top-level groups and top-level objects that are
+not part of any group — shall be treated as if they were contained in a transparency group P, which in
+turn is composited with a context-dependent backdrop. This group is called the page group.
+The page group shall be treated in one of two distinctly different ways:
+•    Ordinarily, the page shall be imposed directly on an output medium, such as paper or a display
+screen. The page group shall be treated as an isolated group, whose results shall then be
+composited with a backdrop colour appropriate for the medium. The backdrop is nominally white
+(in a colour space chosen by the PDF processor), although varying according to the actual
+properties of the medium. However, some interactive PDF processors may choose to provide a
+different backdrop, such as a checker board or grid to aid in visualizing the effects of transparency
+in the artwork.
+
+#### 2.20: 11.4.7            Page group
+some other document, for example, when used as a reference XObject (see 8.10.4, "Reference
+XObjects"). In this situation the PDF “page” shall not be composited with the media colour; instead
+it shall be treated as a transparency group using the page Group attributes dictionary and is
+composited with its backdrop in the usual way according to the page Group attributes dictionary
+settings.
+The remainder of this subclause pertains only to the first use of the page group, where it is to be
+imposed directly on the medium.
+The colour C of the page at a given point shall be defined by a simplification of the general group
+compositing formula:
+⟨𝐶𝑔 , 𝑓𝑔 , 𝛼𝑔 ⟩ = Composite(𝑈, 0, 𝑃)
+𝐶 = (1 − 𝛼𝑔 ) × 𝑊 + 𝛼𝑔 × 𝐶𝑔
+where the variables have the meanings shown in "Table 141 — Variables used in the page group
+compositing formulas". The first formula computes the colour and alpha for the group given a
+transparent backdrop — in effect, treating P as an isolated group. The second formula composites the
+results with the context-dependent backdrop (using the equivalent of the Normal blend mode).
+Table 141 — Variables used in the page group compositing formulas
+Variable     Meaning
+𝑃            The page group, consisting of all elements E1,…, En in the page’s top-level stack
+𝐶𝑔           Computed colour of the page group
+𝑓𝑔           Computed shape of the page group
+𝛼𝑔           Computed alpha of the page group
+𝐶            Computed colour of the page
+𝑊            Initial colour of the page (nominally white but may vary depending on the
+properties of the medium or the needs of the application)
+𝑈            An undefined colour (which is not used, since the α0 argument of Composite is 0)
+The page group’s initial blending colour space is inherited from the native colour space of the actual,
+assumed or simulated output device.
+NOTE 1        A PDF processor can choose to simulate an output device other than the actual one being used,
+for example when doing soft proofing.
+NOTE 2        A PDF processor rendering for a device with a native colour space that cannot be represented as
+a PDF colour space can choose to require that the output be treated as a simulation of a print
+characterization that can be represented as a PDF colour space.
+That initial colour space shall serve as the default blending colour space for each page, unless the page
+explicitly specifies an alternative default by means of its page dictionary containing a Group key that
+contains a CS key whose value represents a different colour space from the initial blending colour
+space.
+If a PDF processor chooses to simulate an output device other than the actual one being used, for
+example when doing “Soft Proofing”, then the native colour space of that simulated output device
+should be used as the default blending colour space for each page of the document.
+A PDF writer should provide a CIE-based colour space, either by the page group’s CS entry or some
+other means, to ensure more predictable results of the compositing computations within the page
+group.
+NOTE 3        PDF/X-4 (ISO 15930-7) establishes the destination profile in the PDF/X OutputIntent as the
+implied default page blending colour space, which allows the page group’s CS entry to be a
+device colour but still provide a CIE-based colour space.
+All page-level compositing shall be done in the default blending colour space of the page, and the entire
+result shall then, if the colour spaces are not equivalent, be converted to the native colour space of the
+output device before being composited with the context-dependent backdrop.
+If the page group needs to be converted to the colour space of the output device, the colour conversion
+shall use a rendering intent of RelativeColorimetric unless the processor has an implementation-
+dependent way of specifying it otherwise. Additionally, the use of black point compensation in this
+colour conversion process is implementation-dependent.
+
+11.4.8            Summary of group compositing computations
+This subclause is a restatement of the group compositing formulas that also takes isolated groups and
+knockout groups into account. See "Table 139 — Arguments and results of the group compositing
+function" and "Table 140 — Variables used in the group compositing formulas" in 11.4.4, "Group
+compositing computations" for the meanings of the variables.
+⟨𝐶, 𝑓, 𝛼⟩ = Composite(𝐶0 , 𝛼0 , 𝐺)
+Initialization:
+𝑓𝑔0 = 𝑎𝑔0 = 0
+𝑎0 = 0        if the group is isolated
+For each group element 𝐸𝑖 ∈ 𝐺 (𝑖 = 1, … , 𝑛):
+0             if the group is a knockout
+𝑏={
+𝑖−1           otherwise
+Composite(Cb ,αb ,Ei )                                        if Ei is a group
+⟨Csi ,𝑓𝑗𝑖 ,αji ⟩= {
+intrinsic color, shape, and (shape×opacity) of Ei             otherwise
+𝑓𝑠𝑖 = 𝑓𝑗𝑖 × 𝑓𝑚𝑖 × 𝑓𝑘𝑖
+𝛼𝑠𝑖 = 𝛼𝑗𝑖 × (𝑓𝑚𝑖 × 𝑞𝑚𝑖 ) × (𝑓𝑘𝑖 × 𝑞𝑘𝑖 )
+𝑓𝑔𝑖 = Union(𝑓𝑔𝑖−1 , 𝑓𝑠𝑖 )
+𝛼𝑔𝑖 = (1 − 𝑓𝑠𝑖 ) × 𝛼𝑔𝑖−1 + (𝑓𝑠𝑖 − 𝛼𝑠𝑖 ) × 𝛼𝑔𝑏 + 𝛼𝑠𝑖
+𝛼𝑖 = Union(𝛼0 , 𝛼𝑔𝑖 )
+
+#### 2.21: 11.4.8            Summary of group compositing computations
+(1 − 𝑓𝑠𝑖 ) × 𝛼𝑖−1 × 𝐶𝑖−1 + 𝐶𝑡
+𝐶𝑖 =
+𝛼𝑖
+Result:
+𝛼0
+𝐶 = 𝐶𝑛 + (𝐶𝑛 − 𝐶0 ) × (            − 𝛼0 )
+𝛼𝑔𝑛
+𝑓 = 𝑓𝑔𝑛
+𝛼 = 𝛼𝑔𝑛
+NOTE         Once again, keep in mind that these formulas are in their most general form. They can be
+significantly simplified when some sources of shape and opacity are not present or when shape
+and opacity need not be maintained separately. Furthermore, in each specific type of group
+(isolated or not, knockout or not), some terms of these formulas cancel or drop out. An efficient
+implementation can use the simplified derived formulas.
+11.5 Soft masks
+11.5.1         General
+As stated in earlier subclauses, the shape and opacity values used in compositing an object may include
+components called the mask shape (fm) and mask opacity (qm), which may be supplied in a PDF file
+from a source independent of the object. Such an independent source, called a soft mask, defines values
+that may vary across different points on the page.
+NOTE 1    The word soft emphasizes that the mask value at a given point is not limited to just 0.0 or 1.0 but
+can take on intermediate fractional values as well. Such a mask is typically the only means of
+providing position-dependent opacity values, since elementary objects do not have intrinsic
+opacity of their own.
+NOTE 2    A mask used as a source of shape values is also called a soft clip, by analogy with the "hard"
+clipping path of the opaque imaging model (see 8.5.4, "Clipping path operators"). The soft clip is
+a generalization of the hard clip: a hard clip can be represented as a soft clip having shape values
+of 1.0 inside and 0.0 outside the clipping path. Everywhere inside a hard clipping path, the
+
+#### 2.22: 11.5.1         General
+unchanged. With a soft clip, by contrast, a gradual transition can be created between an object
+and its backdrop, as in a vignette. A mask can be defined by creating a transparency group and
+painting objects into it, thereby defining colour, shape, and opacity in the usual way. The
+resulting group can then be used to derive the mask in either of two ways, as described in the
+following subclauses.
+11.5.2         Deriving a soft mask from group alpha
+In the first method of defining a soft mask, the colour, shape, and opacity of a transparency group G
+shall be first computed by the usual formula
+⟨𝐶, 𝑓, 𝛼⟩ = Composite(𝐶0 , 𝛼0 , 𝐺)
+where C0 and α0 represent an arbitrary backdrop whose value does not contribute to the eventual
+result. The C, 𝑓, and α results shall be the group’s colour, shape, and alpha, respectively, with the
+backdrop factored out.
+The mask value at each point shall then be derived from the alpha of the group. The alpha value shall
+be passed through a separately specified transfer function, allowing the masking effect to be
+customised.
+NOTE 1    Since the group’s colour is not used in this case, there is no need to compute it.
+NOTE 2    The shape and alpha of an empty group is 0.0.
+11.5.3         Deriving a soft mask from group luminosity
+The second method of deriving a soft mask from a transparency group shall begin by compositing the
+group with a fully opaque backdrop of a specified colour. The mask value at any given point shall then
+be defined to be the luminosity of the resulting colour.
+
+#### 2.23: 11.5.2         Deriving a soft mask from group alpha
+drawn with ordinary painting operators.
+The colour C used to create the mask from a group G shall be defined by
+
+⟨𝐶𝑔 , 𝑓𝑔 , 𝛼𝑔 ⟩ = Composite(𝐶0 , 1, 𝐺)
+𝐶 = (1 − 𝛼𝑔 ) × 𝐶0 + 𝛼𝑔 × 𝐶𝑔
+where C0 is the selected backdrop colour.
+G may be any kind of group — isolated or not, knockout or not — producing various effects on the C
+result in each case. The colour C shall then be converted to luminosity in one of the following ways,
+depending on the group’s colour space:
+•    For CIE-based spaces, convert to the CIE 1931 XYZ space and use the Y component as the
+luminosity. This produces a colorimetrically correct luminosity.
+EXAMPLE 1         In the case of a PDF CalRGB space, the formula is
+𝑌 = 𝑌𝐴 × 𝐴𝐺𝑅 + 𝑌𝐵 × 𝐵𝐺𝐺 + 𝑌𝐶 × 𝐶 𝐺𝐵
+
+#### 2.24: 11.5.3         Deriving a soft mask from group luminosity
+in a CalRGB colour space dictionary" in 8.6.5, "CIE-Based colour spaces"). An analogous computation applies
+to other CIE-based colour spaces.
+•    For device colour spaces, convert the colour to DeviceGray by implementation-defined means
+and use the resulting gray value as the luminosity, with no compensation for gamma or other
+colour calibration.
+EXAMPLE 2         This method makes no pretence of colorimetric correctness; it merely provides a numerically simple means
+to produce continuous-tone mask values. The following are formulas for converting from DeviceRGB and
+DeviceCMYK, respectively:
+𝑌 = 0.30 × 𝑅 + 0.59 × 𝐺 + 0.11 × 𝐵
+𝑌 = 1 − min(1, 0.3 × 𝐶 + 0.59 × 𝑀 + 0.11 × 𝑌 + 𝐾)
+Following this conversion, the result shall be passed through a separately specified transfer function,
+allowing the masking effect to be customised.
+NOTE 2      The backdrop colour most likely to be useful is black, which causes any areas outside the group’s
+shape to have zero luminosity values in the resulting mask. If the contents of the group are
+viewed as a positive mask, this produces the results that would be expected with respect to
+points outside the shape.
+11.6 Specifying transparency in PDF
+11.6.1            General
+Subclauses 11.1 through 11.5 inclusive have presented the transparent imaging model at an abstract
+level, with little mention of its representation in PDF. This subclause describes the facilities available
+for specifying transparency in PDF.
+11.6.2            Specifying source and backdrop colours
+Single graphics objects, as defined in 8.2, "Graphics objects", shall be treated as elementary objects for
+transparency compositing purposes (subject to special treatment for text objects, as described in 9.3.8,
+"Text knockout"). That is, all of a given object shall be considered to be one element of a transparency
+stack. Portions of an object shall not be composited with one another, even if they are described in a
+way that would seem to cause overlaps (such as a self-intersecting path, combined fill and stroke of a
+path, or a shading pattern containing an overlap or fold-over). An object’s source colour Cs , used in the
+colour compositing formula, shall be specified in the same way as in the opaque imaging model: by
+means of the current colour in the graphics state or the source samples in an image. The backdrop
+
+#### 2.25: 11.6.1            General
+The blending colour space shall be an attribute of the transparency group within which an object is
+painted; its specification is described in 11.6.6, "Transparency group XObjects".
+
+#### 2.26: 11.6.2            Specifying source and backdrop colours
+state (see 8.4, "Graphics state"), which is specified by the BM entry in a graphics state parameter
+dictionary (8.4.5, "Graphics state parameter dictionaries"). Its value shall be either a name object,
+designating one of the standard blend modes listed in "Table 134 — Standard separable blend modes"
+and "Table 135 — Standard non-separable blend modes" in 11.3.5, "Blend mode" or its value shall be
+an array of such names. However, a value which is an array of names is deprecated in PDF 2.0, and
+should not be used. If encountered, a PDF processor shall use the first blend mode in the array that it
+recognizes (or Normal if it recognizes none of them).
+11.6.4          Specifying shape and opacity
+11.6.4.1        General
+As discussed under 11.3.7.2, "Source shape and opacity", the shape (f) and opacity (q) values used in
+
+#### 2.27: 11.6.3          Specifying blending colour space and blend mode
+•    The intrinsic shape (fj) and opacity (qj) of the object being composited
+•    A separate shape (fm) or opacity (qm) mask independent of the object itself
+•    A scalar shape (fk) or opacity (qk) constant to be added at every point
+The following subclauses describe how each of these shape and opacity sources shall be specified in
+PDF.
+11.6.4.2        Object shape and opacity
+The shape value fj of an object painted with PDF painting operators shall be defined as follows:
+•    For objects defined by a path or a glyph and painted in a uniform colour with a path-painting or
+text-showing operator (8.5.3, "Path-painting operators", and 9.4.3, "Text-showing operators"), the
+shape shall always be 1.0 inside and 0.0 outside the path.
+•    For images (8.9, "Images"), the shape shall be 1.0 inside the image rectangle and 0.0 outside it.
+This may be further modified by an explicit or colour key mask (8.9.6.3, "Explicit masking" and
+
+#### 2.28: 11.6.4.1        General
+masked areas.
+•    For objects painted with a tiling pattern (8.7.3, "Tiling patterns") or a shading pattern (8.7.4,
+"Shading patterns"), the shape shall be further constrained by the objects that define the pattern
+(see 11.6.7, "Patterns and transparency").
+
+•    For objects painted with the sh operator (8.7.4.2, "Shading operator"), the shape shall be 1.0
+inside and 0.0 outside the bounds of the shading’s painting geometry, disregarding the
+
+#### 2.29: 11.6.4.2        Object shape and opacity
+All elementary objects shall have an intrinsic opacity qj of 1.0 everywhere. Any desired opacity less
+than 1.0 shall be applied by means of an opacity mask or constant, as described in “11.6.4.3, “Mask
+shape and opacity” and 11.6.4.4, “Constant shape and opacity”.
+11.6.4.3          Mask shape and opacity
+At most one mask input — called a soft mask, or alpha mask — shall be provided to any PDF
+compositing operation. The mask may serve as a source of either shape (fm) or opacity (qm) values,
+depending on the setting of the alpha source parameter in the graphics state (see 8.4, "Graphics state").
+NOTE 1      This is a boolean flag, set with the AIS ("alpha is shape") entry in a graphics state parameter
+dictionary (8.4.5, "Graphics state parameter dictionaries"): true if the soft mask contains shape
+values, false for opacity.
+The soft mask shall be specified in one of the following ways:
+•    The current soft mask parameter in the graphics state, set with the SMask entry in a graphics state
+parameter dictionary, contains a soft-mask dictionary (see 11.6.5.1, "Soft-mask dictionaries")
+defining the contents of the mask. The name None may be specified in place of a soft-mask
+dictionary, denoting the absence of a soft mask. It shall also mean that any existing mask shall be
+removed from the current graphics state. In this case, the mask shape or opacity shall be
+implicitly 1.0 everywhere.
+
+#### 2.30: 11.6.4.3          Mask shape and opacity
+time (either an elementary object or a transparency group). If a soft mask is applied when
+painting two or more overlapping objects, the effect of the mask multiplies with itself in the area
+of overlap (except in a knockout group), producing a result shape or opacity that is probably not
+what is intended. To apply a soft mask to multiple objects, it is usually best to define the objects
+as a transparency group and apply the mask to the group as a whole. These considerations also
+apply to the current alpha constant (see 11.6.4.4, “Constant shape and opacity”).
+•    An image XObject may contain its own soft-mask image in the form of a subsidiary image XObject
+referenced as the value of the SMask entry of the parent image dictionary (see 8.9.5, "Image
+dictionaries"). This mask, if present, shall override any explicit or colour key mask specified by
+the image dictionary’s Mask entry. Either form of mask in the image dictionary shall override, for
+this image object only, the current soft mask in the graphics state.
+•    An image XObject that has an announced JPXDecode filter may specify an SMaskInData entry,
+indicating that the soft mask is embedded in the data stream as an opacity channel (see 7.4.9,
+"JPXDecode filter"). If SMaskInData is present with a value other than 0, the embedded soft-mask
+shall override any explicit or colour key mask specified by the image dictionary’s Mask entry, and
+it shall override, for this image object only, the current soft mask in the graphics state.
+11.6.4.4          Constant shape and opacity
+The current alpha constant parameter in the graphics state (see 8.4, "Graphics state") shall be two
+scalar values — one for strokes and one for all other painting operations — to be used for the constant
+shape (fk) or constant opacity (qk) component in the colour compositing formulas.
+NOTE        This parameter is analogous to the current colour used when painting elementary objects.
+The nonstroking alpha constant shall also be applied when painting a transparency group’s results
+onto its backdrop.
+The stroking and nonstroking alpha constants shall be set, respectively, by the CA and ca entries in a
+graphics state parameter dictionary (see 8.4.5, "Graphics state parameter dictionaries"). As described
+previously for the soft mask, the AIS (“alpha is shape”) entry in a graphics state parameter dictionary
+shall determine whether the alpha constants are interpreted as shape values (true) or opacity values
+(false).
+11.6.5          Specifying soft masks
+11.6.5.1        Soft-mask dictionaries
+The most common way of defining a soft mask is with a soft-mask dictionary specified as the current
+
+#### 2.31: 11.6.4.4          Constant shape and opacity
+dictionary" shows the contents of this type of dictionary.
+The mask values shall be derived from those of a transparency group, using one of the two methods
+described in 11.5.2, "Deriving a soft mask from group alpha" and 11.5.3, "Deriving a soft mask from
+group luminosity". The group shall be defined by a transparency group XObject (see 11.6.6,
+"Transparency group XObjects") designated by the G entry in the soft-mask dictionary. The S (subtype)
+entry shall specify which of the two derivation methods to use:
+•    If the subtype is Alpha, the transparency group XObject G shall be evaluated to compute a group
+alpha only. The colours of the constituent objects shall be ignored and the colour compositing
+computations may be omitted. The value of the TR key in the SoftMask dictionary, which is a
+transfer function, shall then be applied to the computed group alpha to produce the mask values.
+
+#### 2.32: 11.6.5.1        Soft-mask dictionaries
+applying the transfer function to the input value 0.0.
+•    If the subtype is Luminosity, the transparency group XObject G shall be composited with a fully
+opaque backdrop whose colour is everywhere defined by the soft-mask dictionary’s BC entry. The
+computed result colour shall then be converted to a single-component luminosity value, and the
+value of the TR key in the SoftMask dictionary, which is a transfer function, shall be applied to
+this luminosity to produce the mask values. Outside the transparency group’s bounding box, the
+mask value shall be derived by transforming the BC colour to luminosity and applying the transfer
+function to the result.
+The mask’s coordinate system shall be defined by concatenating the transformation matrix specified by
+the Matrix entry in the transparency group’s form dictionary (see 8.10.2, "Form dictionaries") with the
+current transformation matrix at the moment the soft mask is established in the graphics state with the
+gs operator.
+In a transparency group XObject that defines a soft mask, spot colour components shall never be
+available, even if they are available in the group or page on which the soft mask is used. If the group
+XObject’s content stream specifies a Separation or DeviceN colour space that uses spot colour
+components, the alternate colour space shall be substituted (see 8.6.6.4, "Separation colour spaces"
+and 8.6.6.5, "DeviceN colour spaces").
+NOTE       The special colourant names All and None do not specify spot colour components and are
+therefore not subject to this requirement.
+
+Table 142 — Entries in a soft-mask dictionary
+Key         Type          Value
+Type        name          (Optional) The type of PDF object that this dictionary describes; if present, shall
+be Mask for a soft-mask dictionary.
+S           name          (Required) A subtype specifying the method that shall be used in deriving the
+mask values from the transparency group specified by the G entry:
+Alpha        The group’s computed alpha shall be used, disregarding its colour
+(see 11.5.2, "Deriving a soft mask from group alpha").
+Luminosity The group’s computed colour shall be converted to a single-
+component luminosity value (see 11.5.3, "Deriving a soft mask from
+group luminosity").
+G           stream        (Required) A transparency group XObject (see 11.6.6, "Transparency group
+XObjects") that shall be used as the source of alpha or colour values for deriving
+the mask. If the subtype S is Luminosity, the group attributes dictionary shall
+contain a CS entry defining the colour space in which the compositing
+computation is to be performed.
+BC          array         (Optional) An array of component values specifying the colour that shall be used
+as the backdrop against which to composite the transparency group XObject G.
+This entry shall be consulted only if the subtype S is Luminosity. The array shall
+consist of n numbers, where n is the number of components in the colour space
+specified by the CS entry in the group attributes dictionary (see 11.6.6,
+"Transparency group XObjects"). Default value: the colour space’s initial value,
+representing black.
+TR          function or   (Optional) A function object (see 7.10, "Functions") specifying the transfer
+name          function that shall be used in deriving the mask values. The function shall accept
+one input, the computed group alpha or luminosity (depending on the value of the
+subtype S), and shall return one output, the resulting mask value. The input shall
+be in the range 0.0 to 1.0. The computed output shall be in the range 0.0 to 1.0; if
+it falls outside this range, it shall be forced to the nearest valid value. The name
+Identity may be specified in place of a function object to designate the identity
+function. Default value: Identity.
+11.6.5.2       Soft-mask images
+The second way to define a soft mask is by associating a soft-mask image with an image XObject. This is
+a subsidiary image XObject specified in the SMask entry of the parent XObject’s image dictionary (see
+8.9.5, "Image dictionaries"). Entries in the subsidiary image dictionary for such a soft-mask image shall
+have the same format and meaning as in that of an ordinary image XObject (as described in "Table 87
+— Additional entries specific to an image dictionary" in 8.9.5, "Image dictionaries"), subject to the
+restrictions listed in "Table 143 — Restrictions on the entries in a soft-mask image dictionary". This
+type of image dictionary may contain an additional entry, Matte.
+When an image is accompanied by a soft-mask image, it is sometimes advantageous for the image data
+to be pre-blended with some background colour, called the matte colour. Each image sample
+represents a weighted average of the original source colour and the matte colour, using the
+corresponding mask sample as the weighting factor. (This is a generalization of a technique commonly
+called premultiplied alpha.)
+
+#### 2.33: 11.6.5.2       Soft-mask images
+image dictionary (see "Table 143 — Restrictions on the entries in a soft-mask image dictionary"). The
+pre-blending computation, performed independently for each component, shall be
+𝑐 ′ = 𝑚 + 𝛼 × (𝑐 − 𝑚)
+where
+c′ is the value to be provided in the image source data
+c is the original image component value
+m is the matte colour component value
+α is the corresponding mask sample
+This computation shall use actual colour component values, with the effects of the Filter and Decode
+transformations already performed. The computation shall be the same whether the colour space is
+additive or subtractive.
+Table 143 — Restrictions on the entries in a soft-mask image dictionary
+Key                    Restriction
+Type                   If present, shall be XObject.
+Subtype                Required, shall be Image.
+Width                  If a Matte entry (see "Table 144 — Additional entry in a
+soft-mask image dictionary") is present, shall be the same
+as the Width value of the parent image; otherwise
+independent of it. Both images shall be mapped to the
+unit square in user space (as are all images), regardless of
+whether the samples coincide individually.
+Height                 Same considerations as for Width.
+ColorSpace             Required; shall be DeviceGray.
+BitsPerComponent       Required.
+Intent                 Ignored.
+ImageMask              Shall be false or absent.
+Mask                   Shall be absent.
+SMask                  Shall be absent.
+Decode                 Optional; default value: [0 1].
+Interpolate            Optional.
+Alternates             Ignored.
+Name                   Ignored.
+
+Key                           Restriction
+StructParent                  Ignored.
+ID                            Ignored.
+OPI                           Ignored.
+Table 144 — Additional entry in a soft-mask image dictionary
+Key           Type            Value
+Matte         array           (Optional; PDF 1.4) An array of component values specifying the matte colour
+with which the image data in the parent image shall have been pre-blended.
+The array shall consist of n numbers, where n is the number of components in
+the colour space specified by the ColorSpace entry (or the base entry of the
+colour space, if the colour space is Indexed) in the parent image’s image
+dictionary; the numbers shall be valid colour components in that colour space.
+If this entry is absent, the image data shall not be pre-blended.
+When pre-blended image data are used in transparency blending and compositing computations, the
+results shall be the same as if the original, unblended image data were used and no matte colour were
+specified. In particular, the inputs to the blend function shall be the original colour values. To derive c
+from c′, the PDF processor may sometimes need to invert the formula shown previously. The resulting
+c value shall lie within the range of colour component values for the image colour space.
+NOTE         When deriving c from c’ and α is 0.0, the inverted formula will result in a divide by zero. In this
+special case an arbitrary value for c can be chosen within the range of colour component values
+for the image colour space. Because α is 0.0, the arbitrary value of c does not affect output as
+described in 11.3.2 "Basic notation for compositing computations".
+The pre-blending computation shall be done in the colour space specified by the parent image’s
+ColorSpace entry. This is independent of the group colour space into which the image may be painted.
+If a colour conversion is required, inversion of the pre-blending shall precede the colour conversion. If
+the image colour space is an Indexed space (see 8.6.6.3, "Indexed colour spaces"), the colour values in
+the colour table (not the index values themselves) shall be pre-blended.
+11.6.6            Transparency group XObjects
+A transparency group is represented in PDF as a special type of group XObject (see 8.10.3, "Group
+XObjects") called a transparency group XObject. A group XObject is in turn a type of form XObject,
+distinguished by the presence of a Group entry in its form dictionary (see 8.10.2, "Form dictionaries").
+The value of this entry is a group attributes dictionary defining the properties of the group. The format
+and meaning of the dictionary’s contents is determined by its group subtype, which is specified by the
+dictionary’s S entry. The entries for a transparency group (subtype Transparency) are shown in "Table
+145 — Additional entries specific to a transparency group attributes dictionary".
+A page object (see 7.7.3.3, "Page objects") may also have a Group entry, whose value is a group
+attributes dictionary specifying the attributes of the page group (see 11.4.7, "Page group"). Some of the
+dictionary entries are interpreted slightly differently for a page group than for a transparency group
+XObject; see their descriptions in the table for details.
+Table 145 — Additional entries specific to a transparency group attributes dictionary
+Key      Type      Value
+
+#### 2.34: 11.6.6            Transparency group XObjects
+dictionary describes; shall be Transparency for a transparency group.
+CS       name or   (Sometimes required for Luminosity groups, otherwise optional) The group colour space,
+array     which is used for the following purposes:
+•   As the colour space into which colours shall be converted when painted into the group
+•   As the blending colour space in which objects shall be composited within the group (see
+11.3.4, "Blending colour space")
+•   As the colour space of the group as a whole when it in turn is painted as an object onto its
+backdrop
+The group colour space shall be any device or CIE-based colour space that treats its
+components as independent additive or subtractive values in the range 0.0 to 1.0,
+subject to the restrictions described in 11.3.4, "Blending colour space". These
+restrictions exclude Lab and lightness-chromaticity ICCBased colour spaces, as well as
+the special colour spaces Pattern, Indexed, Separation, and DeviceN. Device colour
+spaces shall be subject to remapping according to the DefaultGray, DefaultRGB, and
+DefaultCMYK entries in the ColorSpace subdictionary of the current resource
+dictionary (see 8.6.5.6, "Default colour spaces").
+Ordinarily, the CS entry may be present only for isolated transparency groups (those
+for which I is true), and even then it is optional. However, this entry shall be present in
+the group attributes dictionary for any transparency group XObject that has no parent
+group or page from which to inherit — in particular, one that is the value of the G entry
+in a soft-mask dictionary of subtype Luminosity (see 11.6.5.1, "Soft-mask dictionaries").
+Additionally, the CS entry may be present in the group attributes dictionary associated
+with a page object, even if I is false or absent. In the normal case in which the page is
+imposed directly on the output medium, the page group is effectively isolated
+regardless of the I value, and the specified CS value shall therefore be honoured.
+Default value: the colour space of the parent group or page into which this
+transparency group is painted. (The parent’s colour space in turn may be either
+explicitly specified or inherited.)
+For a transparency group XObject used as an annotation appearance (see 12.5.5,
+"Appearance streams"), the default colour space shall be inherited from the page on
+which the annotation appears.
+I        boolean   (Optional) A flag specifying whether the transparency group is isolated (see 11.4.5,
+"Isolated groups"). If this flag is true, objects within the group shall be composited
+against a fully transparent initial backdrop; if false, they shall be composited against the
+group’s backdrop. Default value: false.
+In the group attributes dictionary for a page, the interpretation of this entry shall be
+slightly altered. In the normal case in which the page is imposed directly on the output
+medium, the page group is effectively isolated and the specified I value shall be ignored.
+K        boolean   (Optional) A flag specifying whether the transparency group is a knockout group (see
+11.4.6, "Knockout groups"). If this flag is false, later objects within the group shall be
+composited with earlier ones with which they overlap; if true, they shall be composited
+with the group’s initial backdrop and shall overwrite ("knock out") any earlier
+overlapping objects. Default value: false.
+
+The transparency group XObject’s content stream shall define the graphics objects belonging to the
+group. When applied to a transparency group XObject, the Do operator shall execute its content stream
+and shall composite the resulting group colour, shape, and opacity into the group’s parent group or
+page as if they had come from an elementary graphics object. Do shall perform the following actions in
+addition to the normal ones for a form XObject (as described in 8.10, "Form XObjects"):
+•    Initial backdrop: If the transparency group is non-isolated, its initial backdrop, within the
+bounding box specified by the XObject’s BBox entry, shall be defined to be the accumulated colour
+and alpha of the parent group or page — that is, the result of everything that has been painted in
+the parent up to that point. However, if the immediate parent is a knockout group, the initial
+backdrop shall be the same as that of the parent. If the group is isolated (I is true), its initial
+backdrop shall be defined to be transparent.
+•    Initial blend mode: Before execution of the transparency group XObject’s content stream, the
+current blend mode in the graphics state shall be initialised to Normal, the current stroking and
+nonstroking alpha constants to 1.0, and the current soft mask to None.
+NOTE 1        The purpose of initializing these graphics state parameters at the beginning of execution is to
+ensure that they are not applied twice: once when member objects are painted into the group
+and again when the group is painted into the parent group or page.
+•    Compositing: Objects painted by operators in the transparency group XObject’s content stream
+shall be composited into the group according to the rules described in 11.3.3, "Basic compositing
+formula" The knockout flag (K) in the group attributes dictionary and the transparency-related
+parameters of the graphics state shall be honoured during this computation.
+•    Group colour space:
+o     For isolated groups, if a group colour space (CS) is specified in the group attributes
+dictionary, all painting operators shall convert source colours in a colour space (that are
+not equivalent to the group colour space) to the group colour space before compositing
+objects into the group. The resulting colour at each point shall be interpreted in the group
+colour space. Rules for handling Separation and DeviceN colour spaces are described in
+11.7.3, "Spot colours and transparency".
+o     For non-isolated groups, or if no group colour space is specified, the group colour space
+shall be inherited from the parent group or page. If not otherwise specified, the page
+group’s colour space shall be defined as described in 11.4.7, "Page group". All painting
+operators shall convert source colours in a colour space that is not equivalent to the
+inherited colour space, to that inherited colour space before compositing objects onto the
+backdrop.
+•    Final compositing: After execution of the transparency group XObject’s content stream, the
+graphics state shall revert to its former state before the invocation of the Do operator (as it does
+for any form XObject). The group’s shape — the union of all objects painted into the group,
+clipped by the group XObject’s bounding box — shall then be painted into the parent group or
+page, using the group’s accumulated colour and opacity at each point. If colour conversion needs
+to take place in order to composite the group into its parent, the rendering intent and black point
+compensation from the graphics state at the point of invocation of the Do operator shall be used
+for the conversion.
+If the Do operator is invoked more than once for a given transparency group XObject, each invocation
+shall be treated as a separate transparency group. That is, the result shall be as if the group were
+independently composited with the backdrop on each invocation.
+NOTE 2     Applications that perform caching of rendered form XObjects need to take this requirement into
+account.
+The actions described previously shall occur only for a transparency group XObject — a form XObject
+having a Group entry that contains a group attributes subdictionary whose group subtype (S) is
+Transparency. An ordinary form XObject — one having no Group entry — or having a Group entry
+with a subtype other than Transparency — shall not be subject to any grouping behaviour for
+transparency purposes.
+11.6.7          Patterns and transparency
+In the transparent imaging model, the graphics objects making up the pattern cell of a tiling pattern
+(see 8.7.3, "Tiling patterns") may include transparent objects and transparency groups. Transparent
+compositing may occur both within the pattern cell and between it and the backdrop wherever the
+pattern is painted. Similarly, a shading pattern (8.7.4, "Shading patterns") composites with its
+backdrop as if the shading dictionary were applied with the sh operator.
+In both cases, the pattern definition shall be treated as if it were implicitly enclosed in a non-isolated
+transparency group: a non-knockout group for tiling patterns, a knockout group for shading patterns.
+The definition shall not inherit the current values of the graphics state parameters at the time it is
+evaluated; those parameters shall take effect only when the resulting pattern is later used to paint an
+object. Instead, the graphics state parameters shall be initialised as follows:
+•    As always for transparency groups, those parameters related to transparency (blend mode, soft
+mask, and alpha constant) shall be initialised to their standard default values.
+
+#### 2.35: 11.6.7          Patterns and transparency
+effect at the beginning of the content stream in which the shading pattern is set to be the current
+colour in the graphics state or in which the sh operator is used.
+•    In the case of a shading pattern, the parameter values may be augmented by the contents of the
+ExtGState entry in the pattern dictionary (see 8.7.4, "Shading patterns"). Only those parameters
+that affect the sh operator, such as the current transformation matrix, black point compensation
+and rendering intent, shall be used. Parameters that affect path-painting operators shall not be
+used, since the execution of sh does not entail painting a path.
+•    If the shading dictionary has a Background entry, the pattern’s implicit transparency group shall
+be filled with the specified background colour before the sh operator is invoked.
+When the pattern is later used to paint a graphics object, the colour, shape, and opacity values resulting
+from the evaluation of the pattern definition shall be used as the object’s source colour (𝐶𝑠 ), object
+shape (fj), and object opacity (qi) in the transparency compositing formulas. This painting operation is
+subject to the values of the graphics state parameters in effect at the time, just as in painting an object
+with a constant colour.
+NOTE 1     Unlike the opaque imaging model, in which the pattern cell of a tiling pattern can be evaluated
+once and then replicated indefinitely to fill the painted area, the effect in the general transparent
+case is as if the pattern definition were re-executed independently for each tile, taking into
+account the colour of the backdrop at each point. However, in the common case in which the
+pattern consists entirely of objects painted with the Normal blend mode, this behaviour can be
+optimised by treating the pattern cell as if it were an isolated group. Since in this case the results
+depend only on the colour, shape, and opacity of the pattern cell and not on those of the
+backdrop, the pattern cell can be evaluated once and then replicated, just as in opaque painting.
+
+NOTE 2      In a raster-based implementation of tiling, it is advisable to treat all tiles as a single transparency
+group. This avoids artifacts due to multiple marking of pixels along the boundaries between
+adjacent tiles.
+The foregoing discussion applies to both coloured (PaintType 1) and uncoloured (PaintType 2) tiling
+patterns. In the latter case, the restriction that an uncoloured pattern’s definition shall not specify
+colours extends as well to any transparency group that the definition may include. There are no
+corresponding restrictions, however, on specifying transparency-related parameters in the graphics
+state.
+11.7 Colour space and rendering issues
+11.7.1            General
+The following subclauses describe the interactions between transparency and other aspects of colour
+specification and rendering in the PDF imaging model.
+11.7.2            Colour spaces for transparency groups
+As discussed in 11.6.6, "Transparency group XObjects", an isolated transparency group shall either
+have an explicitly declared colour space or inherit that of its parent group. If the colour space of the
+transparency group is a device colour space, and some ancestor of the group has a CIE-based colour
+space with the same number of colourants, then the colour space of this group shall be the CIE-based
+space of the nearest such ancestor.
+If an isolated transparency group or page has an ICCBased ‘CMYK’ colour space, DeviceCMYK shall be
+redefined within the transparency group to be the same as the blending colour space and references to
+the process colourants Cyan, Magenta, Yellow and Black are defined to be references to the
+corresponding colourants in the blending colour space, even where the actual or simulated output
+device is not CMYK.
+Non-isolated groups shall inherit their colour space from the nearest ancestor isolated parent group
+
+#### 2.36: 11.7.1            General
+NOTE 1      This is because the use of an explicit colour space in a non-isolated group would require
+
+#### 2.37: 11.7.2            Colour spaces for transparency groups
+compositing computations. Such conversion is not always feasible (since some colour
+conversions can be performed only in one direction), and even if feasible, it would entail an
+excessive number of colour conversions.
+If the colour space of a graphics object within the group is not equivalent to the group’s blending
+colour space, then it shall be converted to the group’s colour space, and all blending and compositing
+computations shall be done in that space (see 11.3.4, "Blending colour space"). The resulting colours
+shall then be interpreted in the group’s colour space when the group is subsequently composited with
+its backdrop.
+When converting colours, if the colour space of any graphics object is a device colour space, and the
+current group or an ancestor of the current group is defined with a CIE-based colour space with the
+same number of colourants, then, for compositing purposes only, the colour space of the graphics
+object shall be the CIE-based space of the nearest such ancestor. Nevertheless for graphics objects that
+are specified in DeviceCMYK, the full semantics of DeviceCMYK shall still apply, including
+overprinting.
+The choice of a group colour space has significant effects on the results that are produced because the
+result of compositing in a device colour space is device-dependent. For the compositing computations
+to work in a device-independent way, the group’s colour space should be CIE-based.
+NOTE 2     A consequence of choosing a CIE-based group colour space is that only CIE-based spaces can be
+used to predictably specify the colours of objects within the group. This is because conversion
+from device to CIE-based colours is implementation-dependent. See further discussion
+subsequently.
+NOTE 3     The compositing computations and blend functions generally compute linear combinations of
+colour component values, on the assumption that the component values themselves are linear.
+For this reason, it is usually best to choose a group colour space that has a linear gamma
+function. If a nonlinear colour space is chosen, the results are still well-defined, but the
+appearance might not match the user’s expectations.
+NOTE 4     The CIE-based sRGB colour space (see 8.6.5, "CIE-Based colour spaces") is nonlinear and hence
+can be unsuitable for use as a group colour space.
+NOTE 5     To minimise the accumulation of round off errors and avoid additional errors arising from the
+use of linear group colour spaces, more precision is needed for intermediate results than is
+typically used to represent either the original source data or the final rasterized results.
+If a group’s colour space — whether specified explicitly or inherited from the parent group — is CIE-
+based, any use for painting objects of device colour spaces with a different number of colourants than
+the group’s colour space shall be subject to special treatment. These device colours cannot be painted
+directly into such a group, since there is no generally defined method for converting them to the CIE-
+based colour space. This problem arises in the following cases:
+•    DeviceGray, DeviceRGB, and DeviceCMYK colour spaces, unless remapped to default CIE-based
+colour spaces (see 8.6.5.6, "Default colour spaces")
+•    Operators (such as rg) that specify a device colour space implicitly, unless that space is remapped
+•    Special colour spaces whose base or underlying space is a device colour space, unless that space is
+remapped
+The default colour space remapping mechanism should always be employed when defining a
+transparency group whose colour space is CIE-based. If a device colour is specified and is not
+remapped, it shall be converted or mapped to a CIE-based colour space in an implementation-
+dependent fashion. The restrictions concerning device colourants do not apply if the group’s colour
+space is implicitly converted to DeviceCMYK, as discussed in 8.6.5.7, "Implicit conversion of CIE-Based
+colour spaces".
+NOTE 6     See Annex P, "An algorithm to determine the actual blending colour space of a transparency
+group" for a diagram that illustrates an algorithm to determine the actual blending colour space
+for a transparency group.
+11.7.3          Spot colours and transparency
+The foregoing discussion of colour spaces has been concerned with process colours — those produced
+by combinations of an output device’s process colourants. Process colours may be specified directly in
+the device’s native colour space (such as DeviceCMYK), or they may be produced by conversion from
+some other colour space, such as a CIE-based (CalRGB or ICCBased) space. Whatever means is used to
+
+specify them, process colours may be subject to conversion to and from the group’s colour space.
+A spot colour is an additional colour component, independent of those used to produce process
+colours. It may represent either an additional separation to be produced or an additional colourant to
+be applied to the composite page (see 8.6.6.4, "Separation colour spaces" and 8.6.6.5, "DeviceN colour
+spaces"). The colour component value, or tint, for a spot colour specifies the concentration of the
+corresponding spot colourant. Tints are conventionally represented as subtractive, rather than
+additive, values.
+Spot colours are inherently device-dependent and are not always available. In the opaque imaging
+
+#### 2.38: 11.7.3          Spot colours and transparency
+by an alternate colour space and a tint transformation function for mapping tint values into that space.
+This enables the colour to be approximated with process colourants when the corresponding spot
+colourant is not available on the device.
+Spot colours can be accommodated straightforwardly in the transparent imaging model (except for
+issues relating to overprinting, discussed in 11.7.4, "Overprinting and transparency"). When an object
+is painted transparently with a spot colour component that is available in the output device, that colour
+shall be composited with the corresponding spot colour component of the backdrop, independently of
+the compositing that is performed for process colours. A spot colour retains its own identity; it shall
+not be subject to conversion to or from the colour space of the enclosing transparency group or page. If
+the object is an element of a transparency group, one of two things should happen:
+•    The group shall maintain a separate colour value for each spot colour component, independently
+of the group’s colour space. In effect, the spot colour passes directly through the group hierarchy
+to the device, with no colour conversions performed. However, it shall still be subject to blending
+and compositing with other objects that use the same spot colour.
+•    The spot colour shall be converted to its alternate colour space. The resulting colour shall then be
+subject to the usual compositing rules for process colours. In particular, spot colours shall not be
+available in a transparency group XObject that is used to define a soft mask; the alternate colour
+space shall always be substituted in that case.
+Only a single shape value and opacity value shall be maintained at each point in the computed group
+results; they shall apply to both process and spot colour components. In effect, every object paints
+every existing colour component, both process and spot. Where no value has been explicitly specified
+for a given component in a given object, an additive value of 1.0 (or a subtractive tint value of 0.0) shall
+be assumed. For instance, when painting an object with a colour specified in a DeviceCMYK or
+ICCBased colour space, the process colour components shall be painted as specified and the spot
+colour components shall be painted with an additive value of 1.0. Likewise, when painting an object
+with a colour specified in a Separation colour space, the named spot colour shall be painted as
+specified and all other components (both process colours and other spot colours) shall be painted with
+an additive value of 1.0. The consequences of this are discussed in 11.7.4, "Overprinting and
+transparency".
+Under the opaque imaging model, a Separation or DeviceN colour space may specify the individual
+process colour components of the output device, as if they were spot colours. However, within a
+transparency group, this should be done only if the group inherits the native colour space of the output
+device (or is implicitly converted to DeviceCMYK, as discussed in 8.6.5.7, "Implicit conversion of CIE-
+Based colour spaces"). If any other colour space has been specified for the group, the Separation or
+DeviceN colour space shall be converted to its alternate colour space.
+NOTE 1     In general, within a transparency group containing an explicitly specified colour space, the
+group's process colour components are different from the device's process colour components.
+Conversion to the device's process colour components occurs only after all colour compositing
+computations for the group have been completed. Consequently, the device's process colour
+components are not accessible within the group.
+For instance, outside of any transparency group, a device whose native colour space is
+DeviceCMYK has a Cyan component that can be specified in a Separation or DeviceN colour
+space. On the other hand, within a transparency group whose colour space is ICCBased, the
+group has no Cyan component available to be painted.
+NOTE 2     The special colourant All is defined as applying tint values to all available colourants at once (see
+8.6.6.4, “Separation colour spaces”). When All is used inside a transparency group, "all available
+colourants" is no longer the same as "all colourants available on the output device." Painting All
+inside a transparency group can only apply tint values to the process colourants that are defined
+by the group blending colour space and to the spot colourants available on the output device (as
+the spot colours are maintained separate from the group blending colour space). Indeed, inside a
+transparency group, the process colourants of the output device are irrelevant and unknown,
+only the colourants of the group blending colour space (and the spot colours of the output
+device) are available.
+Once a tint of Separation All has been applied to all colourants available in the transparency
+group, this result is then subject to the usual colour conversion rules when the group as a whole
+is composited on its own backdrop. The practical implication of this is that applying All inside a
+transparency group does not necessarily result in an equal tint percentage for all process colour
+components on that location on the page.
+11.7.4          Overprinting and transparency
+11.7.4.1        General
+In the opaque imaging model, overprinting is controlled by two parameters of the graphics state: the
+overprint parameter and the overprint mode (see 8.6.7, "Overprint control"). Painting an object causes
+some specific set of device colourants to be marked, as determined by the current colour space and
+current colour in the graphics state. The remaining colourants shall be either erased or left unchanged,
+depending on whether the overprint parameter is false or true. When the current colour space is
+DeviceCMYK, the overprint mode parameter additionally enables this selective marking of colourants
+to be applied to individual colour components according to whether the component value is zero or
+nonzero.
+NOTE 1     Because this model of overprinting deals directly with the painting of device colourants,
+independently of the colour space in which source colours have been specified, it is highly
+device-dependent and primarily addresses production needs rather than design intent.
+Overprinting is usually reserved for opaque colourants or for very dark colours, such as black. It
+
+#### 2.39: 11.7.4.1        General
+NOTE 2     Consequently, it is best to think of transparency as taking place in appearance space, but
+overprinting of device colourants in device space. This means that colourant overprint decisions
+are made at output time, based on the actual resultant colourants of any transparency
+compositing operation. On the other hand, effects similar to overprinting can be achieved in a
+device-independent manner by taking advantage of blend modes, as described in 11.7.4.2, “Blend
+modes and overprinting”.
+
+11.7.4.2          Blend modes and overprinting
+As stated in 11.7.3, "Spot colours and transparency", each graphics object that is painted shall affect all
+existing colour components: all process colourants in the transparency group’s colour space as well as
+any available spot colourants. For colour components whose value has not been specified, a source
+colour value of 1.0 shall be assumed; when objects are fully opaque and the Normal blend mode is
+used, this shall have the effect of erasing those components. This treatment is consistent with the
+behaviour of the opaque imaging model with the overprint parameter set to false.
+The transparent imaging model defines some blend modes, such as Darken, that may be used to
+achieve effects similar to overprinting. The blend function for Darken is:
+B(cb , cs ) = min(cb , cs )
+In this blend mode, the result of compositing shall always be the same as the backdrop colour when the
+source colour is 1.0, as it is for all unspecified colour components. When the backdrop is fully opaque,
+this shall leave the result colour unchanged from that of the backdrop. This is consistent with the
+behaviour of the opaque imaging model with the overprint parameter set to true.
+
+#### 2.40: 11.7.4.2          Blend modes and overprinting
+That is, the erasing effect shall be reduced, and overprinting an object with a colour value of 1.0 may
+affect the result colour. While these results may or may not be useful, they lie outside the realm of the
+overprinting and erasing behaviour defined in the opaque imaging model.
+When process colours are overprinted or erased (because a spot colour is being painted), the blending
+computations described previously shall be done independently for each component in the group’s
+colour space. If the group colour space is different from the native colour space of the output device, its
+components are not the device’s actual process colourants; the blending computations shall affect the
+process colourants only after the group’s results have been converted to the device colour space. Thus
+the effect is different from that of overprinting or erasing the device’s process colourants directly. On
+the other hand, this is a fully general operation that works uniformly, regardless of the type of object or
+of the computations that produced the source colour.
+NOTE 1      The discussion so far has focused on those colour components whose values are not specified
+and that are to be either erased or left unchanged. However, the Normal or Darken blend modes
+used for these purposes are not always suitable for use on those components whose colour
+values are specified. In particular, using the Darken blend mode for such components would
+preclude overprinting a dark colour with a lighter one. Moreover, some other blend mode could
+be specifically desired for those components.
+The PDF graphics state specifies only one current blend mode parameter, which shall always apply to
+process colourants and sometimes to spot colourants as well. Specifically, only separable, white-
+preserving blend modes shall be used for spot colours. If the specified blend mode is not separable or
+not white-preserving, it shall apply only to process colour components, and the Normal blend mode
+shall be substituted for spot colours.
+A blend mode is white-preserving if its blend function B has the property that 𝐵(1.0,1.0) = 1.0.
+NOTE 2      Of the standard separable blend modes listed in "Table 134 — Standard separable blend modes"
+in 11.3.5, "Blend mode" all except Difference and Exclusion are white-preserving. This ensures
+that when objects accumulate in an isolated transparency group, the accumulated values for
+unspecified components remain 1.0 as long as only white-preserving blend modes are used. The
+group’s results can then be overprinted using Darken (or other useful modes) while avoiding
+unwanted interactions with components whose values were never specified within the group.
+11.7.4.3         Compatibility with opaque overprinting
+For compatibility with the methods of overprint control used in the opaque imaging model, a PDF
+processor may consider implementing a special blend mode that consults the overprint-related
+graphics state parameters to compute its result. This mode shall apply only when painting elementary
+graphics objects (fills, strokes, text, images, and shadings). It shall not be invoked explicitly; rather, it
+may be implicitly invoked whenever an elementary graphics object is painted while overprinting is
+enabled (that is, when the overprint parameter in the graphics state is true).
+NOTE 1      Earlier designs of the transparent imaging model included an additional blend mode named
+Compatible, which explicitly invoked the blend mode described here. Because this mode can be
+invoked implicitly whenever appropriate, it is never necessary to specify the Compatible blend
+mode for use in compositing.
+The value of the blend function 𝐵(𝐶𝑏 , 𝐶𝑠 ) in the this mode shall be either 𝐶𝑏 or 𝐶𝑠 , depending on the
+setting of the overprint mode parameter, the current and group colour spaces, and the source colour
+value 𝐶𝑠 :
+
+#### 2.41: 11.7.4.3         Compatibility with opaque overprinting
+colour space are both DeviceCMYK, then process colour components with nonzero values shall
+replace the corresponding component values of the backdrop; components with zero values leave
+the existing backdrop value unchanged. That is, the value of the blend function 𝐵(𝐶𝑏 , 𝐶𝑠 ) shall be
+the source component Cs for any process (DeviceCMYK) colour component whose (subtractive)
+colour value is nonzero; otherwise it shall be the backdrop component 𝐶𝑏 . For spot colour
+components, the value shall always be 𝐶𝑏 .
+•    In all other cases, the value of 𝐵(𝐶𝑏 , 𝐶𝑠 ) shall be 𝐶𝑠 for all colour components specified in the
+current colour space, otherwise 𝐶𝑏 .
+EXAMPLE 1       If the current colour space is DeviceCMYK or equivalent, the value of the blend function is 𝐶𝑠 for process
+colour components and 𝐶𝑏 for spot components. On the other hand, if the current colour space is a
+Separation space representing a spot colour component, the value is 𝐶𝑠 for that spot component and 𝐶𝑏 for
+all process components and all other spot components.
+NOTE 2      In the previous descriptions, the term current colour space refers to the colour space used for a
+painting operation. This can be specified by the current colour space parameter in the graphics
+state (see 8.6.2, "Colour values"), implicitly by colour operators such as rg (8.6.8, "Colour
+operators"), or by the ColorSpace entry of an image XObject (8.9.5, "Image dictionaries"). In the
+case of an Indexed space, it refers to the base colour space (see 8.6.6.3, "Indexed colour
+spaces"); likewise for Separation and DeviceN spaces that revert to their alternate colour space,
+as described under 8.6.6.4, "Separation colour spaces" and 8.6.6.5, "DeviceN colour spaces".
+If the current blend mode is any mode other than Normal when invoking this special overprinting
+blend mode, the object being painted shall be implicitly treated as if it were defined in a non-isolated,
+non-knockout transparency group, and painted using the this special blend mode. The group’s results
+shall then be painted using the current blend mode in the graphics state.
+NOTE 3      It is not necessary to create such an implicit transparency group if the current blend mode is
+Normal; simply substituting the special blend mode while painting the object produces
+equivalent results. There are some additional cases in which the implicit transparency group can
+be optimised out.
+
+Figure 75 — Blending and overprinting
+EXAMPLE 2         "Figure 75 — Blending and overprinting" shows the effects of all four possible combinations of blending and
+overprinting, using the Screen blend mode in the DeviceCMYK colour space. The label “overprint enabled”
+means that the overprint parameter in the graphics state is true and the overprint mode is 1. In the upper
+half of the figure, a light green oval is painted opaquely (opacity = 1.0) over a backdrop shading from pure
+yellow to pure magenta. In the lower half, the same object is painted with transparency (opacity = 0.5).
+11.7.4.4          Special path-painting considerations
+The overprinting considerations discussed in 11.7.4.3, "Compatibility with opaque overprinting" also
+affect those path-painting operations that combine filling and stroking a path in a single operation.
+These include the B, B*, b, and b* operators (see 8.5.3, "Path-painting operators") and the painting of
+glyphs with text rendering mode 2 or 6 (9.3.6, "Text rendering mode"). For transparency compositing
+purposes, the combined fill and stroke shall be treated as a single graphics object, as if they were
+enclosed in a transparency group. This implicit group is established and used as follows:
+•    If overprinting is enabled (the overprint parameters for both stroking and non-stroking
+operations in the graphics state are true) and the current stroking and nonstroking alpha
+constants are equal, a non-isolated, non-knockout transparency group shall be established. Within
+the group, the fill and stroke shall be performed with an alpha value of 1.0 but with the special
+overprinting blend mode described in 11.7.4.3, “Compatibility with opaque overprinting”. The
+group results shall then be composited with the backdrop, using the originally specified alpha and
+blend mode.
+
+#### 2.42: 11.7.4.4          Special path-painting considerations
+and stroke shall be performed with their respective prevailing alpha constants and the prevailing
+blend mode. The group results shall then be composited with the backdrop, using an alpha value
+of 1.0 and the Normal blend mode.
+NOTE 1     In the case of showing text with the combined filling and stroking text rendering modes, this
+behaviour is independent of the text knockout parameter in the graphics state (see 9.3.8, "Text
+knockout").
+NOTE 2     The purpose of these rules is to avoid having a non-opaque stroke composite with the result of
+the fill in the region of overlap, which would produce a double border effect that is usually
+undesirable. The special case that applies when the overprint parameter is true is for backward
+compatibility with the overprinting behaviour of the opaque imaging model. If a desired effect
+cannot be achieved with a combined filling and stroking operator or text rendering mode, it can
+be achieved by specifying the fill and stroke with separate path objects and an explicit
+transparency group.
+NOTE 3     Overprinting of the stroke over the fill does not work in the second case described previously
+(although either the fill or the stroke can still overprint the backdrop). Furthermore, if the
+overprint graphics state parameter is true, the results are discontinuous at the transition
+between equal and unequal values of the stroking and nonstroking alpha constants. For this
+reason, it is best not to use overprinting for combined filling and stroking operations if the
+stroking and nonstroking alpha constants are being varied independently.
+11.7.4.5         Summary of overprinting behavior
+“Table 146 — Overprinting behaviour in the transparent imaging model” shows overprinting behavior
+in the transparent imaging model.
+Table 146 — Overprinting behaviour in the transparent imaging model
+Source colour         Affected colour    Value of blend function 𝑩(𝑪𝒃 , 𝑪𝒔 ) expressed as tint
+space                 component of group
+OP false             OP true,               OP true,
+space
+OPM 0                  OPM 1
+DeviceCMYK,           C, M, Y, or K                       𝐶𝑠                        𝐶𝑠                𝐶𝑠 𝑖𝑓 𝐶𝑠 ≠ 0.0
+specified directly,                                                                                   𝐶𝑏 𝑖𝑓 𝐶𝑠 = 0.0
+not in a sampled
+image                 Process colour                      𝐶𝑠                        𝐶𝑠                      𝐶𝑠
+component other
+than CMYK
+Spot colourant                 𝐶𝑠 (= 0.0)                     𝐶𝑏                      𝐶𝑏
+Any process colour    Process colour                      𝐶𝑠                        𝐶𝑠                      𝐶𝑠
+space (including      component
+other cases of
+DeviceCMYK)           Spot colourant                 𝐶𝑠 (= 0.0)                     𝐶𝑏                      𝐶𝑏
+
+#### 2.43: 11.7.4.5         Summary of overprinting behavior
+space                    component of group
+OP false             OP true,               OP true,
+space
+OPM 0                  OPM 1
+Separation or            Process colour                   𝐶𝑠 (= 0.0)                     𝐶𝑏             𝐶𝑏
+DeviceN                  component
+Spot colourant                       𝐶𝑠                         𝐶𝑠             𝐶𝑠
+named in source
+space
+Spot colourant not               𝐶𝑠 (= 0.0)                     𝐶𝑏             𝐶𝑏
+named in source
+space
+A group (not an          All colour                           𝐶𝑠                         𝐶𝑠             𝐶𝑠
+elementary object)       components
+Colour component values are represented in these tables as subtractive tint values because
+overprinting is typically applied to subtractive colourants such as inks rather than to additive ones
+such as phosphors on a display screen. The special overprinting blend mode is therefore described as if
+it took subtractive arguments and returned subtractive results. In reality, however, the special
+overprinting blend mode (like all blend modes) shall treat colour components as additive values;
+subtractive components shall be complemented before and after application of the special blend
+function.
+NOTE 1      The process colour components are those of the group’s colour space, which is not necessarily
+the same as that of the output device (and can even be something like CalRGB or ICCBased). For
+this reason, the process colour components of the group colour space cannot be treated as if they
+were spot colours in a Separation or DeviceN colour space (see 11.7.3, "Spot colours and
+transparency"). This difference between opaque and transparent overprinting and erasing rules
+arises only within a transparency group (including the page group, if its colour space is different
+from the native colour space of the output device). There is no difference in the treatment of spot
+colour components.
+NOTE 2      "Table 146 — Overprinting behaviour in the transparent imaging model" has one additional row
+at the bottom. It applies when painting an object that is a transparency group rather than an
+elementary object (fill, stroke, text, image, or shading). As stated in 11.7.3, "Spot colours and
+transparency", a group is considered to paint all colour components, both process and spot.
+Colour components that were not explicitly painted by any object in the group have an additive
+colour value of 1.0 (subtractive tint 0.0). Since no information is retained about which
+components were actually painted within the group, compatible overprinting is unavailable in
+this case; the special overprinting blend mode reverts to Normal, with no consideration of the
+overprint and overprint mode parameters. A transparency-aware PDF writer can choose a more
+suitable blend mode, such as Darken, to produce an effect similar to overprinting.
+11.7.5            Rendering parameters and transparency
+11.7.5.1          General
+The opaque imaging model has several graphics state parameters dealing with the rendering of colour:
+the current halftone (see 10.6.5, "Halftone dictionaries"), transfer functions (10.5, "Transfer
+functions"), rendering intent (8.6.5.8, "Rendering intents"), black point compensation (8.6.5.9, "Use of
+black point compensation", and black-generation and undercolour-removal functions (10.4.2.3,
+"Conversion between DeviceGray and DeviceCMYK"). All of these rendering parameters may be
+specified on a per-object basis; they control how a particular object is rendered. When all objects are
+opaque, it is easy to define what this means. But when they are transparent, more than one object may
+contribute to the colour at a given point; it is unclear which rendering parameters to apply in an area
+where transparent objects overlap. At the same time, the transparent imaging model should be
+consistent with the opaque model when only opaque objects are painted.
+There are two categories of rendering parameters that are treated somewhat differently in the
+presence of transparency. In the first category are halftone and transfer functions, which are applied
+
+#### 2.44: 11.7.5.1          General
+from one colour space to another.
+11.7.5.2         Halftone and transfer function
+When objects are transparent, rendering of an object may not occur when the object is specified but at
+some later time. Hence, the implementation shall keep track of the halftone and transfer function
+parameters at each point on the page from the time they are specified until the time rendering actually
+occurs. This means that these rendering parameters may be associated with regions of the page rather
+than with individual objects.
+The halftone and transfer function to be used at any given point on the page shall be those in effect at
+the time of painting the last (topmost) elementary graphics object enclosing that point, but only if the
+object is fully opaque. Only elementary objects shall be relevant; the rendering parameters associated
+with a group object are ignored. The topmost object at any point shall be defined to be the topmost
+elementary object in the entire page stack that has a nonzero object shape value (fj) at that point (that
+is, for which the point is inside the object). An object is fully opaque if all of the following conditions
+hold at the time the object is painted:
+•    The current alpha constant in the graphics state (stroking or nonstroking, depending on the
+painting operation) is 1.0.
+•    The current blend mode in the graphics state is Normal.
+
+#### 2.45: 11.7.5.2         Halftone and transfer function
+•    If the object is an image XObject and there is not an SMask entry in its image dictionary.
+•    The foregoing four conditions were also true at the time the Do operator was invoked for the
+group containing the object, as well as for any direct ancestor groups.
+•    If the current colour is a tiling pattern, all objects in the definition of its pattern cell also satisfy the
+foregoing conditions.
+Together, these conditions ensure that only the object itself shall contribute to the colour at the given
+point, completely obscuring the backdrop. For portions of the page whose topmost object is not fully
+opaque or that are never painted at all, the default halftone and transfer function for the page shall be
+used (see "Table 52 — Device-dependent graphics state parameters").
+If a graphics object is painted with overprinting enabled—that is, if the applicable (stroking or
+nonstroking) overprint parameter in the graphics state is true—the halftone and transfer function to
+use at a given point shall be determined independently for each colour component. An object is opaque
+
+for a given component only if overprinting yields the source colour (not the backdrop colour) for that
+component. See 11.7.4, "Overprinting and transparency".
+11.7.5.3          Rendering intent, black point compensation and colour conversions
+The rendering intent, black-generation, undercolour-removal and black point compensation
+parameters control certain colour conversions. In the presence of transparency, they may need to be
+applied earlier than the actual rendering of colour onto the page.
+The rendering intent influences the conversion from a CIE-based colour space to a target colour space,
+taking into account the target space’s colour gamut (the range of colours it can reproduce). Whereas in
+the opaque imaging model the target space shall always be the native colour space of the output device,
+in the transparent model it may instead be the group colour space of a transparency group into which
+an object is being painted.
+The rendering intent is needed at the moment such a conversion is performed — that is, when painting
+an elementary or group object specified in a CIE-based colour space into a parent group having a
+different colour space.
+NOTE        This differs from the current halftone and transfer function, whose values are used only when all
+colour compositing has been completed and rasterization is being performed.
+In all cases, the rendering intent to use for converting an object’s colour (whether that of an
+
+#### 2.46: 11.7.5.3          Rendering intent, black point compensation and colour conversions
+associated with the object. In particular:
+•    When painting an elementary object with a CIE-based colour into a transparency group having a
+different colour space, the rendering intent used shall be the current rendering intent in effect in
+the graphics state at the time of the painting operation.
+•    When painting a transparency group whose colour space is CIE-based into a parent group having
+a different colour space, the rendering intent used shall be the current rendering intent in effect at
+the time the Do operator is applied to the group.
+Black point compensation is needed during colour conversions in cases where the detail in dark
+regions or shadow section of an image can otherwise be lost. Black point compensation addresses this
+conversion problem by adjusting for differences between the darkest level of black achievable in one
+colour space and the darkest level of black achievable on another. The graphics state parameter
+UseBlackPtComp ("Table 57 — Entries in a graphics state parameter dictionary) enables or disables
+the use of black point compensation when doing colour conversions.
+A similar approach works for the black-generation and undercolour-removal functions, which shall be
+applied only during conversion from DeviceRGB to DeviceCMYK colour spaces:
+•    When painting an elementary object with a DeviceRGB colour directly into a transparency group
+whose colour space is DeviceCMYK, the functions used shall be the current black-generation and
+undercolour-removal functions in effect in the graphics state at the time of the painting operation.
+•    When painting a transparency group whose colour space is DeviceRGB into a parent group
+whose colour space is DeviceCMYK, the functions used shall be the ones in effect at the time the
+Do operator is applied to the group.
+•     When the colour space of the page group is DeviceRGB and the native colour space of the output
+device is DeviceCMYK, the functions used to convert colours to the device’s colour space shall be
+the default functions for the page.
+
