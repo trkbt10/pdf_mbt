@@ -72,10 +72,10 @@ pub(all) struct PdfFDFCatalog {
 } derive(Eq, Debug)
 
 ///|
-/// FDF document model for ISO 32000-2 12.7.8.2.1 through 12.7.8.2.4. It
-/// records the required one-line FDF header, FDF body object sequence,
-/// optional cross-reference table, optional trailer with Root catalog
-/// reference, and final %%EOF marker as parsed structural data.
+/// FDF document model for ISO 32000-2 12.7.8.2.1 through 12.7.8.2.4 and
+/// Figure 85. It records the required one-line FDF header, FDF body object
+/// sequence, optional cross-reference table, optional trailer with Root
+/// catalog reference, and final %%EOF marker as parsed structural data.
 pub(all) struct PdfFDFDocument {
   catalog : PdfFDFCatalog
   objects : Array[PdfFDFObjectRecord]

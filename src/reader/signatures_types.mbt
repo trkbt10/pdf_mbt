@@ -10,8 +10,9 @@ pub(all) struct PdfSignatureByteRange {
 ///|
 /// Signature SubFilter names from 12.8.3.1 through 12.8.3.4. PKCS #1
 /// adbe.x509.rsa_sha1, CMS/PKCS #7 adbe.pkcs7.detached and
-/// adbe.pkcs7.sha1, PAdES ETSI.CAdES.detached, and document timestamp
-/// ETSI.RFC3161 values are modeled without cryptographic validation.
+/// adbe.pkcs7.sha1 with DER CMS per Internet RFC 5652 and Table 260,
+/// PAdES ETSI.CAdES.detached, and document timestamp ETSI.RFC3161 values
+/// are modeled without cryptographic validation.
 pub(all) enum PdfSignatureSubFilter {
   AdbeX509RsaSha1
   AdbePkcs7Detached
@@ -132,7 +133,8 @@ pub(all) struct PdfLegalAttestation {
 ///|
 /// Signature validation plan for 12.8.2 DocMDP and FieldMDP comparisons,
 /// 12.8.3 PKCS #1, CMS/PKCS #7, CAdES, and PAdES interoperability, revocation
-/// checking at current UTC time or a time in the past, and 12.8.5 document
+/// checking at current UTC time or a time in the past, Table 260 SubFilter
+/// algorithm support with CMS per Internet RFC 5652, and 12.8.5 document
 /// timestamp (DTS) dictionaries. It is evidence routing only and never
 /// performs cryptographic signature validation.
 pub(all) struct PdfSignatureValidationPlan {
