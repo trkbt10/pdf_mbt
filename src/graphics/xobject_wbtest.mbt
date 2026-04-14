@@ -169,6 +169,46 @@ test "reference XObject dictionary requires target file and page" {
 }
 
 ///|
+test "form XObject preserves validated PieceInfo" {
+  let form_dict : @objects.PdfDictionary = Map::new()
+  form_dict[@objects.PdfName::new(b"Type")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"XObject"),
+  )
+  form_dict[@objects.PdfName::new(b"Subtype")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"Form"),
+  )
+  form_dict[@objects.PdfName::new(b"BBox")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Integer(0L),
+    @objects.PdfObject::Integer(0L),
+    @objects.PdfObject::Integer(10L),
+    @objects.PdfObject::Integer(10L),
+  ])
+  let piece : @objects.PdfDictionary = Map::new()
+  let data : @objects.PdfDictionary = Map::new()
+  data[@objects.PdfName::new(b"LastModified")] = @objects.PdfObject::String(
+    b"D:form",
+  )
+  data[@objects.PdfName::new(b"Private")] = @objects.PdfObject::String(
+    b"opaque",
+  )
+  piece[@objects.PdfName::new(b"Tool")] = @objects.PdfObject::Dictionary(data)
+  form_dict[@objects.PdfName::new(b"PieceInfo")] = @objects.PdfObject::Dictionary(
+    piece,
+  )
+
+  let form = validate_form_xobject(
+    Some(@objects.PdfName::new(b"Fm1")),
+    @objects.PdfStream::{ dict: form_dict, data: b"" },
+    9L,
+  )
+  match form.piece_info {
+    Some(piece_info) =>
+      assert_eq(piece_info.entries[0].last_modified, b"D:form")
+    None => fail("expected form PieceInfo")
+  }
+}
+
+///|
 test "hidden marked content suppresses paint but keeps state side effects" {
   let resources = optional_content_resource_context()
   let content = @content.parse_decoded_content(

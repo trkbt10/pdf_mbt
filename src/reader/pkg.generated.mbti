@@ -6,10 +6,13 @@ import {
   "trkbt10/pdf/src/content",
   "trkbt10/pdf/src/filters",
   "trkbt10/pdf/src/graphics",
+  "trkbt10/pdf/src/interchange",
   "trkbt10/pdf/src/objects",
 }
 
 // Values
+pub fn compare_file_id_reference(PdfFileId?, PdfFileId) -> @interchange.PdfFileIdMatch
+
 pub fn compare_version_arrays(PdfVersionArray, PdfVersionArray) -> Int
 
 pub fn media_player_may_be_used(PdfMediaPlayerPolicy, PdfSoftwareIdentity, Bytes?) -> PdfViabilityDecision
@@ -33,6 +36,7 @@ pub(all) suberror PdfDocumentError {
   InvalidMeasure(@objects.ObjectId?, String)
   InvalidRequirement(@objects.ObjectId?, String)
   InvalidMultimedia(@objects.ObjectId?, String)
+  InterchangeError(@interchange.PdfInterchangeError)
   ContentError(@content.PdfContentError)
   GraphicsError(@graphics.PdfGraphicsError)
   PageIndexOutOfRange(Int, Int)
@@ -546,7 +550,10 @@ pub fn PdfDocument::catalog(Self) -> PdfCatalog
 pub fn PdfDocument::catalog_additional_actions(Self) -> PdfCatalogAdditionalActions? raise PdfDocumentError
 pub fn PdfDocument::catalog_uri(Self) -> PdfCatalogUri? raise PdfDocumentError
 pub fn PdfDocument::collection(Self) -> PdfCollection? raise PdfDocumentError
+pub fn PdfDocument::document_info(Self) -> @interchange.PdfDocumentInfo? raise PdfDocumentError
 pub fn PdfDocument::lookup_name(Self, NameTreeCategory, Bytes) -> @objects.PdfObject? raise PdfDocumentError
+pub fn PdfDocument::metadata_sources(Self) -> @interchange.PdfDocumentMetadataSources raise PdfDocumentError
+pub fn PdfDocument::metadata_stream(Self) -> @interchange.PdfMetadataStream? raise PdfDocumentError
 pub fn PdfDocument::name_tree_entries(Self, NameTreeCategory) -> Array[PdfNameTreeEntry] raise PdfDocumentError
 pub fn PdfDocument::name_tree_root(Self, NameTreeCategory) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfDocument::named_destination(Self, Bytes) -> PdfNamedDestination? raise PdfDocumentError
@@ -566,6 +573,7 @@ pub fn PdfDocument::parse_action(Self, @objects.PdfObject) -> PdfAction raise Pd
 pub fn PdfDocument::parse_action_from_object(Self, @objects.PdfObject, @objects.ObjectId?) -> PdfAction raise PdfDocumentError
 pub fn PdfDocument::parse_annotation_additional_action_object(Self, @objects.PdfObject, @objects.ObjectId?) -> PdfAnnotationAdditionalActions raise PdfDocumentError
 pub fn PdfDocument::parse_form_field_additional_action_object(Self, @objects.PdfObject, @objects.ObjectId?) -> PdfFormFieldAdditionalActions raise PdfDocumentError
+pub fn PdfDocument::piece_info(Self) -> @interchange.PdfPagePieceDictionary? raise PdfDocumentError
 pub fn PdfDocument::threads(Self) -> Array[PdfArticleThread] raise PdfDocumentError
 pub fn PdfDocument::viewer_preferences(Self) -> PdfViewerPreferences raise PdfDocumentError
 
@@ -652,7 +660,9 @@ pub struct PdfFile {
   cache : Map[@objects.ObjectId, @objects.PdfObject]
   object_stream_tables : Map[@objects.ObjectId, ObjectStreamTableCache]
 } derive(Eq, @debug.Debug)
+pub fn PdfFile::compare_file_id_reference(Self, PdfFileId) -> @interchange.PdfFileIdMatch
 pub fn PdfFile::document(Self) -> PdfDocument raise PdfDocumentError
+pub fn PdfFile::file_id(Self) -> PdfFileId?
 pub fn PdfFile::load_object(Self, @objects.ObjectId) -> @objects.PdfObject raise PdfReaderError
 pub fn PdfFile::open(Bytes) -> Self raise PdfReaderError
 pub fn PdfFile::root_ref(Self) -> @objects.ObjectId
@@ -668,6 +678,7 @@ pub(all) struct PdfFileId {
   first : Bytes
   second : Bytes
 } derive(Eq, @debug.Debug)
+pub fn PdfFileId::compare_reference(Self, Self) -> @interchange.PdfFileIdMatch
 
 pub(all) struct PdfFixedPrint {
   matrix : Array[Double]
@@ -1246,6 +1257,7 @@ pub fn PdfPage::optional_content_state(Self) -> @graphics.OptionalContentState r
 pub fn PdfPage::parent_ref(Self) -> @objects.ObjectId?
 pub fn PdfPage::pattern_resource(Self, @objects.PdfName) -> @graphics.PatternResource raise PdfDocumentError
 pub fn PdfPage::pattern_resources(Self) -> Array[@graphics.PatternResource] raise PdfDocumentError
+pub fn PdfPage::piece_info(Self) -> @interchange.PdfPagePieceDictionary? raise PdfDocumentError
 pub fn PdfPage::presentation(Self) -> PdfPresentation raise PdfDocumentError
 pub fn PdfPage::resolve_entry(Self, @objects.PdfName) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfPage::resources(Self) -> @objects.PdfObject? raise PdfDocumentError

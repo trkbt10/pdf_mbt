@@ -19,6 +19,7 @@ pub(all) suberror PdfDocumentError {
   InvalidMeasure(@objects.ObjectId?, String)
   InvalidRequirement(@objects.ObjectId?, String)
   InvalidMultimedia(@objects.ObjectId?, String)
+  InterchangeError(@interchange.PdfInterchangeError)
   ContentError(@content.PdfContentError)
   GraphicsError(@graphics.PdfGraphicsError)
   PageIndexOutOfRange(Int, Int)

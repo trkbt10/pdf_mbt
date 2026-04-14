@@ -36,6 +36,7 @@ pub(all) struct FormXObject {
   struct_parent : Int?
   struct_parents : Int?
   metadata : @objects.PdfObject?
+  piece_info : @interchange.PdfPagePieceDictionary?
   associated_files : @objects.PdfObject?
   oc : @objects.PdfObject?
   stream : @objects.PdfStream
@@ -97,9 +98,21 @@ pub fn validate_form_xobject(
     struct_parent,
     struct_parents,
     metadata: optional_entry(stream.dict, b"Metadata"),
+    piece_info: optional_form_piece_info(stream.dict),
     associated_files: optional_entry(stream.dict, b"AF"),
     oc: optional_entry(stream.dict, b"OC"),
     stream,
+  }
+}
+
+///|
+fn optional_form_piece_info(
+  dict : @objects.PdfDictionary,
+) -> @interchange.PdfPagePieceDictionary? raise PdfGraphicsError {
+  try @interchange.validate_optional_page_piece_entry(dict) catch {
+    error => raise PdfGraphicsError::InterchangeFailure(error)
+  } noraise {
+    value => value
   }
 }
 

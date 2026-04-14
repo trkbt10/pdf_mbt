@@ -1,0 +1,158 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/interchange"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/pdf/src/content",
+  "trkbt10/pdf/src/filters",
+  "trkbt10/pdf/src/objects",
+}
+
+// Values
+pub fn analyze_marked_content(@content.ContentStream) -> MarkedContentReport raise PdfInterchangeError
+
+pub fn compare_file_identifier_bytes(Bytes, Bytes, Bytes, Bytes) -> PdfFileIdMatch
+
+pub fn compare_optional_file_identifier_bytes(Bytes?, Bytes?, Bytes, Bytes) -> PdfFileIdMatch
+
+pub fn metadata_source_diagnostics(PdfMetadataStream?, PdfDocumentInfo?, metadata_creation_date? : Bytes?, metadata_mod_date? : Bytes?) -> PdfMetadataSourceDiagnostics
+
+pub fn page_piece_dates_equal(Bytes, Bytes) -> Bool
+
+pub fn parse_proc_set_name(@objects.PdfName) -> PdfProcedureSetName raise PdfInterchangeError
+
+pub fn parse_proc_sets(@content.ContentResources) -> Array[PdfProcedureSetName] raise PdfInterchangeError
+
+pub fn validate_document_info(object_id? : @objects.ObjectId?, @objects.PdfObject) -> PdfDocumentInfo raise PdfInterchangeError
+
+pub fn validate_document_info_dictionary(object_id? : @objects.ObjectId?, Map[@objects.PdfName, @objects.PdfObject]) -> PdfDocumentInfo raise PdfInterchangeError
+
+pub fn validate_metadata_entry(owner_id? : @objects.ObjectId?, Map[@objects.PdfName, @objects.PdfObject]) -> PdfMetadataStream? raise PdfInterchangeError
+
+pub fn validate_metadata_stream(object_id? : @objects.ObjectId?, @objects.PdfObject) -> PdfMetadataStream raise PdfInterchangeError
+
+pub fn validate_metadata_stream_value(object_id? : @objects.ObjectId?, @objects.PdfStream) -> PdfMetadataStream raise PdfInterchangeError
+
+pub fn validate_object_metadata(owner_id? : @objects.ObjectId?, @objects.PdfObject) -> PdfMetadataStream? raise PdfInterchangeError
+
+pub fn validate_optional_page_piece_entry(object_id? : @objects.ObjectId?, Map[@objects.PdfName, @objects.PdfObject]) -> PdfPagePieceDictionary? raise PdfInterchangeError
+
+pub fn validate_page_piece_dictionary(object_id? : @objects.ObjectId?, @objects.PdfObject) -> PdfPagePieceDictionary raise PdfInterchangeError
+
+pub fn validate_page_piece_entries(object_id? : @objects.ObjectId?, Map[@objects.PdfName, @objects.PdfObject]) -> PdfPagePieceDictionary raise PdfInterchangeError
+
+// Errors
+pub(all) suberror PdfInterchangeError {
+  InvalidMetadata(@objects.ObjectId?, String)
+  InvalidDocumentInfo(@objects.ObjectId?, String)
+  InvalidFileIdentifier(String)
+  InvalidPagePiece(@objects.ObjectId?, String)
+  InvalidProcedureSet(String)
+  InvalidMarkedContent(Int64, String)
+  FilterError(@filters.PdfFilterError)
+  ContentError(@content.PdfContentError)
+} derive(Eq, @debug.Debug)
+
+// Types and methods
+type MarkedContentAnalyzerState derive(Eq, @debug.Debug)
+
+pub(all) enum MarkedContentProperty {
+  Inline(Map[@objects.PdfName, @objects.PdfObject])
+  Named(@objects.PdfName, @objects.PdfObject)
+  Null
+} derive(Eq, @debug.Debug)
+
+pub(all) struct MarkedContentReport {
+  points : Array[MarkedContentScope]
+  sequences : Array[MarkedContentScope]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct MarkedContentScope {
+  tag : @objects.PdfName
+  property : MarkedContentProperty?
+  begin_offset : Int64
+  end_offset : Int64?
+} derive(Eq, @debug.Debug)
+
+type OpenMarkedContentScope derive(Eq, @debug.Debug)
+
+pub(all) struct PdfDocumentInfo {
+  object_id : @objects.ObjectId?
+  title : Bytes?
+  author : Bytes?
+  subject : Bytes?
+  keywords : Bytes?
+  creator : Bytes?
+  producer : Bytes?
+  creation_date : Bytes?
+  mod_date : Bytes?
+  trapped : PdfTrappedStatus
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfDocumentMetadataSources {
+  metadata_stream : PdfMetadataStream?
+  document_info : PdfDocumentInfo?
+  diagnostics : PdfMetadataSourceDiagnostics
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfFileIdMatch {
+  ExactFileAndVersion
+  SameOriginalDifferentVersion
+  DifferentFile
+  MissingCurrentIdentifier
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfMetadataDateComparison {
+  Equivalent
+  Different
+  OnlyInfo
+  OnlyMetadataStream
+  NotEvaluated
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfMetadataSourceDiagnostics {
+  has_metadata_stream : Bool
+  has_document_info : Bool
+  creation_date : PdfMetadataDateComparison
+  mod_date : PdfMetadataDateComparison
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfMetadataStream {
+  object_id : @objects.ObjectId?
+  raw_stream : @objects.PdfStream
+  xml : Bytes
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfPagePieceData {
+  owner_name : @objects.PdfName
+  last_modified : Bytes
+  private : @objects.PdfObject?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+pub fn PdfPagePieceData::same_last_modified(Self, Self) -> Bool
+
+pub(all) struct PdfPagePieceDictionary {
+  object_id : @objects.ObjectId?
+  entries : Array[PdfPagePieceData]
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfProcedureSetName {
+  PDF
+  Text
+  ImageB
+  ImageC
+  ImageI
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfTrappedStatus {
+  True
+  False
+  Unknown
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

@@ -4,6 +4,7 @@ package "trkbt10/pdf/src/graphics"
 import {
   "moonbitlang/core/debug",
   "trkbt10/pdf/src/content",
+  "trkbt10/pdf/src/interchange",
   "trkbt10/pdf/src/objects",
 }
 
@@ -71,6 +72,7 @@ pub(all) suberror PdfGraphicsError {
   InvalidXObject(Int64, String)
   InvalidImage(Int64, String)
   InvalidOptionalContent(Int64, String)
+  InterchangeFailure(@interchange.PdfInterchangeError)
   ContentFailure(@content.PdfContentError)
 } derive(Eq, @debug.Debug)
 
@@ -296,6 +298,7 @@ pub(all) struct FormXObject {
   struct_parent : Int?
   struct_parents : Int?
   metadata : @objects.PdfObject?
+  piece_info : @interchange.PdfPagePieceDictionary?
   associated_files : @objects.PdfObject?
   oc : @objects.PdfObject?
   stream : @objects.PdfStream
