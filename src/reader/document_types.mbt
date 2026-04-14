@@ -1019,3 +1019,283 @@ struct PageTreeRecord {
 struct PageTreeIndex {
   pages : Array[PageTreeRecord]
 } derive(Eq, Debug)
+
+///|
+/// Catalog MarkInfo flags with ISO defaults for absent entries. The raw
+/// dictionary is retained when the producer supplied one.
+pub(all) struct PdfMarkInfo {
+  marked : Bool
+  user_properties : Bool
+  suspects : Bool
+  raw_dict : @objects.PdfDictionary?
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfStructureParent {
+  Root
+  Element(@objects.ObjectId?)
+  Raw(@objects.PdfObject)
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfStructureDiagnostic {
+  code : @objects.PdfName
+  message : String
+  object_id : @objects.ObjectId?
+  raw_object : @objects.PdfObject?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfMarkedContentIdentifier {
+  mcid : Int
+  page_ref : @objects.ObjectId?
+  raw_object : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfMarkedContentReference {
+  mcid : Int
+  page_ref : @objects.ObjectId?
+  stream_ref : @objects.ObjectId?
+  stream_owner_ref : @objects.ObjectId?
+  raw_dict : @objects.PdfDictionary
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfObjectReferenceContent {
+  object_ref : @objects.ObjectId
+  page_ref : @objects.ObjectId?
+  raw_dict : @objects.PdfDictionary
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfStructureContentItem {
+  MCID(PdfMarkedContentIdentifier)
+  MCR(PdfMarkedContentReference)
+  OBJR(PdfObjectReferenceContent)
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfStructureChild {
+  Element(Int, @objects.ObjectId?)
+  Content(PdfStructureContentItem)
+  Diagnostic(PdfStructureDiagnostic)
+  Raw(@objects.PdfObject)
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfStructureAttributeSourceKind {
+  Direct
+  ClassMap(Bytes)
+  Inherited(@objects.ObjectId?)
+  Default
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfUserProperty {
+  name : Bytes
+  value : @objects.PdfObject
+  formatted_value : Bytes?
+  hidden : Bool
+  raw_dict : @objects.PdfDictionary
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfStructureAttributeObject {
+  owner : @objects.PdfName?
+  namespace_owner : @objects.ObjectId?
+  revision : Int?
+  raw_object : @objects.PdfObject
+  raw_dict : @objects.PdfDictionary?
+  raw_stream : @objects.PdfStream?
+  user_properties : Array[PdfUserProperty]
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfStructureClassReference {
+  name : Bytes
+  revision : Int?
+  raw_object : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfStructureClassMapEntry {
+  name : Bytes
+  attributes : Array[PdfStructureAttributeObject]
+  raw_value : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfResolvedAttribute {
+  key : @objects.PdfName
+  value : @objects.PdfObject
+  owner : @objects.PdfName?
+  namespace_owner : @objects.ObjectId?
+  source : PdfStructureAttributeSourceKind
+  inherited : Bool
+  defaulted : Bool
+  revision : Int?
+  raw_origin : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfAccessibilityProperties {
+  alternate_description : Bytes?
+  replacement_text : Bytes?
+  expansion_text : Bytes?
+  phoneme : Bytes?
+  phonetic_alphabet : @objects.PdfName?
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfEffectiveLanguageSource {
+  Absent
+  Catalog
+  Element(@objects.ObjectId?)
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfEffectiveLanguage {
+  language : Bytes?
+  source : PdfEffectiveLanguageSource
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfStructureElement {
+  index : Int
+  object_id : @objects.ObjectId?
+  structure_type : @objects.PdfName
+  parent : PdfStructureParent
+  id : Bytes?
+  references : @objects.PdfObject?
+  page_ref : @objects.ObjectId?
+  children : Array[PdfStructureChild]
+  attributes : Array[PdfStructureAttributeObject]
+  class_refs : Array[PdfStructureClassReference]
+  revision : Int?
+  title : Bytes?
+  language : Bytes?
+  accessibility : PdfAccessibilityProperties
+  namespace_ref : @objects.ObjectId?
+  associated_files : @objects.PdfObject?
+  raw_dict : @objects.PdfDictionary
+  diagnostics : Array[PdfStructureDiagnostic]
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfNamespaceRoleMapEntry {
+  source : @objects.PdfName
+  target : @objects.PdfName
+  target_namespace_ref : @objects.ObjectId?
+  raw_target : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfStructureNamespace {
+  index : Int
+  object_id : @objects.ObjectId?
+  name : Bytes?
+  schema : @objects.PdfObject?
+  role_map : Array[PdfNamespaceRoleMapEntry]
+  raw_dict : @objects.PdfDictionary
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfStandardStructureCategory {
+  Document
+  Grouping
+  Block
+  SubBlock
+  Inline
+  Ruby
+  Warichu
+  List
+  Table
+  Caption
+  Figure
+  Formula
+  Artifact
+  Contextual
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfStandardStructureType {
+  name : @objects.PdfName
+  category : PdfStandardStructureCategory
+  heading_level : Int?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfResolvedStructureType {
+  original : @objects.PdfName
+  namespace_ref : @objects.ObjectId?
+  chain : Array[@objects.PdfName]
+  standard_target : PdfStandardStructureType?
+  custom_terminal : @objects.PdfName?
+  cycle : Bool
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfStructureParentLookup {
+  element_index : Int?
+  element_ref : @objects.ObjectId?
+  raw_value : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfStructureContentReport {
+  diagnostics : Array[PdfStructureDiagnostic]
+  unchecked : Array[PdfTaggedPdfReportItem]
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfTaggedPdfSeverity {
+  Error
+  Warning
+  Unchecked
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfTaggedPdfReportItem {
+  code : @objects.PdfName
+  severity : PdfTaggedPdfSeverity
+  message : String
+  element_index : Int?
+  object_id : @objects.ObjectId?
+  raw_object : @objects.PdfObject?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfStandardNestingDiagnostic {
+  code : @objects.PdfName
+  message : String
+  element_index : Int?
+  severity : PdfTaggedPdfSeverity
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfTaggedPdfReport {
+  errors : Array[PdfTaggedPdfReportItem]
+  warnings : Array[PdfTaggedPdfReportItem]
+  unchecked : Array[PdfTaggedPdfReportItem]
+  is_marked : Bool
+  has_structure_tree : Bool
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfStructureTree {
+  root_object_id : @objects.ObjectId?
+  root_dict : @objects.PdfDictionary
+  root_children : Array[PdfStructureChild]
+  elements : Array[PdfStructureElement]
+  id_tree_entries : Array[PdfNameTreeEntry]
+  parent_tree_entries : Array[PdfNumberTreeEntry]
+  parent_tree_next_key : Int?
+  role_map : Map[@objects.PdfName, @objects.PdfName]
+  class_map : Array[PdfStructureClassMapEntry]
+  namespaces : Array[PdfStructureNamespace]
+  pronunciation_lexicons : Array[@objects.PdfObject]
+  associated_files : @objects.PdfObject?
+  document_language : Bytes?
+  mark_info : PdfMarkInfo
+} derive(Eq, Debug)

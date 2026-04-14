@@ -19,6 +19,8 @@ pub fn media_player_may_be_used(PdfMediaPlayerPolicy, PdfSoftwareIdentity, Bytes
 
 pub fn software_identifier_matches(PdfSoftwareIdentifier, PdfSoftwareIdentity) -> PdfViabilityDecision
 
+pub fn standard_structure_type(@objects.PdfName) -> PdfStandardStructureType?
+
 // Errors
 pub(all) suberror PdfDocumentError {
   ReaderError(PdfReaderError)
@@ -36,6 +38,7 @@ pub(all) suberror PdfDocumentError {
   InvalidMeasure(@objects.ObjectId?, String)
   InvalidRequirement(@objects.ObjectId?, String)
   InvalidMultimedia(@objects.ObjectId?, String)
+  InvalidStructure(@objects.ObjectId?, String)
   InterchangeError(@interchange.PdfInterchangeError)
   ContentError(@content.PdfContentError)
   GraphicsError(@graphics.PdfGraphicsError)
@@ -102,6 +105,14 @@ pub struct ObjectStreamTableCacheEntry {
 type PageTreeIndex derive(Eq, @debug.Debug)
 
 type PageTreeRecord derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAccessibilityProperties {
+  alternate_description : Bytes?
+  replacement_text : Bytes?
+  expansion_text : Bytes?
+  phoneme : Bytes?
+  phonetic_alphabet : @objects.PdfName?
+} derive(Eq, @debug.Debug)
 
 pub(all) struct PdfAcroForm {
   root_fields : Array[PdfFormField]
@@ -551,7 +562,9 @@ pub fn PdfDocument::catalog_additional_actions(Self) -> PdfCatalogAdditionalActi
 pub fn PdfDocument::catalog_uri(Self) -> PdfCatalogUri? raise PdfDocumentError
 pub fn PdfDocument::collection(Self) -> PdfCollection? raise PdfDocumentError
 pub fn PdfDocument::document_info(Self) -> @interchange.PdfDocumentInfo? raise PdfDocumentError
+pub fn PdfDocument::document_language(Self) -> Bytes? raise PdfDocumentError
 pub fn PdfDocument::lookup_name(Self, NameTreeCategory, Bytes) -> @objects.PdfObject? raise PdfDocumentError
+pub fn PdfDocument::mark_info(Self) -> PdfMarkInfo raise PdfDocumentError
 pub fn PdfDocument::metadata_sources(Self) -> @interchange.PdfDocumentMetadataSources raise PdfDocumentError
 pub fn PdfDocument::metadata_stream(Self) -> @interchange.PdfMetadataStream? raise PdfDocumentError
 pub fn PdfDocument::name_tree_entries(Self, NameTreeCategory) -> Array[PdfNameTreeEntry] raise PdfDocumentError
@@ -574,6 +587,9 @@ pub fn PdfDocument::parse_action_from_object(Self, @objects.PdfObject, @objects.
 pub fn PdfDocument::parse_annotation_additional_action_object(Self, @objects.PdfObject, @objects.ObjectId?) -> PdfAnnotationAdditionalActions raise PdfDocumentError
 pub fn PdfDocument::parse_form_field_additional_action_object(Self, @objects.PdfObject, @objects.ObjectId?) -> PdfFormFieldAdditionalActions raise PdfDocumentError
 pub fn PdfDocument::piece_info(Self) -> @interchange.PdfPagePieceDictionary? raise PdfDocumentError
+pub fn PdfDocument::structure_content_report(Self) -> PdfStructureContentReport raise PdfDocumentError
+pub fn PdfDocument::structure_tree(Self) -> PdfStructureTree? raise PdfDocumentError
+pub fn PdfDocument::tagged_pdf_report(Self) -> PdfTaggedPdfReport raise PdfDocumentError
 pub fn PdfDocument::threads(Self) -> Array[PdfArticleThread] raise PdfDocumentError
 pub fn PdfDocument::viewer_preferences(Self) -> PdfViewerPreferences raise PdfDocumentError
 
@@ -589,6 +605,17 @@ pub(all) enum PdfDuplex {
   Simplex
   DuplexFlipShortEdge
   DuplexFlipLongEdge
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfEffectiveLanguage {
+  language : Bytes?
+  source : PdfEffectiveLanguageSource
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfEffectiveLanguageSource {
+  Absent
+  Catalog
+  Element(@objects.ObjectId?)
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfEmbeddedGoToAction {
@@ -914,6 +941,27 @@ pub(all) struct PdfLinkAnnotation {
   quad_points : Array[PdfQuadPoints]
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfMarkInfo {
+  marked : Bool
+  user_properties : Bool
+  suspects : Bool
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfMarkedContentIdentifier {
+  mcid : Int
+  page_ref : @objects.ObjectId?
+  raw_object : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfMarkedContentReference {
+  mcid : Int
+  page_ref : @objects.ObjectId?
+  stream_ref : @objects.ObjectId?
+  stream_owner_ref : @objects.ObjectId?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfMarkupAnnotation {
   title : Bytes?
   popup : @objects.PdfObject?
@@ -1171,6 +1219,13 @@ pub(all) struct PdfNamedDestination {
   raw_value : @objects.PdfObject
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfNamespaceRoleMapEntry {
+  source : @objects.PdfName
+  target : @objects.PdfName
+  target_namespace_ref : @objects.ObjectId?
+  raw_target : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfNavigationNode {
   forward_action : @objects.PdfObject?
   backward_action : @objects.PdfObject?
@@ -1208,6 +1263,12 @@ pub(all) enum PdfOCGStateOperator {
   ON
   OFF
   Toggle
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfObjectReferenceContent {
+  object_ref : @objects.ObjectId
+  page_ref : @objects.ObjectId?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfOutline {
@@ -1461,6 +1522,27 @@ pub(all) enum PdfRequirementSupportStatus {
   Supported
   Unsupported
   Unknown
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfResolvedAttribute {
+  key : @objects.PdfName
+  value : @objects.PdfObject
+  owner : @objects.PdfName?
+  namespace_owner : @objects.ObjectId?
+  source : PdfStructureAttributeSourceKind
+  inherited : Bool
+  defaulted : Bool
+  revision : Int?
+  raw_origin : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfResolvedStructureType {
+  original : @objects.PdfName
+  namespace_ref : @objects.ObjectId?
+  chain : Array[@objects.PdfName]
+  standard_target : PdfStandardStructureType?
+  custom_terminal : @objects.PdfName?
+  cycle : Bool
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfRichMediaActivation {
@@ -1726,6 +1808,185 @@ pub(all) struct PdfStampAnnotation {
   intent : @objects.PdfName
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfStandardNestingDiagnostic {
+  code : @objects.PdfName
+  message : String
+  element_index : Int?
+  severity : PdfTaggedPdfSeverity
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfStandardStructureCategory {
+  Document
+  Grouping
+  Block
+  SubBlock
+  Inline
+  Ruby
+  Warichu
+  List
+  Table
+  Caption
+  Figure
+  Formula
+  Artifact
+  Contextual
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfStandardStructureType {
+  name : @objects.PdfName
+  category : PdfStandardStructureCategory
+  heading_level : Int?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfStructureAttributeObject {
+  owner : @objects.PdfName?
+  namespace_owner : @objects.ObjectId?
+  revision : Int?
+  raw_object : @objects.PdfObject
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]?
+  raw_stream : @objects.PdfStream?
+  user_properties : Array[PdfUserProperty]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfStructureAttributeSourceKind {
+  Direct
+  ClassMap(Bytes)
+  Inherited(@objects.ObjectId?)
+  Default
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfStructureChild {
+  Element(Int, @objects.ObjectId?)
+  Content(PdfStructureContentItem)
+  Diagnostic(PdfStructureDiagnostic)
+  Raw(@objects.PdfObject)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfStructureClassMapEntry {
+  name : Bytes
+  attributes : Array[PdfStructureAttributeObject]
+  raw_value : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfStructureClassReference {
+  name : Bytes
+  revision : Int?
+  raw_object : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfStructureContentItem {
+  MCID(PdfMarkedContentIdentifier)
+  MCR(PdfMarkedContentReference)
+  OBJR(PdfObjectReferenceContent)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfStructureContentReport {
+  diagnostics : Array[PdfStructureDiagnostic]
+  unchecked : Array[PdfTaggedPdfReportItem]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfStructureDiagnostic {
+  code : @objects.PdfName
+  message : String
+  object_id : @objects.ObjectId?
+  raw_object : @objects.PdfObject?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfStructureElement {
+  index : Int
+  object_id : @objects.ObjectId?
+  structure_type : @objects.PdfName
+  parent : PdfStructureParent
+  id : Bytes?
+  references : @objects.PdfObject?
+  page_ref : @objects.ObjectId?
+  children : Array[PdfStructureChild]
+  attributes : Array[PdfStructureAttributeObject]
+  class_refs : Array[PdfStructureClassReference]
+  revision : Int?
+  title : Bytes?
+  language : Bytes?
+  accessibility : PdfAccessibilityProperties
+  namespace_ref : @objects.ObjectId?
+  associated_files : @objects.PdfObject?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+  diagnostics : Array[PdfStructureDiagnostic]
+} derive(Eq, @debug.Debug)
+pub fn PdfStructureElement::accessibility_properties(Self) -> PdfAccessibilityProperties
+pub fn PdfStructureElement::attributes(Self) -> Array[PdfStructureAttributeObject]
+pub fn PdfStructureElement::user_properties(Self) -> Array[PdfUserProperty] raise PdfDocumentError
+
+pub(all) struct PdfStructureNamespace {
+  index : Int
+  object_id : @objects.ObjectId?
+  name : Bytes?
+  schema : @objects.PdfObject?
+  role_map : Array[PdfNamespaceRoleMapEntry]
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfStructureParent {
+  Root
+  Element(@objects.ObjectId?)
+  Raw(@objects.PdfObject)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfStructureParentLookup {
+  element_index : Int?
+  element_ref : @objects.ObjectId?
+  raw_value : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfStructureTree {
+  root_object_id : @objects.ObjectId?
+  root_dict : Map[@objects.PdfName, @objects.PdfObject]
+  root_children : Array[PdfStructureChild]
+  elements : Array[PdfStructureElement]
+  id_tree_entries : Array[PdfNameTreeEntry]
+  parent_tree_entries : Array[PdfNumberTreeEntry]
+  parent_tree_next_key : Int?
+  role_map : Map[@objects.PdfName, @objects.PdfName]
+  class_map : Array[PdfStructureClassMapEntry]
+  namespaces : Array[PdfStructureNamespace]
+  pronunciation_lexicons : Array[@objects.PdfObject]
+  associated_files : @objects.PdfObject?
+  document_language : Bytes?
+  mark_info : PdfMarkInfo
+} derive(Eq, @debug.Debug)
+pub fn PdfStructureTree::effective_language(Self, PdfStructureElement) -> PdfEffectiveLanguage raise PdfDocumentError
+pub fn PdfStructureTree::element_by_id(Self, Bytes) -> PdfStructureElement? raise PdfDocumentError
+pub fn PdfStructureTree::elements(Self) -> Array[PdfStructureElement]
+pub fn PdfStructureTree::namespaces(Self) -> Array[PdfStructureNamespace]
+pub fn PdfStructureTree::parent_for_mcid(Self, Int, Int) -> PdfStructureParentLookup? raise PdfDocumentError
+pub fn PdfStructureTree::parent_for_object(Self, Int) -> PdfStructureParentLookup? raise PdfDocumentError
+pub fn PdfStructureTree::resolve_structure_type(Self, PdfStructureElement) -> PdfResolvedStructureType raise PdfDocumentError
+pub fn PdfStructureTree::resolved_attributes(Self, PdfStructureElement) -> Array[PdfResolvedAttribute] raise PdfDocumentError
+pub fn PdfStructureTree::standard_structure_report(Self) -> Array[PdfStandardNestingDiagnostic] raise PdfDocumentError
+pub fn PdfStructureTree::tagged_pdf_report(Self) -> PdfTaggedPdfReport raise PdfDocumentError
+
+pub(all) struct PdfTaggedPdfReport {
+  errors : Array[PdfTaggedPdfReportItem]
+  warnings : Array[PdfTaggedPdfReportItem]
+  unchecked : Array[PdfTaggedPdfReportItem]
+  is_marked : Bool
+  has_structure_tree : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfTaggedPdfReportItem {
+  code : @objects.PdfName
+  severity : PdfTaggedPdfSeverity
+  message : String
+  element_index : Int?
+  object_id : @objects.ObjectId?
+  raw_object : @objects.PdfObject?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfTaggedPdfSeverity {
+  Error
+  Warning
+  Unchecked
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfTargetDictionary {
   object_id : @objects.ObjectId?
   relation : @objects.PdfName?
@@ -1941,6 +2202,14 @@ pub(all) struct PdfUnknownRendition {
 pub(all) struct PdfUriAction {
   uri : Bytes
   is_map : Bool
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfUserProperty {
+  name : Bytes
+  value : @objects.PdfObject
+  formatted_value : Bytes?
+  hidden : Bool
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
