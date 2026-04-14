@@ -74,7 +74,8 @@ pub(all) struct PdfViabilityTraceEntry {
 
 ///|
 /// Side-effect-free viability report for renditions, media clips, media play
-/// parameters, media screen parameters, players, and selector choices.
+/// parameters from Table 290, media screen parameters, players, and selector
+/// choices.
 pub(all) struct PdfViabilityReport {
   decision : PdfViabilityDecision
   trace : Array[PdfViabilityTraceEntry]
