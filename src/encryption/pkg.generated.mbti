@@ -1,0 +1,120 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/encryption"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/pdf/src/common_data",
+  "trkbt10/pdf/src/crypto",
+  "trkbt10/pdf/src/objects",
+}
+
+// Values
+pub fn wrap_crypto_error(@crypto.PdfCryptoError) -> PdfEncryptionError
+
+// Errors
+pub(all) suberror PdfEncryptionError {
+  CryptoFailure(@crypto.PdfCryptoError)
+  MalformedEncryptionDictionary(String, String)
+  MissingCredentials
+  InvalidCredentials
+  UnsupportedSecurityHandler(String)
+  UnsupportedAlgorithm(String)
+  AuthorizationFailure(String)
+  PermissionValidationFailure(String)
+  PasswordPreprocessingFailure(@common_data.PdfCommonDataError)
+} derive(Eq, @debug.Debug)
+
+// Types and methods
+pub(all) enum CipherVersion {
+  V1
+  V2
+  V3
+  V4
+  V5
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CryptFilter {
+  name : @objects.PdfName
+  filter_method : CryptFilterMethod
+  auth_event : CryptFilterAuthEvent
+  length_bits : Int?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CryptFilterAuthEvent {
+  DocOpen
+  EFOpen
+  Unsupported(Bytes)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CryptFilterMethod {
+  Identity
+  None
+  V2
+  AESV2
+  AESV3
+  Unsupported(Bytes)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DocumentPermissions {
+  raw_permissions : Int64
+  print : Bool
+  modify : Bool
+  copy : Bool
+  annotate : Bool
+  fill_forms : Bool
+  accessibility_extract : Bool
+  assemble : Bool
+  high_quality_print : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct EncryptedPayloadInfo {
+  subtype : @objects.PdfName
+  version : Bytes?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum EncryptionAccessMode {
+  UserAccess
+  OwnerAccess
+} derive(Eq, @debug.Debug)
+
+pub(all) struct EncryptionContext {
+  status : EncryptionStatus
+  file_key : Bytes
+  access_mode : EncryptionAccessMode
+  permissions : DocumentPermissions
+  cipher_version : CipherVersion
+  encrypt_metadata : Bool
+  string_filter : CryptFilter
+  stream_filter : CryptFilter
+  embedded_file_filter : CryptFilter?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct EncryptionCredentials {
+  password : Bytes
+} derive(Eq, @debug.Debug)
+pub fn EncryptionCredentials::empty() -> Self
+pub fn EncryptionCredentials::password(Bytes) -> Self
+
+pub(all) enum EncryptionStatus {
+  Unencrypted
+  EncryptedAuthorized
+  EncryptedUnsupported(String)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct FileIdentifier {
+  first : Bytes
+  second : Bytes?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum StreamDecryptPurpose {
+  RegularStream
+  XrefStream
+  ObjectStream
+  MetadataStream
+  EmbeddedFileStream
+  ExternalFileStream
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits

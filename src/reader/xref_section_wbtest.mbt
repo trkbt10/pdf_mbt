@@ -153,6 +153,8 @@ fn expect_valid_section_chain(
             "expected valid xref section chain, got DecodeStreamError \{offset}",
           )
       }
+    Err(EncryptionError(_)) =>
+      fail("expected valid xref section chain, got EncryptionError")
   }
 }
 

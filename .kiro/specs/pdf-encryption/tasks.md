@@ -1,7 +1,7 @@
 # Implementation Plan
 
-- [ ] 1. Establish encryption and crypto foundations
-- [ ] 1.1 Define the package boundaries and typed diagnostics
+- [x] 1. Establish encryption and crypto foundations
+- [x] 1.1 Define the package boundaries and typed diagnostics
   - Create the standard-library-only crypto and encryption boundaries without adding external packages, native bindings, CMS runtimes, or platform key stores.
   - Add separate crypto, encryption, and reader-facing diagnostic categories for invalid primitives, malformed encryption dictionaries, credential failures, unsupported handlers, unsupported algorithms, and authorization failures.
   - Preserve the existing parser, object, filter, and reader ownership boundaries while allowing reader errors to wrap encryption failures.
@@ -9,7 +9,7 @@
   - _Requirements: 0.1, 0.2, 0.3, 0.6, 0.24, 0.26, 0.27_
   - _Boundary: CryptoPrimitives, EncryptionDictionaryParser, ReaderEncryptionIntegration_
 
-- [ ] 1.2 Add byte-order, block, and padding helpers
+- [x] 1.2 Add byte-order, block, and padding helpers
   - Provide little-endian and big-endian integer byte conversion, XOR, fixed-length validation, zero IV construction, and block-size checks for encryption algorithms.
   - Implement PKCS 7 padding addition and removal, including the full-block padding case and malformed-padding rejection.
   - Keep helpers byte-oriented and independent of PDF dictionaries or credentials.
@@ -17,7 +17,7 @@
   - _Requirements: 0.3, 0.4, 0.5, 0.9, 0.10, 0.20, 0.23_
   - _Boundary: CryptoPrimitives_
 
-- [ ] 1.3 Add the MD5 digest primitive for deprecated standard security
+- [x] 1.3 Add the MD5 digest primitive for deprecated standard security
   - Implement MD5 for deprecated revision 4 and earlier key derivation.
   - Support repeated digest use in password algorithms without retaining document-level state.
   - Validate the digest against independent known-answer vectors before revision 4 authentication depends on it.
@@ -25,7 +25,7 @@
   - _Requirements: 0.3, 0.9_
   - _Boundary: CryptoPrimitives_
 
-- [ ] 1.4 Add SHA-2 digest primitives for revision 6 hashing
+- [x] 1.4 Add SHA-2 digest primitives for revision 6 hashing
   - Implement SHA-256, SHA-384, and SHA-512 for revision 6 Algorithm 2.B.
   - Keep hash selection explicit so Algorithm 2.B can choose the next digest family from encrypted round output.
   - Validate each digest against independent known-answer vectors before revision 6 authentication depends on it.
@@ -33,7 +33,7 @@
   - _Requirements: 0.3, 0.10, 0.11, 0.26_
   - _Boundary: CryptoPrimitives_
 
-- [ ] 1.5 Add the RC4 transform for deprecated V2 paths
+- [x] 1.5 Add the RC4 transform for deprecated V2 paths
   - Implement the symmetric RC4 byte transform used by revision 4 and earlier password and object algorithms.
   - Preserve input length exactly and support repeated invocations with iteration-specific keys.
   - Reject invalid empty keys with typed crypto diagnostics.
@@ -41,7 +41,7 @@
   - _Requirements: 0.3, 0.4, 0.9, 0.13, 0.14, 0.15, 0.27_
   - _Boundary: CryptoPrimitives_
 
-- [ ] 1.6 Add AES block operations for PDF key sizes
+- [x] 1.6 Add AES block operations for PDF key sizes
   - Implement AES block encryption and decryption for 128-bit and 256-bit keys.
   - Validate key schedule behavior, block length, and unsupported key-size rejection at the primitive boundary.
   - Keep the block operation independent from CBC, ECB, padding, and PDF dictionary logic.
@@ -49,7 +49,7 @@
   - _Requirements: 0.3, 0.5, 0.10, 0.11, 0.20, 0.26, 0.27_
   - _Boundary: CryptoPrimitives_
 
-- [ ] 1.7 Add AES modes used by encrypted strings, streams, and permissions
+- [x] 1.7 Add AES modes used by encrypted strings, streams, and permissions
   - Provide AES-CBC with PKCS 7 padding for encrypted strings and streams.
   - Provide AES-CBC without padding for OE and UE and AES-ECB single-block decryption for Perms.
   - Reject invalid IV lengths, non-block-aligned no-padding data, and malformed padding with typed crypto errors.
@@ -257,7 +257,7 @@
   - _Boundary: ReaderEncryptionIntegration, EncryptedPayloadParser_
 
 - [ ] 6. Validate algorithms, dictionaries, and encryption-layer behavior
-- [ ] 6.1 Validate crypto primitives with independent vectors and malformed-input tests
+- [x] 6.1 Validate crypto primitives with independent vectors and malformed-input tests
   - Cover digest, RC4, AES, mode, padding, block-size, IV-size, and key-size behavior.
   - Include failure cases that prove typed crypto errors are returned before higher encryption logic executes.
   - Keep test data independent from PDF fixtures so primitive failures can be isolated quickly.

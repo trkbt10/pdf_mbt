@@ -8,6 +8,7 @@ pub(all) suberror PdfReaderError {
   InvalidObjectLocation(@objects.ObjectId, String)
   UnsupportedFilter(Int64, String)
   DecodeStreamError(Int64, @filters.PdfFilterError)
+  EncryptionError(@encryption.PdfEncryptionError)
   PrevChainCycle(Int64)
   ParseObjectError(Int64, @objects.PdfParseError)
 } derive(Eq, Debug)

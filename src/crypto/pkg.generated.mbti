@@ -1,0 +1,66 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/crypto"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn aes_cbc_decrypt(Bytes, Bytes, Bytes, PaddingMode) -> Bytes raise PdfCryptoError
+
+pub fn aes_cbc_encrypt(Bytes, Bytes, Bytes, PaddingMode) -> Bytes raise PdfCryptoError
+
+pub fn aes_decrypt_block(Bytes, Bytes) -> Bytes raise PdfCryptoError
+
+pub fn aes_ecb_decrypt_block(Bytes, Bytes) -> Bytes raise PdfCryptoError
+
+pub fn aes_encrypt_block(Bytes, Bytes) -> Bytes raise PdfCryptoError
+
+pub fn be_u32_bytes(Int64) -> Bytes
+
+pub fn be_u64_bytes(UInt64) -> Bytes
+
+pub fn bytes_xor(Bytes, Bytes) -> Bytes raise PdfCryptoError
+
+pub fn le_u32_bytes(Int64) -> Bytes
+
+pub fn le_u64_bytes(UInt64) -> Bytes
+
+pub fn md5_digest(Bytes) -> Bytes raise PdfCryptoError
+
+pub fn pkcs7_pad(Bytes, Int) -> Bytes raise PdfCryptoError
+
+pub fn pkcs7_unpad(Bytes, Int) -> Bytes raise PdfCryptoError
+
+pub fn rc4_transform(Bytes, Bytes) -> Bytes raise PdfCryptoError
+
+pub fn require_block_aligned(Bytes, Int, String) -> Unit raise PdfCryptoError
+
+pub fn require_fixed_length(Bytes, Int, String) -> Unit raise PdfCryptoError
+
+pub fn sha256_digest(Bytes) -> Bytes raise PdfCryptoError
+
+pub fn sha384_digest(Bytes) -> Bytes raise PdfCryptoError
+
+pub fn sha512_digest(Bytes) -> Bytes raise PdfCryptoError
+
+pub fn zero_iv(Int) -> Bytes raise PdfCryptoError
+
+// Errors
+pub(all) suberror PdfCryptoError {
+  InvalidKey(String)
+  InvalidBlockSize(String)
+  InvalidIv(String)
+  InvalidPadding(String)
+  InvalidLength(String)
+} derive(Eq, @debug.Debug)
+
+// Types and methods
+pub(all) enum PaddingMode {
+  PKCS7
+  NoPadding
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits

@@ -4,6 +4,7 @@ import {
   "trkbt10/pdf/src/lexer",
   "trkbt10/pdf/src/parser",
   "trkbt10/pdf/src/filters",
+  "trkbt10/pdf/src/encryption",
   "trkbt10/pdf/src/content",
   "trkbt10/pdf/src/graphics",
   "trkbt10/pdf/src/interchange",
