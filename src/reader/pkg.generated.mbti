@@ -19,6 +19,7 @@ pub(all) suberror PdfDocumentError {
   InvalidPage(@objects.ObjectId, String)
   InvalidInheritedAttribute(@objects.ObjectId, @objects.PdfName, String)
   InvalidNameTree(@objects.PdfName, String)
+  InvalidNavigation(@objects.PdfName, String)
   ContentError(@content.PdfContentError)
   GraphicsError(@graphics.PdfGraphicsError)
   PageIndexOutOfRange(Int, Int)
@@ -85,6 +86,20 @@ type PageTreeIndex derive(Eq, @debug.Debug)
 
 type PageTreeRecord derive(Eq, @debug.Debug)
 
+pub(all) struct PdfArticleBead {
+  page_index : Int?
+  page_ref : @objects.ObjectId?
+  rectangle : PdfRectangle?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfArticleThread {
+  info : Map[@objects.PdfName, @objects.PdfObject]?
+  metadata : @objects.PdfObject?
+  beads : Array[PdfArticleBead]
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
 pub struct PdfCatalog {
   object_id : @objects.ObjectId
   dict : Map[@objects.PdfName, @objects.PdfObject]
@@ -93,18 +108,108 @@ pub struct PdfCatalog {
 pub fn PdfCatalog::entry(Self, @objects.PdfName) -> @objects.PdfObject?
 pub fn PdfCatalog::names_entry(Self) -> @objects.PdfObject?
 
+pub(all) struct PdfCollection {
+  schema : Array[PdfCollectionSchemaField]
+  initial_document : Bytes?
+  view : PdfCollectionView
+  sort : PdfCollectionSort?
+  colors : Array[Double]
+  files : Array[PdfCollectionFile]
+  folders : Array[PdfCollectionFolder]
+  navigator : PdfNavigator?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfCollectionFile {
+  name : Bytes
+  file_spec : @objects.PdfObject
+  folder_id : Int?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfCollectionFolder {
+  id : Int
+  name : Bytes
+  parent_id : Int?
+  children : Array[PdfCollectionFolder]
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfCollectionSchemaField {
+  key : @objects.PdfName
+  subtype : @objects.PdfName?
+  name : Bytes?
+  order : Int?
+  visible : Bool
+  editable : Bool
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfCollectionSort {
+  keys : Array[@objects.PdfName]
+  ascending : Array[Bool]
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfCollectionView {
+  Details
+  Tile
+  Hidden
+  Custom(@objects.PdfName)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfDestination {
+  target : PdfDestinationTarget
+  view : PdfDestinationView
+  raw_array : Array[@objects.PdfObject]
+  raw_attributes : Map[@objects.PdfName, @objects.PdfObject]?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfDestinationTarget {
+  LocalPage(@objects.ObjectId)
+  LocalStructure(@objects.PdfObject, @objects.ObjectId?)
+  RemotePageIndex(Int)
+  RemoteStructureId(Bytes)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfDestinationView {
+  XYZ(Double?, Double?, Double?)
+  Fit
+  FitH(Double?)
+  FitV(Double?)
+  FitR(Double, Double, Double, Double)
+  FitB
+  FitBH(Double?)
+  FitBV(Double?)
+  Unknown(@objects.PdfName, Array[@objects.PdfObject])
+} derive(Eq, @debug.Debug)
+
 pub struct PdfDocument {
   // private fields
 }
 pub fn PdfDocument::catalog(Self) -> PdfCatalog
+pub fn PdfDocument::collection(Self) -> PdfCollection? raise PdfDocumentError
 pub fn PdfDocument::lookup_name(Self, NameTreeCategory, Bytes) -> @objects.PdfObject? raise PdfDocumentError
+pub fn PdfDocument::name_tree_entries(Self, NameTreeCategory) -> Array[PdfNameTreeEntry] raise PdfDocumentError
 pub fn PdfDocument::name_tree_root(Self, NameTreeCategory) -> @objects.PdfObject? raise PdfDocumentError
+pub fn PdfDocument::named_destination(Self, Bytes) -> PdfNamedDestination? raise PdfDocumentError
+pub fn PdfDocument::named_destinations(Self) -> Array[PdfNamedDestination] raise PdfDocumentError
 pub fn PdfDocument::names_dict(Self) -> Map[@objects.PdfName, @objects.PdfObject]? raise PdfDocumentError
 pub fn PdfDocument::open(Bytes) -> Self raise PdfDocumentError
 pub fn PdfDocument::optional_content_state(Self) -> @graphics.OptionalContentState raise PdfDocumentError
+pub fn PdfDocument::outline(Self) -> PdfOutline? raise PdfDocumentError
 pub fn PdfDocument::page(Self, Int) -> PdfPage raise PdfDocumentError
 pub fn PdfDocument::page_count(Self) -> Int raise PdfDocumentError
+pub fn PdfDocument::page_label(Self, Int) -> PdfPageLabel? raise PdfDocumentError
+pub fn PdfDocument::page_label_ranges(Self) -> Array[PdfPageLabelRange] raise PdfDocumentError
 pub fn PdfDocument::pages(Self) -> Array[PdfPage] raise PdfDocumentError
+pub fn PdfDocument::threads(Self) -> Array[PdfArticleThread] raise PdfDocumentError
+pub fn PdfDocument::viewer_preferences(Self) -> PdfViewerPreferences raise PdfDocumentError
+
+pub(all) enum PdfDuplex {
+  Simplex
+  DuplexFlipShortEdge
+  DuplexFlipLongEdge
+} derive(Eq, @debug.Debug)
 
 pub struct PdfFile {
   bytes : Bytes
@@ -133,10 +238,56 @@ pub(all) struct PdfHeader {
   has_binary_indicator : Bool
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfNameTreeEntry {
+  key : Bytes
+  value : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfNamedDestination {
+  name : Bytes
+  destination : PdfDestination
+  raw_value : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfNavigationNode {
+  forward_action : @objects.PdfObject?
+  backward_action : @objects.PdfObject?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfNavigator {
+  layout : @objects.PdfName
+  fallback_layouts : Array[@objects.PdfName]
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfNumberTreeEntry {
+  key : Int
+  value : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfOutline {
+  count : Int?
+  items : Array[PdfOutlineItem]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfOutlineItem {
+  title : Bytes
+  count : Int?
+  color : Array[Double]
+  italic : Bool
+  bold : Bool
+  destination : PdfDestination?
+  action : @objects.PdfObject?
+  structure_element : @objects.PdfObject?
+  children : Array[PdfOutlineItem]
+} derive(Eq, @debug.Debug)
+
 pub struct PdfPage {
   // private fields
 }
 pub fn PdfPage::annots(Self) -> @objects.PdfObject?
+pub fn PdfPage::article_beads(Self) -> Array[PdfArticleBead] raise PdfDocumentError
 pub fn PdfPage::content_instructions(Self) -> Array[@content.ContentInstruction] raise PdfDocumentError
 pub fn PdfPage::content_resources(Self) -> @content.ContentResources raise PdfDocumentError
 pub fn PdfPage::content_stream(Self) -> @content.ContentStream raise PdfDocumentError
@@ -151,16 +302,81 @@ pub fn PdfPage::inherited_entry(Self, @objects.PdfName) -> @objects.PdfObject? r
 pub fn PdfPage::materialized_content_resources(Self) -> @content.ContentResources raise PdfDocumentError
 pub fn PdfPage::materialized_content_stream(Self) -> @content.ContentStream raise PdfDocumentError
 pub fn PdfPage::media_box(Self) -> PdfRectangle? raise PdfDocumentError
+pub fn PdfPage::navigation_nodes(Self) -> Array[PdfNavigationNode] raise PdfDocumentError
 pub fn PdfPage::object_id(Self) -> @objects.ObjectId
 pub fn PdfPage::optional_content_state(Self) -> @graphics.OptionalContentState raise PdfDocumentError
 pub fn PdfPage::parent_ref(Self) -> @objects.ObjectId?
 pub fn PdfPage::pattern_resource(Self, @objects.PdfName) -> @graphics.PatternResource raise PdfDocumentError
 pub fn PdfPage::pattern_resources(Self) -> Array[@graphics.PatternResource] raise PdfDocumentError
+pub fn PdfPage::presentation(Self) -> PdfPresentation raise PdfDocumentError
 pub fn PdfPage::resolve_entry(Self, @objects.PdfName) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfPage::resources(Self) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfPage::rotate(Self) -> Int? raise PdfDocumentError
 pub fn PdfPage::shading_resource(Self, @objects.PdfName) -> @graphics.ShadingResource raise PdfDocumentError
+pub fn PdfPage::thumbnail(Self) -> PdfThumbnail? raise PdfDocumentError
 pub fn PdfPage::user_unit(Self) -> Double? raise PdfDocumentError
+
+pub(all) enum PdfPageBoundary {
+  MediaBox
+  CropBox
+  BleedBox
+  TrimBox
+  ArtBox
+  Unknown(@objects.PdfName)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfPageLabel {
+  page_index : Int
+  label : Bytes
+  range_start : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfPageLabelRange {
+  start_index : Int
+  style : PdfPageLabelStyle
+  prefix : Bytes
+  start_number : Int
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfPageLabelStyle {
+  Decimal
+  UpperRoman
+  LowerRoman
+  UpperLetters
+  LowerLetters
+  PrefixOnly
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfPageMode {
+  UseNone
+  UseOutlines
+  UseThumbs
+  FullScreen
+  UseOC
+  UseAttachments
+  Unknown(@objects.PdfName)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfPageRange {
+  first : Int
+  last : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfPresentation {
+  duration : Double?
+  transition : PdfTransition?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfPrintScaling {
+  None
+  AppDefault
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfReadingDirection {
+  LeftToRight
+  RightToLeft
+} derive(Eq, @debug.Debug)
 
 pub(all) struct PdfRectangle {
   left : Double
@@ -169,9 +385,86 @@ pub(all) struct PdfRectangle {
   top : Double
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfThumbnail {
+  page_index : Int
+  width : Int
+  height : Int
+  color_space : PdfThumbnailColorSpace
+  bits_per_component : Int?
+  decode : @objects.PdfObject?
+  raw_stream : @objects.PdfStream
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfThumbnailColorSpace {
+  DeviceGray
+  DeviceRGB
+  DeviceCMYK
+  Indexed
+  Other(@objects.PdfObject)
+  Absent
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfTransition {
+  style : PdfTransitionStyle
+  duration : Double
+  dimension : @objects.PdfName?
+  motion : @objects.PdfName?
+  direction : Double?
+  scale : Double?
+  opaque_area : Bool
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfTransitionStyle {
+  Split
+  Blinds
+  Box
+  Wipe
+  Dissolve
+  Glitter
+  R
+  Fly
+  Push
+  Cover
+  Uncover
+  Fade
+  Unknown(@objects.PdfName)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfVersion {
   major : Int
   minor : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfViewerPreferenceEnforceName {
+  PrintScaling
+  Duplex
+  PickTrayByPDFSize
+  PrintPageRange
+  NumCopies
+  Unknown(@objects.PdfName)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfViewerPreferences {
+  hide_toolbar : Bool
+  hide_menubar : Bool
+  hide_window_ui : Bool
+  fit_window : Bool
+  center_window : Bool
+  display_doc_title : Bool
+  non_full_screen_page_mode : PdfPageMode
+  direction : PdfReadingDirection
+  view_area : PdfPageBoundary
+  view_clip : PdfPageBoundary
+  print_area : PdfPageBoundary
+  print_clip : PdfPageBoundary
+  print_scaling : PdfPrintScaling
+  duplex : PdfDuplex?
+  pick_tray_by_pdf_size : Bool
+  print_page_ranges : Array[PdfPageRange]
+  num_copies : Int?
+  enforce : Array[PdfViewerPreferenceEnforceName]
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
 pub(all) struct TrailerInfo {

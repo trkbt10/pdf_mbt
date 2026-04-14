@@ -10,6 +10,7 @@ pub(all) suberror PdfDocumentError {
   InvalidPage(@objects.ObjectId, String)
   InvalidInheritedAttribute(@objects.ObjectId, @objects.PdfName, String)
   InvalidNameTree(@objects.PdfName, String)
+  InvalidNavigation(@objects.PdfName, String)
   ContentError(@content.PdfContentError)
   GraphicsError(@graphics.PdfGraphicsError)
   PageIndexOutOfRange(Int, Int)

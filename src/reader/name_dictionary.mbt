@@ -38,6 +38,20 @@ pub fn PdfDocument::lookup_name(
 }
 
 ///|
+/// Enumerates all key/value pairs in a Catalog name tree in exact byte-key
+/// order. Exact lookup semantics are unchanged; enumeration reuses the same
+/// node validation and cycle policy.
+pub fn PdfDocument::name_tree_entries(
+  self : PdfDocument,
+  category : NameTreeCategory,
+) -> Array[PdfNameTreeEntry] raise PdfDocumentError {
+  match self.name_tree_root(category) {
+    Some(root) => enumerate_name_tree(self.file, root)
+    None => []
+  }
+}
+
+///|
 fn resolve_names_dictionary_value(
   file : PdfFile,
   value : @objects.PdfObject,
@@ -208,6 +222,163 @@ fn lookup_name_tree_names(
     index += 2
   }
   found
+}
+
+///|
+fn enumerate_name_tree(
+  file : PdfFile,
+  root : @objects.PdfObject,
+) -> Array[PdfNameTreeEntry] raise PdfDocumentError {
+  let seen : Map[@objects.ObjectId, Bool] = Map::new()
+  let entries : Array[PdfNameTreeEntry] = []
+  enumerate_name_tree_object(file, root, seen, entries)
+  sort_name_tree_entries(entries)
+  entries
+}
+
+///|
+fn enumerate_name_tree_object(
+  file : PdfFile,
+  node : @objects.PdfObject,
+  seen : Map[@objects.ObjectId, Bool],
+  entries : Array[PdfNameTreeEntry],
+) -> Unit raise PdfDocumentError {
+  match node {
+    @objects.PdfObject::Ref(object_id) => {
+      if seen.contains(object_id) {
+        raise PdfDocumentError::CycleDetected(
+          object_id, "name tree cycle detected",
+        )
+      }
+      seen[object_id] = true
+      let loaded = try file.load_object(object_id) catch {
+        error => raise PdfDocumentError::ReaderError(error)
+      } noraise {
+        value => value
+      }
+      enumerate_name_tree_object(file, loaded, seen, entries)
+    }
+    @objects.PdfObject::Dictionary(dict) =>
+      enumerate_name_tree_dictionary(file, dict, seen, entries)
+    _ =>
+      raise PdfDocumentError::InvalidNameTree(
+        @objects.PdfName::new(b"Names"),
+        "name tree node must be a dictionary",
+      )
+  }
+}
+
+///|
+fn enumerate_name_tree_dictionary(
+  file : PdfFile,
+  dict : @objects.PdfDictionary,
+  seen : Map[@objects.ObjectId, Bool],
+  entries : Array[PdfNameTreeEntry],
+) -> Unit raise PdfDocumentError {
+  let names_key = @objects.PdfName::new(b"Names")
+  let kids_key = @objects.PdfName::new(b"Kids")
+  match (dict.get(names_key), dict.get(kids_key)) {
+    (Some(_), Some(_)) =>
+      raise PdfDocumentError::InvalidNameTree(
+        names_key, "name tree node must not contain both /Names and /Kids",
+      )
+    (Some(names_value), None) => enumerate_name_tree_names(names_value, entries)
+    (None, Some(kids_value)) =>
+      enumerate_name_tree_kids(file, kids_value, seen, entries)
+    (None, None) =>
+      raise PdfDocumentError::InvalidNameTree(
+        names_key, "name tree node must have /Names or /Kids",
+      )
+  }
+}
+
+///|
+fn enumerate_name_tree_names(
+  names_value : @objects.PdfObject,
+  entries : Array[PdfNameTreeEntry],
+) -> Unit raise PdfDocumentError {
+  let names_array = match names_value {
+    @objects.PdfObject::Array(values) => values
+    _ =>
+      raise PdfDocumentError::InvalidNameTree(
+        @objects.PdfName::new(b"Names"),
+        "name tree /Names entry must be an array",
+      )
+  }
+  if names_array.length() % 2 != 0 {
+    raise PdfDocumentError::InvalidNameTree(
+      @objects.PdfName::new(b"Names"),
+      "name tree /Names array must contain key/value pairs",
+    )
+  }
+  let mut index = 0
+  while index < names_array.length() {
+    let key = match names_array[index] {
+      @objects.PdfObject::String(bytes) => bytes
+      _ =>
+        raise PdfDocumentError::InvalidNameTree(
+          @objects.PdfName::new(b"Names"),
+          "name tree /Names keys must be strings",
+        )
+    }
+    entries.push(PdfNameTreeEntry::{ key, value: names_array[index + 1] })
+    index += 2
+  }
+}
+
+///|
+fn enumerate_name_tree_kids(
+  file : PdfFile,
+  kids_value : @objects.PdfObject,
+  seen : Map[@objects.ObjectId, Bool],
+  entries : Array[PdfNameTreeEntry],
+) -> Unit raise PdfDocumentError {
+  let kids_array = match kids_value {
+    @objects.PdfObject::Array(values) => values
+    _ =>
+      raise PdfDocumentError::InvalidNameTree(
+        @objects.PdfName::new(b"Kids"),
+        "name tree /Kids entry must be an array",
+      )
+  }
+  for kid in kids_array {
+    match kid {
+      @objects.PdfObject::Ref(object_id) => {
+        if seen.contains(object_id) {
+          raise PdfDocumentError::CycleDetected(
+            object_id, "name tree cycle detected",
+          )
+        }
+        seen[object_id] = true
+        let loaded = try file.load_object(object_id) catch {
+          error => raise PdfDocumentError::ReaderError(error)
+        } noraise {
+          value => value
+        }
+        enumerate_name_tree_object(file, loaded, seen, entries)
+      }
+      _ =>
+        raise PdfDocumentError::InvalidNameTree(
+          @objects.PdfName::new(b"Kids"),
+          "name tree /Kids entries must be indirect references",
+        )
+    }
+  }
+}
+
+///|
+fn sort_name_tree_entries(entries : Array[PdfNameTreeEntry]) -> Unit {
+  let mut index = 1
+  while index < entries.length() {
+    let current = entries[index]
+    let mut slot = index
+    while slot > 0 && bytes_compare(entries[slot - 1].key, current.key) > 0 {
+      entries[slot] = entries[slot - 1]
+      slot -= 1
+    }
+    entries[slot] = current
+    index += 1
+  }
 }
 
 ///|
