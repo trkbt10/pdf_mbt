@@ -1,0 +1,260 @@
+# Implementation Plan
+
+- [ ] 1. Establish reader-domain foundations
+- [ ] 1.1 Add domain diagnostics and shared structural parsing helpers
+  - Add distinct diagnostics for malformed form, FDF, signature, measure, and requirement structures while preserving existing reader errors.
+  - Add reusable structural helpers for resolved dictionaries, arrays, names, strings, numbers, direct-object checks, and cycle tracking.
+  - Completed state: present malformed structures raise domain-specific reader errors instead of low-level or generic action or annotation errors.
+  - _Requirements: 0.1, 0.20, 0.30, 0.57, 0.64_
+  - _Boundary: ReaderDiagnostics, StructuralHelpers_
+- [ ] 1.2 Prepare public model organization and compatibility shims
+  - Create cohesive public reader model groups for forms, FDF, signatures, measurement, geospatial data, and requirements without adding external dependencies.
+  - Keep existing raw action, widget, measure, and signature-adjacent payload access available while typed models are introduced.
+  - Completed state: the reader package type-checks with the new model declarations and existing callers can still inspect raw compatibility payloads.
+  - _Requirements: 0.1, 0.15, 0.20, 0.30, 0.57, 0.64_
+  - _Boundary: ReaderModels, CompatibilitySurface_
+
+- [ ] 2. Build AcroForm field-tree support
+- [ ] 2.1 Load AcroForm dictionaries and document-wide form metadata
+  - Read the Catalog AcroForm entry as a document-global aggregate with root fields, appearance requirements, signature flags, calculation order, default resources, default appearance, quadding, and XFA payloads.
+  - Treat missing AcroForm data as absent form data while diagnosing malformed present dictionaries.
+  - Completed state: callers can distinguish no form, an empty form, and a malformed form through typed reader results.
+  - _Requirements: 0.1, 0.2, 0.3_
+  - _Boundary: AcroFormReader_
+- [ ] 2.2 Traverse field hierarchies, inheritance, and fully qualified names
+  - Resolve root fields, non-terminal fields, terminal fields, widget-only children, merged field/widget dictionaries, parent ownership, and indirect-object cycles.
+  - Resolve inheritable field attributes from nearest ancestors and build one fully qualified field-name index with duplicate-name consistency checks.
+  - Completed state: field enumeration and name lookup return deterministic fields with inherited attributes or raise InvalidForm for cycles, invalid partial names, and inconsistent duplicate names.
+  - _Requirements: 0.2, 0.4, 0.5_
+  - _Boundary: FieldTreeResolver, FieldAttributeResolver, FieldNameIndex_
+- [ ] 2.3 (P) Parse variable text descriptors and appearance metadata
+  - Preserve default appearance strings, quadding, default style, rich text, default resources, and appearance-generation metadata as parser data.
+  - Validate structural DA and resource-name relationships without generating or rewriting appearance streams.
+  - Completed state: variable text fields expose complete descriptor data and malformed descriptor shapes raise InvalidForm.
+  - _Requirements: 0.3, 0.6_
+  - _Boundary: VariableTextParser_
+  - _Depends: 2.2_
+- [ ] 2.4 (P) Classify button, text, and choice field types
+  - Decode common and field-specific flags for button, text, and choice fields while preserving unknown and reserved bits.
+  - Parse push-button value restrictions, check box and radio state data, text MaxLen and file-select metadata, and choice Opt, TI, I, and multi-select values.
+  - Completed state: every terminal Btn, Tx, and Ch field is represented as the correct typed variant with raw values preserved where behavior is outside parser scope.
+  - _Requirements: 0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13_
+  - _Boundary: FieldTypeParser, ButtonFieldParser, TextFieldParser, ChoiceFieldParser_
+  - _Depends: 2.2_
+- [ ] 2.5 (P) Parse signature fields, locks, and seed value constraints
+  - Parse signature field dictionaries, visibility constraints, single-widget constraints, signature field locks, seed values, certificate seed values, and required-versus-optional seed flags.
+  - Preserve handler, certificate, digest, timestamp, legal attestation, lock-document, and appearance-filter constraints as structural data only.
+  - Completed state: signature fields expose lock and seed metadata without claiming any signing or validation behavior.
+  - _Requirements: 0.14_
+  - _Boundary: SignatureFieldParser, SignatureSeedParser_
+  - _Depends: 2.2_
+- [ ] 2.6 Link widget annotations and non-interactive form markers
+  - Bridge widget annotation data to fields by raw object identity or merged dictionary provenance while preserving existing annotation enumeration semantics.
+  - Expose non-interactive PrintField-related markers as raw parser metadata rather than widget-backed interactive form fields.
+  - Completed state: fields list their associated widgets, signature fields diagnose multiple widgets, and non-interactive markers remain separate from AcroForm fields.
+  - _Requirements: 0.1, 0.2, 0.10, 0.11, 0.14, 0.29_
+  - _Boundary: WidgetBridge, NonInteractiveMarker_
+
+- [ ] 3. Promote form action parsing and selection plans
+- [ ] 3.1 Parse typed submit, reset, and import action structures
+  - Promote submit, reset, and import action dictionaries from raw payloads to typed structures that preserve file specifications, fields arrays, flags, character set, and raw dictionaries.
+  - Preserve compatibility with existing raw form action inspection while typed action kinds are introduced.
+  - Completed state: action parsing yields typed SubmitForm, ResetForm, and ImportData data without changing non-form action behavior.
+  - _Requirements: 0.15, 0.16, 0.17, 0.18_
+  - _Boundary: FormActionParser_
+- [ ] 3.2 Build deterministic field-selection plans
+  - Resolve action Fields entries by indirect field reference or fully qualified field name against the AcroForm field-name index.
+  - Apply include/exclude rules, descendant inclusion, NoExport precedence, no-value field handling, and reset default-value targets without mutating field values.
+  - Completed state: submit and reset plan APIs return selected field names, omitted field reasons, and raw values needed by caller-owned effects.
+  - _Requirements: 0.4, 0.5, 0.16, 0.17, 0.18_
+  - _Boundary: FieldSelectionPlanner_
+- [ ] 3.3 Integrate form actions with existing action parsing boundaries
+  - Keep network transport, filesystem import, serialization, XFDF, HTML encoding, and value mutation outside the reader.
+  - Ensure typed form actions remain available through existing action traversal, triggers, and annotation action paths.
+  - Completed state: form actions are typed everywhere existing action APIs can surface them, and no action path performs side effects.
+  - _Requirements: 0.15, 0.16, 0.17, 0.18_
+  - _Boundary: ActionsIntegration, FormActionParser_
+
+- [ ] 4. Add standalone FDF reader support
+- [ ] 4.1 Parse FDF file structure from caller-supplied bytes
+  - Validate the FDF header, body objects, optional xref table, trailer Root, generation-zero rule, duplicate object numbers, and direct or indirect root catalog.
+  - Keep FDF parsing separate from normal PDF document opening and incremental-update semantics.
+  - Completed state: valid FDF bytes produce an object store and root catalog, while malformed FDF file structure raises InvalidFDF.
+  - _Requirements: 0.20, 0.21, 0.22, 0.23, 0.24_
+  - _Boundary: FDFReader, FDFStructureParser_
+- [ ] 4.2 Parse FDF catalog and FDF dictionary payloads
+  - Parse catalog version, FDF dictionary source or target file data, identifiers, fields, status, pages, encoding, annotations, differences, target, embedded FDF descriptors, and JavaScript descriptors.
+  - Preserve encrypted embedded FDF data and JavaScript as raw structural descriptors only.
+  - Completed state: the FDF catalog exposes typed FDF dictionary payloads with raw differences and embedded descriptors intact.
+  - _Requirements: 0.25_
+  - _Boundary: FDFCatalogParser_
+- [ ] 4.3 (P) Parse FDF fields and button appearance metadata
+  - Parse FDF field hierarchy, values, field flags, set/clear flag plans, widget annotation flags, appearance dictionaries, external appearance references, icon fit dictionaries, actions, additional actions, and rich text.
+  - Respect Ff and F precedence over SetFf, ClrFf, SetF, and ClrF while leaving import mutation to callers.
+  - Completed state: FDF field records expose import-ready structural data and malformed field dictionaries raise InvalidFDF.
+  - _Requirements: 0.15, 0.16, 0.17, 0.18, 0.26_
+  - _Boundary: FDFFieldParser_
+  - _Depends: 4.2_
+- [ ] 4.4 (P) Parse named pages, FDF pages, and templates
+  - Read document named pages and templates name trees as references for FDF import plans.
+  - Parse FDF page dictionaries, template dictionaries, named page references, template fields, and rename flags.
+  - Completed state: FDF page and template data exposes named page references and conflict-rename intent without instantiating pages.
+  - _Requirements: 0.19, 0.27_
+  - _Boundary: NamedPageReader, FDFPageParser, FDFTemplateParser_
+  - _Depends: 4.2_
+- [ ] 4.5 (P) Parse FDF annotation dictionaries
+  - Parse FDF annotation dictionaries using existing annotation structure where possible and require the FDF Page entry.
+  - Reject annotation types that FDF excludes while preserving allowed annotation payloads structurally.
+  - Completed state: FDF annotations include zero-based page numbers and malformed or excluded annotation dictionaries raise InvalidFDF.
+  - _Requirements: 0.28_
+  - _Boundary: FDFAnnotationParser_
+  - _Depends: 4.2_
+- [ ] 4.6 Integrate FDF descriptors with import action plans
+  - Connect import-data source descriptors and FDF field payloads so callers can inspect what would be imported without applying it.
+  - Preserve FDF submission differences and annotation payloads as data for caller-owned workflows.
+  - Completed state: import-data actions and standalone FDF parsing share compatible structural descriptors for caller-side planning.
+  - _Requirements: 0.18, 0.20, 0.25, 0.26_
+  - _Boundary: FDFReader, FormActionParser_
+
+- [ ] 5. Parse PDF signature structures and validation inputs
+- [ ] 5.1 Parse signature dictionaries, byte ranges, and signature classifications
+  - Enumerate signature dictionaries from signature fields and permissions entries, including approval, certification, usage-rights, and document timestamp signatures.
+  - Parse Type, Filter, SubFilter, Contents, Cert, ByteRange, Reference, Changes, signer metadata, build metadata, authentication metadata, and deprecated PKCS #1 or PKCS #7 forms.
+  - Completed state: signature records expose bounded byte ranges, raw signature bytes, subfilter classification, and metadata without cryptographic validity claims.
+  - _Requirements: 0.30, 0.35, 0.36, 0.37, 0.39, 0.40, 0.52, 0.53_
+  - _Boundary: SignatureReader_
+- [ ] 5.2 Parse signature references and transform parameters
+  - Parse signature reference dictionaries, digest method names, DocMDP, UR, and FieldMDP transform parameters.
+  - Expose DocMDP permissions, usage-rights permissions, FieldMDP lock selections, version names, and direct-object requirements as structural constraints.
+  - Completed state: every recognized transform method produces deterministic parser data and invalid transform parameter shapes raise InvalidSignature.
+  - _Requirements: 0.31, 0.32, 0.33, 0.34, 0.55_
+  - _Boundary: SignatureTransformParser_
+- [ ] 5.3 Gather handler-facing validation work items
+  - Produce validation plans containing byte-range slices, contents bytes, subfilter, digest hints, transform constraints, revision-order inputs, revocation evidence references, timestamp candidates, and policy work items.
+  - Represent PAdES, CMS, CAdES, PKCS #1, certificate-path, revocation, timestamp, and signature-policy checks as external handler work.
+  - Completed state: validation plans describe all PDF-owned inputs and never mark signatures valid, invalid, trusted, or legally binding.
+  - _Requirements: 0.30, 0.33, 0.37, 0.38, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46_
+  - _Boundary: SignatureValidationPlanner_
+- [ ] 5.4 Order signature fields and document timestamps
+  - Determine signature ordering by ByteRange length and classify document timestamp dictionaries with complete-file byte-range expectations.
+  - Expose timestamp chain metadata, signed-revision boundaries, and ignored DSS or timestamp update inputs for DocMDP assessment.
+  - Completed state: signature validation plans include document timestamp candidates and chain order without validating timestamp tokens.
+  - _Requirements: 0.14, 0.30, 0.52, 0.53, 0.54_
+  - _Boundary: SignatureReader, DocumentTimestampReader_
+
+- [ ] 6. Add LTV, permissions, and legal attestation readers
+- [ ] 6.1 Parse DSS and VRI evidence stores
+  - Parse Catalog DSS entries, VRI dictionaries, certificate streams, OCSP streams, CRL streams, timestamps, creation dates, and uppercase signature hash keys.
+  - Preserve all certificate, OCSP, CRL, CMS, CAdES, and timestamp bytes raw and avoid logging sensitive evidence.
+  - Completed state: DSS and VRI records expose evidence references and malformed evidence dictionaries raise InvalidSignature.
+  - _Requirements: 0.47, 0.48, 0.49, 0.50_
+  - _Boundary: LTVReader_
+- [ ] 6.2 Build validation evidence search ordering
+  - Represent the preferred evidence lookup order from VRI-specific data to DSS global arrays to embedded signature evidence.
+  - Include timestamp-related LTV evidence for initial and subsequent timestamp chains.
+  - Completed state: validation plans expose deterministic evidence search order and timestamp evidence metadata for external handlers.
+  - _Requirements: 0.51, 0.52, 0.53, 0.54_
+  - _Boundary: LTVReader, SignatureValidationPlanner_
+- [ ] 6.3 Parse permissions and legal attestation dictionaries
+  - Parse Catalog permissions entries for DocMDP and UR3 along with legal attestation counters and explanatory attestation text.
+  - Preserve permission-handler, security-handler, deprecated usage-rights, and legal trust decisions as caller-owned behavior.
+  - Completed state: callers can inspect permissions and legal attestation metadata without enforcement or trust assertions.
+  - _Requirements: 0.32, 0.55, 0.56_
+  - _Boundary: PermissionsReader, LegalAttestationReader_
+- [ ] 6.4 Integrate signature validation plans with LTV and permissions
+  - Attach DSS, VRI, document timestamps, permissions, legal attestations, and transform constraints to signature validation plans.
+  - Keep DocMDP and FieldMDP modification analysis as constraints and revision inputs, not object-diff validation.
+  - Completed state: a document-level signature plan exposes all PDF-owned signature, LTV, permission, and legal metadata through one deterministic contract.
+  - _Requirements: 0.30, 0.33, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.49, 0.50, 0.51, 0.52, 0.53, 0.54, 0.55, 0.56_
+  - _Boundary: SignatureValidationPlanner, LTVReader, PermissionsReader_
+
+- [ ] 7. Parse measurement, geospatial, and Catalog requirement data
+- [ ] 7.1 Parse page viewports and measure dictionaries
+  - Parse page viewport arrays, viewport rectangles, names, measure dictionaries, point-data references, annotation measure entries, and rectilinear measure dictionaries.
+  - Select the last matching viewport for a point by reverse drawing order and use the first point viewport for multi-point measurements.
+  - Completed state: page APIs expose viewports and measurement metadata, and point lookup returns the expected viewport or none.
+  - _Requirements: 0.57_
+  - _Boundary: MeasurementReader_
+- [ ] 7.2 Implement rectilinear number-format array formatting
+  - Parse number format arrays and dictionaries with labels, conversion factors, decimal precision, fractions, rounding, truncation, grouping, decimal separators, spacing, and prefix or suffix placement.
+  - Implement the left-to-right formatting algorithm while leaving right-to-left customization to callers.
+  - Completed state: formatter output matches decimal, fraction, rounding, truncation, grouping, and label placement examples.
+  - _Requirements: 0.58_
+  - _Boundary: NumberFormatFormatter_
+- [ ] 7.3 Parse geospatial measure dictionaries
+  - Parse GEO Bounds, GCS, DCS, PDU, GPTS, LPTS, PCSM, default neatline values, point cardinality, unit names, and PCSM priority metadata.
+  - Preserve geospatial transformation as metadata and do not perform EPSG lookup, WKT parsing, or coordinate conversion.
+  - Completed state: geospatial measures expose coordinate metadata and malformed cardinality or required-entry failures raise InvalidMeasure.
+  - _Requirements: 0.59, 0.60_
+  - _Boundary: GeospatialMeasureParser_
+- [ ] 7.4 Parse geographic and projected coordinate systems
+  - Parse GEOGCS and PROJCS dictionaries from GCS and DCS positions with Type, EPSG, and WKT entries.
+  - Validate that each coordinate system has exactly one supported coordinate-system descriptor according to its required shape.
+  - Completed state: coordinate-system records distinguish geographic and projected systems and reject conflicting or missing EPSG/WKT descriptors.
+  - _Requirements: 0.61, 0.62_
+  - _Boundary: CoordinateSystemParser_
+- [ ] 7.5 Parse geospatial point data
+  - Parse PtData dictionaries and arrays with Cloud subtype, Names columns, predefined LAT, LON, ALT semantics, and XPTS tuple values.
+  - Validate that each XPTS tuple has the same arity as the Names array.
+  - Completed state: point-data records expose typed columns and tuple payloads, and malformed tuple shapes raise InvalidMeasure.
+  - _Requirements: 0.63_
+  - _Boundary: PointDataParser_
+- [ ] 7.6 (P) Parse Catalog requirement dictionaries
+  - Parse Catalog Requirements arrays with requirement type, minimum version, requirement handler alternatives, penalty, encryption requirement payloads, and digital-signature requirement payloads.
+  - Report deterministic parser-known support status before any consumer executes scripts while preserving encryption and handler-specific payloads raw.
+  - Completed state: requirement records expose support assessment metadata and malformed requirement dictionaries raise InvalidRequirement.
+  - _Requirements: 0.64_
+  - _Boundary: RequirementReader_
+  - _Depends: 1.2_
+
+- [ ] 8. Wire public reader APIs and cross-boundary integrations
+- [ ] 8.1 Expose document, catalog, and page entry points
+  - Add public reader APIs for AcroForm access, field enumeration, field lookup, FDF access, signatures, validation plans, permissions, legal attestations, DSS, page viewports, point lookup, measurements, geospatial data, and requirements.
+  - Preserve lazy object resolution and no persistent mutation of document state.
+  - Completed state: callers can reach each new feature through the reader objects named in the design without depending on raw Catalog dictionary traversal.
+  - _Requirements: 0.1, 0.2, 0.3, 0.14, 0.20, 0.30, 0.47, 0.55, 0.56, 0.57, 0.64_
+  - _Boundary: ReaderAPIIntegration_
+- [ ] 8.2 Bridge existing annotations, actions, and name trees
+  - Connect widget annotation helpers, measure annotation entries, form action parsing, trigger traversal, and Pages or Templates name-tree access to the new typed structures.
+  - Preserve existing annotation, action, and name-tree behavior while adding typed reader-layer extensions.
+  - Completed state: existing annotation and action tests still pass, and new typed data is available from the same traversal paths.
+  - _Requirements: 0.10, 0.11, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.26, 0.57_
+  - _Boundary: AnnotationActionNameTreeIntegration_
+- [ ] 8.3 Regenerate and review the public reader API surface
+  - Run the interface-generation workflow after public API additions and inspect the generated reader interface for intended exported types and functions only.
+  - Remove accidental exports, preserve compatibility shims where required, and keep the package standard-library-only.
+  - Completed state: generated public API output matches the design's intended reader surface and no unplanned dependency appears.
+  - _Requirements: 0.1, 0.15, 0.20, 0.30, 0.57, 0.64_
+  - _Boundary: PublicAPIAudit_
+
+- [ ] 9. Validate behavior with focused and integration tests
+- [ ] 9.1 Test AcroForm hierarchy, field types, widgets, and non-interactive markers
+  - Cover field inheritance, fully qualified names, duplicate-name consistency, widget merging, cycles, variable text, button flags, text flags, choice flags, signature field locks, seed values, and PrintField markers.
+  - Include malformed fixtures for invalid partial names, conflicting duplicate names, illegal push-button values, and ambiguous signature widgets.
+  - Completed state: reader white-box tests prove AcroForm structures parse deterministically and malformed forms raise InvalidForm.
+  - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14, 0.29_
+  - _Boundary: AcroFormReader, FieldTreeResolver, FieldTypeParser, WidgetBridge_
+- [ ] 9.2 Test form actions and FDF parsing
+  - Cover submit, reset, import action structures, field selection plans, NoExport precedence, include/exclude descendants, no-value fields, FDF header/body/trailer, FDF catalog, fields, pages, templates, annotations, JavaScript descriptors, embedded FDF descriptors, and differences streams.
+  - Include malformed fixtures for invalid FDF headers, duplicate FDF object numbers, non-zero generations, missing trailer Root, missing annotation Page, and invalid field flag precedence.
+  - Completed state: form action and FDF tests prove typed plans and standalone FDF parsing work without side effects.
+  - _Requirements: 0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28_
+  - _Boundary: FormActionParser, FieldSelectionPlanner, FDFReader_
+- [ ] 9.3 Test signatures, LTV, permissions, and legal attestations
+  - Cover signature dictionaries, byte ranges, subfilter classification, PKCS #1 metadata, CMS and PAdES descriptors, transform parameters, DocMDP, UR, FieldMDP, validation work items, DSS, VRI, evidence ordering, document timestamps, permissions, and legal attestation counters.
+  - Include malformed fixtures for invalid byte ranges, invalid direct-object constraints, malformed transform parameters, invalid DSS or VRI references, and timestamp ordering edge cases.
+  - Completed state: signature tests prove PDF-owned validation inputs are gathered while cryptographic validity remains external.
+  - _Requirements: 0.30, 0.31, 0.32, 0.33, 0.34, 0.35, 0.36, 0.37, 0.38, 0.39, 0.40, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.49, 0.50, 0.51, 0.52, 0.53, 0.54, 0.55, 0.56_
+  - _Boundary: SignatureReader, SignatureValidationPlanner, LTVReader, PermissionsReader_
+- [ ] 9.4 Test measurement, geospatial, and requirement parsing
+  - Cover viewport reverse-order selection, annotation measures, rectilinear measure dictionaries, number-format decimal and fraction output, geospatial Bounds, GCS, DCS, PDU, GPTS, LPTS, PCSM priority, coordinate-system exclusivity, point-data tuples, and Catalog requirement support assessment.
+  - Include malformed fixtures for invalid BBox arrays, missing rectilinear number formats, invalid GEO cardinality, conflicting EPSG/WKT descriptors, invalid point tuple arity, and malformed requirement dictionaries.
+  - Completed state: measurement and requirement tests prove structural parsing and formatting behavior with no GIS transformation or requirement enforcement.
+  - _Requirements: 0.57, 0.58, 0.59, 0.60, 0.61, 0.62, 0.63, 0.64_
+  - _Boundary: MeasurementReader, NumberFormatFormatter, GeospatialMeasureParser, RequirementReader_
+- [ ] 9.5 Run package-wide validation and regression checks
+  - Run the project validation commands for type checking, reader tests, formatting, and generated interface review.
+  - Confirm existing reader annotation, action, page, name-tree, graphics, and document-structure tests remain passing after typed reader extensions.
+  - Completed state: validation commands complete successfully and any intentional public API changes are visible in the generated interface diff.
+  - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.30, 0.31, 0.32, 0.33, 0.34, 0.35, 0.36, 0.37, 0.38, 0.39, 0.40, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.49, 0.50, 0.51, 0.52, 0.53, 0.54, 0.55, 0.56, 0.57, 0.58, 0.59, 0.60, 0.61, 0.62, 0.63, 0.64_
+  - _Boundary: Validation_
