@@ -1,7 +1,9 @@
 ///|
-/// Reader-layer provenance for a typed action parse. It identifies the PDF
-/// structure that handed the raw action object to the action parser; it is
-/// metadata only and never implies event dispatch.
+/// Reader-layer provenance for an ISO 32000-2 12.6 Actions parse.
+/// It identifies the annotation, outline item, document Catalog OpenAction,
+/// Page AA, form field AA, presentation node, or raw object that handed the
+/// action dictionary to the parser; it is metadata only and never implies
+/// trigger event dispatch.
 pub(all) enum PdfActionSource {
   Catalog(@objects.ObjectId)
   Page(@objects.ObjectId)
@@ -13,6 +15,12 @@ pub(all) enum PdfActionSource {
 } derive(Eq, Debug)
 
 ///|
+/// ISO source: spec/extracted/12.6-actions.spec.txt.
+/// Structural action dictionary metadata for 12.6.1 General and 12.6.2
+/// Action dictionaries. The optional Type /Action, required S action type,
+/// recursive Next action sequence, and raw dictionary are retained without
+/// launching applications, resolving URI values, running ECMAScript, playing
+/// media, rendering transitions, or mutating the document.
 pub(all) struct PdfAction {
   object_id : @objects.ObjectId?
   source : PdfActionSource
@@ -23,6 +31,11 @@ pub(all) struct PdfAction {
 } derive(Eq, Debug)
 
 ///|
+/// Standard action types from ISO 32000-2 12.6.4.1 Table 201: GoTo, GoToR,
+/// GoToE, GoToDp, Launch, Thread, URI, Sound, Movie, Hide, Named, SubmitForm,
+/// ResetForm, ImportData, SetOCGState, Rendition, Trans, GoTo3DView,
+/// JavaScript, and RichMediaExecute. Unknown S names remain raw structural
+/// data for forward-compatible action dictionaries.
 pub(all) enum PdfActionKind {
   GoTo(PdfGoToAction)
   GoToR(PdfRemoteGoToAction)
@@ -48,6 +61,9 @@ pub(all) enum PdfActionKind {
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.2 Go-To actions, Table 202. Represents S /GoTo with required D
+/// destination and optional PDF 2.0 SD structure destination; SD takes
+/// precedence for callers that understand structure destinations.
 pub(all) struct PdfGoToAction {
   destination : PdfDestination
   structure_destination : PdfDestination?
@@ -55,6 +71,10 @@ pub(all) struct PdfGoToAction {
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.3 Remote Go-To actions, Table 203. Represents S /GoToR with
+/// required F file specification, required D destination in another PDF file,
+/// and optional NewWindow flag. Remote explicit page numbers are zero-based
+/// and are preserved raw for downstream policy.
 pub(all) struct PdfRemoteGoToAction {
   file_specification : @objects.PdfObject
   destination : @objects.PdfObject
@@ -63,6 +83,9 @@ pub(all) struct PdfRemoteGoToAction {
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.4 Embedded Go-To actions, Table 204. Represents S /GoToE for a
+/// destination in an embedded PDF file, preserving F file specification, D
+/// destination, NewWindow, and recursive T target dictionary path data.
 pub(all) struct PdfEmbeddedGoToAction {
   file_specification : @objects.PdfObject?
   destination : @objects.PdfObject
@@ -72,6 +95,9 @@ pub(all) struct PdfEmbeddedGoToAction {
 } derive(Eq, Debug)
 
 ///|
+/// Target dictionary from 12.6.4.4 Table 205 for Embedded Go-To actions.
+/// It preserves R parent-or-child relation, N embedded-file name, P page
+/// selector, A annotation selector, and nested T target dictionaries.
 pub(all) struct PdfTargetDictionary {
   object_id : @objects.ObjectId?
   relation : @objects.PdfName?
@@ -83,12 +109,18 @@ pub(all) struct PdfTargetDictionary {
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.5 GoToDp action, Table 206. Represents S /GoToDp from PDF 2.0:
+/// Dp is an indirect reference to the DPart dictionary whose Start page is
+/// selected, such as the example form `/Dp 92 0 R`.
 pub(all) struct PdfGoToDPartAction {
   dpart : @objects.ObjectId
   raw_dict : @objects.PdfDictionary
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.6 Launch actions, Table 207. Represents S /Launch with F file
+/// specification or deprecated PDF 2.0 Win, Mac, or Unix platform launch
+/// dictionaries and optional NewWindow, without opening files or applications.
 pub(all) struct PdfLaunchAction {
   file_specification : @objects.PdfObject?
   windows : PdfWindowsLaunchParams?
@@ -99,6 +131,9 @@ pub(all) struct PdfLaunchAction {
 } derive(Eq, Debug)
 
 ///|
+/// Microsoft Windows launch parameter dictionary from 12.6.4.6 Table 208.
+/// It preserves F byte string, D default directory, O operation such as open
+/// or print, and P parameter string as raw PDF objects.
 pub(all) struct PdfWindowsLaunchParams {
   file : @objects.PdfObject
   directory : @objects.PdfObject?
@@ -108,6 +143,9 @@ pub(all) struct PdfWindowsLaunchParams {
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.7 Thread actions, Table 209. Represents S /Thread with optional F
+/// external file specification, D thread selector, and B bead selector. Thread
+/// and bead index values are zero-based and preserved structurally.
 pub(all) struct PdfThreadAction {
   file_specification : @objects.PdfObject?
   thread : @objects.PdfObject?
@@ -116,6 +154,10 @@ pub(all) struct PdfThreadAction {
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.8 URI actions, Table 210 and Table 211. Represents S /URI with the
+/// required URI UTF-8 string from Internet RFC 3986 and IsMap mouse-coordinate
+/// flag; Catalog URI Base data is modeled separately and no network resolver
+/// is invoked.
 pub(all) struct PdfUriAction {
   uri : Bytes
   is_map : Bool
@@ -123,6 +165,9 @@ pub(all) struct PdfUriAction {
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.9 Sound actions, Table 212. Represents deprecated PDF 2.0 S /Sound
+/// metadata: required Sound stream, Volume in the -1.0 to 1.0 range, and the
+/// Synchronous, Repeat, and Mix flags, without playing audio.
 pub(all) struct PdfSoundAction {
   sound : @objects.PdfObject
   volume : Double
@@ -133,12 +178,16 @@ pub(all) struct PdfSoundAction {
 } derive(Eq, Debug)
 
 ///|
+/// Movie action target from 12.6.4.10 Table 213. Exactly one of Annotation
+/// movie annotation reference or T title text string identifies the movie.
 pub(all) enum PdfMovieTarget {
   Annotation(@objects.PdfObject)
   Title(Bytes)
 } derive(Eq, Debug)
 
 ///|
+/// Movie Operation names from 12.6.4.10 Table 213: Play, Stop, Pause, and
+/// Resume. Unknown names are retained for compatibility.
 pub(all) enum PdfMovieOperation {
   Play
   Stop
@@ -148,6 +197,9 @@ pub(all) enum PdfMovieOperation {
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.10 Movie actions, Table 213. Represents deprecated PDF 2.0
+/// S /Movie metadata for a movie annotation or title, plus the Operation
+/// default Play, without starting, stopping, pausing, or resuming playback.
 pub(all) struct PdfMovieAction {
   target : PdfMovieTarget
   operation : PdfMovieOperation
@@ -155,12 +207,18 @@ pub(all) struct PdfMovieAction {
 } derive(Eq, Debug)
 
 ///|
+/// Hide action target forms from 12.6.4.11 Table 214: annotation dictionary or
+/// reference, fully qualified field name text string, or an ordered array of
+/// such values.
 pub(all) enum PdfHideTarget {
   Single(@objects.PdfObject)
   Array(Array[@objects.PdfObject])
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.11 Hide actions, Table 214. Represents S /Hide with required T
+/// target and optional H flag defaulting to true; it records annotation Hidden
+/// flag intent without changing annotation appearance state.
 pub(all) struct PdfHideAction {
   target : PdfHideTarget
   hide : Bool
@@ -168,12 +226,18 @@ pub(all) struct PdfHideAction {
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.12 Named actions, Table 215 and Table 216. Represents S /Named and
+/// required N action name such as NextPage, PrevPage, FirstPage, or LastPage;
+/// nonstandard names are retained as portable structural data.
 pub(all) struct PdfNamedAction {
   name : @objects.PdfName
   raw_dict : @objects.PdfDictionary
 } derive(Eq, Debug)
 
 ///|
+/// Raw structural boundary for Table 201 form actions SubmitForm, ResetForm,
+/// and ImportData. Detailed form semantics live in 12.7, so F, Fields, Flags,
+/// and raw_dict are preserved without form submission, reset, or import.
 pub(all) struct PdfFormActionRaw {
   file_specification : @objects.PdfObject?
   fields : @objects.PdfObject?
@@ -182,6 +246,8 @@ pub(all) struct PdfFormActionRaw {
 } derive(Eq, Debug)
 
 ///|
+/// Set-OCG-state operator names from 12.6.4.13 Table 217: ON, OFF, and Toggle.
+/// They describe optional content group state changes but do not mutate state.
 pub(all) enum PdfOCGStateOperator {
   ON
   OFF
@@ -189,12 +255,18 @@ pub(all) enum PdfOCGStateOperator {
 } derive(Eq, Debug)
 
 ///|
+/// One left-to-right State sequence from 12.6.4.13 Table 217: an ON, OFF, or
+/// Toggle operator followed by one or more optional content group dictionaries
+/// or references.
 pub(all) struct PdfOCGStateOperation {
   operator : PdfOCGStateOperator
   groups : Array[@objects.PdfObject]
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.13 Set-OCG-state actions, Table 217. Represents S /SetOCGState with
+/// ordered State operation sequences and PreserveRB default true while leaving
+/// optional-content visibility unchanged.
 pub(all) struct PdfSetOCGStateAction {
   operations : Array[PdfOCGStateOperation]
   preserve_rb : Bool
@@ -202,6 +274,9 @@ pub(all) struct PdfSetOCGStateAction {
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.14 Rendition actions, Table 218. Represents S /Rendition with R
+/// rendition object, AN screen annotation, OP operation values 0, 1, 2, 3, or
+/// 4, and JS ECMAScript fallback payload, without playing multimedia content.
 pub(all) struct PdfRenditionAction {
   rendition : @objects.PdfObject?
   annotation : @objects.PdfObject?
@@ -211,12 +286,18 @@ pub(all) struct PdfRenditionAction {
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.15 Transition actions, Table 219. Represents S /Trans and required
+/// Trans transition dictionary used for display update metadata only; no
+/// drawing is suspended or rendered by the parser.
 pub(all) struct PdfTransitionAction {
   transition : PdfTransition
   raw_dict : @objects.PdfDictionary
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.16 Go-To-3D-View actions, Table 220. Represents S /GoTo3DView with
+/// required TA target annotation and V selector, which may be a 3D view
+/// dictionary, VA array index, IN text string, or F, L, N, P, D view name.
 pub(all) struct PdfGoTo3DViewAction {
   target_annotation : @objects.PdfObject
   view : @objects.PdfObject?
@@ -224,12 +305,19 @@ pub(all) struct PdfGoTo3DViewAction {
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.17 ECMAScript actions, Table 221. The PDF keyword remains
+/// JavaScript for backwards compatibility, while the payload is an ECMAScript
+/// JS text string or stream preserved raw without script execution.
 pub(all) struct PdfJavaScriptAction {
   script : @objects.PdfObject
   raw_dict : @objects.PdfDictionary
 } derive(Eq, Debug)
 
 ///|
+/// 12.6.4.18 Rich-Media-Execute actions, Table 222. Represents PDF 2.0
+/// S /RichMediaExecute with required TA RichMedia annotation reference,
+/// optional TI instance reference, and required CMD RichMediaCommand
+/// dictionary, without invoking any annotation handler.
 pub(all) struct PdfRichMediaExecuteAction {
   target_annotation : @objects.PdfObject
   instance : @objects.PdfObject?
@@ -238,18 +326,27 @@ pub(all) struct PdfRichMediaExecuteAction {
 } derive(Eq, Debug)
 
 ///|
+/// Catalog OpenAction from 12.6.1 General and 7.7.2. It may be an existing
+/// destination form or a typed 12.6 action dictionary performed when the
+/// document is opened; this enum records structure only.
 pub(all) enum PdfCatalogOpenAction {
   Destination(PdfDestination)
   Action(PdfAction)
 } derive(Eq, Debug)
 
 ///|
+/// Catalog URI dictionary from 12.6.4.8 Table 211. Base is the optional base
+/// URI used for resolving relative URI action strings; parsing records it as
+/// bytes and does not resolve relative references.
 pub(all) struct PdfCatalogUri {
   base : Bytes?
   raw_dict : @objects.PdfDictionary
 } derive(Eq, Debug)
 
 ///|
+/// Annotation additional-actions dictionary from 12.6.3 Table 197. It models
+/// AA trigger events E, X, D, U, Fo, Bl, PO, PC, PV, and PI while preserving
+/// unknown trigger keys in raw_dict.
 pub(all) struct PdfAnnotationAdditionalActions {
   enter : PdfAction?
   exit : PdfAction?
@@ -265,6 +362,8 @@ pub(all) struct PdfAnnotationAdditionalActions {
 } derive(Eq, Debug)
 
 ///|
+/// Page object additional-actions dictionary from 12.6.3 Table 198. It models
+/// O page-open and C page-close trigger events for Page AA entries.
 pub(all) struct PdfPageAdditionalActions {
   open : PdfAction?
   close : PdfAction?
@@ -272,6 +371,9 @@ pub(all) struct PdfPageAdditionalActions {
 } derive(Eq, Debug)
 
 ///|
+/// Form field additional-actions dictionary from 12.6.3 Table 199. It models
+/// K keystroke, F format, V validate, and C calculate ECMAScript trigger
+/// events without running scripts.
 pub(all) struct PdfFormFieldAdditionalActions {
   keystroke : PdfAction?
   format : PdfAction?
@@ -281,6 +383,9 @@ pub(all) struct PdfFormFieldAdditionalActions {
 } derive(Eq, Debug)
 
 ///|
+/// Document Catalog additional-actions dictionary from 12.6.3 Table 200. It
+/// models WC will-close, WS will-save, DS did-save, WP will-print, and DP
+/// did-print ECMAScript trigger events.
 pub(all) struct PdfCatalogAdditionalActions {
   before_close : PdfAction?
   before_save : PdfAction?
@@ -291,6 +396,9 @@ pub(all) struct PdfCatalogAdditionalActions {
 } derive(Eq, Debug)
 
 ///|
+/// Standard trigger event labels from 12.6.3 for Catalog OpenAction,
+/// annotation activation, mouse-up precedence, page open, page close,
+/// annotation PO page-open, and annotation PC page-close ordering.
 pub(all) enum PdfActionTrigger {
   CatalogOpenAction
   PageOpen
@@ -302,6 +410,9 @@ pub(all) enum PdfActionTrigger {
 } derive(Eq, Debug)
 
 ///|
+/// Structural ordering notes from 12.6.3 Trigger events. The arrays record
+/// annotation A precedence over U, OpenAction before Page O before annotation
+/// PO, and annotation PC before Page C; no viewer event loop is dispatched.
 pub(all) struct PdfActionTriggerOrdering {
   activation_precedence : Array[PdfActionTrigger]
   page_open_order : Array[PdfActionTrigger]
