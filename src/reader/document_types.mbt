@@ -383,6 +383,10 @@ pub(all) struct PdfNavigationNode {
 } derive(Eq, Debug)
 
 ///|
+/// Page Tabs annotation navigation order from ISO 32000-2 12.5.1
+/// "General". Row (R), column (C), structure (S), annotation array (A),
+/// and widget (W) order are exposed as structure only; this reader does not
+/// compute keyboard focus traversal.
 pub(all) enum PdfAnnotationTabOrder {
   Row
   Column
@@ -393,6 +397,12 @@ pub(all) enum PdfAnnotationTabOrder {
 } derive(Eq, Debug)
 
 ///|
+/// Standard annotation types from ISO 32000-2 12.5.6.1 "General" and
+/// Table 171 "Annotation types". Values mirror annotation dictionary Subtype
+/// names: Text, Link, FreeText, Line, Square, Circle, Polygon, PolyLine,
+/// Highlight, Underline, Squiggly, StrikeOut, Caret, Stamp, Ink, Popup,
+/// FileAttachment, Sound, Movie, Screen, Widget, PrinterMark, TrapNet,
+/// Watermark, 3D, Redact, Projection, RichMedia, and extensible unknown names.
 pub(all) enum PdfAnnotationSubtype {
   Text
   Link
@@ -426,6 +436,11 @@ pub(all) enum PdfAnnotationSubtype {
 } derive(Eq, Debug)
 
 ///|
+/// Typed page annotation record for ISO 32000-2 12.5 "Annotations".
+/// It associates an annotation dictionary from a page Annots array with its
+/// page index, array position, common annotation dictionary entries, optional
+/// markup annotation data, subtype-specific data, and preserved raw dictionary.
+/// Vocabulary source: /users/terukichi/workspaces/moonbit/pdf/spec/extracted/12.5-annotations.spec.txt.
 pub(all) struct PdfAnnotation {
   page_index : Int
   array_index : Int
@@ -437,6 +452,11 @@ pub(all) struct PdfAnnotation {
 } derive(Eq, Debug)
 
 ///|
+/// Entries common to all annotation dictionaries from ISO 32000-2 12.5.2
+/// and Table 166. This includes Type Annot validation, required Subtype and
+/// Rect, accessibility Contents, P, NM, M, F annotation flags, AP appearance
+/// streams, AS appearance state, Border or BS, C colour, StructParent, OC,
+/// AF associated files, ca and CA opacity, BM blend mode, Lang, and raw data.
 pub(all) struct PdfAnnotationCommon {
   subtype : PdfAnnotationSubtype
   subtype_name : @objects.PdfName
@@ -462,11 +482,18 @@ pub(all) struct PdfAnnotationCommon {
 } derive(Eq, Debug)
 
 ///|
+/// Annotation flags from ISO 32000-2 12.5.3 and Table 167. The F entry
+/// defaults to 0 and stores bits for Invisible, Hidden, Print, NoZoom,
+/// NoRotate, NoView, ReadOnly, Locked, ToggleNoView, and LockedContents.
 pub(all) struct PdfAnnotationFlags {
   bits : Int
 } derive(Eq, Debug)
 
 ///|
+/// Annotation border model for ISO 32000-2 12.5.4 "Border styles". It
+/// represents legacy Border arrays from Table 166, BS border style
+/// dictionaries from Table 168, BE border effect dictionaries from Table 169,
+/// default [0 0 1] borders, width, dash pattern, and raw border/style data.
 pub(all) struct PdfAnnotationBorder {
   horizontal_corner_radius : Double
   vertical_corner_radius : Double
@@ -479,6 +506,8 @@ pub(all) struct PdfAnnotationBorder {
 } derive(Eq, Debug)
 
 ///|
+/// Border style names from ISO 32000-2 Table 168: S solid, D dashed,
+/// B beveled, I inset, U underline, plus unknown extension names.
 pub(all) enum PdfBorderStyle {
   Solid
   Dashed
@@ -489,6 +518,8 @@ pub(all) enum PdfBorderStyle {
 } derive(Eq, Debug)
 
 ///|
+/// Border effect style names from ISO 32000-2 Table 169: S no effect and
+/// C cloudy, plus unknown extension names.
 pub(all) enum PdfBorderEffectStyle {
   None
   Cloudy
@@ -496,6 +527,9 @@ pub(all) enum PdfBorderEffectStyle {
 } derive(Eq, Debug)
 
 ///|
+/// Border effect dictionary from ISO 32000-2 Table 169. The style and
+/// intensity describe the optional BE entry used by square, circle, polygon,
+/// and free text annotations.
 pub(all) struct PdfBorderEffect {
   style : PdfBorderEffectStyle
   intensity : Double
@@ -503,6 +537,10 @@ pub(all) struct PdfBorderEffect {
 } derive(Eq, Debug)
 
 ///|
+/// Appearance dictionary descriptor for ISO 32000-2 12.5.5 "Appearance
+/// streams" and Table 170. Normal (N), rollover (R), and down (D)
+/// appearances are kept as stream or appearance subdictionary structure,
+/// with the selected AS appearance state preserved.
 pub(all) struct PdfAnnotationAppearance {
   normal : PdfAppearanceEntry
   rollover : PdfAppearanceEntry
@@ -512,6 +550,9 @@ pub(all) struct PdfAnnotationAppearance {
 } derive(Eq, Debug)
 
 ///|
+/// Appearance stream entry from ISO 32000-2 Table 170. An AP N, R, or D entry
+/// may be a single appearance stream or an appearance subdictionary that maps
+/// appearance states to streams.
 pub(all) enum PdfAppearanceEntry {
   Stream(@objects.PdfStream)
   StateMap(@objects.PdfDictionary)
@@ -519,33 +560,46 @@ pub(all) enum PdfAppearanceEntry {
 } derive(Eq, Debug)
 
 ///|
+/// Point in default user space used by annotation geometry: Rect,
+/// QuadPoints, callout lines, Line L arrays, Vertices, InkList, and Path data.
 pub(all) struct PdfPoint {
   x : Double
   y : Double
 } derive(Eq, Debug)
 
 ///|
+/// QuadPoints group from link, text markup, and redaction annotations.
+/// ISO 32000-2 Tables 176, 182, and 195 define each group as eight numbers
+/// naming four quadrilateral vertices in default user space.
 pub(all) struct PdfQuadPoints {
   points : Array[PdfPoint]
 } derive(Eq, Debug)
 
 ///|
+/// Annotation path made from coordinate pairs. It covers PDF 2.0 Path arrays
+/// for polygon, polyline, and ink annotations in 12.5.6.9 and 12.5.6.13.
 pub(all) struct PdfAnnotationPath {
   points : Array[PdfPoint]
 } derive(Eq, Debug)
 
 ///|
+/// Free text callout line from ISO 32000-2 Table 177 CL. Four numbers encode
+/// a start/end callout; six numbers include the knee point.
 pub(all) struct PdfAnnotationCallout {
   points : Array[PdfPoint]
 } derive(Eq, Debug)
 
 ///|
+/// Line annotation L entry from ISO 32000-2 Table 178, holding start and end
+/// coordinates in default user space.
 pub(all) struct PdfLineCoordinates {
   start : PdfPoint
   end : PdfPoint
 } derive(Eq, Debug)
 
 ///|
+/// Line ending styles from ISO 32000-2 Table 179: Square, Circle, Diamond,
+/// OpenArrow, ClosedArrow, None, Butt, ROpenArrow, RClosedArrow, and Slash.
 pub(all) enum PdfLineEndingStyle {
   Square
   Circle
@@ -561,6 +615,8 @@ pub(all) enum PdfLineEndingStyle {
 } derive(Eq, Debug)
 
 ///|
+/// Link and widget highlighting mode from ISO 32000-2 Tables 176 and 191:
+/// N none, I invert, O outline, P push, and unknown extension names.
 pub(all) enum PdfHighlightMode {
   None
   Invert
@@ -570,6 +626,8 @@ pub(all) enum PdfHighlightMode {
 } derive(Eq, Debug)
 
 ///|
+/// Quadding or justification code used by free text and redaction
+/// annotations in ISO 32000-2 Tables 177 and 195: 0 left, 1 center, 2 right.
 pub(all) enum PdfJustification {
   Left
   Center
@@ -578,6 +636,8 @@ pub(all) enum PdfJustification {
 } derive(Eq, Debug)
 
 ///|
+/// Annotation state model names from ISO 32000-2 12.5.6.3 and Table 174:
+/// Marked and Review, plus unknown extension names.
 pub(all) enum PdfAnnotationStateModel {
   Marked
   Review
@@ -585,6 +645,9 @@ pub(all) enum PdfAnnotationStateModel {
 } derive(Eq, Debug)
 
 ///|
+/// Annotation states from ISO 32000-2 12.5.6.3 and Table 174. Marked,
+/// Unmarked, Accepted, Rejected, Cancelled, Completed, and None are exposed
+/// for text-annotation state replies.
 pub(all) enum PdfAnnotationState {
   Marked
   Unmarked
@@ -597,12 +660,19 @@ pub(all) enum PdfAnnotationState {
 } derive(Eq, Debug)
 
 ///|
+/// External data dictionary carried by markup and projection annotations.
+/// ISO 32000-2 Table 173 uses ExData Subtype names such as Markup3D, 3DM,
+/// and MarkupGeo; raw dictionary data is preserved for adjacent clauses.
 pub(all) struct PdfMarkupExternalData {
   subtype : @objects.PdfName?
   raw_dict : @objects.PdfDictionary
 } derive(Eq, Debug)
 
 ///|
+/// Markup annotation common entries from ISO 32000-2 12.5.6.2 and
+/// Tables 172 and 173. It preserves T title, Popup, RC rich contents,
+/// CreationDate, IRT, RT reply type, Subj, IT intent, ExData, State, and
+/// StateModel without executing interactive comments-pane behavior.
 pub(all) struct PdfMarkupAnnotation {
   title : Bytes?
   popup : @objects.PdfObject?
@@ -618,12 +688,18 @@ pub(all) struct PdfMarkupAnnotation {
 } derive(Eq, Debug)
 
 ///|
+/// Text annotation data from ISO 32000-2 12.5.6.4 and Table 175. Text
+/// annotations use Open, Name icon defaults, State, and StateModel and behave
+/// structurally as if NoZoom and NoRotate annotation flags were set.
 pub(all) struct PdfTextAnnotation {
   open : Bool
   icon_name : @objects.PdfName
 } derive(Eq, Debug)
 
 ///|
+/// Link annotation data from ISO 32000-2 12.5.6.5 and Table 176. Actions,
+/// Dest destinations, PA previous URI action, H highlight mode, QuadPoints,
+/// and BS border style are preserved structurally without executing links.
 pub(all) struct PdfLinkAnnotation {
   action : @objects.PdfObject?
   previous_uri_action : @objects.PdfObject?
@@ -633,6 +709,10 @@ pub(all) struct PdfLinkAnnotation {
 } derive(Eq, Debug)
 
 ///|
+/// Free text annotation data from ISO 32000-2 12.5.6.6 and Table 177.
+/// DA default appearance, Q justification, RC rich text, DS default style,
+/// CL callout, IT intent, BE border effect, RD difference rectangle, and BS
+/// border style are parsed as annotation-owned structure.
 pub(all) struct PdfFreeTextAnnotation {
   default_appearance : Bytes
   justification : PdfJustification
@@ -645,6 +725,9 @@ pub(all) struct PdfFreeTextAnnotation {
 } derive(Eq, Debug)
 
 ///|
+/// Line annotation data from ISO 32000-2 12.5.6.7 and Table 178. It includes
+/// required L coordinates, BS border style, LE line endings, IC interior
+/// colour, LL/LLE/LLO leader lines, Cap caption, IT intent, Measure, and CO.
 pub(all) struct PdfLineAnnotation {
   coordinates : PdfLineCoordinates
   line_endings : Array[PdfLineEndingStyle]
@@ -659,12 +742,17 @@ pub(all) struct PdfLineAnnotation {
 } derive(Eq, Debug)
 
 ///|
+/// Shape discriminator for ISO 32000-2 12.5.6.8 square and circle
+/// annotations from Table 180.
 pub(all) enum PdfShapeKind {
   Square
   Circle
 } derive(Eq, Debug)
 
 ///|
+/// Square and circle annotation data from ISO 32000-2 12.5.6.8 and
+/// Table 180. It stores IC interior colour, BE border effect, RD difference
+/// rectangle, and the Square or Circle shape kind.
 pub(all) struct PdfShapeAnnotation {
   kind : PdfShapeKind
   interior_color : Array[Double]
@@ -673,12 +761,17 @@ pub(all) struct PdfShapeAnnotation {
 } derive(Eq, Debug)
 
 ///|
+/// Polygon family discriminator for ISO 32000-2 12.5.6.9 polygon and
+/// polyline annotations from Table 181.
 pub(all) enum PdfPolygonKind {
   Polygon
   PolyLine
 } derive(Eq, Debug)
 
 ///|
+/// Polygon and polyline annotation data from ISO 32000-2 12.5.6.9 and
+/// Table 181. It represents Vertices or PDF 2.0 Path data, LE line endings,
+/// IC interior colour, IT intent, Measure, and raw border/effect ownership.
 pub(all) struct PdfPolygonAnnotation {
   kind : PdfPolygonKind
   vertices : Array[PdfPoint]
@@ -690,6 +783,8 @@ pub(all) struct PdfPolygonAnnotation {
 } derive(Eq, Debug)
 
 ///|
+/// Text markup annotation kinds from ISO 32000-2 12.5.6.10 and Table 182:
+/// Highlight, Underline, Squiggly, and StrikeOut.
 pub(all) enum PdfTextMarkupKind {
   Highlight
   Underline
@@ -698,48 +793,69 @@ pub(all) enum PdfTextMarkupKind {
 } derive(Eq, Debug)
 
 ///|
+/// Text markup annotation data from ISO 32000-2 12.5.6.10 and Table 182.
+/// QuadPoints are required and define highlighted, underlined, squiggly, or
+/// strikeout quadrilaterals in default user space.
 pub(all) struct PdfTextMarkupAnnotation {
   kind : PdfTextMarkupKind
   quad_points : Array[PdfQuadPoints]
 } derive(Eq, Debug)
 
 ///|
+/// Caret annotation data from ISO 32000-2 12.5.6.11 and Table 183. RD
+/// difference rectangle and Sy symbol values such as P or None are exposed.
 pub(all) struct PdfCaretAnnotation {
   difference_rectangle : PdfRectangle?
   symbol : @objects.PdfName
 } derive(Eq, Debug)
 
 ///|
+/// Rubber stamp annotation data from ISO 32000-2 12.5.6.12 and Table 184.
+/// It preserves Name icon defaults such as Draft and IT intents Stamp,
+/// StampImage, and StampSnapshot.
 pub(all) struct PdfStampAnnotation {
   icon_name : @objects.PdfName
   intent : @objects.PdfName
 } derive(Eq, Debug)
 
 ///|
+/// Ink annotation data from ISO 32000-2 12.5.6.13 and Table 185. InkList
+/// stroked paths and PDF 2.0 Path arrays are parsed without rendering.
 pub(all) struct PdfInkAnnotation {
   ink_list : Array[PdfAnnotationPath]
   paths : Array[PdfAnnotationPath]
 } derive(Eq, Debug)
 
 ///|
+/// Popup annotation data from ISO 32000-2 12.5.6.14 and Table 186. Parent
+/// markup annotation reference and Open state are preserved without creating
+/// popup windows or editing UI.
 pub(all) struct PdfPopupAnnotation {
   parent : @objects.PdfObject?
   open : Bool
 } derive(Eq, Debug)
 
 ///|
+/// File attachment annotation data from ISO 32000-2 12.5.6.15 and
+/// Table 187. FS file specification is preserved as a raw hand-off value and
+/// Name icon defaults such as PushPin are parsed.
 pub(all) struct PdfFileAttachmentAnnotation {
   file_specification : @objects.PdfObject
   icon_name : @objects.PdfName
 } derive(Eq, Debug)
 
 ///|
+/// Sound annotation data from ISO 32000-2 12.5.6.16 and Table 188. The
+/// deprecated PDF 2.0 Sound stream is preserved as raw structure with Name
+/// icon defaults such as Speaker, without playing audio.
 pub(all) struct PdfSoundAnnotation {
   sound : @objects.PdfObject
   icon_name : @objects.PdfName
 } derive(Eq, Debug)
 
 ///|
+/// Movie annotation data from ISO 32000-2 12.5.6.17 and Table 189. T title,
+/// Movie dictionary, and A activation are preserved without movie playback.
 pub(all) struct PdfMovieAnnotation {
   title : Bytes?
   movie : @objects.PdfObject
@@ -747,6 +863,9 @@ pub(all) struct PdfMovieAnnotation {
 } derive(Eq, Debug)
 
 ///|
+/// Screen annotation data from ISO 32000-2 12.5.6.18 and Table 190. T title,
+/// A action, AA additional actions, MK appearance characteristics, rendition
+/// action linkage, and AP default appearance remain structural only.
 pub(all) struct PdfScreenAnnotation {
   title : Bytes?
   action : @objects.PdfObject?
@@ -755,6 +874,9 @@ pub(all) struct PdfScreenAnnotation {
 } derive(Eq, Debug)
 
 ///|
+/// Appearance characteristics dictionary from ISO 32000-2 Table 192. Widget
+/// and screen annotations use MK entries R, BC, BG, CA, RC, AC, I, RI, IX,
+/// IF, and TP; icon and icon-fit values are preserved as raw hand-off data.
 pub(all) struct PdfWidgetAppearanceCharacteristics {
   rotation : Int
   border_color : Array[Double]
@@ -771,6 +893,10 @@ pub(all) struct PdfWidgetAppearanceCharacteristics {
 } derive(Eq, Debug)
 
 ///|
+/// Widget annotation data from ISO 32000-2 12.5.6.19 and Table 191. It keeps
+/// H highlighting mode, MK appearance characteristics, A and AA action
+/// dictionaries, BS border style, and Parent field reference without merging
+/// interactive form field semantics.
 pub(all) struct PdfWidgetAnnotation {
   highlight_mode : PdfHighlightMode
   action : @objects.PdfObject?
@@ -781,16 +907,23 @@ pub(all) struct PdfWidgetAnnotation {
 } derive(Eq, Debug)
 
 ///|
+/// Printer's mark annotation data from ISO 32000-2 12.5.6.20. PrinterMark
+/// annotations preserve PMD production mark data for print production use.
 pub(all) struct PdfPrinterMarkAnnotation {
   production_mark : @objects.PdfObject?
 } derive(Eq, Debug)
 
 ///|
+/// Trap network annotation data from ISO 32000-2 12.5.6.21. TrapNet is
+/// deprecated in PDF 2.0; a page may have no more than one and it must be the
+/// final element of the page Annots array.
 pub(all) struct PdfTrapNetworkAnnotation {
   raw_dict : @objects.PdfDictionary
 } derive(Eq, Debug)
 
 ///|
+/// Fixed print dictionary from ISO 32000-2 Table 194. Watermark annotations
+/// use Matrix, H, and V to describe size and position relative to target media.
 pub(all) struct PdfFixedPrint {
   matrix : Array[Double]
   horizontal_translation : Double
@@ -799,11 +932,17 @@ pub(all) struct PdfFixedPrint {
 } derive(Eq, Debug)
 
 ///|
+/// Watermark annotation data from ISO 32000-2 12.5.6.22 and Table 193.
+/// FixedPrint is exposed structurally; this reader does not render or print
+/// watermark appearances.
 pub(all) struct PdfWatermarkAnnotation {
   fixed_print : PdfFixedPrint?
 } derive(Eq, Debug)
 
 ///|
+/// Redaction annotation data from ISO 32000-2 12.5.6.23 and Table 195.
+/// QuadPoints, IC, RO overlay, OverlayText, Repeat, DA, and Q are parsed for
+/// non-destructive redaction intent; this reader never applies redactions.
 pub(all) struct PdfRedactionAnnotation {
   quad_points : Array[PdfQuadPoints]
   interior_color : Array[Double]
@@ -815,17 +954,28 @@ pub(all) struct PdfRedactionAnnotation {
 } derive(Eq, Debug)
 
 ///|
+/// Projection annotation data from ISO 32000-2 12.5.6.24. Projection is a
+/// markup annotation subtype used with run-time environments and optional
+/// ExData such as 3DM projection measurement data.
 pub(all) struct PdfProjectionAnnotation {
   external_data : PdfMarkupExternalData?
 } derive(Eq, Debug)
 
 ///|
+/// Raw annotation hand-off for extensible or adjacent-clause subtypes,
+/// including ISO Table 171 3D and RichMedia annotation names and unknown
+/// Subtype values. Common annotation dictionary fields remain parsed.
 pub(all) struct PdfRawAnnotation {
   subtype_name : @objects.PdfName
   raw_dict : @objects.PdfDictionary
 } derive(Eq, Debug)
 
 ///|
+/// Subtype-specific annotation payloads for ISO 32000-2 12.5.6 annotation
+/// types. This enum covers Text, Link, FreeText, Line, Square/Circle Shape,
+/// Polygon/PolyLine, text markup, Caret, Stamp, Ink, Popup, FileAttachment,
+/// Sound, Movie, Screen, Widget, PrinterMark, TrapNet, Watermark, Redact,
+/// Projection, 3D raw, RichMedia raw, and unknown raw records.
 pub(all) enum PdfAnnotationSpecific {
   Text(PdfTextAnnotation)
   Link(PdfLinkAnnotation)

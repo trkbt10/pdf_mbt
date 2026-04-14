@@ -569,72 +569,90 @@ fn parse_annotation_flags(
 }
 
 ///|
+/// True when ISO 32000-2 Table 167 bit 1 Invisible is set.
 pub fn PdfAnnotationFlags::invisible(self : PdfAnnotationFlags) -> Bool {
   (self.bits & 0x001) != 0
 }
 
 ///|
+/// True when ISO 32000-2 Table 167 bit 2 Hidden is set.
 pub fn PdfAnnotationFlags::hidden(self : PdfAnnotationFlags) -> Bool {
   (self.bits & 0x002) != 0
 }
 
 ///|
+/// True when ISO 32000-2 Table 167 bit 3 Print is set.
 pub fn PdfAnnotationFlags::print(self : PdfAnnotationFlags) -> Bool {
   (self.bits & 0x004) != 0
 }
 
 ///|
+/// True when ISO 32000-2 Table 167 bit 4 NoZoom is set.
 pub fn PdfAnnotationFlags::no_zoom(self : PdfAnnotationFlags) -> Bool {
   (self.bits & 0x008) != 0
 }
 
 ///|
+/// True when ISO 32000-2 Table 167 bit 5 NoRotate is set.
 pub fn PdfAnnotationFlags::no_rotate(self : PdfAnnotationFlags) -> Bool {
   (self.bits & 0x010) != 0
 }
 
 ///|
+/// True when ISO 32000-2 Table 167 bit 6 NoView is set.
 pub fn PdfAnnotationFlags::no_view(self : PdfAnnotationFlags) -> Bool {
   (self.bits & 0x020) != 0
 }
 
 ///|
+/// True when ISO 32000-2 Table 167 bit 7 ReadOnly is set.
 pub fn PdfAnnotationFlags::read_only(self : PdfAnnotationFlags) -> Bool {
   (self.bits & 0x040) != 0
 }
 
 ///|
+/// True when ISO 32000-2 Table 167 bit 8 Locked is set.
 pub fn PdfAnnotationFlags::locked(self : PdfAnnotationFlags) -> Bool {
   (self.bits & 0x080) != 0
 }
 
 ///|
+/// True when ISO 32000-2 Table 167 bit 9 ToggleNoView is set.
 pub fn PdfAnnotationFlags::toggle_no_view(self : PdfAnnotationFlags) -> Bool {
   (self.bits & 0x100) != 0
 }
 
 ///|
+/// True when ISO 32000-2 Table 167 bit 10 LockedContents is set.
 pub fn PdfAnnotationFlags::locked_contents(self : PdfAnnotationFlags) -> Bool {
   (self.bits & 0x200) != 0
 }
 
 ///|
+/// Structural screen visibility predicate for annotation flags from
+/// ISO 32000-2 12.5.3. Hidden, NoView, or Invisible suppress screen display.
 pub fn PdfAnnotationFlags::screen_visible(self : PdfAnnotationFlags) -> Bool {
   !self.hidden() && !self.no_view() && !self.invisible()
 }
 
 ///|
+/// Structural print eligibility predicate for annotation flags from
+/// ISO 32000-2 12.5.3. Print must be set and Hidden/Invisible must be clear.
 pub fn PdfAnnotationFlags::print_eligible(self : PdfAnnotationFlags) -> Bool {
   self.print() && !self.hidden() && !self.invisible()
 }
 
 ///|
+/// Effective NoZoom predicate. ISO 32000-2 12.5.6.4 text annotations behave
+/// as if the NoZoom annotation flag from Table 167 were always set.
 pub fn PdfAnnotation::no_zoom(self : PdfAnnotation) -> Bool {
   self.common.flags.no_zoom() ||
   self.common.subtype == PdfAnnotationSubtype::Text
 }
 
 ///|
+/// Effective NoRotate predicate. ISO 32000-2 12.5.6.4 text annotations behave
+/// as if the NoRotate annotation flag from Table 167 were always set.
 pub fn PdfAnnotation::no_rotate(self : PdfAnnotation) -> Bool {
   self.common.flags.no_rotate() ||
   self.common.subtype == PdfAnnotationSubtype::Text
@@ -1644,6 +1662,10 @@ fn parse_page_annotation(
 }
 
 ///|
+/// Parses the page Annots array from ISO 32000-2 12.5.1 and 12.5.2 into
+/// typed annotations. Missing Annots returns an empty array; present Annots
+/// must be an array of direct or indirect annotation dictionaries, preserving
+/// annotation array order and page-local positions.
 pub fn PdfPage::annotations(
   self : PdfPage,
 ) -> Array[PdfAnnotation] raise PdfDocumentError {
@@ -1697,6 +1719,9 @@ pub fn PdfPage::annotations(
 }
 
 ///|
+/// Enumerates document annotations across pages and validates ISO 32000-2
+/// 12.5.2 ownership: a given indirect annotation dictionary shall be
+/// referenced from the Annots array of only one page.
 pub fn PdfDocument::annotations(
   self : PdfDocument,
 ) -> Array[PdfAnnotation] raise PdfDocumentError {
@@ -1725,6 +1750,9 @@ pub fn PdfDocument::annotations(
 }
 
 ///|
+/// Parses the page Tabs entry described by ISO 32000-2 12.5.1 "General".
+/// R row order, C column order, S structure order, A annotation array order,
+/// and W widgets order are reported without computing interactive focus order.
 pub fn PdfPage::annotation_tab_order(
   self : PdfPage,
 ) -> PdfAnnotationTabOrder? raise PdfDocumentError {
