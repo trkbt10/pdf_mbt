@@ -176,7 +176,13 @@ fn should_prune_name_tree_node(
 ) -> Bool raise PdfDocumentError {
   match dict.get(limits_key) {
     Some(value) => {
-      let (lower, upper) = parse_name_tree_limits(value)
+      let (lower, upper) = try
+        @common_data.validate_name_tree_limits(value)
+      catch {
+        error => raise name_tree_common_error(limits_key, error)
+      } noraise {
+        limits => limits
+      }
       bytes_compare(key, lower) < 0 || bytes_compare(key, upper) > 0
     }
     None => false
@@ -188,38 +194,17 @@ fn lookup_name_tree_names(
   names_value : @objects.PdfObject,
   key : Bytes,
 ) -> @objects.PdfObject? raise PdfDocumentError {
-  let names_array = match names_value {
-    @objects.PdfObject::Array(values) => values
-    _ =>
-      raise PdfDocumentError::InvalidNameTree(
-        @objects.PdfName::new(b"Names"),
-        "name tree /Names entry must be an array",
-      )
+  let entries = try @common_data.validate_name_tree_pairs(names_value) catch {
+    error =>
+      raise name_tree_common_error(@objects.PdfName::new(b"Names"), error)
+  } noraise {
+    values => values
   }
-
-  if names_array.length() % 2 != 0 {
-    raise PdfDocumentError::InvalidNameTree(
-      @objects.PdfName::new(b"Names"),
-      "name tree /Names array must contain key/value pairs",
-    )
-  }
-
   let mut found : @objects.PdfObject? = None
-  let mut index = 0
-  while index < names_array.length() {
-    let tree_key = match names_array[index] {
-      @objects.PdfObject::String(bytes) => bytes
-      _ =>
-        raise PdfDocumentError::InvalidNameTree(
-          @objects.PdfName::new(b"Names"),
-          "name tree /Names keys must be strings",
-        )
+  for entry in entries {
+    if found is None && bytes_compare(entry.key, key) == 0 {
+      found = Some(entry.value)
     }
-    let tree_value = names_array[index + 1]
-    if found is None && bytes_compare(tree_key, key) == 0 {
-      found = Some(tree_value)
-    }
-    index += 2
   }
   found
 }
@@ -233,6 +218,7 @@ fn enumerate_name_tree(
   let entries : Array[PdfNameTreeEntry] = []
   enumerate_name_tree_object(file, root, seen, entries)
   sort_name_tree_entries(entries)
+  reject_duplicate_name_tree_entries(entries)
   entries
 }
 
@@ -297,32 +283,16 @@ fn enumerate_name_tree_names(
   names_value : @objects.PdfObject,
   entries : Array[PdfNameTreeEntry],
 ) -> Unit raise PdfDocumentError {
-  let names_array = match names_value {
-    @objects.PdfObject::Array(values) => values
-    _ =>
-      raise PdfDocumentError::InvalidNameTree(
-        @objects.PdfName::new(b"Names"),
-        "name tree /Names entry must be an array",
-      )
+  let common_entries = try
+    @common_data.validate_name_tree_pairs(names_value)
+  catch {
+    error =>
+      raise name_tree_common_error(@objects.PdfName::new(b"Names"), error)
+  } noraise {
+    values => values
   }
-  if names_array.length() % 2 != 0 {
-    raise PdfDocumentError::InvalidNameTree(
-      @objects.PdfName::new(b"Names"),
-      "name tree /Names array must contain key/value pairs",
-    )
-  }
-  let mut index = 0
-  while index < names_array.length() {
-    let key = match names_array[index] {
-      @objects.PdfObject::String(bytes) => bytes
-      _ =>
-        raise PdfDocumentError::InvalidNameTree(
-          @objects.PdfName::new(b"Names"),
-          "name tree /Names keys must be strings",
-        )
-    }
-    entries.push(PdfNameTreeEntry::{ key, value: names_array[index + 1] })
-    index += 2
+  for entry in common_entries {
+    entries.push(PdfNameTreeEntry::{ key: entry.key, value: entry.value })
   }
 }
 
@@ -382,6 +352,22 @@ fn sort_name_tree_entries(entries : Array[PdfNameTreeEntry]) -> Unit {
 }
 
 ///|
+fn reject_duplicate_name_tree_entries(
+  entries : Array[PdfNameTreeEntry],
+) -> Unit raise PdfDocumentError {
+  let mut index = 1
+  while index < entries.length() {
+    if bytes_compare(entries[index - 1].key, entries[index].key) == 0 {
+      raise PdfDocumentError::InvalidNameTree(
+        @objects.PdfName::new(b"Names"),
+        "name tree keys must be unique",
+      )
+    }
+    index += 1
+  }
+}
+
+///|
 fn lookup_name_tree_kids(
   file : PdfFile,
   kids_value : @objects.PdfObject,
@@ -427,80 +413,8 @@ fn lookup_name_tree_kids(
 }
 
 ///|
-fn parse_name_tree_limits(
-  value : @objects.PdfObject,
-) -> (Bytes, Bytes) raise PdfDocumentError {
-  let limits_array = match value {
-    @objects.PdfObject::Array(values) => values
-    _ =>
-      raise PdfDocumentError::InvalidNameTree(
-        @objects.PdfName::new(b"Limits"),
-        "name tree /Limits entry must be an array",
-      )
-  }
-
-  if limits_array.length() != 2 {
-    raise PdfDocumentError::InvalidNameTree(
-      @objects.PdfName::new(b"Limits"),
-      "name tree /Limits entry must contain exactly two strings",
-    )
-  }
-
-  let lower = match limits_array[0] {
-    @objects.PdfObject::String(bytes) => bytes
-    _ =>
-      raise PdfDocumentError::InvalidNameTree(
-        @objects.PdfName::new(b"Limits"),
-        "name tree /Limits values must be strings",
-      )
-  }
-  let upper = match limits_array[1] {
-    @objects.PdfObject::String(bytes) => bytes
-    _ =>
-      raise PdfDocumentError::InvalidNameTree(
-        @objects.PdfName::new(b"Limits"),
-        "name tree /Limits values must be strings",
-      )
-  }
-
-  if bytes_compare(lower, upper) > 0 {
-    raise PdfDocumentError::InvalidNameTree(
-      @objects.PdfName::new(b"Limits"),
-      "name tree /Limits lower bound must not exceed upper bound",
-    )
-  }
-  (lower, upper)
-}
-
-///|
 fn bytes_compare(left : Bytes, right : Bytes) -> Int {
-  let mut index = 0
-  let left_length = left.length()
-  let right_length = right.length()
-  let limit = if left_length < right_length {
-    left_length
-  } else {
-    right_length
-  }
-
-  while index < limit {
-    let left_byte = left[index]
-    let right_byte = right[index]
-    if left_byte < right_byte {
-      return -1
-    } else if left_byte > right_byte {
-      return 1
-    }
-    index += 1
-  }
-
-  if left_length < right_length {
-    -1
-  } else if left_length > right_length {
-    1
-  } else {
-    0
-  }
+  @common_data.compare_name_tree_keys(left, right)
 }
 
 ///|

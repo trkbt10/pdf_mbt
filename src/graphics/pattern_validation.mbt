@@ -189,13 +189,14 @@ fn required_graphics_rect(
   offset : Int64,
   label : String,
 ) -> GraphicsRect raise PdfGraphicsError {
-  let values = require_number_array_value(
-    required_entry(dict, key, offset),
-    4,
-    offset,
-    label,
-  )
-  GraphicsRect::new(values[0], values[1], values[2], values[3])
+  let rect = try
+    @common_data.parse_pdf_rectangle(required_entry(dict, key, offset))
+  catch {
+    _ => raise graphics_resource_error(offset, "\{label} invalid rectangle")
+  } noraise {
+    value => value
+  }
+  GraphicsRect::new(rect.left, rect.bottom, rect.right, rect.top)
 }
 
 ///|
@@ -207,8 +208,12 @@ fn optional_graphics_rect(
 ) -> GraphicsRect? raise PdfGraphicsError {
   match optional_entry(dict, key) {
     Some(value) => {
-      let values = require_number_array_value(value, 4, offset, label)
-      Some(GraphicsRect::new(values[0], values[1], values[2], values[3]))
+      let rect = try @common_data.parse_pdf_rectangle(value) catch {
+        _ => raise graphics_resource_error(offset, "\{label} invalid rectangle")
+      } noraise {
+        value => value
+      }
+      Some(GraphicsRect::new(rect.left, rect.bottom, rect.right, rect.top))
     }
     None => None
   }

@@ -76,7 +76,21 @@ fn parse_page_piece_data(
   data_dict : @objects.PdfDictionary,
 ) -> PdfPagePieceData raise PdfInterchangeError {
   let last_modified = match data_dict.get(pdf_name(b"LastModified")) {
-    Some(@objects.PdfObject::String(bytes)) => bytes
+    Some(@objects.PdfObject::String(bytes)) => {
+      try @common_data.parse_pdf_date(bytes) catch {
+        error =>
+          raise PdfInterchangeError::InvalidPagePiece(
+            object_id,
+            "PieceInfo entry /" +
+            name_text(owner_name) +
+            " /LastModified invalid date: " +
+            common_data_reason(error),
+          )
+      } noraise {
+        _ => ()
+      }
+      bytes
+    }
     Some(value) =>
       raise PdfInterchangeError::InvalidPagePiece(
         object_id,

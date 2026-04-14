@@ -12,7 +12,7 @@ fn build_structure_tagged_fixture() -> Bytes {
     bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /StructParents 7 >>",
   )
   let (bytes, root_offset) = append_indirect_object(
-    bytes, header_base, 4, 0, b"<< /Type /StructTreeRoot /K [5 0 R] /RoleMap << /CustomFigure /Figure /P /Div >> /ClassMap << /emphasis << /O /Layout /TextDecorationType /Underline >> >> /Namespaces [8 0 R] /ParentTree << /Nums [7 [5 0 R 6 0 R] 9 6 0 R] >> /ParentTreeNextKey 10 /IDTree << /Names [(root-id) 5 0 R (child-id) 6 0 R] >> >>",
+    bytes, header_base, 4, 0, b"<< /Type /StructTreeRoot /K [5 0 R] /RoleMap << /CustomFigure /Figure /P /Div >> /ClassMap << /emphasis << /O /Layout /TextDecorationType /Underline >> >> /Namespaces [8 0 R] /ParentTree << /Nums [7 [5 0 R 6 0 R] 9 6 0 R] >> /ParentTreeNextKey 10 /IDTree << /Names [(child-id) 6 0 R (root-id) 5 0 R] >> >>",
   )
   let (bytes, parent_offset) = append_indirect_object(
     bytes, header_base, 5, 0, b"<< /Type /StructElem /S /CustomFigure /P 4 0 R /ID (root-id) /Pg 3 0 R /Lang (fr-FR) /Alt (diagram) /ActualText (diagram text) /A << /O /UserProperties /P [<< /N (rating) /V 5 /F (five) /H true >>] >> /C /emphasis /K [0 6 0 R << /Type /MCR /Pg 3 0 R /MCID 1 >> << /Type /OBJR /Obj 9 0 R /Pg 3 0 R >>] >>",

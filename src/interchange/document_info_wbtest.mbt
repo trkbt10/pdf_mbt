@@ -48,15 +48,15 @@ test "document info validates trapped names and known value shapes" {
 ///|
 test "metadata diagnostics compare exact date bytes when supplied" {
   let info_dict : @objects.PdfDictionary = Map::new()
-  info_dict[pdf_name(b"CreationDate")] = @objects.PdfObject::String(b"D:1")
-  info_dict[pdf_name(b"ModDate")] = @objects.PdfObject::String(b"D:2")
+  info_dict[pdf_name(b"CreationDate")] = @objects.PdfObject::String(b"D:0001")
+  info_dict[pdf_name(b"ModDate")] = @objects.PdfObject::String(b"D:0002")
   let info = validate_document_info_dictionary(info_dict)
 
   let same = metadata_source_diagnostics(
     None,
     Some(info),
-    metadata_creation_date=Some(b"D:1"),
-    metadata_mod_date=Some(b"D:3"),
+    metadata_creation_date=Some(b"D:0001"),
+    metadata_mod_date=Some(b"D:0003"),
   )
   assert_eq(same.creation_date == PdfMetadataDateComparison::Equivalent, true)
   assert_eq(same.mod_date == PdfMetadataDateComparison::Different, true)

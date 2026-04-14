@@ -186,7 +186,7 @@ test "form XObject preserves validated PieceInfo" {
   let piece : @objects.PdfDictionary = Map::new()
   let data : @objects.PdfDictionary = Map::new()
   data[@objects.PdfName::new(b"LastModified")] = @objects.PdfObject::String(
-    b"D:form",
+    b"D:20260414",
   )
   data[@objects.PdfName::new(b"Private")] = @objects.PdfObject::String(
     b"opaque",
@@ -203,7 +203,7 @@ test "form XObject preserves validated PieceInfo" {
   )
   match form.piece_info {
     Some(piece_info) =>
-      assert_eq(piece_info.entries[0].last_modified, b"D:form")
+      assert_eq(piece_info.entries[0].last_modified, b"D:20260414")
     None => fail("expected form PieceInfo")
   }
 }

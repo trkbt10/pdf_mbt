@@ -1,0 +1,112 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/common_data"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/pdf/src/objects",
+}
+
+// Values
+pub fn compare_name_tree_keys(Bytes, Bytes) -> Int
+
+pub fn compare_number_tree_keys(Int, Int) -> Int
+
+pub fn decode_pdf_doc_encoding(Bytes) -> String raise PdfCommonDataError
+
+pub fn parse_pdf_date(Bytes) -> PdfDate raise PdfCommonDataError
+
+pub fn parse_pdf_date_object(@objects.PdfObject) -> PdfDate raise PdfCommonDataError
+
+pub fn parse_pdf_rectangle(@objects.PdfObject) -> PdfRectangle raise PdfCommonDataError
+
+pub fn parse_text_string(Bytes) -> PdfTextString raise PdfCommonDataError
+
+pub fn parse_text_string_object(@objects.PdfObject) -> PdfTextString raise PdfCommonDataError
+
+pub fn validate_ascii_string(Bytes) -> Bytes raise PdfCommonDataError
+
+pub fn validate_byte_string(Bytes) -> Bytes
+
+pub fn validate_name_tree_limits(@objects.PdfObject) -> (Bytes, Bytes) raise PdfCommonDataError
+
+pub fn validate_name_tree_pairs(@objects.PdfObject) -> Array[PdfNameTreeEntry] raise PdfCommonDataError
+
+pub fn validate_number_tree_pairs(@objects.PdfObject) -> Array[PdfNumberTreeEntry] raise PdfCommonDataError
+
+pub fn validate_text_stream_bytes(Bytes) -> PdfTextString raise PdfCommonDataError
+
+// Errors
+pub(all) suberror PdfCommonDataError {
+  ExpectedString(String)
+  InvalidTextString(String)
+  InvalidAsciiString(String)
+  InvalidDate(Bytes, String)
+  InvalidRectangle(String)
+  InvalidTreeNode(String)
+} derive(Eq, @debug.Debug)
+
+// Types and methods
+pub(all) struct PdfDate {
+  raw : Bytes
+  year : Int
+  month : Int
+  day : Int
+  hour : Int
+  minute : Int
+  second : Int
+  utc_offset : PdfUtcOffset
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfLanguageSpan {
+  language : Bytes
+  country : Bytes?
+  start : Int
+  end : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfNameTreeEntry {
+  key : Bytes
+  value : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfNumberTreeEntry {
+  key : Int
+  value : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfRectangle {
+  left : Double
+  bottom : Double
+  right : Double
+  top : Double
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfStringKind {
+  Text(PdfTextString)
+  Ascii(Bytes)
+  Byte(Bytes)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfTextEncoding {
+  PDFDocEncoding
+  UTF16BE
+  UTF8
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfTextString {
+  raw : Bytes
+  text : String
+  encoding : PdfTextEncoding
+  language_spans : Array[PdfLanguageSpan]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfUtcOffset {
+  UnspecifiedGMT
+  EqualUT
+  LaterThanUT(Int, Int)
+  EarlierThanUT(Int, Int)
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits

@@ -8,6 +8,7 @@ fn enumerate_number_tree(
   let entries : Array[PdfNumberTreeEntry] = []
   enumerate_number_tree_object(file, root, owner, seen, entries)
   sort_number_tree_entries(entries)
+  reject_duplicate_number_tree_entries(entries, owner)
   entries
 }
 
@@ -83,17 +84,15 @@ fn enumerate_number_tree_nums(
   owner : @objects.PdfName,
   entries : Array[PdfNumberTreeEntry],
 ) -> Unit raise PdfDocumentError {
-  let nums = navigation_array(nums_value, owner, "number tree /Nums")
-  if nums.length() % 2 != 0 {
-    raise navigation_error(
-      owner, "number tree /Nums must contain key/value pairs",
-    )
+  let common_entries = try
+    @common_data.validate_number_tree_pairs(nums_value)
+  catch {
+    error => raise number_tree_common_error(owner, error)
+  } noraise {
+    values => values
   }
-  let mut index = 0
-  while index < nums.length() {
-    let key = navigation_int(nums[index], owner, "number tree key")
-    entries.push(PdfNumberTreeEntry::{ key, value: nums[index + 1] })
-    index += 2
+  for entry in common_entries {
+    entries.push(PdfNumberTreeEntry::{ key: entry.key, value: entry.value })
   }
 }
 
@@ -140,6 +139,20 @@ fn sort_number_tree_entries(entries : Array[PdfNumberTreeEntry]) -> Unit {
       slot -= 1
     }
     entries[slot] = current
+    index += 1
+  }
+}
+
+///|
+fn reject_duplicate_number_tree_entries(
+  entries : Array[PdfNumberTreeEntry],
+  owner : @objects.PdfName,
+) -> Unit raise PdfDocumentError {
+  let mut index = 1
+  while index < entries.length() {
+    if entries[index - 1].key == entries[index].key {
+      raise navigation_error(owner, "number tree keys must be unique")
+    }
     index += 1
   }
 }

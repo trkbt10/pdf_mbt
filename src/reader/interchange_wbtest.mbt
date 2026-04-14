@@ -40,14 +40,14 @@ test "reader exposes metadata info file identifiers and piece info" {
   match document.piece_info() {
     Some(piece_info) => {
       assert_eq(piece_info.entries.length(), 1)
-      assert_eq(piece_info.entries[0].last_modified, b"D:catalog")
+      assert_eq(piece_info.entries[0].last_modified, b"D:20260414")
     }
     None => fail("expected catalog PieceInfo")
   }
   match document.page(0).piece_info() {
     Some(piece_info) => {
       assert_eq(piece_info.entries.length(), 1)
-      assert_eq(piece_info.entries[0].last_modified, b"D:page")
+      assert_eq(piece_info.entries[0].last_modified, b"D:20260415")
     }
     None => fail("expected page PieceInfo")
   }
@@ -101,9 +101,9 @@ fn build_interchange_fixture_impl(bad_info : Bool) -> Bytes {
     bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1 1] /PieceInfo 8 0 R >>",
   )
   let info_body = if bad_info {
-    b"<< /Title /Bad /CreationDate (D:1) >>"
+    b"<< /Title /Bad /CreationDate (D:0001) >>"
   } else {
-    b"<< /Title (Doc) /CreationDate (D:1) /ModDate (D:2) /Trapped /False >>"
+    b"<< /Title (Doc) /CreationDate (D:0001) /ModDate (D:0002) /Trapped /False >>"
   }
   let (bytes, info_offset) = append_indirect_object(
     bytes, header_base, 4, 0, info_body,
@@ -118,10 +118,10 @@ fn build_interchange_fixture_impl(bad_info : Bool) -> Bytes {
     ),
   )
   let (bytes, catalog_piece_offset) = append_indirect_object(
-    bytes, header_base, 7, 0, b"<< /Producer << /LastModified (D:catalog) /Private 42 >> >>",
+    bytes, header_base, 7, 0, b"<< /Producer << /LastModified (D:20260414) /Private 42 >> >>",
   )
   let (bytes, page_piece_offset) = append_indirect_object(
-    bytes, header_base, 8, 0, b"<< /PageTool << /LastModified (D:page) /Private [1] >> >>",
+    bytes, header_base, 8, 0, b"<< /PageTool << /LastModified (D:20260415) /Private [1] >> >>",
   )
 
   let xref_offset = object_offset(bytes, header_base)

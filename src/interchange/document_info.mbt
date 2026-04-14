@@ -49,7 +49,36 @@ fn optional_info_string(
 ) -> Bytes? raise PdfInterchangeError {
   match dict.get(pdf_name(key)) {
     None => None
-    Some(@objects.PdfObject::String(bytes)) => Some(bytes)
+    Some(@objects.PdfObject::String(bytes)) => {
+      if key == b"CreationDate" || key == b"ModDate" {
+        try @common_data.parse_pdf_date(bytes) catch {
+          error =>
+            raise PdfInterchangeError::InvalidDocumentInfo(
+              object_id,
+              "/" +
+              @utf8.decode_lossy(key) +
+              " invalid date: " +
+              common_data_reason(error),
+            )
+        } noraise {
+          _ => ()
+        }
+      } else {
+        try @common_data.parse_text_string(bytes) catch {
+          error =>
+            raise PdfInterchangeError::InvalidDocumentInfo(
+              object_id,
+              "/" +
+              @utf8.decode_lossy(key) +
+              " invalid text string: " +
+              common_data_reason(error),
+            )
+        } noraise {
+          _ => ()
+        }
+      }
+      Some(bytes)
+    }
     Some(value) =>
       raise PdfInterchangeError::InvalidDocumentInfo(
         object_id,

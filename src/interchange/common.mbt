@@ -25,6 +25,18 @@ fn name_text(name : @objects.PdfName) -> String {
 }
 
 ///|
+fn common_data_reason(error : @common_data.PdfCommonDataError) -> String {
+  match error {
+    @common_data.PdfCommonDataError::ExpectedString(reason) => reason
+    @common_data.PdfCommonDataError::InvalidTextString(reason) => reason
+    @common_data.PdfCommonDataError::InvalidAsciiString(reason) => reason
+    @common_data.PdfCommonDataError::InvalidDate(_, reason) => reason
+    @common_data.PdfCommonDataError::InvalidRectangle(reason) => reason
+    @common_data.PdfCommonDataError::InvalidTreeNode(reason) => reason
+  }
+}
+
+///|
 fn required_name_entry(
   dict : @objects.PdfDictionary,
   key : Bytes,

@@ -434,38 +434,7 @@ fn parse_typed_page_rectangle(
   label : String,
   inherited : Bool,
 ) -> PdfRectangle raise PdfDocumentError {
-  let error = typed_page_error(
-    page_id,
-    key,
-    label + " must be an array of four numbers",
-    inherited,
-  )
-  match value {
-    @objects.PdfObject::Array(values) => {
-      if values.length() != 4 {
-        raise error
-      }
-      PdfRectangle::{
-        left: parse_typed_page_number(page_id, key, values[0], label, inherited),
-        bottom: parse_typed_page_number(
-          page_id,
-          key,
-          values[1],
-          label,
-          inherited,
-        ),
-        right: parse_typed_page_number(
-          page_id,
-          key,
-          values[2],
-          label,
-          inherited,
-        ),
-        top: parse_typed_page_number(page_id, key, values[3], label, inherited),
-      }
-    }
-    _ => raise error
-  }
+  typed_page_rectangle(page_id, key, value, label, inherited)
 }
 
 ///|

@@ -181,16 +181,7 @@ fn navigation_rectangle(
   owner : @objects.PdfName,
   label : String,
 ) -> PdfRectangle raise PdfDocumentError {
-  let values = navigation_array(value, owner, label)
-  if values.length() != 4 {
-    raise navigation_error(owner, label + " must contain four numbers")
-  }
-  PdfRectangle::{
-    left: navigation_number(values[0], owner, label),
-    bottom: navigation_number(values[1], owner, label),
-    right: navigation_number(values[2], owner, label),
-    top: navigation_number(values[3], owner, label),
-  }
+  reader_rectangle(value, owner, label)
 }
 
 ///|

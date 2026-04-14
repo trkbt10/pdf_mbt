@@ -1,5 +1,6 @@
 import {
   "trkbt10/pdf/src/objects",
+  "trkbt10/pdf/src/common_data",
   "trkbt10/pdf/src/lexer",
   "trkbt10/pdf/src/parser",
   "trkbt10/pdf/src/filters",
