@@ -951,6 +951,20 @@ pub(all) enum PdfMediaClipKind {
   Unknown(@objects.PdfName)
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfMediaCriteria {
+  audio_descriptions : Bool?
+  captions : Bool?
+  overdubs : Bool?
+  subtitles : Bool?
+  bandwidth_bits_per_second : Int?
+  minimum_bit_depth : PdfMinimumBitDepth?
+  minimum_screen_size : PdfMinimumScreenSize?
+  software_identifiers : Array[PdfSoftwareIdentifier]
+  pdf_versions : Array[@objects.PdfName]
+  languages : Array[Bytes]
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
 pub(all) enum PdfMediaDuration {
   Intrinsic
   Infinite
@@ -981,6 +995,7 @@ pub(all) struct PdfMediaPlayParams {
 
 pub(all) struct PdfMediaPlayerInfo {
   software_identifiers : Array[PdfSoftwareIdentifier]
+  must_honor_best_effort : PdfMhBePolicy
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
@@ -1009,6 +1024,19 @@ pub(all) struct PdfMediaScreenParams {
 pub(all) struct PdfMhBePolicy {
   must_honor : Map[@objects.PdfName, @objects.PdfObject]?
   best_effort : Map[@objects.PdfName, @objects.PdfObject]?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfMinimumBitDepth {
+  value : Int
+  monitor : PdfMonitorSpecifier
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfMinimumScreenSize {
+  width : Int
+  height : Int
+  monitor : PdfMonitorSpecifier
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
 pub(all) enum PdfMonitorSpecifier {
@@ -1418,6 +1446,23 @@ pub(all) enum PdfRequirementSupportStatus {
   Unknown
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfRichMediaActivation {
+  condition : @objects.PdfName
+  animation : PdfRichMediaAnimation?
+  view : @objects.PdfObject?
+  configuration : @objects.PdfObject?
+  presentation : PdfRichMediaPresentation?
+  scripts : Array[@objects.PdfObject]
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfRichMediaAnimation {
+  subtype : @objects.PdfName
+  play_count : Int
+  speed : Double
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfRichMediaAnnotation {
   object_id : @objects.ObjectId?
   content : PdfRichMediaContent
@@ -1446,6 +1491,11 @@ pub(all) struct PdfRichMediaContent {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfRichMediaDeactivation {
+  condition : @objects.PdfName
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfRichMediaExecuteAction {
   target_annotation : @objects.PdfObject
   instance : @objects.PdfObject?
@@ -1458,6 +1508,24 @@ pub(all) struct PdfRichMediaInstance {
   subtype : @objects.PdfName?
   asset : @objects.PdfObject?
   params : PdfRichMediaViewParams?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfRichMediaPosition {
+  horizontal_align : @objects.PdfName
+  vertical_align : @objects.PdfName
+  horizontal_offset : Double
+  vertical_offset : Double
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfRichMediaPresentation {
+  style : @objects.PdfName
+  window : PdfRichMediaWindow?
+  transparent : Bool
+  navigation_pane : Bool
+  toolbar : Bool?
+  pass_context_click : Bool
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
@@ -1481,6 +1549,19 @@ pub(all) struct PdfRichMediaViewParams {
   binding : @objects.PdfName?
   data : @objects.PdfObject?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfRichMediaWindow {
+  width : PdfRichMediaWindowDimension
+  height : PdfRichMediaWindowDimension
+  position : PdfRichMediaPosition?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfRichMediaWindowDimension {
+  default_value : Double
+  min : Double
+  max : Double
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfScreenAnnotation {
@@ -1580,6 +1661,8 @@ pub(all) struct PdfSoftwareIdentifier {
   operating_systems : Array[Bytes]
   lower_version : PdfVersionArray?
   upper_version : PdfVersionArray?
+  lower_inclusive : Bool
+  upper_inclusive : Bool
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
@@ -1682,8 +1765,46 @@ pub(all) enum PdfThreeDArtworkSource {
   Raw(@objects.PdfObject)
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfThreeDMarkupExternalData {
+  annotation : @objects.PdfObject
+  view : @objects.PdfObject
+  md5 : Bytes?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfThreeDMatrix {
   values : Array[Double]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfThreeDMeasurement {
+  object_id : @objects.ObjectId?
+  kind : PdfThreeDMeasurementKind
+  name : Bytes?
+  annotation_plane : PdfThreeDVector?
+  anchors : Array[PdfThreeDVector]
+  leader_directions : Array[PdfThreeDVector]
+  text_anchor : PdfThreeDVector?
+  text_x_direction : PdfThreeDVector?
+  text_y_direction : PdfThreeDVector?
+  value : Double?
+  units : Bytes?
+  precision : Int?
+  projection_annotation : @objects.PdfObject?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfThreeDMeasurementExternalData {
+  measurement : @objects.PdfObject
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfThreeDMeasurementKind {
+  LinearDimension
+  PerpendicularDimension
+  AngularDimension
+  RadialDimension
+  CommentNote
+  Unknown(@objects.PdfName)
 } derive(Eq, @debug.Debug)
 
 pub(all) enum PdfThreeDProjection {
@@ -1703,6 +1824,19 @@ pub(all) struct PdfThreeDStream {
   subtype : @objects.PdfName?
   views : Array[PdfThreeDView]
   raw_stream : @objects.PdfStream
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfThreeDUnitSpec {
+  model_units : Double
+  real_units : Double
+  label : Bytes
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfThreeDUnits {
+  creation_time_units : PdfThreeDUnitSpec?
+  user_override_units : PdfThreeDUnitSpec?
+  display_units : PdfThreeDUnitSpec?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfThreeDVector {
