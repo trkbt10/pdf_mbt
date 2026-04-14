@@ -17,20 +17,45 @@
   - _Requirements: 0.3, 0.4, 0.5, 0.9, 0.10, 0.20, 0.23_
   - _Boundary: CryptoPrimitives_
 
-- [ ] 1.3 Add digest primitives required by PDF encryption
+- [ ] 1.3 Add the MD5 digest primitive for deprecated standard security
   - Implement MD5 for deprecated revision 4 and earlier key derivation.
-  - Implement SHA-256, SHA-384, and SHA-512 for revision 6 Algorithm 2.B and public-key unsupported metadata validation paths.
-  - Validate each digest against independent known-answer vectors before any password algorithm depends on it.
-  - Done: digest vector tests pass and malformed or oversized internal state cannot leak as a non-typed failure.
-  - _Requirements: 0.3, 0.9, 0.10, 0.11, 0.26_
+  - Support repeated digest use in password algorithms without retaining document-level state.
+  - Validate the digest against independent known-answer vectors before revision 4 authentication depends on it.
+  - Done: MD5 vector tests pass and malformed or oversized internal state cannot leak as a non-typed failure.
+  - _Requirements: 0.3, 0.9_
   - _Boundary: CryptoPrimitives_
 
-- [ ] 1.4 Add symmetric byte transforms required by PDF encryption
-  - Implement RC4 for deprecated V2 paths and AES block operations for 128-bit and 256-bit keys.
-  - Provide AES-CBC with PKCS 7 padding, AES-CBC without padding, and AES-ECB single-block decryption for PDF-specific uses.
-  - Reject invalid key lengths, IV lengths, non-block-aligned no-padding data, and malformed padding with typed crypto errors.
-  - Done: RC4, AES block, CBC, ECB, and padding-mode vectors pass before the encryption layer calls these primitives.
-  - _Requirements: 0.3, 0.4, 0.5, 0.10, 0.20, 0.26, 0.27_
+- [ ] 1.4 Add SHA-2 digest primitives for revision 6 hashing
+  - Implement SHA-256, SHA-384, and SHA-512 for revision 6 Algorithm 2.B.
+  - Keep hash selection explicit so Algorithm 2.B can choose the next digest family from encrypted round output.
+  - Validate each digest against independent known-answer vectors before revision 6 authentication depends on it.
+  - Done: SHA-2 vector tests pass for all three digest sizes and return exact byte lengths for downstream algorithms.
+  - _Requirements: 0.3, 0.10, 0.11, 0.26_
+  - _Boundary: CryptoPrimitives_
+
+- [ ] 1.5 Add the RC4 transform for deprecated V2 paths
+  - Implement the symmetric RC4 byte transform used by revision 4 and earlier password and object algorithms.
+  - Preserve input length exactly and support repeated invocations with iteration-specific keys.
+  - Reject invalid empty keys with typed crypto diagnostics.
+  - Done: RC4 known-answer tests and revision-style repeated-key tests pass before standard-handler code calls the transform.
+  - _Requirements: 0.3, 0.4, 0.9, 0.13, 0.14, 0.15, 0.27_
+  - _Boundary: CryptoPrimitives_
+
+- [ ] 1.6 Add AES block operations for PDF key sizes
+  - Implement AES block encryption and decryption for 128-bit and 256-bit keys.
+  - Validate key schedule behavior, block length, and unsupported key-size rejection at the primitive boundary.
+  - Keep the block operation independent from CBC, ECB, padding, and PDF dictionary logic.
+  - Done: AES block known-answer tests pass for the key sizes used by AESV2, AESV3, Algorithm 2.B, OE, UE, and Perms.
+  - _Requirements: 0.3, 0.5, 0.10, 0.11, 0.20, 0.26, 0.27_
+  - _Boundary: CryptoPrimitives_
+
+- [ ] 1.7 Add AES modes used by encrypted strings, streams, and permissions
+  - Provide AES-CBC with PKCS 7 padding for encrypted strings and streams.
+  - Provide AES-CBC without padding for OE and UE and AES-ECB single-block decryption for Perms.
+  - Reject invalid IV lengths, non-block-aligned no-padding data, and malformed padding with typed crypto errors.
+  - Done: CBC, ECB, and padding-mode vectors pass before the encryption layer calls these modes.
+  - _Depends: 1.2, 1.6_
+  - _Requirements: 0.3, 0.4, 0.5, 0.10, 0.20, 0.27_
   - _Boundary: CryptoPrimitives_
 
 - [ ] 2. Parse encryption dictionaries and metadata
@@ -50,7 +75,7 @@
   - _Requirements: 0.6, 0.7, 0.12, 0.20, 0.23_
   - _Boundary: EncryptionDictionaryParser, StandardSecurityHandler, Permissions_
 
-- [ ] 2.3 (P) Parse public-key handler metadata and unsupported diagnostics
+- [ ] 2.3 Parse public-key handler metadata and unsupported diagnostics
   - Parse public-key handler names, permitted subfilter values, recipient arrays, crypt-filter recipient placement, and public-key permission bits.
   - Preserve enough metadata to explain why CMS, X.509, private-key matching, or custom handler decryption is unsupported in this phase.
   - Avoid attempting CMS decoding or private-key discovery while still validating dictionary shapes relevant to diagnostics.
@@ -77,23 +102,33 @@
   - _Requirements: 0.6, 0.9, 0.10, 0.12_
   - _Boundary: PasswordPreprocessor_
 
-- [ ] 3.2 Implement revision 4 and earlier file-key and stored-entry algorithms
+- [ ] 3.2 Implement revision 4 and earlier file-key derivation
   - Compute the revision 2 through 4 file encryption key with MD5 input ordering, P low-order bytes, file identifier use, metadata exclusion bytes, and 50-round strengthening when required.
-  - Compute owner and user entries for Algorithms 3, 4, and 5, including RC4 iteration and XOR key variation.
   - Validate key-length choices for revisions 2, 3, and 4 before returning any key material.
-  - Done: known vectors and internal consistency tests prove Algorithms 2 through 5 reproduce expected keys and O/U entries.
-  - _Requirements: 0.8, 0.9, 0.13, 0.14, 0.15_
+  - Keep file identifier handling explicit so incremental update edge cases can be tested.
+  - Done: known vectors and internal consistency tests prove Algorithm 2 reproduces expected file keys.
+  - _Requirements: 0.8, 0.9_
   - _Boundary: StandardR4Handler_
 
-- [ ] 3.3 Authenticate revision 4 and earlier user and owner passwords
+- [ ] 3.3 Implement revision 4 and earlier stored-entry algorithms
+  - Compute owner entries with Algorithm 3, including owner-password fallback, RC4 iteration, and XOR key variation.
+  - Compute user entries with Algorithm 4 for revision 2 and Algorithm 5 for revisions 3 and 4.
+  - Preserve the 32-byte U entry shape and revision-specific comparison bytes for later authentication.
+  - Done: known vectors and internal consistency tests prove Algorithms 3, 4, and 5 reproduce expected O and U entries.
+  - _Depends: 3.2_
+  - _Requirements: 0.13, 0.14, 0.15_
+  - _Boundary: StandardR4Handler_
+
+- [ ] 3.4 Authenticate revision 4 and earlier user and owner passwords
   - Authenticate user passwords with Algorithm 6, including the 16-byte comparison rule for revisions 3 and 4.
   - Authenticate owner passwords with Algorithm 7, including revision-specific RC4 decryption order and delegation to user-password validation.
   - Return owner access, user access, or invalid credentials without exposing partial key material.
   - Done: tests distinguish valid user passwords, valid owner passwords, empty user passwords, invalid passwords, and revision-specific comparison behavior.
+  - _Depends: 3.2, 3.3_
   - _Requirements: 0.16, 0.17_
   - _Boundary: StandardR4Handler_
 
-- [ ] 3.4 (P) Implement revision 6 iterative hash behavior
+- [ ] 3.5 (P) Implement revision 6 iterative hash behavior
   - Implement Algorithm 2.B with SHA-256 initialization, AES-128-CBC no-padding rounds, hash-family selection from encrypted output, and termination after the required dynamic round condition.
   - Keep memory growth bounded to password-sized and key-sized inputs rather than document-sized data.
   - Validate owner-key hashing with the 48-byte U string and user-key hashing without it.
@@ -102,21 +137,30 @@
   - _Requirements: 0.10, 0.11, 0.18, 0.19, 0.21, 0.22_
   - _Boundary: StandardR6Handler_
 
-- [ ] 3.5 Implement revision 6 authentication, key retrieval, and permissions validation
+- [ ] 3.6 Implement revision 6 authentication and key retrieval
   - Retrieve the file key through owner and user paths using Algorithms 2.A, 11, and 12 with OE and UE AES-256-CBC no-padding decryption.
-  - Compute and validate U, O, UE, OE, and Perms values for Algorithms 8 through 13 so reader behavior can be tested against deterministic fixtures.
-  - Validate Perms marker bytes, little-endian permissions, and EncryptMetadata consistency before returning an authorized context.
-  - Done: tests distinguish user access, owner access, invalid credentials, invalid Perms marker, permission mismatch, and EncryptMetadata mismatch for revision 6.
-  - _Depends: 3.4_
-  - _Requirements: 0.10, 0.18, 0.19, 0.20, 0.21, 0.22, 0.23_
+  - Compute U, O, UE, and OE values for Algorithms 8 and 9 so deterministic revision 6 fixtures can be generated and verified.
+  - Return owner access, user access, or invalid credentials without exposing partial key material.
+  - Done: tests distinguish user access, owner access, invalid credentials, malformed O/U/OE/UE lengths, and expected file-key recovery for revision 6.
+  - _Depends: 3.5_
+  - _Requirements: 0.10, 0.18, 0.19, 0.21, 0.22_
   - _Boundary: StandardR6Handler, Permissions_
 
-- [ ] 3.6 Build the standard handler authentication result
+- [ ] 3.7 Validate and compute revision 6 permission data
+  - Compute Perms values for Algorithm 10 and validate Perms values with Algorithm 13.
+  - Validate marker bytes, little-endian permissions, and EncryptMetadata consistency before returning an authorized context.
+  - Surface invalid permission state as a typed encryption error rather than a credential error.
+  - Done: tests distinguish valid permissions, invalid marker bytes, permission mismatch, and EncryptMetadata mismatch for revision 6.
+  - _Depends: 3.6_
+  - _Requirements: 0.20, 0.23_
+  - _Boundary: StandardR6Handler, Permissions_
+
+- [ ] 3.8 Build the standard handler authentication result
   - Combine revision-specific authentication into a single standard handler workflow that returns file key, access mode, permissions, cipher version, metadata encryption flag, and crypt-filter configuration.
   - Attempt the default empty user password when requested by the reader and return a typed missing-credentials result when it does not authenticate.
   - Enforce standard handler crypt-filter limits for revisions 4 and 6, including supported CFM values and DocOpen authorization expectations.
   - Done: reader-facing authentication tests receive an authorized context for supported standard-security documents and typed failures for invalid credentials or unsupported standard-handler shapes.
-  - _Depends: 2.2, 3.2, 3.3, 3.5_
+  - _Depends: 2.2, 3.2, 3.4, 3.6, 3.7_
   - _Requirements: 0.6, 0.7, 0.8, 0.12, 0.27_
   - _Boundary: StandardSecurityHandler, EncryptionContext_
 
@@ -126,7 +170,7 @@
   - Validate AuthEvent, CFM, Length, and referenced filter names, including unsupported None or custom methods that require external handler ownership.
   - Remove only the consumed Crypt filter entry before ordinary stream filters are applied.
   - Done: crypt-filter tests prove default resolution, Identity passthrough, stream override handling, embedded-file selection, and unsupported-method errors.
-  - _Depends: 2.1, 3.6_
+  - _Depends: 2.1, 3.8_
   - _Requirements: 0.2, 0.6, 0.27_
   - _Boundary: CryptFilterRegistry_
 
@@ -163,7 +207,7 @@
   - Preserve unencrypted open behavior, add credential-aware opening, and attempt empty-password authentication for no-credential opens.
   - Return missing credentials, invalid credentials, malformed dictionaries, unsupported public-key handlers, and unsupported custom handlers before protected content is exposed.
   - Done: opening tests show unencrypted files still open normally, empty-password encrypted files open when valid, password-protected files require credentials, and unsupported handlers fail explicitly.
-  - _Depends: 2.1, 2.2, 2.3, 3.6_
+  - _Depends: 2.1, 2.2, 2.3, 3.8_
   - _Requirements: 0.1, 0.2, 0.6, 0.24, 0.25, 0.26_
   - _Boundary: ReaderEncryptionIntegration, EncryptionContext_
 
@@ -218,7 +262,7 @@
   - Include failure cases that prove typed crypto errors are returned before higher encryption logic executes.
   - Keep test data independent from PDF fixtures so primitive failures can be isolated quickly.
   - Done: the crypto package test suite passes on its own and gives deterministic evidence for every primitive used by encryption.
-  - _Depends: 1.2, 1.3, 1.4_
+  - _Depends: 1.2, 1.3, 1.4, 1.5, 1.6, 1.7_
   - _Requirements: 0.3, 0.4, 0.5, 0.9, 0.10, 0.11, 0.20, 0.26, 0.27_
   - _Boundary: CryptoPrimitives tests_
 
@@ -236,7 +280,7 @@
   - Cover string and stream exception paths, encrypted object streams, embedded file streams, metadata Identity filters, and unsupported custom crypt filters.
   - Verify invalid credentials, malformed Perms, and unsupported algorithms never return decrypted payload bytes.
   - Done: encryption-layer tests prove standard-password authentication and object decryption behavior before reader integration tests run.
-  - _Depends: 3.6, 4.4_
+  - _Depends: 3.8, 4.4_
   - _Requirements: 0.4, 0.5, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21, 0.22, 0.23, 0.27_
   - _Boundary: StandardSecurityHandler tests, ObjectDecryptor tests, CryptFilterRegistry tests_
 
