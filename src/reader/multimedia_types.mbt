@@ -100,8 +100,9 @@ pub(all) enum PdfRendition {
 } derive(Eq, Debug)
 
 ///|
-/// 13.2.3.2 media rendition, Table 282. It links C media clip, P media play
-/// parameters from Table 290, and SP media screen parameters from Table 293.
+/// 13.2.3.2 Media renditions, Table 282. It links C media clip, P media
+/// play parameters from 13.2.5 Table 290, and SP media screen parameters
+/// from Table 293.
 pub(all) struct PdfMediaRendition {
   common : PdfRenditionCommon
   media_clip : PdfMediaClip?
@@ -324,9 +325,10 @@ pub(all) struct PdfSoftwareIdentity {
 } derive(Eq, Debug)
 
 ///|
-/// 13.2.7.3 Table 302 media player info dictionary. PID software identifiers
-/// identify the player versions and operating systems; MH/BE dictionaries have
-/// no currently defined entries but are retained for viability reporting.
+/// 13.2.7.3 Table 302 media player info dictionary. PID points to the
+/// 13.2.7.4 software identifier dictionary for player versions and operating
+/// systems; MH/BE dictionaries have no currently defined entries but are
+/// retained for viability reporting.
 pub(all) struct PdfMediaPlayerInfo {
   software_identifiers : Array[PdfSoftwareIdentifier]
   must_honor_best_effort : PdfMhBePolicy
