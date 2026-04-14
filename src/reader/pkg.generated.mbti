@@ -1079,6 +1079,10 @@ pub(all) enum PdfMultimediaAnnotation {
   Raw(PdfRawDictionaryPayload)
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfMultimediaByteString {
+  bytes : Bytes
+} derive(Eq, @debug.Debug)
+
 pub(all) enum PdfMultimediaObject {
   Rendition(PdfRendition)
   MediaClip(PdfMediaClip)
@@ -1090,10 +1094,21 @@ pub(all) enum PdfMultimediaObject {
   RawStream(PdfRawStreamPayload)
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfMultimediaObjectReference {
+  object_id : @objects.ObjectId
+} derive(Eq, @debug.Debug)
+
 pub(all) enum PdfMultimediaPayload {
   Object(@objects.PdfObject)
+  ByteString(PdfMultimediaByteString)
+  Reference(PdfMultimediaObjectReference)
   Dictionary(PdfRawDictionaryPayload)
   Stream(PdfRawStreamPayload)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfMultimediaUnknownName {
+  name : @objects.PdfName
+  context : Bytes?
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfNameTreeEntry {

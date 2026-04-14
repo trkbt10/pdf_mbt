@@ -1,7 +1,7 @@
 # Implementation Plan
 
-- [ ] 1. Establish reader-layer multimedia foundation
-- [ ] 1.1 Add multimedia diagnostics and shared structural parsing behavior
+- [x] 1. Establish reader-layer multimedia foundation
+- [x] 1.1 Add multimedia diagnostics and shared structural parsing behavior
   - Add a dedicated multimedia document error path for malformed clause 13 dictionaries, arrays, names, ranges, and required relationships.
   - Support direct and indirect object resolution with owner context, bounded traversal, cycle reporting, dictionary/name/array/range checks, and ISO default handling.
   - Preserve raw PDF objects and unknown entries while malformed required structures return deterministic multimedia errors.
@@ -9,14 +9,14 @@
   - _Requirements: 1, 1.1, 1.2, 4.9_
   - _Boundary: MultimediaCommonParser_
 
-- [ ] 1.2 Define the shared multimedia model vocabulary
+- [x] 1.2 Define the shared multimedia model vocabulary
   - Add public structural models for raw-retaining dictionaries and streams, MH/BE policy, viability decisions, unknown names, byte strings, vectors, matrices, offsets, durations, object references, and opaque payload carriers.
   - Keep media, script, embedded-file, U3D, PRC, and state payloads raw; do not normalize, decode, execute, fetch, or open them.
   - Completed when parser components can construct typed multimedia values with raw payload identity visible to callers and without new non-standard dependencies.
   - _Requirements: 1, 1.1, 1.2, 4.1, 4.9_
   - _Boundary: MultimediaModel_
 
-- [ ] 1.3 Create reusable multimedia test fixtures
+- [x] 1.3 Create reusable multimedia test fixtures
   - Add package-local fixture support for dictionaries, streams, arrays, indirect references, annotation shells, name-tree entries, action payloads, and cycle cases.
   - Include fixture assertions that raw payloads remain observable after typed parsing.
   - Completed when reader white-box tests can build direct and indirect clause 13 objects without duplicating fixture setup.
