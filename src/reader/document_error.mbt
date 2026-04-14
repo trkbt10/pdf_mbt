@@ -12,6 +12,7 @@ pub(all) suberror PdfDocumentError {
   InvalidNameTree(@objects.PdfName, String)
   InvalidNavigation(@objects.PdfName, String)
   InvalidAnnotation(@objects.ObjectId?, String)
+  InvalidAction(@objects.ObjectId?, @objects.PdfName?, String)
   ContentError(@content.PdfContentError)
   GraphicsError(@graphics.PdfGraphicsError)
   PageIndexOutOfRange(Int, Int)

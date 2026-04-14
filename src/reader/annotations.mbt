@@ -1068,6 +1068,7 @@ fn parse_annotation_common(
       None => None
     },
     optional_content: dict.get(annotation_key(b"OC")),
+    additional_actions: dict.get(annotation_key(b"AA")),
     associated_files: match dict.get(annotation_key(b"AF")) {
       Some(value) => annotation_array(value, object_id, "AF")
       None => []

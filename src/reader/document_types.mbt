@@ -452,6 +452,7 @@ pub(all) struct PdfAnnotationCommon {
   color : Array[Double]
   struct_parent : Int?
   optional_content : @objects.PdfObject?
+  additional_actions : @objects.PdfObject?
   associated_files : Array[@objects.PdfObject]
   nonstroking_opacity : Double
   stroking_opacity : Double
