@@ -1,0 +1,181 @@
+# Implementation Plan
+
+- [ ] 1. Establish graphics transparency semantics
+- [ ] 1.1 Model standard blend mode vocabulary and classification
+  - Parse named and array-based blend mode values while preserving PDF 2.0 fallback behavior for unrecognized arrays.
+  - Classify each standard mode for separable, non-separable, and white-preserving behavior used by downstream spot-colour policy.
+  - Compatible input is observably normalized to Normal in graphics state and tests cover every standard mode category.
+  - _Requirements: 2.3, 2.5, 2.6, 2.7, 2.27, 2.40_
+  - _Boundary: BlendModeModel_
+- [ ] 1.2 Represent transparency graphics-state parameters as typed state
+  - Apply blend mode, soft mask, stroking and nonstroking alpha constants, alpha-is-shape, and text knockout from graphics-state parameter dictionaries.
+  - Preserve default values, save/restore copying, and group-entry reset behavior for transparency-related parameters.
+  - Graphics-state tests show BM, SMask, CA, ca, AIS, and TK changes are typed and visible after a gs operation.
+  - _Requirements: 2.22, 2.25, 2.27, 2.28, 2.30, 2.31, 2.34_
+  - _Boundary: TransparencyParameterModel_
+- [ ] 1.3 Validate soft-mask dictionaries and image masks
+  - Accept None, alpha masks, luminosity masks, image masks, embedded image masks, and unresolved references according to their PDF representation.
+  - Validate soft-mask dictionary entries, coordinate capture at mask establishment time, transfer function placeholders, and backdrop colour component counts.
+  - Validate image-mask restrictions, matte metadata, mask override precedence, and the absence of nested masks.
+  - Tests reject invalid mask dictionaries and images while valid alpha, luminosity, and image masks produce inspectable mask sources.
+  - _Requirements: 2.22, 2.23, 2.24, 2.30, 2.32, 2.33, 2.38_
+  - _Boundary: SoftMaskModel_
+- [ ] 1.4 Validate transparency group attributes
+  - Recognize Transparency group subtype separately from ordinary group metadata for Form XObjects, page groups, and pattern groups.
+  - Validate allowed blending colour spaces, default inheritance, isolated and knockout flags, and page-group-specific interpretation.
+  - Group validation tests cover non-transparency passthrough, invalid colour spaces, page group rules, and isolated/knockout defaults.
+  - _Requirements: 2.14, 2.15, 2.16, 2.17, 2.18, 2.19, 2.20, 2.21, 2.34, 2.35, 2.37_
+  - _Boundary: TransparencyGroupModel_
+- [ ] 1.5 Emit transparency-aware graphics program events
+  - Interpret transparency state changes, transparency group invocation, pattern transparency setup, and image mask overrides without performing raster compositing.
+  - Preserve paint order and state snapshots so rendering can reconstruct the transparency stack later.
+  - Public graphics event regression tests show existing events remain stable and transparency-specific metadata appears on relevant paint events.
+  - _Requirements: 2, 2.10, 2.16, 2.25, 2.26, 2.29, 2.34, 2.35_
+  - _Boundary: GraphicsInterpreter_
+
+- [ ] 2. Build rendering transparency primitives
+- [ ] 2.1 Prepare renderer contracts for transparency providers and bounded execution
+  - Define caller-supplied capabilities for colour conversion, PDF function execution, transfer functions, tint transforms, halftone handling, and glyph masks.
+  - Route unsupported provider work into explicit rendering errors instead of silent approximation.
+  - Rendering package configuration builds with the required internal dependencies and still introduces no external dependency.
+  - _Requirements: 1, 2.4, 2.24, 2.36, 2.44, 2.46_
+  - _Boundary: RenderingProviderContracts_
+- [ ] 2.2 (P) Implement stable compositing math primitives
+  - Implement alpha products, union, safe division with the 0 divided by 0 convention, shape and opacity normalization, and vector helpers.
+  - Keep shape, opacity, and alpha independently representable for knockout groups and soft masks.
+  - Math tests cover zero alpha, undefined colour inputs, source/result shape, and formula ordering edge cases.
+  - _Requirements: 2.1, 2.2, 2.3, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13_
+  - _Boundary: TransparencyCompositorMath_
+  - _Depends: 2.1_
+- [ ] 2.3 (P) Evaluate standard blend functions
+  - Evaluate all separable blend modes including PDF 2.0 ColorDodge and ColorBurn edge cases.
+  - Evaluate non-separable blend modes through luminosity, saturation, clipping, and CMYK-specific K handling.
+  - Blend tests produce deterministic component values for every standard mode and verify subtractive-space complement handling.
+  - _Requirements: 2.3, 2.4, 2.6, 2.7, 2.40, 2.43_
+  - _Boundary: RenderingBlendFunctions_
+  - _Depends: 1.1, 2.1_
+- [ ] 2.4 (P) Resolve blending colour spaces and conversion policy
+  - Resolve page, parent, isolated group, non-isolated group, and soft-mask group colour spaces with default device remapping.
+  - Dispatch required CIE, ICC, DeviceRGB, DeviceCMYK, luminosity, black generation, and undercolour-removal conversions through providers.
+  - Colour-policy tests show inherited group spaces, nearest compatible CIE ancestor substitution, and unsupported conversion errors.
+  - _Requirements: 2.4, 2.24, 2.26, 2.27, 2.36, 2.37, 2.38, 2.46_
+  - _Boundary: TransparencyColourPolicy_
+  - _Depends: 1.4, 2.1_
+- [ ] 2.5 Apply spot-colour and overprint policy
+  - Maintain process and spot component availability for groups, elementary objects, soft-mask groups, and unavailable spot contexts.
+  - Substitute Normal for spot colours when the requested blend mode is not both separable and white-preserving.
+  - Overprint tests cover compatible overprint behavior, Table 146 cases, group-object fallback, and additive/subtractive conversion boundaries.
+  - _Requirements: 2.38, 2.39, 2.40, 2.41, 2.42, 2.43_
+  - _Boundary: SpotOverprintPolicy_
+  - _Depends: 1.1, 2.3, 2.4_
+- [ ] 2.6 (P) Select transparency-aware rendering parameters
+  - Track topmost fully opaque elementary objects per sample and per component when overprinting is active.
+  - Ignore group-object halftone and transfer selections while preserving rendering intent, black point compensation, black generation, and undercolour-removal context at conversion time.
+  - Rendering-parameter tests identify page defaults, opaque-object selection, non-opaque fallbacks, and group invocation conversion context.
+  - _Requirements: 2.44, 2.45, 2.46_
+  - _Boundary: RenderingParameterPolicy_
+  - _Depends: 2.1_
+
+- [ ] 3. Compose transparency scenes and raster output
+- [ ] 3.1 Build transparency scenes from graphics programs
+  - Convert path paints, images, inline images, shadings, text, form groups, and pattern paints into ordered transparency paint entries.
+  - Capture source colour, shape source, opacity source, alpha constants, soft masks, blend mode, overprint flags, rendering intent, black point compensation, and deferred rendering parameters.
+  - Scene tests show paint entries preserve PDF order and carry the state snapshot from the painting or invocation point.
+  - _Requirements: 2, 2.10, 2.16, 2.26, 2.29, 2.35, 2.42, 2.45_
+  - _Boundary: TransparencySceneBuilder_
+  - _Depends: 1.5, 2.1_
+- [ ] 3.2 Composite elementary object stacks
+  - Composite individual objects against their immediate backdrop using source shape, mask shape, constant shape, object opacity, mask opacity, constant opacity, alpha, and blend mode.
+  - Clamp final sample components while preserving undefined-colour semantics when alpha is zero.
+  - Rendering tests for layered semi-transparent fills match the expected colour, shape, opacity, and alpha samples.
+  - _Requirements: 1, 2, 2.1, 2.2, 2.3, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.28, 2.29, 2.30, 2.31_
+  - _Boundary: TransparencyCompositor_
+  - _Depends: 2.2, 2.3, 2.4, 3.1_
+- [ ] 3.3 Composite transparency groups recursively
+  - Composite nested group stacks with group backdrop, initial backdrop, immediate backdrop, inherited colour spaces, group result colour, group shape, and group alpha.
+  - Support isolated and non-isolated groups and page groups without applying backdrop contribution twice.
+  - Group rendering tests cover nested groups, isolated groups, non-isolated groups, and page backdrop scenarios.
+  - _Requirements: 1, 2, 2.14, 2.15, 2.16, 2.17, 2.18, 2.20, 2.21, 2.34, 2.37_
+  - _Boundary: TransparencyCompositor_
+  - _Depends: 1.4, 2.2, 2.3, 2.4, 3.1_
+- [ ] 3.4 Composite knockout groups and combined object shapes
+  - Apply knockout group backdrop selection, fractional-shape averaging, separate shape tracking, and nested knockout rules.
+  - Treat combined fill/stroke path operations and combined text rendering modes as implicit groups where required.
+  - Knockout and combined-paint tests show topmost-object behavior, fractional-shape blending, and no double-border overlap for combined paints.
+  - _Requirements: 2.17, 2.19, 2.21, 2.28, 2.42_
+  - _Boundary: TransparencyCompositor_
+  - _Depends: 2.2, 2.3, 3.2, 3.3_
+- [ ] 3.5 Evaluate soft masks during compositing
+  - Derive mask values from group alpha and group luminosity, including transfer function dispatch and outside-bounds backdrop behavior.
+  - Apply alpha-is-shape routing so each mask modifies either shape or opacity for the current compositing operation.
+  - Soft-mask rendering tests cover alpha masks, luminosity masks, image masks, embedded masks, matte inversion, and zero-alpha matte division.
+  - _Requirements: 2.22, 2.23, 2.24, 2.30, 2.32, 2.33, 2.38_
+  - _Boundary: TransparencyMaskEvaluation_
+  - _Depends: 1.3, 2.2, 2.4, 3.2, 3.3_
+- [ ] 3.6 Integrate pattern transparency, spot components, and overprint behavior
+  - Evaluate tiling and shading pattern definitions as implicit non-isolated groups with the required knockout behavior and reset transparency parameters.
+  - Apply spot component passthrough or alternate substitution and compatible overprint decisions when painting elementary objects and group objects.
+  - Rendering tests cover transparent patterns, shading backgrounds, spot-colour groups, non-white-preserving fallback, and overprint mode differences.
+  - _Requirements: 2.35, 2.38, 2.39, 2.40, 2.41, 2.42, 2.43_
+  - _Boundary: TransparencySceneBuilder, SpotOverprintPolicy, TransparencyCompositor_
+  - _Depends: 2.5, 3.1, 3.2, 3.3, 3.4_
+- [ ] 3.7 Route page rendering through the transparency compositor
+  - Render graphics programs by building a transparency scene, compositing it onto bounded raster surfaces, and applying page medium/backdrop rules.
+  - Return explicit rendering errors for missing providers, unsupported conversions, recursion limits, and allocation limits.
+  - Public renderer tests produce deterministic alpha-aware surfaces for opaque compatibility, semi-transparent stacks, groups, masks, and page colour conversion cases.
+  - _Requirements: 1, 2, 2.20, 2.36, 2.37, 2.44, 2.45, 2.46_
+  - _Boundary: RenderingPipelineIntegration_
+  - _Depends: 2.5, 2.6, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+- [ ] 4. Materialize transparency resources in the reader
+- [ ] 4.1 Load page groups and direct transparency resource dictionaries
+  - Materialize page Group entries, ExtGState dictionaries, Form XObject group dictionaries, Pattern resources, Shading resources, and image transparency entries before graphics interpretation needs them.
+  - Preserve reader ownership of indirect object loading while passing only materialized structures across the graphics boundary.
+  - Reader tests show indirect page groups and ExtGState transparency entries become visible through page graphics APIs.
+  - _Requirements: 2.20, 2.25, 2.32, 2.34, 2.35_
+  - _Boundary: ReaderTransparencyBridge_
+  - _Depends: 1.2, 1.3, 1.4_
+- [ ] 4.2 Resolve soft-mask and group resource graphs safely
+  - Materialize soft-mask group XObjects, subsidiary image masks, nested Form XObjects, and transparency-related resource dictionaries with cycle detection.
+  - Wrap graphics and rendering failures in document-level errors without evaluating blend formulas in the reader.
+  - Reader tests reject recursive transparency resources and preserve package boundaries so graphics and rendering do not import reader.
+  - _Requirements: 2.30, 2.32, 2.33, 2.34, 2.35_
+  - _Boundary: ReaderTransparencyBridge_
+  - _Depends: 4.1_
+- [ ] 4.3 Pass materialized transparency inputs into rendering APIs
+  - Provide page group metadata, materialized resources, device defaults, medium backdrop, and provider inputs to the rendering layer.
+  - Keep colour conversion and compositing execution in rendering while reader remains responsible only for loading and API boundary errors.
+  - End-to-end reader rendering tests show indirect transparency resources render through the same compositor path as direct resources.
+  - _Requirements: 1, 2, 2.20, 2.34, 2.35, 2.36, 2.37, 2.38, 2.46_
+  - _Boundary: ReaderTransparencyBridge, RenderingPipelineIntegration_
+  - _Depends: 3.7, 4.2_
+
+- [ ] 5. Validate transparency behavior and public API stability
+- [ ] 5.1 Validate graphics semantics and API generation
+  - Run focused graphics tests for blend modes, transparency state, soft masks, groups, images, patterns, and interpreter events.
+  - Regenerate and review public graphics API metadata for the new typed transparency contracts.
+  - Validation output shows graphics tests pass and generated API diffs expose only intentional transparency types.
+  - _Requirements: 2.5, 2.6, 2.7, 2.22, 2.25, 2.27, 2.30, 2.31, 2.32, 2.33, 2.34, 2.35_
+  - _Boundary: GraphicsValidation_
+  - _Depends: 1.5_
+- [ ] 5.2 Validate rendering scenarios and edge cases
+  - Run focused rendering tests for math, blend functions, colour policy, masks, groups, overprint, rendering parameters, and renderer scenarios.
+  - Include robustness coverage for empty groups, fully transparent objects, zero alpha, unsupported providers, and bounded deep nesting.
+  - Validation output shows deterministic rendering tests pass for every transparency behavior family.
+  - _Requirements: 1, 2, 2.1, 2.2, 2.3, 2.4, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.14, 2.15, 2.16, 2.17, 2.18, 2.19, 2.20, 2.21, 2.22, 2.23, 2.24, 2.36, 2.37, 2.38, 2.39, 2.40, 2.41, 2.42, 2.43, 2.44, 2.45, 2.46_
+  - _Boundary: RenderingValidation_
+  - _Depends: 3.7_
+- [ ] 5.3 Validate reader integration and package boundaries
+  - Run focused reader tests for indirect ExtGState, soft masks, transparency groups, page groups, patterns, shadings, and XObject resource materialization.
+  - Verify reader wraps lower-level errors while graphics and rendering remain independent of reader imports.
+  - Validation output shows reader integration tests pass and package boundary checks still enforce the design dependency direction.
+  - _Requirements: 2.20, 2.25, 2.30, 2.32, 2.33, 2.34, 2.35, 2.36, 2.46_
+  - _Boundary: ReaderValidation_
+  - _Depends: 4.3_
+- [ ] 5.4 Run final project validation
+  - Format the changed MoonBit packages and run project-wide check, targeted tests, and public API generation.
+  - Confirm generated package interfaces are updated for graphics, rendering, and reader where public contracts changed.
+  - Final validation output records passing formatting, checks, tests, and API generation for the transparency implementation.
+  - _Requirements: 1, 2_
+  - _Boundary: ProjectValidation_
+  - _Depends: 5.1, 5.2, 5.3_
