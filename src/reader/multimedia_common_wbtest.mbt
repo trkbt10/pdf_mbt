@@ -452,3 +452,81 @@ test "multimedia public models cover clause 13 alignment vocabulary" {
   }
   assert_eq(deactivation.condition == multimedia_key(b"XD"), true)
 }
+
+///|
+test "media player policy follows software identifier and player algorithms" {
+  let dict : @objects.PdfDictionary = Map::new()
+  let uri = PdfSoftwareNameUri::{
+    scheme: Some(b"vnd.adobe.swname"),
+    name: b"ADBE_Acrobat",
+    raw: b"vnd.adobe.swname:ADBE_Acrobat",
+  }
+  let identifier = PdfSoftwareIdentifier::{
+    names: [uri],
+    operating_systems: [b"win"],
+    lower_version: Some(PdfVersionArray::{ components: [1], is_infinite: false }),
+    upper_version: Some(PdfVersionArray::{ components: [5], is_infinite: false }),
+    lower_inclusive: true,
+    upper_inclusive: false,
+    raw_dict: dict,
+  }
+  let player = PdfSoftwareIdentity::{
+    name: b"ADBE_Acrobat",
+    uri_scheme: Some(b"VND.ADOBE.SWNAME"),
+    operating_system: Some(b"win"),
+    version: PdfVersionArray::{ components: [4, 2], is_infinite: false },
+    content_types: [b"video/mp4"],
+  }
+  assert_eq(software_identifier_matches(identifier, player) == Viable, true)
+  assert_eq(
+    compare_version_arrays(
+      PdfVersionArray::{ components: [5], is_infinite: false },
+      PdfVersionArray::{ components: [5, 0, 0], is_infinite: false },
+    ),
+    0,
+  )
+  assert_eq(
+    compare_version_arrays(
+      PdfVersionArray::{ components: [], is_infinite: true },
+      PdfVersionArray::{ components: [999], is_infinite: false },
+    ),
+    1,
+  )
+
+  let info = PdfMediaPlayerInfo::{
+    software_identifiers: [identifier],
+    must_honor_best_effort: PdfMhBePolicy::{
+      must_honor: None,
+      best_effort: None,
+    },
+    raw_dict: dict,
+  }
+  let allowed_policy = PdfMediaPlayerPolicy::{
+    must_use: [info],
+    allowed: [],
+    not_allowed: [],
+    raw_dict: dict,
+  }
+  assert_eq(
+    media_player_may_be_used(allowed_policy, player, Some(b"video/mp4")) ==
+    Viable,
+    true,
+  )
+  assert_eq(
+    media_player_may_be_used(allowed_policy, player, Some(b"audio/wav")) ==
+    NonViable("player does not support content type"),
+    true,
+  )
+
+  let blocked_policy = PdfMediaPlayerPolicy::{
+    must_use: [],
+    allowed: [info],
+    not_allowed: [info],
+    raw_dict: dict,
+  }
+  assert_eq(
+    media_player_may_be_used(blocked_policy, player, None) ==
+    NonViable("player is in NU"),
+    true,
+  )
+}

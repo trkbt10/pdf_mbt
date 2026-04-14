@@ -10,6 +10,11 @@ import {
 }
 
 // Values
+pub fn compare_version_arrays(PdfVersionArray, PdfVersionArray) -> Int
+
+pub fn media_player_may_be_used(PdfMediaPlayerPolicy, PdfSoftwareIdentity, Bytes?) -> PdfViabilityDecision
+
+pub fn software_identifier_matches(PdfSoftwareIdentifier, PdfSoftwareIdentity) -> PdfViabilityDecision
 
 // Errors
 pub(all) suberror PdfDocumentError {
