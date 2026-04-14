@@ -196,7 +196,7 @@ pub(all) struct PdfMediaPermissions {
 
 ///|
 /// 13.2.6.2 media offset dictionary, Tables 296, 297, 298, and 299. Time
-/// offsets use Table 300 timespan seconds; frame offsets start at 0; marker
+/// offsets use Table 300 timespan dictionary seconds; frame offsets start at 0; marker
 /// offsets keep text string names.
 pub(all) enum PdfMediaOffset {
   Time(Double)
@@ -207,7 +207,7 @@ pub(all) enum PdfMediaOffset {
 
 ///|
 /// 13.2.5 Table 292 media duration dictionary: intrinsic I, infinity F,
-/// explicit T timespan from Table 300, or raw future subtype data.
+/// explicit T Table 300 timespan dictionary seconds, or raw future subtype data.
 pub(all) enum PdfMediaDuration {
   Intrinsic
   Infinite
