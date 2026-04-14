@@ -1,0 +1,172 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/rendering"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/pdf/src/objects",
+}
+
+// Values
+
+// Errors
+pub(all) suberror PdfRenderingError {
+  InvalidDevice(String)
+  InvalidResource(String)
+  UnsupportedCapability(String)
+  ProviderFailure(String, String)
+  LimitExceeded(String, Int, Int)
+  PixelOutOfBounds(Int, Int)
+} derive(Eq, @debug.Debug)
+
+// Types and methods
+pub(all) enum HalftoneRef {
+  DefaultHalftone
+  DirectHalftone(@objects.PdfObject)
+  IndirectHalftone(@objects.ObjectId)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum NativeColourSpace {
+  NativeGray
+  NativeRGB
+  NativeCMYK
+} derive(Eq, @debug.Debug)
+pub fn NativeColourSpace::component_count(Self) -> Int
+pub fn NativeColourSpace::default_process_colourants(Self) -> Array[@objects.PdfName]
+
+pub(all) enum OutputProfileRef {
+  DirectOutputProfile(@objects.PdfObject)
+  IndirectOutputProfile(@objects.ObjectId)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PixelAddress {
+  x : Int
+  y : Int
+  component : Int
+  byte_index : Int
+  buffer_offset : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PixelFormat {
+  native_colour_space : NativeColourSpace
+  process_colourants : Array[@objects.PdfName]
+  spot_colourants : Array[@objects.PdfName]
+  bits_per_component : Int
+  bytes_per_component : Int
+  component_count : Int
+} derive(Eq, @debug.Debug)
+pub fn PixelFormat::from_device(RasterDevice) -> Self
+
+pub(all) struct ProviderFallbackUse {
+  provider : String
+  fallback : String
+  resource : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct RasterDevice {
+  width : Int
+  height : Int
+  resolution_x : Double
+  resolution_y : Double
+  native_colour_space : NativeColourSpace
+  process_colourants : Array[@objects.PdfName]
+  spot_colourants : Array[@objects.PdfName]
+  continuous_tone : Bool
+  bits_per_component : Int
+  output_profile : OutputProfileRef?
+  default_transfer : TransferFunctionRef?
+  default_halftone : HalftoneRef?
+  limits : RenderLimits
+} derive(Eq, @debug.Debug)
+pub fn RasterDevice::bytes_per_component(Self) -> Int
+pub fn RasterDevice::cmyk(Int, Int) -> Self
+pub fn RasterDevice::component_count(Self) -> Int
+pub fn RasterDevice::gray(Int, Int) -> Self
+pub fn RasterDevice::new(Int, Int, NativeColourSpace) -> Self
+pub fn RasterDevice::rgb(Int, Int) -> Self
+pub fn RasterDevice::surface_byte_count(Self) -> Int
+pub fn RasterDevice::validate(Self) -> Unit raise PdfRenderingError
+pub fn RasterDevice::with_bits_per_component(Self, Int) -> Self
+pub fn RasterDevice::with_limits(Self, RenderLimits) -> Self
+pub fn RasterDevice::with_process_colourants(Self, Array[@objects.PdfName]) -> Self
+pub fn RasterDevice::with_resolution(Self, Double, Double) -> Self
+pub fn RasterDevice::with_spot_colourants(Self, Array[@objects.PdfName]) -> Self
+
+pub(all) struct RasterSurface {
+  width : Int
+  height : Int
+  pixel_format : PixelFormat
+  component_buffers : Array[Array[Byte]]
+} derive(Eq, @debug.Debug)
+pub fn RasterSurface::allocate(RasterDevice) -> Self raise PdfRenderingError
+pub fn RasterSurface::component_buffer_length(Self) -> Int
+pub fn RasterSurface::pixel_address(Self, Int, Int, Int, Int) -> PixelAddress raise PdfRenderingError
+pub fn RasterSurface::read_component_byte(Self, Int, Int, Int, Int) -> Byte raise PdfRenderingError
+pub fn RasterSurface::write_component_byte(Self, Int, Int, Int, Int, Byte) -> Unit raise PdfRenderingError
+
+pub(all) struct RenderLimitObservation {
+  name : String
+  observed : Int
+  limit : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct RenderLimits {
+  max_width : Int
+  max_height : Int
+  max_surface_bytes : Int
+  max_process_colourants : Int
+  max_spot_colourants : Int
+  max_bits_per_component : Int
+  max_threshold_bytes : Int
+  max_path_segments : Int
+  max_halftone_cell_pixels : Int
+  max_provider_cache_entries : Int
+} derive(Eq, @debug.Debug)
+pub fn RenderLimits::default() -> Self
+
+pub(all) struct RenderOptions {
+  strictness : RenderStrictness
+} derive(Eq, @debug.Debug)
+pub fn RenderOptions::best_effort() -> Self
+pub fn RenderOptions::default() -> Self
+pub fn RenderOptions::is_strict(Self) -> Bool
+pub fn RenderOptions::strict() -> Self
+
+pub(all) struct RenderReport {
+  mut paint_count : Int
+  mut skipped_operations : Array[SkippedRenderOperation]
+  mut provider_fallbacks : Array[ProviderFallbackUse]
+  mut limit_observations : Array[RenderLimitObservation]
+} derive(Eq, @debug.Debug)
+pub fn RenderReport::empty() -> Self
+pub fn RenderReport::observe_limit(Self, String, Int, Int) -> Unit
+pub fn RenderReport::record_paint(Self) -> Unit
+pub fn RenderReport::record_provider_fallback(Self, String, String, String) -> Unit
+pub fn RenderReport::record_skip(Self, Int64, String, SkippedRenderReason) -> Unit
+
+pub(all) enum RenderStrictness {
+  Strict
+  BestEffort
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SkippedRenderOperation {
+  offset : Int64
+  operation : String
+  reason : SkippedRenderReason
+} derive(Eq, @debug.Debug)
+
+pub(all) enum SkippedRenderReason {
+  UnsupportedResource(String)
+  ProviderUnavailable(String)
+  GuardLimit(String)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TransferFunctionRef {
+  IdentityTransfer
+  DirectTransfer(@objects.PdfObject)
+  IndirectTransfer(@objects.ObjectId)
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

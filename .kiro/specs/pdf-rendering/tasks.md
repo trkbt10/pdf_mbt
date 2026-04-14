@@ -1,28 +1,28 @@
 # Implementation Plan
 
-- [ ] 1. Establish the rendering foundation
-- [ ] 1.1 Create the rendering package boundary and build configuration
+- [x] 1. Establish the rendering foundation
+- [x] 1.1 Create the rendering package boundary and build configuration
   - Add the new rendering package so it can compile with the allowed upstream packages and standard math support.
   - Keep the package independent from document loading and file access.
   - The completed package is visible to the MoonBit build graph and can be imported by downstream integration work.
   - _Requirements: 1_
   - _Boundary: RasterDeviceModel, RenderingResourceContracts_
 
-- [ ] 1.2 Define rendering failures, strictness options, limits, and reporting outcomes
+- [x] 1.2 Define rendering failures, strictness options, limits, and reporting outcomes
   - Add strict and best-effort outcome handling for unsupported rendering resources, provider failures, and guard-limit violations.
   - Represent render reports for skipped operations, provider fallback use, paint counts, and limit observations.
   - The completed error model distinguishes invalid device setup, invalid resources, unsupported capabilities, and limit failures in tests.
   - _Requirements: 1, 3.5_
   - _Boundary: RasterDeviceModel, RenderingResourceContracts_
 
-- [ ] 1.3 Model raster devices, native components, render limits, and writable surfaces
+- [x] 1.3 Model raster devices, native components, render limits, and writable surfaces
   - Validate dimensions, resolution, native colour spaces, process colourants, spot colourants, bits per component, and allocation limits before rendering.
   - Allocate native component buffers with stable pixel addressing and no out-of-bounds writes.
   - The completed model rejects invalid device configurations and produces surfaces whose dimensions and component counts match the device.
   - _Requirements: 1, 2, 2.2, 3.1, 3.2_
   - _Boundary: RasterDeviceModel_
 
-- [ ] 1.4 Validate the foundation with package-local tests and generated API review
+- [x] 1.4 Validate the foundation with package-local tests and generated API review
   - Cover device validation, limit rejection, pixel addressing, and surface component invariants.
   - Run the tight MoonBit validation loop for the new package foundation.
   - The completed foundation passes targeted rendering package tests and produces reviewed generated API summaries.
