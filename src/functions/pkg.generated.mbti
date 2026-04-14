@@ -1,0 +1,138 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/functions"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/pdf/src/filters",
+  "trkbt10/pdf/src/objects",
+}
+
+// Values
+pub fn evaluate_function_source(FunctionSource, Array[Double], FunctionLimits) -> Array[Double] raise PdfFunctionError
+
+pub fn interpolate(Double, FunctionInterval, FunctionInterval) -> Double
+
+pub fn parse_direct_function(@objects.PdfObject, FunctionLimits, Int64) -> PdfFunction raise PdfFunctionError
+
+pub fn parse_function_object(@objects.PdfObject, FunctionLimits, Int64) -> FunctionSource raise PdfFunctionError
+
+// Errors
+pub(all) suberror PdfFunctionError {
+  InvalidFunction(Int64, String)
+  EvaluationFailure(Int64, String)
+  UnresolvedFunctionReference(@objects.ObjectId)
+  LimitExceeded(String, Int, Int)
+  FilterFailure(@filters.PdfFilterError)
+} derive(Eq, @debug.Debug)
+
+// Types and methods
+pub(all) struct CalculatorFunction {
+  common : FunctionCommon
+  program : CalculatorProgram
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CalculatorProgram {
+  token_count : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CalculatorValue {
+  Number(Double)
+  Boolean(Bool)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DirectFunctionParseInput {
+  function_type : FunctionType
+  common : FunctionCommon
+  dict : Map[@objects.PdfName, @objects.PdfObject]
+  decoded_stream : Bytes?
+  limits : FunctionLimits
+  offset : Int64
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ExponentialFunction {
+  common : FunctionCommon
+  c0 : Array[Double]
+  c1 : Array[Double]
+  exponent : Double
+} derive(Eq, @debug.Debug)
+
+pub(all) struct FunctionCommon {
+  domain : Array[FunctionInterval]
+  range : Array[FunctionInterval]?
+} derive(Eq, @debug.Debug)
+pub fn FunctionCommon::clip_inputs(Self, Array[Double], offset? : Int64) -> Array[Double] raise PdfFunctionError
+pub fn FunctionCommon::clip_outputs(Self, Array[Double], offset? : Int64) -> Array[Double] raise PdfFunctionError
+pub fn FunctionCommon::input_count(Self) -> Int
+pub fn FunctionCommon::output_count(Self) -> Int?
+
+pub(all) struct FunctionInterval {
+  min : Double
+  max : Double
+} derive(Eq, @debug.Debug)
+pub fn FunctionInterval::clip(Self, Double) -> Double
+pub fn FunctionInterval::new(Double, Double, offset? : Int64) -> Self raise PdfFunctionError
+
+pub(all) struct FunctionLimits {
+  max_decoded_stream_bytes : Int
+  max_sample_values : Int
+  max_input_dimensions : Int
+  max_output_dimensions : Int
+  max_recursion_depth : Int
+  max_calculator_tokens : Int
+  max_calculator_stack_depth : Int
+  max_evaluation_steps : Int
+} derive(Eq, @debug.Debug)
+pub fn FunctionLimits::default() -> Self
+
+pub(all) enum FunctionSource {
+  DirectFunction(PdfFunction)
+  IndirectFunction(@objects.ObjectId)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum FunctionType {
+  Sampled
+  Exponential
+  Stitching
+  Calculator
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfFunction {
+  SampledFunction(SampledFunction)
+  ExponentialFunction(ExponentialFunction)
+  StitchingFunction(StitchingFunction)
+  CalculatorFunction(CalculatorFunction)
+} derive(Eq, @debug.Debug)
+pub fn PdfFunction::common(Self) -> FunctionCommon
+pub fn PdfFunction::evaluate(Self, Array[Double], FunctionLimits) -> Array[Double] raise PdfFunctionError
+
+pub(all) enum SampleOrder {
+  Linear
+  Cubic
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SampleTable {
+  values : Array[Double]
+  output_count : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SampledFunction {
+  common : FunctionCommon
+  size : Array[Int]
+  bits_per_sample : Int
+  order : SampleOrder
+  encode : Array[FunctionInterval]
+  decode : Array[FunctionInterval]
+  table : SampleTable
+} derive(Eq, @debug.Debug)
+
+pub(all) struct StitchingFunction {
+  common : FunctionCommon
+  functions : Array[FunctionSource]
+  bounds : Array[Double]
+  encode : Array[FunctionInterval]
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

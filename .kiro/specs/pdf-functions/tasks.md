@@ -1,21 +1,21 @@
 # Implementation Plan
 
-- [ ] 1. Establish the function domain foundation
-- [ ] 1.1 Create the package boundary and public safety contract
+- [x] 1. Establish the function domain foundation
+- [x] 1.1 Create the package boundary and public safety contract
   - Introduce the function-domain package with only the allowed object, filter, and math dependencies.
   - Define the public error categories, implementation limits, direct-versus-indirect source model, common intervals, and type variants needed by all function kinds.
   - The package can be type-checked on its own and exposes a stable foundation for later parser and evaluator work without importing graphics, rendering, reader, parser, lexer, or content packages.
   - _Requirements: 0.1_
   - _Boundary: FunctionModel_
 
-- [ ] 1.2 Add common numeric validation and clipping behavior
+- [x] 1.2 Add common numeric validation and clipping behavior
   - Validate function type values, required domain arrays, optional and required range arrays, interval ordering, numeric array lengths, and finite numeric values consistently.
   - Implement the shared interpolation rule, input domain clipping, output range clipping, and arity helpers used by every function kind.
   - Common validation tests demonstrate malformed dictionaries fail with typed errors while valid intervals clip and interpolate as specified.
   - _Requirements: 0.1_
   - _Boundary: FunctionParser, FunctionEvaluator_
 
-- [ ] 1.3 Establish source classification and type-parser handoff contracts
+- [x] 1.3 Establish source classification and type-parser handoff contracts
   - Accept indirect references as unresolved function sources and reject unsupported object shapes without resolving references inside the function package.
   - Define the internal dispatch contract that lets each supported function type register its owned direct parser after its component work is implemented.
   - Foundation smoke tests cover indirect source preservation, unsupported object errors, forbidden dependency directions, and the ability to add type parsers without changing package dependencies.
