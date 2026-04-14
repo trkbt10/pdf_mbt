@@ -1,0 +1,142 @@
+///|
+pub(all) enum PdfFileSpecification {
+  Simple(PdfSimpleFileSpecification)
+  Full(PdfFileSpecificationDictionary)
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfResolvedFileSpecObject {
+  object : @objects.PdfObject
+  source_object_id : @objects.ObjectId?
+  indirect : Bool
+  raw_object : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfFileSpecPath {
+  raw : Bytes
+  absolute : Bool
+  components : Array[Bytes]
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfSimpleFileSpecification {
+  raw_string : Bytes
+  path : PdfFileSpecPath
+  source_object_id : @objects.ObjectId?
+  indirect : Bool
+  raw_object : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfFileSpecNameEntry {
+  raw : Bytes
+  path : PdfFileSpecPath?
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfFileSpecFileSystem {
+  URL
+  Other(@objects.PdfName)
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfFileSpecIdentifier {
+  first : Bytes
+  second : Bytes
+  raw_array : Array[@objects.PdfObject]
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfFileSpecificationDictionary {
+  source_object_id : @objects.ObjectId?
+  indirect : Bool
+  file_system : PdfFileSpecFileSystem?
+  f : PdfFileSpecNameEntry?
+  uf : PdfFileSpecNameEntry?
+  dos : PdfFileSpecNameEntry?
+  mac : PdfFileSpecNameEntry?
+  unix : PdfFileSpecNameEntry?
+  selected_file_name : PdfFileSpecNameEntry?
+  file_identifier : PdfFileSpecIdentifier?
+  is_volatile : Bool
+  embedded_files : Map[@objects.PdfName, PdfEmbeddedFile]
+  related_files : Map[@objects.PdfName, Array[PdfRelatedFile]]
+  description : Bytes?
+  collection_item : PdfCollectionItem?
+  thumbnail : PdfFileSpecStream?
+  encrypted_payload : PdfEncryptedPayload?
+  associated_relationship : PdfAssociatedFileRelationship
+  raw_dict : @objects.PdfDictionary
+  raw_object : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfEmbeddedFile {
+  key : @objects.PdfName
+  source_object_id : @objects.ObjectId?
+  raw_stream : @objects.PdfStream
+  subtype : @objects.PdfName?
+  params : PdfEmbeddedFileParams?
+  raw_dict : @objects.PdfDictionary
+  raw_object : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfEmbeddedFileParams {
+  size : Int64?
+  creation_date : Bytes?
+  modification_date : Bytes?
+  mac : @objects.PdfDictionary?
+  checksum : Bytes?
+  raw_dict : @objects.PdfDictionary
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfRelatedFile {
+  name : Bytes
+  embedded_file : PdfEmbeddedFile
+  raw_name : @objects.PdfObject
+  raw_file : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfCollectionItem {
+  source_object_id : @objects.ObjectId
+  raw_dict : @objects.PdfDictionary
+  raw_object : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfFileSpecStream {
+  source_object_id : @objects.ObjectId?
+  raw_stream : @objects.PdfStream
+  raw_object : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfEncryptedPayload {
+  source_object_id : @objects.ObjectId?
+  raw_dict : @objects.PdfDictionary
+  raw_object : @objects.PdfObject
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfAssociatedFileRelationship {
+  Source
+  Data
+  Alternative
+  Supplement
+  EncryptedPayload
+  FormData
+  Schema
+  Unspecified
+  Other(@objects.PdfName)
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfEmbeddedFileEntry {
+  name : Bytes
+  file_specification : PdfFileSpecification
+  raw_value : @objects.PdfObject
+} derive(Eq, Debug)

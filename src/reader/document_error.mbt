@@ -20,6 +20,8 @@ pub(all) suberror PdfDocumentError {
   InvalidRequirement(@objects.ObjectId?, String)
   InvalidMultimedia(@objects.ObjectId?, String)
   InvalidStructure(@objects.ObjectId?, String)
+  InvalidExtension(@objects.ObjectId?, @objects.PdfName?, String)
+  InvalidFileSpecification(@objects.ObjectId?, String)
   InterchangeError(@interchange.PdfInterchangeError)
   ContentError(@content.PdfContentError)
   GraphicsError(@graphics.PdfGraphicsError)

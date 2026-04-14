@@ -17,6 +17,14 @@ pub fn compare_version_arrays(PdfVersionArray, PdfVersionArray) -> Int
 
 pub fn media_player_may_be_used(PdfMediaPlayerPolicy, PdfSoftwareIdentity, Bytes?) -> PdfViabilityDecision
 
+pub fn normalize_file_spec_path(PdfFileSpecPath) -> PdfFileSpecPath
+
+pub fn parse_file_spec_path(Bytes) -> PdfFileSpecPath
+
+pub fn resolve_file_spec_path(PdfFileSpecPath, PdfFileSpecPath) -> PdfFileSpecPath raise PdfDocumentError
+
+pub fn resolve_file_spec_url_path(Bytes, PdfFileSpecPath) -> Bytes raise PdfDocumentError
+
 pub fn software_identifier_matches(PdfSoftwareIdentifier, PdfSoftwareIdentity) -> PdfViabilityDecision
 
 pub fn standard_structure_type(@objects.PdfName) -> PdfStandardStructureType?
@@ -39,6 +47,8 @@ pub(all) suberror PdfDocumentError {
   InvalidRequirement(@objects.ObjectId?, String)
   InvalidMultimedia(@objects.ObjectId?, String)
   InvalidStructure(@objects.ObjectId?, String)
+  InvalidExtension(@objects.ObjectId?, @objects.PdfName?, String)
+  InvalidFileSpecification(@objects.ObjectId?, String)
   InterchangeError(@interchange.PdfInterchangeError)
   ContentError(@content.PdfContentError)
   GraphicsError(@graphics.PdfGraphicsError)
@@ -390,6 +400,18 @@ pub(all) struct PdfArticleThread {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
+pub(all) enum PdfAssociatedFileRelationship {
+  Source
+  Data
+  Alternative
+  Supplement
+  EncryptedPayload
+  FormData
+  Schema
+  Unspecified
+  Other(@objects.PdfName)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfBorderEffect {
   style : PdfBorderEffectStyle
   intensity : Double
@@ -484,6 +506,12 @@ pub(all) struct PdfCollectionFolder {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfCollectionItem {
+  source_object_id : @objects.ObjectId
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+  raw_object : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfCollectionSchemaField {
   key : @objects.PdfName
   subtype : @objects.PdfName?
@@ -550,6 +578,15 @@ pub(all) enum PdfDestinationView {
   Unknown(@objects.PdfName, Array[@objects.PdfObject])
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfDeveloperExtension {
+  prefix : @objects.PdfName
+  base_version : PdfVersion
+  extension_level : Int
+  url : Bytes?
+  extension_revision : Bytes?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
 pub struct PdfDocument {
   // private fields
 }
@@ -563,6 +600,8 @@ pub fn PdfDocument::catalog_uri(Self) -> PdfCatalogUri? raise PdfDocumentError
 pub fn PdfDocument::collection(Self) -> PdfCollection? raise PdfDocumentError
 pub fn PdfDocument::document_info(Self) -> @interchange.PdfDocumentInfo? raise PdfDocumentError
 pub fn PdfDocument::document_language(Self) -> Bytes? raise PdfDocumentError
+pub fn PdfDocument::embedded_files(Self) -> Array[PdfEmbeddedFileEntry] raise PdfDocumentError
+pub fn PdfDocument::extensions(Self) -> PdfExtensions? raise PdfDocumentError
 pub fn PdfDocument::lookup_name(Self, NameTreeCategory, Bytes) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfDocument::mark_info(Self) -> PdfMarkInfo raise PdfDocumentError
 pub fn PdfDocument::metadata_sources(Self) -> @interchange.PdfDocumentMetadataSources raise PdfDocumentError
@@ -585,6 +624,7 @@ pub fn PdfDocument::pages(Self) -> Array[PdfPage] raise PdfDocumentError
 pub fn PdfDocument::parse_action(Self, @objects.PdfObject) -> PdfAction raise PdfDocumentError
 pub fn PdfDocument::parse_action_from_object(Self, @objects.PdfObject, @objects.ObjectId?) -> PdfAction raise PdfDocumentError
 pub fn PdfDocument::parse_annotation_additional_action_object(Self, @objects.PdfObject, @objects.ObjectId?) -> PdfAnnotationAdditionalActions raise PdfDocumentError
+pub fn PdfDocument::parse_file_spec(Self, @objects.PdfObject) -> PdfFileSpecification raise PdfDocumentError
 pub fn PdfDocument::parse_form_field_additional_action_object(Self, @objects.PdfObject, @objects.ObjectId?) -> PdfFormFieldAdditionalActions raise PdfDocumentError
 pub fn PdfDocument::piece_info(Self) -> @interchange.PdfPagePieceDictionary? raise PdfDocumentError
 pub fn PdfDocument::structure_content_report(Self) -> PdfStructureContentReport raise PdfDocumentError
@@ -618,11 +658,53 @@ pub(all) enum PdfEffectiveLanguageSource {
   Element(@objects.ObjectId?)
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfEmbeddedFile {
+  key : @objects.PdfName
+  source_object_id : @objects.ObjectId?
+  raw_stream : @objects.PdfStream
+  subtype : @objects.PdfName?
+  params : PdfEmbeddedFileParams?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+  raw_object : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfEmbeddedFileEntry {
+  name : Bytes
+  file_specification : PdfFileSpecification
+  raw_value : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfEmbeddedFileParams {
+  size : Int64?
+  creation_date : Bytes?
+  modification_date : Bytes?
+  mac : Map[@objects.PdfName, @objects.PdfObject]?
+  checksum : Bytes?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfEmbeddedGoToAction {
   file_specification : @objects.PdfObject?
   destination : @objects.PdfObject
   new_window : Bool?
   target : PdfTargetDictionary?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfEncryptedPayload {
+  source_object_id : @objects.ObjectId?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+  raw_object : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfExtensionPrefixEntry {
+  prefix : @objects.PdfName
+  developers : Array[PdfDeveloperExtension]
+  raw_value : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfExtensions {
+  prefixes : Array[PdfExtensionPrefixEntry]
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
@@ -692,6 +774,7 @@ pub fn PdfFile::document(Self) -> PdfDocument raise PdfDocumentError
 pub fn PdfFile::file_id(Self) -> PdfFileId?
 pub fn PdfFile::load_object(Self, @objects.ObjectId) -> @objects.PdfObject raise PdfReaderError
 pub fn PdfFile::open(Bytes) -> Self raise PdfReaderError
+pub fn PdfFile::parse_file_spec(Self, @objects.PdfObject) -> PdfFileSpecification raise PdfDocumentError
 pub fn PdfFile::root_ref(Self) -> @objects.ObjectId
 pub fn PdfFile::trailer(Self) -> TrailerInfo
 pub fn PdfFile::version(Self) -> PdfVersion
@@ -706,6 +789,62 @@ pub(all) struct PdfFileId {
   second : Bytes
 } derive(Eq, @debug.Debug)
 pub fn PdfFileId::compare_reference(Self, Self) -> @interchange.PdfFileIdMatch
+
+pub(all) enum PdfFileSpecFileSystem {
+  URL
+  Other(@objects.PdfName)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfFileSpecIdentifier {
+  first : Bytes
+  second : Bytes
+  raw_array : Array[@objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfFileSpecNameEntry {
+  raw : Bytes
+  path : PdfFileSpecPath?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfFileSpecPath {
+  raw : Bytes
+  absolute : Bool
+  components : Array[Bytes]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfFileSpecStream {
+  source_object_id : @objects.ObjectId?
+  raw_stream : @objects.PdfStream
+  raw_object : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfFileSpecification {
+  Simple(PdfSimpleFileSpecification)
+  Full(PdfFileSpecificationDictionary)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfFileSpecificationDictionary {
+  source_object_id : @objects.ObjectId?
+  indirect : Bool
+  file_system : PdfFileSpecFileSystem?
+  f : PdfFileSpecNameEntry?
+  uf : PdfFileSpecNameEntry?
+  dos : PdfFileSpecNameEntry?
+  mac : PdfFileSpecNameEntry?
+  unix : PdfFileSpecNameEntry?
+  selected_file_name : PdfFileSpecNameEntry?
+  file_identifier : PdfFileSpecIdentifier?
+  is_volatile : Bool
+  embedded_files : Map[@objects.PdfName, PdfEmbeddedFile]
+  related_files : Map[@objects.PdfName, Array[PdfRelatedFile]]
+  description : Bytes?
+  collection_item : PdfCollectionItem?
+  thumbnail : PdfFileSpecStream?
+  encrypted_payload : PdfEncryptedPayload?
+  associated_relationship : PdfAssociatedFileRelationship
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+  raw_object : @objects.PdfObject
+} derive(Eq, @debug.Debug)
 
 pub(all) struct PdfFixedPrint {
   matrix : Array[Double]
@@ -1484,6 +1623,13 @@ pub(all) struct PdfRedactionAnnotation {
   justification : PdfJustification
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfRelatedFile {
+  name : Bytes
+  embedded_file : PdfEmbeddedFile
+  raw_name : @objects.PdfObject
+  raw_file : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfRemoteGoToAction {
   file_specification : @objects.PdfObject
   destination : @objects.PdfObject
@@ -1534,6 +1680,13 @@ pub(all) struct PdfResolvedAttribute {
   defaulted : Bool
   revision : Int?
   raw_origin : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfResolvedFileSpecObject {
+  object : @objects.PdfObject
+  source_object_id : @objects.ObjectId?
+  indirect : Bool
+  raw_object : @objects.PdfObject
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfResolvedStructureType {
@@ -1746,6 +1899,14 @@ pub(all) struct PdfSignatureValidationPlan {
   raw_contents : Bytes?
   transform_constraints : Array[PdfSignatureReference]
   evidence_sources : Array[@objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfSimpleFileSpecification {
+  raw_string : Bytes
+  path : PdfFileSpecPath
+  source_object_id : @objects.ObjectId?
+  indirect : Bool
+  raw_object : @objects.PdfObject
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfSlideShow {
