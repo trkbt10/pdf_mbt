@@ -92,7 +92,9 @@ pub(all) struct PdfRenditionCommon {
 
 ///|
 /// 13.2.3 rendition object: media rendition MR, selector rendition SR, or an
-/// unknown subtype retained for forward-compatible diagnostics.
+/// unknown subtype retained for forward-compatible diagnostics. Media
+/// renditions carry C/P/SP relationships, MH/BE viability, and Table 290 play
+/// parameters through the typed media variant.
 pub(all) enum PdfRendition {
   Media(PdfMediaRendition)
   Selector(PdfSelectorRendition)
@@ -225,7 +227,8 @@ pub(all) struct PdfTimespan {
 ///|
 /// 13.2.4 media clip dictionary. It covers 13.2.4.1 common entries, 13.2.4.2
 /// media clip data with D, CT, P, Alt, PL, MH/BE, BU base URL, and 13.2.4.3
-/// media clip section data with next-level clip and B/E offsets.
+/// media clip section data with next-level clip and B/E offsets that may use
+/// Table 300 timespan dictionaries.
 pub(all) struct PdfMediaClip {
   object_id : @objects.ObjectId?
   kind : PdfMediaClipKind

@@ -215,8 +215,9 @@ fn media_player_info_array_matches(
 
 ///|
 /// 13.2.7.2.2 Algorithm: Media Player. Applies content type, NU, MU, and A
-/// policy arrays for a caller-supplied player identity without discovering or
-/// launching installed media players.
+/// policy arrays of 4-entry Table 302 media player info dictionaries with
+/// PID and MH/BE viability for a caller-supplied player identity without
+/// discovering or launching installed media players.
 pub fn media_player_may_be_used(
   policy : PdfMediaPlayerPolicy,
   player : PdfSoftwareIdentity,
