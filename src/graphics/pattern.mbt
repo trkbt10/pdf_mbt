@@ -1,10 +1,16 @@
 ///|
+/// Pattern PaintType values for ISO 32000-2 8.7.3 tiling patterns.
+/// Coloured tiling patterns specify colour in the pattern cell content stream;
+/// uncoloured tiling patterns act as stencils painted with a separately
+/// supplied colour value from a Pattern colour space.
 pub(all) enum PatternPaintType {
   Coloured
   Uncoloured
 } derive(Eq, Debug)
 
 ///|
+/// Pattern TilingType values controlling spacing relative to the device pixel
+/// grid for a Type 1 tiling pattern dictionary.
 pub(all) enum TilingType {
   ConstantSpacing
   NoDistortion
@@ -12,6 +18,10 @@ pub(all) enum TilingType {
 } derive(Eq, Debug)
 
 ///|
+/// ISO 32000-2 8.7.1 and 8.7.2 Type 1 tiling pattern object.
+/// A tiling pattern consists of a replicated pattern cell described by a
+/// content stream. BBox, XStep, YStep, Resources, and the pattern matrix are
+/// interpreted in the pattern coordinate space of the parent content stream.
 pub(all) struct TilingPattern {
   paint_type : PatternPaintType
   tiling_type : TilingType
@@ -24,18 +34,30 @@ pub(all) struct TilingPattern {
 } derive(Eq, Debug)
 
 ///|
+/// Pattern dictionary varieties from ISO 32000-2 8.7.1 General:
+/// Type 1 tiling patterns replicate a pattern cell, while Type 2 shading
+/// patterns define a smooth gradient fill as a Pattern colour value.
+///
+/// Source excerpt:
+/// `spec/extracted/8.7-patterns.spec.txt`.
 pub(all) enum PatternDefinition {
   Tiling(TilingPattern)
   Shading(ShadingPattern)
 } derive(Eq, Debug)
 
 ///|
+/// Named Pattern resource entry used by CS/cs and SCN/scn colour operators.
+/// Pattern dictionaries are stored in the Pattern subdictionary of a resource
+/// dictionary and are treated as colour values in a Pattern colour space.
 pub(all) enum PatternResource {
   DirectPattern(@objects.PdfName, PatternDefinition)
   IndirectPattern(@objects.PdfName, @objects.ObjectId)
 } derive(Eq, Debug)
 
 ///|
+/// Resolves a Pattern resource by name from the current resource dictionary.
+/// The resource may be a stream Type 1 tiling pattern, a dictionary Type 2
+/// shading pattern, or an indirect pattern object reference.
 pub fn resolve_pattern_resource(
   resources : @content.ContentResources,
   name : @objects.PdfName,
@@ -65,6 +87,9 @@ pub fn resolve_pattern_resource(
 }
 
 ///|
+/// Parses an ISO 32000-2 8.7 pattern object and validates PatternType.
+/// PatternType 1 is a tiling pattern stream; PatternType 2 is a shading
+/// pattern dictionary containing a Shading entry and optional pattern matrix.
 pub fn parse_pattern_object(
   name : @objects.PdfName,
   object : @objects.PdfObject,
@@ -125,6 +150,9 @@ fn pattern_type_from_dict(
 }
 
 ///|
+/// Parses a Type 1 tiling pattern stream dictionary from ISO 32000-2 8.7.3.1.
+/// This validates PaintType, TilingType, BBox, nonzero XStep/YStep,
+/// Resources, and the optional Matrix pattern matrix.
 pub fn parse_tiling_pattern_stream(
   stream : @objects.PdfStream,
   offset : Int64,
@@ -213,6 +241,10 @@ fn parse_tiling_type(
 }
 
 ///|
+/// Validates and interprets one tiling pattern cell content stream.
+/// For uncoloured tiling patterns, colour operators are restricted because
+/// the Pattern colour space supplies the colour value each time the pattern is
+/// used.
 pub fn validate_tiling_pattern_cell(
   pattern : TilingPattern,
   initial : GraphicsInitialState,

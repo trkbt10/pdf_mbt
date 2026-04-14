@@ -1,4 +1,8 @@
 ///|
+/// ISO 32000-2 8.7.4.1 Type 2 shading pattern dictionary.
+/// A shading pattern is a Pattern colour value whose Shading entry defines a
+/// smooth gradient fill; Matrix maps pattern space and ExtGState applies
+/// temporary graphics state parameters while the pattern is painted.
 pub(all) struct ShadingPattern {
   shading : ShadingResource
   matrix : GraphicsMatrix
@@ -6,12 +10,16 @@ pub(all) struct ShadingPattern {
 } derive(Eq, Debug)
 
 ///|
+/// Named Shading resource used either by the sh operator or by a Type 2
+/// shading pattern dictionary.
 pub(all) enum ShadingResource {
   DirectShading(@objects.PdfName?, Shading)
   IndirectShading(@objects.PdfName?, @objects.ObjectId)
 } derive(Eq, Debug)
 
 ///|
+/// Entries common to all shading dictionaries from Table 77: ColorSpace,
+/// Background, BBox, and AntiAlias.
 pub(all) struct ShadingCommon {
   colour_space : ColourSpace
   background : Array[Double]?
@@ -20,12 +28,19 @@ pub(all) struct ShadingCommon {
 } derive(Eq, Debug)
 
 ///|
+/// Parsed shading dictionary or stream dictionary. ShadingType selects the
+/// geometry of the gradient fill, and the common entries describe the target
+/// colour space and clipping/background behaviour.
 pub(all) struct Shading {
   common : ShadingCommon
   kind : ShadingKind
 } derive(Eq, Debug)
 
 ///|
+/// ISO 32000-2 8.7.4.5.1 shading types selected by ShadingType.
+/// Type 1 is function-based, Type 2 is axial, Type 3 is radial, Types 4 and 5
+/// are Gouraud-shaded triangle meshes, Type 6 is a Coons patch mesh, and Type
+/// 7 is a tensor-product patch mesh.
 pub(all) enum ShadingKind {
   FunctionBased(FunctionBasedShading)
   Axial(AxialShading)
@@ -37,6 +52,10 @@ pub(all) enum ShadingKind {
 } derive(Eq, Debug)
 
 ///|
+/// ISO 32000-2 8.7.4.5.2 Type 1 function-based shading.
+/// The Domain rectangle is mapped by Matrix into the target coordinate space,
+/// and the required Function defines the colour at every point in the domain.
+/// This shading type is rejected with an Indexed colour space.
 pub(all) struct FunctionBasedShading {
   domain : Array[Double]
   matrix : GraphicsMatrix
@@ -44,6 +63,11 @@ pub(all) struct FunctionBasedShading {
 } derive(Eq, Debug)
 
 ///|
+/// ISO 32000-2 8.7.4.5.3 Type 2 axial shading.
+/// Coords stores the starting and ending axis coordinates; Domain provides
+/// the parametric variable t; Function maps t to colour components; Extend
+/// controls whether boundary colours continue past either endpoint. A
+/// coincident axis is recorded so nothing is painted by renderers.
 pub(all) struct AxialShading {
   coords : Array[Double]
   domain : Array[Double]
@@ -93,6 +117,10 @@ pub(all) struct CoonsPatchMeshShading {
 } derive(Eq, Debug)
 
 ///|
+/// ISO 32000-2 8.7.4.5.8 Type 7 tensor-product patch mesh shading.
+/// Table 85 data values encode a 4-by-4 tensor of 16 control points, four
+/// corner colours, and edge flags whose nonzero values reuse the shared edge
+/// from the previous patch.
 pub(all) struct TensorPatchMeshShading {
   bits_per_coordinate : Int
   bits_per_component : Int
@@ -103,6 +131,9 @@ pub(all) struct TensorPatchMeshShading {
 } derive(Eq, Debug)
 
 ///|
+/// Resolves a Shading resource by name from the Shading subdictionary.
+/// Direct dictionaries and streams are parsed as shading dictionaries; indirect
+/// references are preserved for the caller to resolve.
 pub fn resolve_shading_resource(
   resources : @content.ContentResources,
   name : @objects.PdfName,
@@ -132,6 +163,9 @@ pub fn resolve_shading_resource(
 }
 
 ///|
+/// Parses a Type 2 shading pattern dictionary from ISO 32000-2 Table 75.
+/// The required Shading entry supplies the gradient fill, Matrix defaults to
+/// identity, and ExtGState is retained as temporary graphics state parameters.
 pub fn parse_shading_pattern_dictionary(
   dict : @objects.PdfDictionary,
   defaults : ColourDefaults,
@@ -166,6 +200,9 @@ pub fn parse_shading_pattern_dictionary(
 }
 
 ///|
+/// Parses a shading object from a dictionary, stream, or indirect reference.
+/// Shading dictionaries may be simple dictionaries for Types 1 through 3 or
+/// stream dictionaries with descriptive data for mesh Types 4 through 7.
 pub fn parse_shading_object(
   name : @objects.PdfName?,
   object : @objects.PdfObject,

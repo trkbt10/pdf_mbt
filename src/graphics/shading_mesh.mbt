@@ -1,4 +1,6 @@
 ///|
+/// Validation summary for Type 4 and Type 5 Gouraud-shaded triangle mesh
+/// streams after decoding packed vertex records.
 pub(all) struct MeshSummary {
   vertex_count : Int
   triangle_count : Int
@@ -6,6 +8,8 @@ pub(all) struct MeshSummary {
 } derive(Eq, Debug)
 
 ///|
+/// Validation summary for Type 6 Coons patch mesh and Type 7 tensor-product
+/// patch mesh streams after decoding Table 83 or Table 85 patch records.
 pub(all) struct PatchMeshSummary {
   patch_count : Int
   decoded_length : Int

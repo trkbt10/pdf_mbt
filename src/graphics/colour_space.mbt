@@ -56,6 +56,10 @@ pub(all) struct IccBasedParams {
 } derive(Eq, Debug)
 
 ///|
+/// Parameters for the special ISO 32000-2 Pattern colour space family.
+/// A bare Pattern space selects coloured tiling patterns and shading patterns;
+/// a Pattern space with an underlying colour space supplies components for
+/// uncoloured tiling patterns.
 pub(all) struct PatternParams {
   underlying : ColourSpace?
 } derive(Eq, Debug)
@@ -91,6 +95,9 @@ pub(all) struct DeviceNParams {
 } derive(Eq, Debug)
 
 ///|
+/// PDF colour space families used by graphics operators. The Pattern colour
+/// space is special because pattern objects act as colour values instead of
+/// numeric components alone.
 pub(all) enum ColourSpace {
   Device(DeviceColourSpace)
   CalGray(CalGrayParams)
@@ -116,6 +123,8 @@ pub fn ColourDefaults::empty() -> ColourDefaults {
 }
 
 ///|
+/// Parses a colour space object, including the special Pattern colour space
+/// used by ISO 32000-2 8.7 patterns.
 pub fn parse_colour_space_object(
   object : @objects.PdfObject,
   defaults : ColourDefaults,

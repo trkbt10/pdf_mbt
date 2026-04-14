@@ -5,6 +5,9 @@ pub(all) enum ColourUse {
 } derive(Eq, Debug)
 
 ///|
+/// Current colour value. In a Pattern colour space, the pattern object name is
+/// the colour value and components are present only for uncoloured tiling
+/// patterns with an underlying colour space.
 pub(all) struct ColourValue {
   components : Array[Double]
   pattern : @objects.PdfName?
@@ -57,6 +60,9 @@ pub fn GraphicsState::set_colour_space(
 }
 
 ///|
+/// Sets the current stroking or nonstroking colour value. SCN/scn Pattern
+/// colour selection stores the pattern name as the active colour for later
+/// painting operators such as S, f, Tj, and image-mask Do.
 pub fn GraphicsState::set_colour_value(
   self : GraphicsState,
   colour_use : ColourUse,
