@@ -76,10 +76,12 @@ pub fn GraphicsInterpretOptions::default() -> GraphicsInterpretOptions {
 
 ///|
 /// Complete device-independent graphics description for a PDF content stream.
-/// The ordered graphics events describe the abstract appearance of pages for
-/// printer and display applications, while the final graphics state snapshot
-/// records the global framework left after all content stream instructions are
-/// accepted. Rendering to an output device remains outside this program.
+/// The ordered graphics events describe PDF colour specification and abstract
+/// page appearance for printer and display applications, while the final
+/// graphics state snapshot records the global framework left after all content
+/// stream instructions are accepted. Colour rendering to an output device,
+/// including colour conversion, gamma correction, halftoning, and scan
+/// conversion, remains outside this program.
 pub(all) struct GraphicsProgram {
   events : Array[GraphicsEvent]
   final_state : GraphicsState

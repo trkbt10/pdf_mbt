@@ -6,7 +6,7 @@ test "device and calibrated colour spaces expose components ranges and initial v
     1L,
   )
   assert_eq(cmyk.component_count(), 4)
-  assert_eq(cmyk.initial_value().components, [1.0, 1.0, 1.0, 1.0])
+  assert_eq(cmyk.initial_value().components, [0.0, 0.0, 0.0, 1.0])
 
   let dict : @objects.PdfDictionary = Map::new()
   dict[@objects.PdfName::new(b"WhitePoint")] = number_array([1.0, 1.0, 1.0])
@@ -201,6 +201,93 @@ test "ICCBased direct profile streams validate header and component count" {
     }
     _ => fail("expected ICC N mismatch")
   }
+
+  let bad_class : Result[ColourSpace, PdfGraphicsError] = try? parse_colour_space_object(
+    @objects.PdfObject::Array([
+      @objects.PdfObject::Name(@objects.PdfName::new(b"ICCBased")),
+      @objects.PdfObject::Stream(
+        icc_stream_with_class(3L, b"RGB ", 128, b"link"),
+      ),
+    ]),
+    ColourDefaults::empty(),
+    33L,
+  )
+  match bad_class {
+    Err(InvalidGraphicsState(offset, reason)) => {
+      assert_eq(offset, 33L)
+      assert_eq(reason.contains("deviceClass"), true)
+    }
+    _ => fail("expected ICC deviceClass rejection")
+  }
+}
+
+///|
+test "NChannel validates Table 70 attributes and Table 72 mixing hints" {
+  let attrs = nchannel_attributes(
+    @objects.PdfName::new(b"Spot"),
+    @objects.PdfName::new(b"Spot"),
+    true,
+  )
+  let nchannel = parse_colour_space_object(
+    device_n_object([@objects.PdfName::new(b"Spot")], Some(attrs)),
+    ColourDefaults::empty(),
+    40L,
+  )
+  assert_eq(nchannel.component_count(), 1)
+
+  let no_printing_order = nchannel_attributes(
+    @objects.PdfName::new(b"Spot"),
+    @objects.PdfName::new(b"Spot"),
+    false,
+  )
+  let missing_order : Result[ColourSpace, PdfGraphicsError] = try? parse_colour_space_object(
+    device_n_object([@objects.PdfName::new(b"Spot")], Some(no_printing_order)),
+    ColourDefaults::empty(),
+    41L,
+  )
+  match missing_order {
+    Err(InvalidGraphicsState(offset, reason)) => {
+      assert_eq(offset, 41L)
+      assert_eq(reason.contains("PrintingOrder"), true)
+    }
+    _ => fail("expected NChannel PrintingOrder requirement")
+  }
+
+  let mismatched = nchannel_attributes(
+    @objects.PdfName::new(b"Spot"),
+    @objects.PdfName::new(b"OtherSpot"),
+    true,
+  )
+  let bad_colorant : Result[ColourSpace, PdfGraphicsError] = try? parse_colour_space_object(
+    device_n_object([@objects.PdfName::new(b"Spot")], Some(mismatched)),
+    ColourDefaults::empty(),
+    42L,
+  )
+  match bad_colorant {
+    Err(InvalidGraphicsState(offset, reason)) => {
+      assert_eq(offset, 42L)
+      assert_eq(reason.contains("Colorants"), true)
+    }
+    _ => fail("expected NChannel Colorants mismatch")
+  }
+
+  let none_attrs = nchannel_attributes(
+    @objects.PdfName::new(b"Spot"),
+    @objects.PdfName::new(b"Spot"),
+    true,
+  )
+  let none_result : Result[ColourSpace, PdfGraphicsError] = try? parse_colour_space_object(
+    device_n_object([@objects.PdfName::new(b"None")], Some(none_attrs)),
+    ColourDefaults::empty(),
+    43L,
+  )
+  match none_result {
+    Err(InvalidGraphicsState(offset, reason)) => {
+      assert_eq(offset, 43L)
+      assert_eq(reason.contains("None"), true)
+    }
+    _ => fail("expected NChannel None rejection")
+  }
 }
 
 ///|
@@ -234,7 +321,62 @@ fn device_n_object(
 }
 
 ///|
+fn nchannel_attributes(
+  dict_key : @objects.PdfName,
+  separation_name : @objects.PdfName,
+  include_printing_order : Bool,
+) -> @objects.PdfDictionary {
+  let colorants : @objects.PdfDictionary = Map::new()
+  colorants[dict_key] = separation_object(separation_name)
+  let solidities : @objects.PdfDictionary = Map::new()
+  solidities[@objects.PdfName::new(b"Default")] = @objects.PdfObject::Real(0.0)
+  solidities[@objects.PdfName::new(b"Spot")] = @objects.PdfObject::Real(1.0)
+  let mixing_hints : @objects.PdfDictionary = Map::new()
+  mixing_hints[@objects.PdfName::new(b"Solidities")] = @objects.PdfObject::Dictionary(
+    solidities,
+  )
+  if include_printing_order {
+    mixing_hints[@objects.PdfName::new(b"PrintingOrder")] = @objects.PdfObject::Array([
+        @objects.PdfObject::Name(@objects.PdfName::new(b"Spot")),
+        @objects.PdfObject::Name(@objects.PdfName::new(b"Unused")),
+      ],
+    )
+  }
+  let attrs : @objects.PdfDictionary = Map::new()
+  attrs[@objects.PdfName::new(b"Subtype")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"NChannel"),
+  )
+  attrs[@objects.PdfName::new(b"Colorants")] = @objects.PdfObject::Dictionary(
+    colorants,
+  )
+  attrs[@objects.PdfName::new(b"MixingHints")] = @objects.PdfObject::Dictionary(
+    mixing_hints,
+  )
+  attrs
+}
+
+///|
+fn separation_object(name : @objects.PdfName) -> @objects.PdfObject {
+  @objects.PdfObject::Array([
+    @objects.PdfObject::Name(@objects.PdfName::new(b"Separation")),
+    @objects.PdfObject::Name(name),
+    @objects.PdfObject::Name(@objects.PdfName::new(b"DeviceCMYK")),
+    @objects.PdfObject::Dictionary(Map::new()),
+  ])
+}
+
+///|
 fn icc_stream(n : Int64, signature : Bytes, size : Int) -> @objects.PdfStream {
+  icc_stream_with_class(n, signature, size, b"mntr")
+}
+
+///|
+fn icc_stream_with_class(
+  n : Int64,
+  signature : Bytes,
+  size : Int,
+  device_class : Bytes,
+) -> @objects.PdfStream {
   let data : Array[Byte] = []
   for _ in 0..<size {
     data.push(b'\x00')
@@ -244,6 +386,10 @@ fn icc_stream(n : Int64, signature : Bytes, size : Int) -> @objects.PdfStream {
     data[1] = ((size >> 16) & 0xff).to_byte()
     data[2] = ((size >> 8) & 0xff).to_byte()
     data[3] = (size & 0xff).to_byte()
+    data[12] = device_class[0]
+    data[13] = device_class[1]
+    data[14] = device_class[2]
+    data[15] = device_class[3]
     data[16] = signature[0]
     data[17] = signature[1]
     data[18] = signature[2]

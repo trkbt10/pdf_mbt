@@ -39,8 +39,10 @@ pub(all) struct GraphicsInitialState {
 /// This is the global framework within which other graphics operators execute:
 /// it includes the current transformation matrix (CTM), current colour values,
 /// current clipping path, and other parameters that act as implicit operands
-/// of painting operators. Current path construction and pending clipping are
-/// intentionally excluded from this state.
+/// of painting operators. It also preserves rendering intent, black point
+/// compensation, overprint flags, and non-zero overprint mode state needed by
+/// ISO 32000-2 8.6 colour semantics. Current path construction and pending
+/// clipping are intentionally excluded from this state.
 pub(all) struct GraphicsState {
   mut ctm : GraphicsMatrix
   mut clipping_path : ClipState

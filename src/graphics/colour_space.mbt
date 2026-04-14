@@ -1,4 +1,8 @@
 ///|
+/// Device colour spaces from ISO 32000-2 8.6.4.1 General.
+/// DeviceGray controls achromatic light from black to white, DeviceRGB is the
+/// additive red-green-blue model for displays, and DeviceCMYK is the
+/// subtractive cyan-magenta-yellow-black process-colour model for printing.
 pub(all) enum DeviceColourSpace {
   DeviceGray
   DeviceRGB
@@ -6,12 +10,17 @@ pub(all) enum DeviceColourSpace {
 } derive(Eq, Debug)
 
 ///|
+/// Minimum and maximum valid values for one colour component. Component
+/// normalization substitutes the nearest valid value without error indication
+/// where ISO 32000-2 colour-space rules require clamping.
 pub(all) struct ColourRange {
   min : Double
   max : Double
 } derive(Eq, Debug)
 
 ///|
+/// CalGray CIE-based A colour space parameters. WhitePoint and BlackPoint are
+/// CIE 1931 XYZ tristimulus values; Gamma decodes the single A gray component.
 pub(all) struct CalGrayParams {
   white_point : Array[Double]
   black_point : Array[Double]
@@ -19,6 +28,9 @@ pub(all) struct CalGrayParams {
 } derive(Eq, Debug)
 
 ///|
+/// CalRGB CIE-based ABC colour space parameters. Gamma and Matrix define the
+/// one-stage nonlinear transformation from calibrated red, green, and blue
+/// components into the CIE 1931 XYZ representation.
 pub(all) struct CalRGBParams {
   white_point : Array[Double]
   black_point : Array[Double]
@@ -27,6 +39,8 @@ pub(all) struct CalRGBParams {
 } derive(Eq, Debug)
 
 ///|
+/// Lab CIE-based ABC colour space parameters for CIE 1976 L*a*b*. The L*
+/// component is constrained to 0..100 and Range supplies the a* and b* limits.
 pub(all) struct LabParams {
   white_point : Array[Double]
   black_point : Array[Double]
@@ -34,6 +48,10 @@ pub(all) struct LabParams {
 } derive(Eq, Debug)
 
 ///|
+/// ICCBased profile header summary. PDF 2.0 uses ICC.1:2010
+/// (ISO 15076-1:2010) as listed in Table 66, and graphics source profiles are
+/// constrained by Table 67 profile types: deviceClass must be scnr, mntr,
+/// prtr, or spac, and colorSpace must be GRAY, RGB, CMYK, or Lab.
 pub(all) struct IccProfileInfo {
   component_count : Int
   data_colour_space : @objects.PdfName
@@ -41,12 +59,20 @@ pub(all) struct IccProfileInfo {
 } derive(Eq, Debug)
 
 ///|
+/// Source of an ICCBased colour space profile. DirectProfile stores validated
+/// bytes from an ICC profile stream; IndirectProfile preserves reader-owned
+/// object loading for a later integration layer.
 pub(all) enum IccProfileSource {
   DirectProfile(IccProfileInfo)
   IndirectProfile(@objects.ObjectId)
 } derive(Eq, Debug)
 
 ///|
+/// ICCBased colour space dictionary parameters: required N component count,
+/// optional Alternate colour space, optional Range array, and optional Metadata
+/// stream. Source colour values are interpreted through the embedded ICC
+/// profile; tint transformation and alternate conversion are not performed by
+/// the graphics interpreter.
 pub(all) struct IccBasedParams {
   source : IccProfileSource
   component_count : Int
@@ -65,6 +91,9 @@ pub(all) struct PatternParams {
 } derive(Eq, Debug)
 
 ///|
+/// Indexed colour space parameters from ISO 32000-2 8.6.6.3. The lookup colour
+/// table maps integer indices 0..hival to component values in the base colour
+/// space and may be supplied by a byte string, stream, or indirect object.
 pub(all) struct IndexedParams {
   base : ColourSpace
   hival : Int
@@ -72,6 +101,9 @@ pub(all) struct IndexedParams {
 } derive(Eq, Debug)
 
 ///|
+/// Separation colour space parameters from ISO 32000-2 8.6.6.4. A single tint
+/// component controls one colourant, including the special All and None names;
+/// alternate and tintTransform are preserved for renderer policy.
 pub(all) struct SeparationParams {
   colorant : @objects.PdfName
   alternate : ColourSpace
@@ -79,6 +111,10 @@ pub(all) struct SeparationParams {
 } derive(Eq, Debug)
 
 ///|
+/// DeviceN attributes dictionary from ISO 32000-2 Table 70. Subtype may be
+/// DeviceN or NChannel; Colorants, Process, and MixingHints (Table 72) carry
+/// structural information for spot colourants, process colour components, and
+/// blending hints without evaluating colour conversions.
 pub(all) struct DeviceNAttributes {
   subtype : @objects.PdfName?
   colorants : @objects.PdfDictionary?
@@ -87,6 +123,10 @@ pub(all) struct DeviceNAttributes {
 } derive(Eq, Debug)
 
 ///|
+/// DeviceN and NChannel colour space parameters from ISO 32000-2 8.6.6.5.
+/// DeviceN represents high-fidelity colour and multitone colour with multiple
+/// tint components, all initially 1.0. NChannel adds process/spot metadata for
+/// flexible downstream rendering.
 pub(all) struct DeviceNParams {
   colorants : Array[@objects.PdfName]
   alternate : ColourSpace
@@ -95,9 +135,17 @@ pub(all) struct DeviceNParams {
 } derive(Eq, Debug)
 
 ///|
-/// PDF colour space families used by graphics operators. The Pattern colour
-/// space is special because pattern objects act as colour values instead of
-/// numeric components alone.
+/// PDF colour space families used by graphics operators for ISO 32000-2 8.6
+/// colour specification, separated from device-dependent colour rendering.
+/// This model records device-independent abstract colours and the colour-space
+/// family data needed by downstream consumers; raster output device work such
+/// as colour conversion, gamma correction, halftoning, and scan conversion is
+/// intentionally outside graphics interpretation. CIE-based spaces preserve
+/// the data needed for implicit conversion of CIE-Based colour spaces by a
+/// renderer, but the conversion itself remains hidden renderer policy.
+///
+/// Source excerpt:
+/// `spec/extracted/8.6-colour-spaces.spec.txt`.
 pub(all) enum ColourSpace {
   Device(DeviceColourSpace)
   CalGray(CalGrayParams)
@@ -111,6 +159,9 @@ pub(all) enum ColourSpace {
 } derive(Eq, Debug)
 
 ///|
+/// DefaultGray, DefaultRGB, and DefaultCMYK resource entries used to remap
+/// DeviceGray, DeviceRGB, and DeviceCMYK colour spaces systematically into
+/// compatible default colour spaces.
 pub(all) struct ColourDefaults {
   default_gray : @objects.PdfObject?
   default_rgb : @objects.PdfObject?
@@ -123,8 +174,9 @@ pub fn ColourDefaults::empty() -> ColourDefaults {
 }
 
 ///|
-/// Parses a colour space object, including the special Pattern colour space
-/// used by ISO 32000-2 8.7 patterns.
+/// Parses a colour space object, including device, CIE-based, ICCBased,
+/// Pattern, Indexed, Separation, DeviceN, NChannel, and default remapped
+/// colour-space families used by ISO 32000-2 clause 8.6.
 pub fn parse_colour_space_object(
   object : @objects.PdfObject,
   defaults : ColourDefaults,
@@ -568,7 +620,17 @@ fn parse_device_n_attributes(
   let colorants_dict = optional_dictionary_from_dict(dict, b"Colorants", offset)
   let process = optional_dictionary_from_dict(dict, b"Process", offset)
   let mixing_hints = optional_dictionary_from_dict(dict, b"MixingHints", offset)
+  if colorants_dict is Some(value) {
+    validate_device_n_colorants_dictionary(value, defaults, offset)
+  }
   if subtype == Some(@objects.PdfName::new(b"NChannel")) {
+    for name in colorants {
+      if name == @objects.PdfName::new(b"None") {
+        raise PdfGraphicsError::InvalidGraphicsState(
+          offset, "NChannel colorants must not include None",
+        )
+      }
+    }
     validate_nchannel_attributes(
       colorants, colorants_dict, process, mixing_hints, defaults, offset,
     )
@@ -578,6 +640,32 @@ fn parse_device_n_attributes(
     colorants: colorants_dict,
     process,
     mixing_hints,
+  }
+}
+
+///|
+fn validate_device_n_colorants_dictionary(
+  dict : @objects.PdfDictionary,
+  defaults : ColourDefaults,
+  offset : Int64,
+) -> Unit raise PdfGraphicsError {
+  for entry in dict.to_array() {
+    let (key, value) = entry
+    let space = parse_colour_space_object_with_defaults(
+      value, defaults, true, offset,
+    )
+    match space {
+      Separation(params) =>
+        if params.colorant != key {
+          raise PdfGraphicsError::InvalidGraphicsState(
+            offset, "DeviceN Colorants entry key must match Separation colorant",
+          )
+        }
+      _ =>
+        raise PdfGraphicsError::InvalidGraphicsState(
+          offset, "DeviceN Colorants entries must be Separation colour spaces",
+        )
+    }
   }
 }
 
@@ -633,6 +721,11 @@ fn validate_nchannel_process(
     space_object, defaults, true, offset,
   )
   validate_alternate_colour_space(space, offset, "NChannel Process ColorSpace")
+  if space is Lab(_) {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "NChannel Process ColorSpace cannot be Lab",
+    )
+  }
   let components_object = match dict.get(@objects.PdfName::new(b"Components")) {
     Some(value) => value
     None =>
@@ -657,17 +750,22 @@ fn validate_mixing_hints(
   colorants : Array[@objects.PdfName],
   offset : Int64,
 ) -> Unit raise PdfGraphicsError {
+  let mut has_solidities = false
+  let mut printing_order : Array[@objects.PdfName]? = None
   for entry in dict.to_array() {
     let (key, value) = entry
-    if key == @objects.PdfName::new(b"Solidities") ||
-      key == @objects.PdfName::new(b"DotGain") {
+    if key == @objects.PdfName::new(b"Solidities") {
+      has_solidities = true
       match value {
         @objects.PdfObject::Dictionary(inner) =>
           for inner_entry in inner.to_array() {
-            let (name, _) = inner_entry
-            if !colorants.contains(name) {
+            let (_, solidity) = inner_entry
+            let number = colour_object_number(
+              solidity, offset, "NChannel Solidities value",
+            )
+            if number < 0.0 || number > 1.0 {
               raise PdfGraphicsError::InvalidGraphicsState(
-                offset, "NChannel mixing hint names must be DeviceN colorants",
+                offset, "NChannel Solidities values must be in range 0..1",
               )
             }
           }
@@ -676,14 +774,31 @@ fn validate_mixing_hints(
             offset, "NChannel mixing hint entries must be dictionaries",
           )
       }
-    } else if key == @objects.PdfName::new(b"PrintingOrder") {
-      let order = require_name_array(value, offset, "NChannel PrintingOrder")
-      for name in order {
-        if !colorants.contains(name) {
+    } else if key == @objects.PdfName::new(b"DotGain") {
+      match value {
+        @objects.PdfObject::Dictionary(_) => ()
+        _ =>
           raise PdfGraphicsError::InvalidGraphicsState(
-            offset, "NChannel PrintingOrder names must be DeviceN colorants",
+            offset, "NChannel mixing hint entries must be dictionaries",
           )
-        }
+      }
+    } else if key == @objects.PdfName::new(b"PrintingOrder") {
+      printing_order = Some(
+        require_name_array(value, offset, "NChannel PrintingOrder"),
+      )
+    }
+  }
+  if has_solidities && printing_order is None {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "NChannel Solidities requires PrintingOrder",
+    )
+  }
+  if printing_order is Some(order) {
+    for name in colorants {
+      if !order.contains(name) {
+        raise PdfGraphicsError::InvalidGraphicsState(
+          offset, "NChannel PrintingOrder must include every DeviceN colorant",
+        )
       }
     }
   }
@@ -804,10 +919,14 @@ pub fn ColourSpace::component_ranges(self : ColourSpace) -> Array[ColourRange] {
 }
 
 ///|
+/// Returns the initial current colour for a colour space. DeviceGray,
+/// DeviceRGB, CalGray, and CalRGB start at 0.0 components; DeviceCMYK starts
+/// at [0.0 0.0 0.0 1.0]; Lab and ICCBased use the nearest valid range value;
+/// Indexed starts at 0; Separation and DeviceN tint components start at 1.0.
 pub fn ColourSpace::initial_value(self : ColourSpace) -> ColourValue {
   match self {
     Device(DeviceCMYK) =>
-      ColourValue::{ components: [1.0, 1.0, 1.0, 1.0], pattern: None }
+      ColourValue::{ components: [0.0, 0.0, 0.0, 1.0], pattern: None }
     ICCBased(params) =>
       ColourValue::{
         components: initial_from_ranges(params.range),

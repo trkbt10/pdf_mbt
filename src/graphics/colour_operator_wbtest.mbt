@@ -233,6 +233,10 @@ fn test_icc_stream(n : Int64, signature : Bytes) -> @objects.PdfStream {
     data.push(b'\x00')
   }
   data[3] = b'\x80'
+  data[12] = b'm'
+  data[13] = b'n'
+  data[14] = b't'
+  data[15] = b'r'
   data[16] = signature[0]
   data[17] = signature[1]
   data[18] = signature[2]

@@ -1,6 +1,9 @@
 ///|
 
 ///|
+/// Standard rendering intents from ISO 32000-2 8.6.5.8 Table 69. The ri
+/// operator, RI ExtGState entry, and image Intent entry identify priorities
+/// for colour rendering; unknown names fall back to RelativeColorimetric.
 pub(all) enum RenderingIntent {
   AbsoluteColorimetric
   RelativeColorimetric
@@ -9,6 +12,10 @@ pub(all) enum RenderingIntent {
 } derive(Eq, Debug)
 
 ///|
+/// UseBlackPtComp policy from ISO 32000-2 8.6.5.9. ON applies black point
+/// compensation according to ISO 18619, OFF disables it, and Default leaves
+/// processor behaviour open; AbsoluteColorimetric render intent treats it as
+/// OFF for effective colour conversion.
 pub(all) enum BlackPointCompensation {
   BlackPointOn
   BlackPointOff
@@ -19,7 +26,9 @@ pub(all) enum BlackPointCompensation {
 /// Cumulative graphics state parameter dictionary patch resolved from an
 /// ExtGState resource. Known simple keys are typed; later-phase entries remain
 /// raw so rendering, transparency, font, transfer, halftone, and colour
-/// semantics stay deferred.
+/// semantics stay deferred. Colour-related keys include RI rendering intent,
+/// UseBlackPtComp black point compensation, OP/op overprint flags, and OPM
+/// overprint mode, where mode 1 is the non-zero overprint mode for DeviceCMYK.
 pub(all) struct ExtGStatePatch {
   line_width : Double?
   line_cap : LineCapStyle?
@@ -330,6 +339,8 @@ fn optional_name(
 }
 
 ///|
+/// Converts a rendering-intent name to the standard Table 69 value, using the
+/// required RelativeColorimetric fallback for unrecognized rendering intents.
 pub fn rendering_intent_from_name(name : @objects.PdfName) -> RenderingIntent {
   if name == @objects.PdfName::new(b"AbsoluteColorimetric") {
     RenderingIntent::AbsoluteColorimetric
@@ -343,6 +354,9 @@ pub fn rendering_intent_from_name(name : @objects.PdfName) -> RenderingIntent {
 }
 
 ///|
+/// Computes the effective UseBlackPtComp value. If the current render intent
+/// is AbsoluteColorimetric, ISO 32000-2 requires black point compensation to
+/// be treated as OFF even when the ExtGState value is ON or Default.
 pub fn effective_black_point_compensation(
   intent : RenderingIntent,
   value : BlackPointCompensation,

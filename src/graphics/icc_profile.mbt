@@ -71,6 +71,10 @@ fn validate_icc_based_stream(
 }
 
 ///|
+/// Validates a direct ICCBased profile stream header for PDF colour spaces.
+/// The decoded ICC header must be at least 128 bytes, its declared profile
+/// size must fit the decoded stream, and its ICC.1:2010 (ISO 15076-1:2010)
+/// Table 67 profile type fields must be permitted for graphics source colours.
 pub fn validate_icc_profile_stream(
   stream : @objects.PdfStream,
   offset : Int64,
@@ -87,6 +91,8 @@ pub fn validate_icc_profile_stream(
       offset, "ICC profile declared size exceeds decoded stream length",
     )
   }
+  let device_class = read_signature(decoded, 12)
+  validate_icc_device_class(device_class, offset)
   let signature = read_signature(decoded, 16)
   let component_count = icc_signature_component_count(signature, offset)
   IccProfileInfo::{
@@ -197,6 +203,23 @@ fn read_signature(data : Bytes, start : Int) -> Bytes {
     data[start + 2],
     data[start + 3],
   ])
+}
+
+///|
+fn validate_icc_device_class(
+  signature : Bytes,
+  offset : Int64,
+) -> Unit raise PdfGraphicsError {
+  if signature == b"scnr" ||
+    signature == b"mntr" ||
+    signature == b"prtr" ||
+    signature == b"spac" {
+    ()
+  } else {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "ICC profile deviceClass is not permitted for PDF graphics",
+    )
+  }
 }
 
 ///|

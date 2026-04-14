@@ -1,4 +1,7 @@
 ///|
+/// Selects whether a colour operator applies to stroking or nonstroking
+/// graphics operations: CS/SC/SCN/G/RG/K affect stroking, while
+/// cs/sc/scn/g/rg/k affect nonstroking.
 pub(all) enum ColourUse {
   Stroking
   Nonstroking
@@ -14,6 +17,10 @@ pub(all) struct ColourValue {
 } derive(Eq, Debug)
 
 ///|
+/// Current colour-space and current colour parameter of the graphics state.
+/// Colour values are interpreted according to this colour space; images and
+/// later processing stages can consume the same device-independent colour
+/// specification without performing raster colour rendering here.
 pub(all) struct ColourState {
   colour_space : ColourSpace
   colour_value : ColourValue
@@ -33,6 +40,8 @@ pub fn ColourState::copy(self : ColourState) -> ColourState {
 }
 
 ///|
+/// Initial graphics-state colour is DeviceGray with a single black component
+/// value 0.0 for both stroking and nonstroking operations.
 pub fn ColourState::initial() -> ColourState {
   let space = ColourSpace::Device(DeviceColourSpace::DeviceGray)
   ColourState::{ colour_space: space, colour_value: space.initial_value() }
