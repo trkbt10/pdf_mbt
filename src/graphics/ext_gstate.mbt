@@ -32,11 +32,11 @@ pub(all) struct ExtGStatePatch {
   overprint_stroking : Bool?
   overprint_nonstroking : Bool?
   overprint_mode : Int?
-  blend_mode : @objects.PdfObject?
-  soft_mask : @objects.PdfObject?
+  blend_mode : BlendMode?
+  soft_mask : SoftMaskSource?
   alpha_stroking : Double?
   alpha_nonstroking : Double?
-  alpha_source : Bool?
+  alpha_is_shape : Bool?
   text_knockout : Bool?
   black_point_compensation : BlackPointCompensation?
   halftone_origin : GraphicsPoint?
@@ -122,7 +122,7 @@ pub fn GraphicsState::apply_ext_gstate(
     self.blend_mode = value
   }
   if patch.soft_mask is Some(value) {
-    self.soft_mask = value
+    self.soft_mask = value.establish(self.ctm)
   }
   if patch.alpha_stroking is Some(value) {
     self.alpha_stroking = value
@@ -130,8 +130,8 @@ pub fn GraphicsState::apply_ext_gstate(
   if patch.alpha_nonstroking is Some(value) {
     self.alpha_nonstroking = value
   }
-  if patch.alpha_source is Some(value) {
-    self.alpha_source = value
+  if patch.alpha_is_shape is Some(value) {
+    self.alpha_is_shape = value
   }
   if patch.text_knockout is Some(value) {
     self.text_knockout = value
@@ -167,7 +167,7 @@ pub fn GraphicsState::apply_ext_gstate_non_colour(
     soft_mask: patch.soft_mask,
     alpha_stroking: patch.alpha_stroking,
     alpha_nonstroking: patch.alpha_nonstroking,
-    alpha_source: patch.alpha_source,
+    alpha_is_shape: patch.alpha_is_shape,
     text_knockout: patch.text_knockout,
     black_point_compensation: None,
     halftone_origin: patch.halftone_origin,
@@ -200,11 +200,11 @@ fn parse_ext_gstate_dictionary(
     overprint_stroking: optional_bool(dictionary, b"OP", offset),
     overprint_nonstroking: optional_bool(dictionary, b"op", offset),
     overprint_mode: optional_overprint_mode(dictionary, offset),
-    blend_mode: optional_raw(dictionary, b"BM"),
-    soft_mask: optional_raw(dictionary, b"SMask"),
-    alpha_stroking: optional_number(dictionary, b"CA", offset),
-    alpha_nonstroking: optional_number(dictionary, b"ca", offset),
-    alpha_source: optional_bool(dictionary, b"AIS", offset),
+    blend_mode: optional_blend_mode(dictionary, offset),
+    soft_mask: optional_soft_mask(dictionary, offset),
+    alpha_stroking: optional_alpha(dictionary, b"CA", offset),
+    alpha_nonstroking: optional_alpha(dictionary, b"ca", offset),
+    alpha_is_shape: optional_bool(dictionary, b"AIS", offset),
     text_knockout: optional_bool(dictionary, b"TK", offset),
     black_point_compensation: optional_black_point_compensation(
       dictionary, offset,
@@ -212,14 +212,6 @@ fn parse_ext_gstate_dictionary(
     halftone_origin: optional_halftone_origin(dictionary, offset),
     raw_entries,
   }
-}
-
-///|
-fn optional_raw(
-  dictionary : @objects.PdfDictionary,
-  key : Bytes,
-) -> @objects.PdfObject? {
-  dictionary.get(@objects.PdfName::new(key))
 }
 
 ///|
@@ -238,6 +230,49 @@ fn optional_number(
         @objects.PdfName::new(key).to_text() +
         " ExtGState entry must be a number",
       )
+  }
+}
+
+///|
+fn optional_alpha(
+  dictionary : @objects.PdfDictionary,
+  key : Bytes,
+  offset : Int64,
+) -> Double? raise PdfGraphicsError {
+  match optional_number(dictionary, key, offset) {
+    None => None
+    Some(value) => {
+      if value < 0.0 || value > 1.0 {
+        raise PdfGraphicsError::InvalidGraphicsState(
+          offset,
+          @objects.PdfName::new(key).to_text() +
+          " ExtGState entry must be in range 0..1",
+        )
+      }
+      Some(value)
+    }
+  }
+}
+
+///|
+fn optional_blend_mode(
+  dictionary : @objects.PdfDictionary,
+  offset : Int64,
+) -> BlendMode? raise PdfGraphicsError {
+  match dictionary.get(@objects.PdfName::new(b"BM")) {
+    None => None
+    Some(value) => Some(BlendMode::from_pdf_object(value, offset))
+  }
+}
+
+///|
+fn optional_soft_mask(
+  dictionary : @objects.PdfDictionary,
+  offset : Int64,
+) -> SoftMaskSource? raise PdfGraphicsError {
+  match dictionary.get(@objects.PdfName::new(b"SMask")) {
+    None => None
+    Some(value) => Some(SoftMaskSource::from_pdf_object(value, offset))
   }
 }
 

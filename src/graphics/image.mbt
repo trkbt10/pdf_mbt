@@ -37,9 +37,17 @@ pub(all) enum ImageMaskInfo {
 } derive(Eq, Debug)
 
 ///|
+pub(all) enum ImageSoftMaskSource {
+  NoImageSoftMask
+  ExplicitImageSoftMask(@objects.PdfObject)
+  EmbeddedImageSoftMask(Int)
+} derive(Eq, Debug)
+
+///|
 pub(all) struct SoftMaskInfo {
-  smask : @objects.PdfObject?
+  source : ImageSoftMaskSource
   smask_in_data : Int?
+  matte : Array[Double]
 } derive(Eq, Debug)
 
 ///|
@@ -171,7 +179,9 @@ pub fn validate_image_dictionary(
   let mask = parse_image_mask(
     dict, image_mask, component_count, bits_value, offset,
   )
-  let soft_mask = parse_soft_mask(dict, offset)
+  let soft_mask = parse_image_soft_mask(
+    dict, image_mask, component_count, offset,
+  )
   validate_mask_exclusions(mask, soft_mask, offset)
   let byte_status = classify_image_bytes(dict, data, filters)
   validate_decoded_length(layout, byte_status, offset)
@@ -376,10 +386,15 @@ fn parse_image_mask(
 }
 
 ///|
-fn parse_soft_mask(
+fn parse_image_soft_mask(
   dict : @objects.PdfDictionary,
+  image_mask : Bool,
+  component_count : Int,
   offset : Int64,
 ) -> SoftMaskInfo raise PdfGraphicsError {
+  if image_mask && optional_entry(dict, b"SMask") is Some(_) {
+    raise invalid_image(offset, "ImageMask true forbids SMask")
+  }
   let smask_in_data = match optional_entry(dict, b"SMaskInData") {
     Some(value) => {
       let n = require_integer_value(value, offset, "SMaskInData")
@@ -390,7 +405,28 @@ fn parse_soft_mask(
     }
     None => None
   }
-  SoftMaskInfo::{ smask: optional_entry(dict, b"SMask"), smask_in_data }
+  let explicit = optional_entry(dict, b"SMask")
+  match explicit {
+    Some(object) => {
+      let explicit_matte = validate_explicit_soft_mask_image(
+        object, component_count, offset,
+      )
+      SoftMaskInfo::{
+        source: ImageSoftMaskSource::ExplicitImageSoftMask(object),
+        smask_in_data,
+        matte: explicit_matte,
+      }
+    }
+    None => {
+      let matte = parse_image_matte(dict, component_count, offset)
+      let source = match smask_in_data {
+        Some(value) if value != 0 =>
+          ImageSoftMaskSource::EmbeddedImageSoftMask(value)
+        _ => ImageSoftMaskSource::NoImageSoftMask
+      }
+      SoftMaskInfo::{ source, smask_in_data, matte }
+    }
+  }
 }
 
 ///|
@@ -399,23 +435,104 @@ fn validate_mask_exclusions(
   soft_mask : SoftMaskInfo,
   offset : Int64,
 ) -> Unit raise PdfGraphicsError {
-  if soft_mask.smask is Some(_) {
-    match soft_mask.smask_in_data {
-      Some(value) if value != 0 =>
-        raise invalid_image(
-          offset, "SMask and nonzero SMaskInData cannot both be present",
-        )
-      _ => ()
-    }
-  }
-  match mask {
-    ExplicitMask(_) | ColourKeyMask(_) =>
-      if soft_mask.smask is Some(_) {
-        ()
-      } else {
-        ()
+  match soft_mask.source {
+    ExplicitImageSoftMask(_) =>
+      match soft_mask.smask_in_data {
+        Some(value) if value != 0 =>
+          raise invalid_image(
+            offset, "SMask and nonzero SMaskInData cannot both be present",
+          )
+        _ => ()
       }
     _ => ()
+  }
+  if soft_mask.smask_in_data is Some(value) {
+    if value != 0 {
+      match mask {
+        ExplicitMask(_) | ColourKeyMask(_) =>
+          raise invalid_image(
+            offset, "Mask and nonzero SMaskInData cannot both be present",
+          )
+        _ => ()
+      }
+    }
+  }
+}
+
+///|
+fn parse_image_matte(
+  dict : @objects.PdfDictionary,
+  component_count : Int,
+  offset : Int64,
+) -> Array[Double] raise PdfGraphicsError {
+  match optional_entry(dict, b"Matte") {
+    None => []
+    Some(object) => {
+      let values = require_array_value(object, offset, "Matte")
+      if values.length() != component_count {
+        raise invalid_image(offset, "Matte length must match image components")
+      }
+      let matte : Array[Double] = []
+      for value in values {
+        matte.push(require_number_value(value, offset, "Matte"))
+      }
+      matte
+    }
+  }
+}
+
+///|
+fn validate_explicit_soft_mask_image(
+  object : @objects.PdfObject,
+  parent_component_count : Int,
+  offset : Int64,
+) -> Array[Double] raise PdfGraphicsError {
+  match object {
+    @objects.PdfObject::Ref(_) => []
+    @objects.PdfObject::Stream(stream) => {
+      require_type_marker(stream.dict, b"XObject", offset, "SMask image")
+      require_name_entry_value(
+        stream.dict,
+        b"Subtype",
+        b"Image",
+        offset,
+        "SMask image Subtype",
+      )
+      if image_optional_bool(
+          stream.dict,
+          b"ImageMask",
+          false,
+          offset,
+          "SMask ImageMask",
+        ) {
+        raise invalid_image(offset, "SMask image cannot be an ImageMask")
+      }
+      match optional_entry(stream.dict, b"ColorSpace") {
+        Some(@objects.PdfObject::Name(name)) if name == pdf_name(b"DeviceGray") =>
+          ()
+        Some(@objects.PdfObject::Array(values)) =>
+          if values.length() == 1 &&
+            values[0] == @objects.PdfObject::Name(pdf_name(b"DeviceGray")) {
+            ()
+          } else {
+            raise invalid_image(
+              offset, "SMask image ColorSpace must be DeviceGray",
+            )
+          }
+        _ =>
+          raise invalid_image(
+            offset, "SMask image requires DeviceGray ColorSpace",
+          )
+      }
+      if optional_entry(stream.dict, b"Mask") is Some(_) ||
+        optional_entry(stream.dict, b"SMask") is Some(_) ||
+        optional_entry(stream.dict, b"SMaskInData") is Some(_) {
+        raise invalid_image(offset, "SMask image cannot contain nested masks")
+      }
+      parse_image_matte(stream.dict, parent_component_count, offset)
+    }
+    _ =>
+      raise invalid_image(offset, "SMask must be an image stream or reference")
   }
 }
 

@@ -1,26 +1,26 @@
 # Implementation Plan
 
 - [ ] 1. Establish graphics transparency semantics
-- [ ] 1.1 Model standard blend mode vocabulary and classification
+- [x] 1.1 Model standard blend mode vocabulary and classification
   - Parse named and array-based blend mode values while preserving PDF 2.0 fallback behavior for unrecognized arrays.
   - Classify each standard mode for separable, non-separable, and white-preserving behavior used by downstream spot-colour policy.
   - Compatible input is observably normalized to Normal in graphics state and tests cover every standard mode category.
   - _Requirements: 2.3, 2.5, 2.6, 2.7, 2.27, 2.40_
   - _Boundary: BlendModeModel_
-- [ ] 1.2 Represent transparency graphics-state parameters as typed state
+- [x] 1.2 Represent transparency graphics-state parameters as typed state
   - Apply blend mode, soft mask, stroking and nonstroking alpha constants, alpha-is-shape, and text knockout from graphics-state parameter dictionaries.
   - Preserve default values, save/restore copying, and group-entry reset behavior for transparency-related parameters.
   - Graphics-state tests show BM, SMask, CA, ca, AIS, and TK changes are typed and visible after a gs operation.
   - _Requirements: 2.22, 2.25, 2.27, 2.28, 2.30, 2.31, 2.34_
   - _Boundary: TransparencyParameterModel_
-- [ ] 1.3 Validate soft-mask dictionaries and image masks
+- [x] 1.3 Validate soft-mask dictionaries and image masks
   - Accept None, alpha masks, luminosity masks, image masks, embedded image masks, and unresolved references according to their PDF representation.
   - Validate soft-mask dictionary entries, coordinate capture at mask establishment time, transfer function placeholders, and backdrop colour component counts.
   - Validate image-mask restrictions, matte metadata, mask override precedence, and the absence of nested masks.
   - Tests reject invalid mask dictionaries and images while valid alpha, luminosity, and image masks produce inspectable mask sources.
   - _Requirements: 2.22, 2.23, 2.24, 2.30, 2.32, 2.33, 2.38_
   - _Boundary: SoftMaskModel_
-- [ ] 1.4 Validate transparency group attributes
+- [x] 1.4 Validate transparency group attributes
   - Recognize Transparency group subtype separately from ordinary group metadata for Form XObjects, page groups, and pattern groups.
   - Validate allowed blending colour spaces, default inheritance, isolated and knockout flags, and page-group-specific interpretation.
   - Group validation tests cover non-transparency passthrough, invalid colour spaces, page group rules, and isolated/knockout defaults.

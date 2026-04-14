@@ -57,11 +57,11 @@ pub(all) struct GraphicsState {
   mut overprint_stroking : Bool
   mut overprint_nonstroking : Bool
   mut overprint_mode : Int
-  mut blend_mode : @objects.PdfObject
-  mut soft_mask : @objects.PdfObject
+  mut blend_mode : BlendMode
+  mut soft_mask : EstablishedSoftMask
   mut alpha_stroking : Double
   mut alpha_nonstroking : Double
-  mut alpha_source : Bool
+  mut alpha_is_shape : Bool
   mut text_knockout : Bool
   mut black_point_compensation : BlackPointCompensation
   mut halftone_origin : GraphicsPoint?
@@ -154,11 +154,11 @@ pub fn GraphicsState::initial(initial : GraphicsInitialState) -> GraphicsState {
     overprint_stroking: false,
     overprint_nonstroking: false,
     overprint_mode: 0,
-    blend_mode: @objects.PdfObject::Name(@objects.PdfName::new(b"Normal")),
-    soft_mask: @objects.PdfObject::Name(@objects.PdfName::new(b"None")),
+    blend_mode: BlendMode::Normal,
+    soft_mask: EstablishedSoftMask::none(),
     alpha_stroking: 1.0,
     alpha_nonstroking: 1.0,
-    alpha_source: false,
+    alpha_is_shape: false,
     text_knockout: true,
     black_point_compensation: BlackPointCompensation::BlackPointDefault,
     halftone_origin: None,
@@ -191,10 +191,10 @@ pub fn GraphicsState::copy(self : GraphicsState) -> GraphicsState {
     overprint_nonstroking: self.overprint_nonstroking,
     overprint_mode: self.overprint_mode,
     blend_mode: self.blend_mode,
-    soft_mask: self.soft_mask,
+    soft_mask: self.soft_mask.copy(),
     alpha_stroking: self.alpha_stroking,
     alpha_nonstroking: self.alpha_nonstroking,
-    alpha_source: self.alpha_source,
+    alpha_is_shape: self.alpha_is_shape,
     text_knockout: self.text_knockout,
     black_point_compensation: self.black_point_compensation,
     halftone_origin: self.halftone_origin,
@@ -203,6 +203,18 @@ pub fn GraphicsState::copy(self : GraphicsState) -> GraphicsState {
     page_rotate: self.page_rotate,
     colour_restriction: self.colour_restriction,
   }
+}
+
+///|
+pub fn GraphicsState::reset_transparency_parameters(
+  self : GraphicsState,
+) -> Unit {
+  self.blend_mode = BlendMode::Normal
+  self.soft_mask = EstablishedSoftMask::none()
+  self.alpha_stroking = 1.0
+  self.alpha_nonstroking = 1.0
+  self.alpha_is_shape = false
+  self.text_knockout = true
 }
 
 ///|

@@ -1,6 +1,7 @@
 ///|
 pub(all) struct FormGroupInfo {
   subtype : @objects.PdfName?
+  transparency : TransparencyGroup?
   raw : @objects.PdfDictionary
 } derive(Eq, Debug)
 
@@ -114,8 +115,20 @@ fn optional_group(
         }
         None => ()
       }
+      let subtype = image_optional_name(group, b"S", offset, "Group subtype")
       Some(FormGroupInfo::{
-        subtype: image_optional_name(group, b"S", offset, "Group subtype"),
+        subtype,
+        transparency: if subtype == Some(pdf_name(b"Transparency")) {
+          Some(
+            parse_transparency_group_dictionary(
+              group,
+              TransparencyGroupContext::FormTransparencyGroup,
+              offset,
+            ),
+          )
+        } else {
+          None
+        },
         raw: group,
       })
     }

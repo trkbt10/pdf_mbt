@@ -639,6 +639,11 @@ fn GraphicsInterpreter::invoke_form_xobject(
     },
   )
   child.state = self.state.copy()
+  if form.group is Some(group) {
+    if group.transparency is Some(_) {
+      child.state.reset_transparency_parameters()
+    }
+  }
   child.visibility = self.visibility.copy()
   let program = child.interpret(content.instructions)
   self.events.append(program.events)
