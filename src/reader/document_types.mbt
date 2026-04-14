@@ -383,6 +383,476 @@ pub(all) struct PdfNavigationNode {
 } derive(Eq, Debug)
 
 ///|
+pub(all) enum PdfAnnotationTabOrder {
+  Row
+  Column
+  Structure
+  AnnotationArray
+  Widget
+  Unknown(@objects.PdfName)
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfAnnotationSubtype {
+  Text
+  Link
+  FreeText
+  Line
+  Square
+  Circle
+  Polygon
+  PolyLine
+  Highlight
+  Underline
+  Squiggly
+  StrikeOut
+  Caret
+  Stamp
+  Ink
+  Popup
+  FileAttachment
+  Sound
+  Movie
+  Screen
+  Widget
+  PrinterMark
+  TrapNet
+  Watermark
+  Redact
+  Projection
+  ThreeD
+  RichMedia
+  Unknown(@objects.PdfName)
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfAnnotation {
+  page_index : Int
+  array_index : Int
+  object_id : @objects.ObjectId?
+  common : PdfAnnotationCommon
+  markup : PdfMarkupAnnotation?
+  specific : PdfAnnotationSpecific
+  raw_dict : @objects.PdfDictionary
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfAnnotationCommon {
+  subtype : PdfAnnotationSubtype
+  subtype_name : @objects.PdfName
+  rect : PdfRectangle
+  contents : Bytes?
+  page_ref : @objects.ObjectId?
+  name : Bytes?
+  modified : @objects.PdfObject?
+  flags : PdfAnnotationFlags
+  appearance : PdfAnnotationAppearance?
+  appearance_state : @objects.PdfName?
+  border : PdfAnnotationBorder
+  color : Array[Double]
+  struct_parent : Int?
+  optional_content : @objects.PdfObject?
+  associated_files : Array[@objects.PdfObject]
+  nonstroking_opacity : Double
+  stroking_opacity : Double
+  blend_mode : @objects.PdfName?
+  language : Bytes?
+  raw_dict : @objects.PdfDictionary
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfAnnotationFlags {
+  bits : Int
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfAnnotationBorder {
+  horizontal_corner_radius : Double
+  vertical_corner_radius : Double
+  width : Double
+  dash_pattern : Array[Double]
+  style : PdfBorderStyle
+  effect : PdfBorderEffect?
+  raw_border : @objects.PdfObject?
+  raw_style : @objects.PdfDictionary?
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfBorderStyle {
+  Solid
+  Dashed
+  Beveled
+  Inset
+  Underline
+  Unknown(@objects.PdfName)
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfBorderEffectStyle {
+  None
+  Cloudy
+  Unknown(@objects.PdfName)
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfBorderEffect {
+  style : PdfBorderEffectStyle
+  intensity : Double
+  raw_dict : @objects.PdfDictionary
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfAnnotationAppearance {
+  normal : PdfAppearanceEntry
+  rollover : PdfAppearanceEntry
+  down : PdfAppearanceEntry
+  selected_state : @objects.PdfName?
+  raw_dict : @objects.PdfDictionary
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfAppearanceEntry {
+  Stream(@objects.PdfStream)
+  StateMap(@objects.PdfDictionary)
+  Raw(@objects.PdfObject)
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfPoint {
+  x : Double
+  y : Double
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfQuadPoints {
+  points : Array[PdfPoint]
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfAnnotationPath {
+  points : Array[PdfPoint]
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfAnnotationCallout {
+  points : Array[PdfPoint]
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfLineCoordinates {
+  start : PdfPoint
+  end : PdfPoint
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfLineEndingStyle {
+  Square
+  Circle
+  Diamond
+  OpenArrow
+  ClosedArrow
+  None
+  Butt
+  ROpenArrow
+  RClosedArrow
+  Slash
+  Unknown(@objects.PdfName)
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfHighlightMode {
+  None
+  Invert
+  Outline
+  Push
+  Unknown(@objects.PdfName)
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfJustification {
+  Left
+  Center
+  Right
+  Unknown(Int)
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfAnnotationStateModel {
+  Marked
+  Review
+  Unknown(@objects.PdfName)
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfAnnotationState {
+  Marked
+  Unmarked
+  Accepted
+  Rejected
+  Cancelled
+  Completed
+  None
+  Unknown(@objects.PdfName)
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfMarkupExternalData {
+  subtype : @objects.PdfName?
+  raw_dict : @objects.PdfDictionary
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfMarkupAnnotation {
+  title : Bytes?
+  popup : @objects.PdfObject?
+  rich_contents : Bytes?
+  creation_date : @objects.PdfObject?
+  in_reply_to : @objects.PdfObject?
+  reply_type : @objects.PdfName?
+  subject : Bytes?
+  intent : @objects.PdfName?
+  external_data : PdfMarkupExternalData?
+  state : PdfAnnotationState?
+  state_model : PdfAnnotationStateModel?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfTextAnnotation {
+  open : Bool
+  icon_name : @objects.PdfName
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfLinkAnnotation {
+  action : @objects.PdfObject?
+  previous_uri_action : @objects.PdfObject?
+  destination : @objects.PdfObject?
+  highlight_mode : PdfHighlightMode
+  quad_points : Array[PdfQuadPoints]
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfFreeTextAnnotation {
+  default_appearance : Bytes
+  justification : PdfJustification
+  rich_text : Bytes?
+  default_style : Bytes?
+  callout : PdfAnnotationCallout?
+  intent : @objects.PdfName
+  border_effect : PdfBorderEffect?
+  difference_rectangle : PdfRectangle?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfLineAnnotation {
+  coordinates : PdfLineCoordinates
+  line_endings : Array[PdfLineEndingStyle]
+  interior_color : Array[Double]
+  leader_line_length : Double
+  leader_line_extension : Double
+  leader_line_offset : Double
+  caption : Bool
+  intent : @objects.PdfName?
+  measure : @objects.PdfObject?
+  caption_offset : PdfPoint?
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfShapeKind {
+  Square
+  Circle
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfShapeAnnotation {
+  kind : PdfShapeKind
+  interior_color : Array[Double]
+  border_effect : PdfBorderEffect?
+  difference_rectangle : PdfRectangle?
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfPolygonKind {
+  Polygon
+  PolyLine
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfPolygonAnnotation {
+  kind : PdfPolygonKind
+  vertices : Array[PdfPoint]
+  path : Array[PdfAnnotationPath]
+  line_endings : Array[PdfLineEndingStyle]
+  interior_color : Array[Double]
+  intent : @objects.PdfName?
+  measure : @objects.PdfObject?
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfTextMarkupKind {
+  Highlight
+  Underline
+  Squiggly
+  StrikeOut
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfTextMarkupAnnotation {
+  kind : PdfTextMarkupKind
+  quad_points : Array[PdfQuadPoints]
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfCaretAnnotation {
+  difference_rectangle : PdfRectangle?
+  symbol : @objects.PdfName
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfStampAnnotation {
+  icon_name : @objects.PdfName
+  intent : @objects.PdfName
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfInkAnnotation {
+  ink_list : Array[PdfAnnotationPath]
+  paths : Array[PdfAnnotationPath]
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfPopupAnnotation {
+  parent : @objects.PdfObject?
+  open : Bool
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfFileAttachmentAnnotation {
+  file_specification : @objects.PdfObject
+  icon_name : @objects.PdfName
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfSoundAnnotation {
+  sound : @objects.PdfObject
+  icon_name : @objects.PdfName
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfMovieAnnotation {
+  title : Bytes?
+  movie : @objects.PdfObject
+  activation : @objects.PdfObject?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfScreenAnnotation {
+  title : Bytes?
+  action : @objects.PdfObject?
+  additional_actions : @objects.PdfObject?
+  appearance_characteristics : PdfWidgetAppearanceCharacteristics?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfWidgetAppearanceCharacteristics {
+  rotation : Int
+  border_color : Array[Double]
+  background_color : Array[Double]
+  normal_caption : Bytes?
+  rollover_caption : Bytes?
+  alternate_caption : Bytes?
+  normal_icon : @objects.PdfObject?
+  rollover_icon : @objects.PdfObject?
+  alternate_icon : @objects.PdfObject?
+  icon_fit : @objects.PdfObject?
+  text_position : Int
+  raw_dict : @objects.PdfDictionary
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfWidgetAnnotation {
+  highlight_mode : PdfHighlightMode
+  action : @objects.PdfObject?
+  additional_actions : @objects.PdfObject?
+  border_style : PdfAnnotationBorder
+  parent : @objects.PdfObject?
+  appearance_characteristics : PdfWidgetAppearanceCharacteristics?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfPrinterMarkAnnotation {
+  production_mark : @objects.PdfObject?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfTrapNetworkAnnotation {
+  raw_dict : @objects.PdfDictionary
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfFixedPrint {
+  matrix : Array[Double]
+  horizontal_translation : Double
+  vertical_translation : Double
+  raw_dict : @objects.PdfDictionary
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfWatermarkAnnotation {
+  fixed_print : PdfFixedPrint?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfRedactionAnnotation {
+  quad_points : Array[PdfQuadPoints]
+  interior_color : Array[Double]
+  overlay : @objects.PdfObject?
+  overlay_text : Bytes?
+  repeat : Bool
+  default_appearance : Bytes?
+  justification : PdfJustification
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfProjectionAnnotation {
+  external_data : PdfMarkupExternalData?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct PdfRawAnnotation {
+  subtype_name : @objects.PdfName
+  raw_dict : @objects.PdfDictionary
+} derive(Eq, Debug)
+
+///|
+pub(all) enum PdfAnnotationSpecific {
+  Text(PdfTextAnnotation)
+  Link(PdfLinkAnnotation)
+  FreeText(PdfFreeTextAnnotation)
+  Line(PdfLineAnnotation)
+  Shape(PdfShapeAnnotation)
+  Polygon(PdfPolygonAnnotation)
+  TextMarkup(PdfTextMarkupAnnotation)
+  Caret(PdfCaretAnnotation)
+  Stamp(PdfStampAnnotation)
+  Ink(PdfInkAnnotation)
+  Popup(PdfPopupAnnotation)
+  FileAttachment(PdfFileAttachmentAnnotation)
+  Sound(PdfSoundAnnotation)
+  Movie(PdfMovieAnnotation)
+  Screen(PdfScreenAnnotation)
+  Widget(PdfWidgetAnnotation)
+  PrinterMark(PdfPrinterMarkAnnotation)
+  TrapNetwork(PdfTrapNetworkAnnotation)
+  Watermark(PdfWatermarkAnnotation)
+  Redaction(PdfRedactionAnnotation)
+  Projection(PdfProjectionAnnotation)
+  ThreeDRaw(PdfRawAnnotation)
+  RichMediaRaw(PdfRawAnnotation)
+  UnknownRaw(PdfRawAnnotation)
+} derive(Eq, Debug)
+
+///|
 /// Internal page-tree record carrying the validated leaf page, its location,
 /// and ancestry used by later traversal and inheritance logic.
 struct PageTreeRecord {
