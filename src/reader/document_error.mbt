@@ -18,6 +18,7 @@ pub(all) suberror PdfDocumentError {
   InvalidSignature(@objects.ObjectId?, String)
   InvalidMeasure(@objects.ObjectId?, String)
   InvalidRequirement(@objects.ObjectId?, String)
+  InvalidMultimedia(@objects.ObjectId?, String)
   ContentError(@content.PdfContentError)
   GraphicsError(@graphics.PdfGraphicsError)
   PageIndexOutOfRange(Int, Int)

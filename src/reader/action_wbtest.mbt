@@ -226,9 +226,12 @@ test "standard action kinds parse as structural metadata only" {
 
   let submit = action_test_dict(b"SubmitForm")
   submit[action_key(b"F")] = @objects.PdfObject::String(b"https://submit.test")
+  submit[action_key(b"CharSet")] = @objects.PdfObject::String(b"utf-8")
   match document.parse_action(@objects.PdfObject::Dictionary(submit)).kind {
-    PdfActionKind::SubmitForm(action) =>
+    PdfActionKind::SubmitForm(action) => {
       assert_eq(action.file_specification is Some(_), true)
+      assert_eq(action.char_set == Some(b"utf-8"), true)
+    }
     _ => fail("expected SubmitForm action")
   }
 

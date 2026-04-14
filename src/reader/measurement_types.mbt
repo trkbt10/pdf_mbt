@@ -1,4 +1,7 @@
 ///|
+/// Measure dictionary subtype names from ISO 32000-2 12.9.1 Table 266:
+/// Rectilinear RL, geospatial GEO from 12.10, unknown subtypes, and absent
+/// subtype defaulting.
 pub(all) enum PdfMeasureKind {
   Rectilinear
   Geospatial
@@ -7,6 +10,10 @@ pub(all) enum PdfMeasureKind {
 } derive(Eq, Debug)
 
 ///|
+/// Number format dictionary from 12.9.1 Table 268 and the 12.9.2 algorithm
+/// for creating formatted text strings. U labels, C conversion factors, F/D
+/// precision or denominator, RT/RD separators, PS/SS spacing, and O label
+/// position are retained as descriptor data.
 pub(all) struct PdfNumberFormatDescriptor {
   labels : Array[Bytes]
   conversion_factor : Double
@@ -19,6 +26,9 @@ pub(all) struct PdfNumberFormatDescriptor {
 } derive(Eq, Debug)
 
 ///|
+/// Measure dictionary from ISO 32000-2 12.9.1 Table 266. Rectilinear
+/// measurement dictionaries keep scale ratio R and number format arrays from
+/// Table 267; geospatial measurement uses GEO entries defined in 12.10.
 pub(all) struct PdfMeasure {
   kind : PdfMeasureKind
   subtype : @objects.PdfName?
@@ -28,6 +38,10 @@ pub(all) struct PdfMeasure {
 } derive(Eq, Debug)
 
 ///|
+/// Viewport dictionary from ISO 32000-2 12.9.1 Table 265. A viewport is a
+/// page rectangle with BBox, Name, Measure, and PtData, used to select the
+/// measurement coordinate system for real-world graphics and geospatially
+/// registered content.
 pub(all) struct PdfViewport {
   bbox : PdfRectangle?
   name : Bytes?

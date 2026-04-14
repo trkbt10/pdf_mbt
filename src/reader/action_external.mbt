@@ -113,6 +113,10 @@ fn parse_form_action_raw(
     file_specification: dict.get(action_key(b"F")),
     fields: dict.get(action_key(b"Fields")),
     flags: action_optional_int(dict, action_key(b"Flags"), None, action_name),
+    char_set: match dict.get(action_key(b"CharSet")) {
+      Some(value) => Some(action_string(value, None, action_name, "CharSet"))
+      None => None
+    },
     raw_dict: dict,
   }
 }

@@ -235,13 +235,17 @@ pub(all) struct PdfNamedAction {
 } derive(Eq, Debug)
 
 ///|
-/// Raw structural boundary for Table 201 form actions SubmitForm, ResetForm,
-/// and ImportData. Detailed form semantics live in 12.7, so F, Fields, Flags,
-/// and raw_dict are preserved without form submission, reset, or import.
+/// Raw structural boundary for ISO 32000-2 12.7.6 and Tables 201, 239,
+/// 240, 241, 242, and 243 form actions SubmitForm, ResetForm, and
+/// ImportData. F file specification, Fields selection array, Flags bitset,
+/// PDF 2.0 CharSet values such as utf-8 or utf-16, and raw_dict are
+/// preserved without form submission, reset, import, URL fetch, XFDF, FDF, or
+/// PDF payload generation.
 pub(all) struct PdfFormActionRaw {
   file_specification : @objects.PdfObject?
   fields : @objects.PdfObject?
   flags : Int?
+  char_set : Bytes?
   raw_dict : @objects.PdfDictionary
 } derive(Eq, Debug)
 

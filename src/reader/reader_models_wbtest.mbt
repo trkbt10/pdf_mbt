@@ -38,6 +38,45 @@ test "forms signatures fdf measurement and requirement models are constructible"
     form.root_fields[0].fully_qualified_name == Some(b"Root.Name"),
     true,
   )
+  let all_form_flags = PdfFormFieldFlags::{
+    bits: 0x000001 |
+    0x000002 |
+    0x000004 |
+    0x001000 |
+    0x002000 |
+    0x004000 |
+    0x008000 |
+    0x010000 |
+    0x020000 |
+    0x040000 |
+    0x080000 |
+    0x100000 |
+    0x200000 |
+    0x400000 |
+    0x800000 |
+    0x1000000 |
+    0x2000000 |
+    0x4000000,
+  }
+  assert_eq(all_form_flags.read_only(), true)
+  assert_eq(all_form_flags.required(), true)
+  assert_eq(all_form_flags.no_export(), true)
+  assert_eq(all_form_flags.multiline(), true)
+  assert_eq(all_form_flags.password(), true)
+  assert_eq(all_form_flags.no_toggle_to_off(), true)
+  assert_eq(all_form_flags.radio(), true)
+  assert_eq(all_form_flags.push_button(), true)
+  assert_eq(all_form_flags.combo(), true)
+  assert_eq(all_form_flags.edit(), true)
+  assert_eq(all_form_flags.sort(), true)
+  assert_eq(all_form_flags.file_select(), true)
+  assert_eq(all_form_flags.multi_select(), true)
+  assert_eq(all_form_flags.do_not_spell_check(), true)
+  assert_eq(all_form_flags.do_not_scroll(), true)
+  assert_eq(all_form_flags.comb(), true)
+  assert_eq(all_form_flags.rich_text(), true)
+  assert_eq(all_form_flags.radios_in_unison(), true)
+  assert_eq(all_form_flags.commit_on_sel_change(), true)
 
   let fdf = PdfFDFDocument::{
     catalog: PdfFDFCatalog::{
@@ -86,6 +125,43 @@ test "forms signatures fdf measurement and requirement models are constructible"
     evidence_sources: [],
   }
   assert_eq(plan.byte_ranges[0].length, 100L)
+  let dss = PdfDocumentSecurityStore::{
+    validation_related_information: None,
+    certificates: [],
+    ocsps: [],
+    crls: [],
+    raw_dict: dict,
+  }
+  assert_eq(dss.certificates.length(), 0)
+  let vri = PdfValidationRelatedInformation::{
+    certificates: [],
+    crls: [],
+    ocsps: [],
+    time_update: None,
+    timestamp: None,
+    raw_dict: dict,
+  }
+  assert_eq(vri.ocsps.length(), 0)
+  let permissions = PdfPermissionsDictionary::{
+    doc_mdp: None,
+    ur3: None,
+    raw_dict: dict,
+  }
+  assert_eq(permissions.doc_mdp is None, true)
+  let legal = PdfLegalAttestation::{
+    javascript_actions: Some(1),
+    launch_actions: None,
+    uri_actions: None,
+    movie_actions: None,
+    sound_actions: None,
+    hide_annotation_actions: None,
+    go_to_remote_actions: None,
+    annotations: None,
+    optional_content: Some(false),
+    attestation: Some(b"reviewed"),
+    raw_dict: dict,
+  }
+  assert_eq(legal.javascript_actions == Some(1), true)
 
   let measure = PdfMeasure::{
     kind: PdfMeasureKind::Rectilinear,

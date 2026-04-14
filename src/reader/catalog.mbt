@@ -49,21 +49,29 @@ pub fn PdfCatalog::acro_form_entry(self : PdfCatalog) -> @objects.PdfObject? {
 }
 
 ///|
+/// Returns the optional Perms entry from the Catalog dictionary for 12.8.6
+/// permissions dictionaries, including DocMDP and deprecated UR3 signatures.
 pub fn PdfCatalog::permissions_entry(self : PdfCatalog) -> @objects.PdfObject? {
   self.entry(@objects.PdfName::new(b"Perms"))
 }
 
 ///|
+/// Returns the optional Legal entry from Catalog Table 29 for 12.8.7 legal
+/// content attestation dictionaries.
 pub fn PdfCatalog::legal_entry(self : PdfCatalog) -> @objects.PdfObject? {
   self.entry(@objects.PdfName::new(b"Legal"))
 }
 
 ///|
+/// Returns the optional DSS entry from the Catalog dictionary for 12.8.4
+/// document security store and VRI long term validation data.
 pub fn PdfCatalog::dss_entry(self : PdfCatalog) -> @objects.PdfObject? {
   self.entry(@objects.PdfName::new(b"DSS"))
 }
 
 ///|
+/// Returns the optional Requirements entry from the Catalog dictionary for
+/// 12.11 requirement dictionaries evaluated before ECMAScripts.
 pub fn PdfCatalog::requirements_entry(self : PdfCatalog) -> @objects.PdfObject? {
   self.entry(@objects.PdfName::new(b"Requirements"))
 }

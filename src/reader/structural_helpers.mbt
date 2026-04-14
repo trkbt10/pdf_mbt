@@ -5,6 +5,7 @@ enum StructuralDomain {
   Signature
   Measure
   Requirement
+  Multimedia
 } derive(Eq, Debug)
 
 ///|
@@ -24,6 +25,7 @@ fn structural_error(
     Signature => PdfDocumentError::InvalidSignature(object_id, reason)
     Measure => PdfDocumentError::InvalidMeasure(object_id, reason)
     Requirement => PdfDocumentError::InvalidRequirement(object_id, reason)
+    Multimedia => PdfDocumentError::InvalidMultimedia(object_id, reason)
   }
 }
 
