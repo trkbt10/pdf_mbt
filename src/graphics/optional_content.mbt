@@ -1,4 +1,7 @@
 ///|
+/// Visibility result for optional content in ISO 32000-2 8.11. Hidden
+/// suppresses drawing, Visible draws, and InertVisible means no OCProperties,
+/// OCG, OCMD, or active optional-content control affected the content.
 pub(all) enum OptionalContentDecision {
   Visible
   Hidden
@@ -6,6 +9,8 @@ pub(all) enum OptionalContentDecision {
 } derive(Eq, Debug)
 
 ///|
+/// Optional content membership dictionary policy (`P`) from ISO 32000-2
+/// 8.11.2.2: AllOn, AnyOn, AnyOff, or AllOff over the OCGs entry.
 pub(all) enum OptionalContentPolicy {
   AllOn
   AnyOn
@@ -14,6 +19,11 @@ pub(all) enum OptionalContentPolicy {
 } derive(Eq, Debug)
 
 ///|
+/// Optional content state derived from OCProperties, OCGs, the default
+/// optional content configuration dictionary, BaseState, ON/OFF arrays, and
+/// Intent. Usage dictionaries and usage application dictionaries for View,
+/// Print, Export, Zoom, User, and Language are represented at this state
+/// boundary by caller-selected hidden groups and active intents.
 pub(all) struct OptionalContentState {
   hidden_refs : Array[@objects.ObjectId]
   hidden_names : Array[@objects.PdfName]
@@ -26,6 +36,8 @@ struct OptionalVisibilityStack {
 } derive(Eq, Debug)
 
 ///|
+/// Creates a visible optional-content state. Missing OCProperties makes
+/// optional content structures inert and visible, as required by 8.11.4.2.
 pub fn OptionalContentState::visible() -> OptionalContentState {
   OptionalContentState::{
     hidden_refs: [],
@@ -35,6 +47,8 @@ pub fn OptionalContentState::visible() -> OptionalContentState {
 }
 
 ///|
+/// Creates a test or caller-provided optional-content state with hidden OCG
+/// references or OCG names under the default View intent.
 pub fn OptionalContentState::from_hidden(
   refs : Array[@objects.ObjectId],
   names : Array[@objects.PdfName],
@@ -47,6 +61,10 @@ pub fn OptionalContentState::from_hidden(
 }
 
 ///|
+/// Parses the document catalog OCProperties dictionary into initial optional
+/// content group state. It applies the default configuration dictionary `D`,
+/// BaseState, ON and OFF arrays, and configuration Intent; missing
+/// OCProperties leaves all optional content visible.
 pub fn parse_optional_content_properties(
   object : @objects.PdfObject?,
   offset : Int64,
@@ -64,6 +82,9 @@ pub fn parse_optional_content_properties(
 }
 
 ///|
+/// Evaluates an OC entry, optional content group (OCG), optional content
+/// membership dictionary (OCMD), or visibility expression (VE) against the
+/// current state. VE takes precedence over OCGs and P policies.
 pub fn OptionalContentState::evaluate(
   self : OptionalContentState,
   object : @objects.PdfObject?,
@@ -173,11 +194,14 @@ fn optional_content_state_from_properties(
   OptionalContentState::{
     hidden_refs,
     hidden_names,
-    active_intents: [pdf_name(b"View")],
+    active_intents: optional_content_config_intents(config, offset),
   }
 }
 
 ///|
+/// Resolves marked-content OC property lists through the current Properties
+/// resource dictionary for BDC and DP operators. The property may be a named
+/// OCG or OCMD resource, a direct dictionary, an unresolved reference, or null.
 pub fn resolve_optional_content_property(
   resources : @content.ContentResources,
   property : @objects.PdfObject,
@@ -218,7 +242,12 @@ fn evaluate_optional_content_object(
   offset : Int64,
 ) -> Bool raise PdfGraphicsError {
   match object {
-    @objects.PdfObject::Ref(id) => !contains_ref(state.hidden_refs, id)
+    @objects.PdfObject::Ref(id) =>
+      if state.active_intents.length() == 0 {
+        true
+      } else {
+        !contains_ref(state.hidden_refs, id)
+      }
     @objects.PdfObject::Dictionary(dict) =>
       evaluate_optional_content_dict(state, dict, offset)
     @objects.PdfObject::Null => true
@@ -254,6 +283,9 @@ fn evaluate_optional_content_dict(
         )
       }
     }
+    if !ocg_intent_applies(state, dict, offset) {
+      return true
+    }
     match optional_entry(dict, b"Name") {
       Some(@objects.PdfObject::Name(name)) =>
         !contains_name(state.hidden_names, name)
@@ -265,6 +297,68 @@ fn evaluate_optional_content_dict(
         )
       None => true
     }
+  }
+}
+
+///|
+fn optional_content_config_intents(
+  config : @objects.PdfDictionary?,
+  offset : Int64,
+) -> Array[@objects.PdfName] raise PdfGraphicsError {
+  match config {
+    None => [pdf_name(b"View")]
+    Some(dict) =>
+      match optional_entry(dict, b"Intent") {
+        None => [pdf_name(b"View")]
+        Some(value) => optional_content_intent_names(value, offset, "Intent")
+      }
+  }
+}
+
+///|
+fn ocg_intent_applies(
+  state : OptionalContentState,
+  dict : @objects.PdfDictionary,
+  offset : Int64,
+) -> Bool raise PdfGraphicsError {
+  if state.active_intents.length() == 0 {
+    return false
+  }
+  if contains_name(state.active_intents, pdf_name(b"All")) {
+    return true
+  }
+  let intents = match optional_entry(dict, b"Intent") {
+    None => [pdf_name(b"View")]
+    Some(value) => optional_content_intent_names(value, offset, "OCG Intent")
+  }
+  for intent in intents {
+    if contains_name(state.active_intents, intent) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn optional_content_intent_names(
+  object : @objects.PdfObject,
+  offset : Int64,
+  label : String,
+) -> Array[@objects.PdfName] raise PdfGraphicsError {
+  match object {
+    @objects.PdfObject::Name(name) => [name]
+    @objects.PdfObject::Array(values) => {
+      let names : Array[@objects.PdfName] = []
+      for value in values {
+        names.push(require_name_value(value, offset, label))
+      }
+      names
+    }
+    _ =>
+      raise PdfGraphicsError::InvalidOptionalContent(
+        offset,
+        label + " must be a name or array of names",
+      )
   }
 }
 

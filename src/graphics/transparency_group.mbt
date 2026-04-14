@@ -1,4 +1,8 @@
 ///|
+/// Context in which a transparency group dictionary is interpreted. Form
+/// transparency group XObjects come through the Form XObject Group entry,
+/// while page and pattern contexts have different default isolation/knockout
+/// semantics.
 pub(all) enum TransparencyGroupContext {
   FormTransparencyGroup
   PageTransparencyGroup
@@ -6,6 +10,9 @@ pub(all) enum TransparencyGroupContext {
 } derive(Eq, Debug)
 
 ///|
+/// Transparency group XObject attributes from ISO 32000-2 8.10.3 and 11.6.6:
+/// blending colour space (`CS`), isolated group flag (`I`), knockout group
+/// flag (`K`), and the raw Group attributes dictionary.
 pub(all) struct TransparencyGroup {
   blending_colour_space : ColourSpace?
   isolated : Bool
@@ -14,6 +21,9 @@ pub(all) struct TransparencyGroup {
 } derive(Eq, Debug)
 
 ///|
+/// Parses a Group attributes dictionary whose subtype `S` is Transparency.
+/// The dictionary may be attached to a form XObject, page group, or pattern
+/// group; unsupported group subtypes remain outside this transparency parser.
 pub fn parse_transparency_group_dictionary(
   dict : @objects.PdfDictionary,
   context : TransparencyGroupContext,
@@ -58,6 +68,8 @@ pub fn parse_transparency_group_dictionary(
 }
 
 ///|
+/// Attempts to parse only transparency group dictionaries, returning None for
+/// other group subtypes while preserving their FormGroupInfo metadata.
 pub fn try_parse_transparency_group_dictionary(
   dict : @objects.PdfDictionary,
   context : TransparencyGroupContext,
@@ -72,6 +84,8 @@ pub fn try_parse_transparency_group_dictionary(
 }
 
 ///|
+/// Returns the component count of the transparency group's blending colour
+/// space, when the Group dictionary supplies a CS entry.
 pub fn TransparencyGroup::component_count(self : TransparencyGroup) -> Int? {
   match self.blending_colour_space {
     Some(space) => Some(space.component_count())

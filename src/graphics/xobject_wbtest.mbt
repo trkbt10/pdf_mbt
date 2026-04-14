@@ -50,6 +50,66 @@ test "inline image validates Length and emits descriptor event" {
 }
 
 ///|
+test "inline image rejects Length above 4096 bytes and JPXDecode filter" {
+  let too_large : Result[ImageDescriptor, PdfGraphicsError] = try? validate_inline_image(
+    inline_image_with_filter(None, 4097L, 4097),
+  )
+  match too_large {
+    Err(InvalidImage(_, reason)) => assert_eq(reason.contains("4096"), true)
+    _ => fail("expected inline image 4096 byte Length rejection")
+  }
+
+  let jpx : Result[ImageDescriptor, PdfGraphicsError] = try? validate_inline_image(
+    inline_image_with_filter(Some(@objects.PdfName::new(b"JPXDecode")), 3L, 3),
+  )
+  match jpx {
+    Err(InvalidImage(_, reason)) => assert_eq(reason.contains("filter"), true)
+    _ => fail("expected JPXDecode inline image rejection")
+  }
+}
+
+///|
+test "direct explicit Mask stream must be an ImageMask" {
+  let dict = image_dictionary(None)
+  dict[@objects.PdfName::new(b"Mask")] = @objects.PdfObject::Stream(
+    non_mask_image_stream(),
+  )
+  let result : Result[ImageDescriptor, PdfGraphicsError] = try? validate_image_dictionary(
+    ImageSource::XObjectImage(Some(@objects.PdfName::new(b"Im1"))),
+    dict,
+    Bytes::from_array([b'\x00', b'\x00', b'\x00']),
+    false,
+    11L,
+  )
+  match result {
+    Err(InvalidImage(offset, reason)) => {
+      assert_eq(offset, 11L)
+      assert_eq(reason.contains("ImageMask"), true)
+    }
+    _ => fail("expected explicit Mask ImageMask validation")
+  }
+}
+
+///|
+test "alternate image dictionary requires Image entry" {
+  let dict = image_dictionary(None)
+  dict[@objects.PdfName::new(b"Alternates")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Dictionary(Map::new()),
+  ])
+  let result : Result[ImageDescriptor, PdfGraphicsError] = try? validate_image_dictionary(
+    ImageSource::XObjectImage(Some(@objects.PdfName::new(b"Im1"))),
+    dict,
+    Bytes::from_array([b'\x00', b'\x00', b'\x00']),
+    false,
+    12L,
+  )
+  match result {
+    Err(InvalidGraphicsState(_, _)) | Err(InvalidImage(_, _)) => ()
+    _ => fail("expected missing alternate Image entry rejection")
+  }
+}
+
+///|
 test "Form XObject invocation scopes nested graphics and restores parent state" {
   let content = @content.parse_decoded_content(
     b"2 w /Fm1 Do",
@@ -73,6 +133,38 @@ test "Form XObject invocation scopes nested graphics and restores parent state" 
   match program.events[3] {
     FormXObjectEnded(_, _, state) => assert_eq(state.line_width, 2.0)
     _ => fail("expected form end")
+  }
+}
+
+///|
+test "reference XObject dictionary requires target file and page" {
+  let stream = form_stream_with_ref(Map::new())
+  let missing : Result[FormXObject, PdfGraphicsError] = try? validate_form_xobject(
+    Some(@objects.PdfName::new(b"Fm1")),
+    stream,
+    13L,
+  )
+  match missing {
+    Err(InvalidGraphicsState(_, _)) | Err(InvalidXObject(_, _)) => ()
+    _ => fail("expected missing reference F and Page rejection")
+  }
+
+  let ref_dict : @objects.PdfDictionary = Map::new()
+  ref_dict[@objects.PdfName::new(b"F")] = @objects.PdfObject::String(
+    b"target.pdf",
+  )
+  ref_dict[@objects.PdfName::new(b"Page")] = @objects.PdfObject::Integer(1L)
+  let form = validate_form_xobject(
+    Some(@objects.PdfName::new(b"Fm1")),
+    form_stream_with_ref(ref_dict),
+    14L,
+  )
+  match form.reference {
+    Some(reference) => {
+      assert_eq(reference.file_spec is Some(_), true)
+      assert_eq(reference.page is Some(_), true)
+    }
+    None => fail("expected reference XObject metadata")
   }
 }
 
@@ -131,9 +223,79 @@ test "hidden XObject optional content emits skipped outcome" {
 }
 
 ///|
+fn inline_image_with_filter(
+  filter : @objects.PdfName?,
+  length : Int64,
+  data_length : Int,
+) -> @content.PdfInlineImage {
+  let dict = image_dictionary(None)
+  dict[@objects.PdfName::new(b"Length")] = @objects.PdfObject::Integer(length)
+  if filter is Some(name) {
+    dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(name)
+  }
+  let data : Array[Byte] = []
+  for _ in 0..<data_length {
+    data.push(b'\x00')
+  }
+  @content.PdfInlineImage::{
+    dictionary: dict,
+    data: Bytes::from_array(data),
+    start_offset: 10L,
+    data_offset: 20L,
+    end_offset: 30L,
+  }
+}
+
+///|
+fn non_mask_image_stream() -> @objects.PdfStream {
+  @objects.PdfStream::{
+    dict: image_dictionary(None),
+    data: Bytes::from_array([b'\x00', b'\x00', b'\x00']),
+  }
+}
+
+///|
+fn form_stream_with_ref(
+  ref_dict : @objects.PdfDictionary,
+) -> @objects.PdfStream {
+  let form_dict : @objects.PdfDictionary = Map::new()
+  form_dict[@objects.PdfName::new(b"Type")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"XObject"),
+  )
+  form_dict[@objects.PdfName::new(b"Subtype")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"Form"),
+  )
+  form_dict[@objects.PdfName::new(b"BBox")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Integer(0L),
+    @objects.PdfObject::Integer(0L),
+    @objects.PdfObject::Integer(10L),
+    @objects.PdfObject::Integer(10L),
+  ])
+  form_dict[@objects.PdfName::new(b"Ref")] = @objects.PdfObject::Dictionary(
+    ref_dict,
+  )
+  @objects.PdfStream::{ dict: form_dict, data: b"" }
+}
+
+///|
 fn image_resource_context(
   oc : @objects.PdfObject?,
 ) -> @content.ContentResources {
+  let image_dict = image_dictionary(oc)
+  let xobjects : @objects.PdfDictionary = Map::new()
+  xobjects[@objects.PdfName::new(b"Im1")] = @objects.PdfObject::Stream(@objects.PdfStream::{
+    dict: image_dict,
+    data: Bytes::from_array([b'\x00', b'\x00', b'\x00']),
+  })
+  let resources : @objects.PdfDictionary = Map::new()
+  resources[@objects.PdfName::new(b"XObject")] = @objects.PdfObject::Dictionary(
+    xobjects,
+  )
+  @content.ContentResources::from_dictionary(resources)
+}
+
+///|
+fn image_dictionary(oc : @objects.PdfObject?) -> @objects.PdfDictionary {
   let image_dict : @objects.PdfDictionary = Map::new()
   image_dict[@objects.PdfName::new(b"Type")] = @objects.PdfObject::Name(
     @objects.PdfName::new(b"XObject"),
@@ -152,16 +314,7 @@ fn image_resource_context(
   if oc is Some(value) {
     image_dict[@objects.PdfName::new(b"OC")] = value
   }
-  let xobjects : @objects.PdfDictionary = Map::new()
-  xobjects[@objects.PdfName::new(b"Im1")] = @objects.PdfObject::Stream(@objects.PdfStream::{
-    dict: image_dict,
-    data: Bytes::from_array([b'\x00', b'\x00', b'\x00']),
-  })
-  let resources : @objects.PdfDictionary = Map::new()
-  resources[@objects.PdfName::new(b"XObject")] = @objects.PdfObject::Dictionary(
-    xobjects,
-  )
-  @content.ContentResources::from_dictionary(resources)
+  image_dict
 }
 
 ///|

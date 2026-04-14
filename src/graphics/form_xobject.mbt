@@ -1,4 +1,7 @@
 ///|
+/// Group XObject attributes from ISO 32000-2 8.10.3. The Group dictionary's
+/// subtype (`S`) distinguishes transparency group XObjects from other group
+/// attributes, and the raw dictionary is retained for deferred rendering.
 pub(all) struct FormGroupInfo {
   subtype : @objects.PdfName?
   transparency : TransparencyGroup?
@@ -6,6 +9,11 @@ pub(all) struct FormGroupInfo {
 } derive(Eq, Debug)
 
 ///|
+/// Reference XObject metadata from ISO 32000-2 8.10.4. The required reference
+/// dictionary entries `F` and `Page` identify the target document and page;
+/// `ID` helps find or warn about changed target files. Printing may use the
+/// imported content or this proxy form, while annotation appearance and logical
+/// structure caveats are preserved for higher layers.
 pub(all) struct ReferenceXObjectInfo {
   file_spec : @objects.PdfObject?
   page : @objects.PdfObject?
@@ -13,6 +21,10 @@ pub(all) struct ReferenceXObjectInfo {
 } derive(Eq, Debug)
 
 ///|
+/// Type 1 Form XObject descriptor from ISO 32000-2 8.10. A form XObject is a
+/// reusable content stream painted by `Do`; it has form space, BBox clipping,
+/// a Matrix mapping form space to user space, optional Resources, Group,
+/// reference proxy metadata, OC optional content, and associated files.
 pub(all) struct FormXObject {
   name : @objects.PdfName?
   form_type : Int
@@ -30,6 +42,10 @@ pub(all) struct FormXObject {
 } derive(Eq, Debug)
 
 ///|
+/// Validates a form XObject stream dictionary: `/Type /XObject`,
+/// `/Subtype /Form`, Type 1 FormType, required BBox, default Matrix,
+/// optional Resources, Group, Ref, Metadata, StructParent/StructParents
+/// exclusivity, OC optional content, and PDF 2.0 associated files.
 pub fn validate_form_xobject(
   name : @objects.PdfName?,
   stream : @objects.PdfStream,
@@ -144,9 +160,11 @@ fn optional_reference(
   match optional_entry(dict, b"Ref") {
     Some(value) => {
       let ref_dict = require_dictionary_value(value, offset, "Ref")
+      let file_spec = required_entry(ref_dict, b"F", offset)
+      let page = required_entry(ref_dict, b"Page", offset)
       Some(ReferenceXObjectInfo::{
-        file_spec: optional_entry(ref_dict, b"F"),
-        page: optional_entry(ref_dict, b"Page"),
+        file_spec: Some(file_spec),
+        page: Some(page),
         id: optional_entry(ref_dict, b"ID"),
       })
     }

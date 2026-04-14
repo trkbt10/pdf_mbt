@@ -1,10 +1,20 @@
 ///|
+/// ISO 32000-2 8.8 and 8.9 image source: an image XObject painted by the
+/// `Do` operator from the XObject resource subdictionary, or an inline image
+/// delimited by `BI`, `ID`, and `EI` in a content stream.
+///
+/// Source excerpt:
+/// `spec/extracted/8.8-8.11-xobjects-images-optional.spec.txt`.
 pub(all) enum ImageSource {
   XObjectImage(@objects.PdfName?)
   InlineImageSource
 } derive(Eq, Debug)
 
 ///|
+/// Availability of image sample data after structural filter handling.
+/// Encoded bytes remain for filters such as DCTDecode, JPXDecode,
+/// JBIG2Decode, CCITTFaxDecode, or Crypt; decoded bytes are checked against
+/// the image sample layout when supported filters produce sample bytes.
 pub(all) enum ImageByteStatus {
   EncodedBytes(Int)
   DecodedBytes(Int)
@@ -12,12 +22,19 @@ pub(all) enum ImageByteStatus {
 } derive(Eq, Debug)
 
 ///|
+/// One pair from an image Decode array. Each range maps the pre-decode sample
+/// domain `0` to `2^BitsPerComponent - 1` into colour component values, and
+/// may express inverted Decode arrays such as `[1 0]` for stencil masks.
 pub(all) struct ImageDecodeRange {
   min : Double
   max : Double
 } derive(Eq, Debug)
 
 ///|
+/// Image coordinate system and sample representation. Width and height are in
+/// samples, rows are byte-aligned, padding bits at row ends are ignored, and
+/// the image space rectangle maps to the user-space unit square before the
+/// invocation CTM places the image on the page.
 pub(all) struct ImageSampleLayout {
   width : Int
   height : Int
@@ -29,6 +46,9 @@ pub(all) struct ImageSampleLayout {
 } derive(Eq, Debug)
 
 ///|
+/// Masked image model from ISO 32000-2 8.9.6: no mask, stencil ImageMask,
+/// explicit image mask XObject, or colour key masking with pre-decode sample
+/// ranges. Colour-key masks are arrays of min/max component integers.
 pub(all) enum ImageMaskInfo {
   NoImageMask
   StencilImageMask
@@ -37,6 +57,9 @@ pub(all) enum ImageMaskInfo {
 } derive(Eq, Debug)
 
 ///|
+/// Transparent imaging model soft-mask source for image dictionaries: no
+/// associated soft mask, explicit SMask image XObject, or embedded
+/// SMaskInData values from JPXDecode image samples.
 pub(all) enum ImageSoftMaskSource {
   NoImageSoftMask
   ExplicitImageSoftMask(@objects.PdfObject)
@@ -44,6 +67,8 @@ pub(all) enum ImageSoftMaskSource {
 } derive(Eq, Debug)
 
 ///|
+/// Parsed SMask and SMaskInData information, including Matte values for
+/// premultiplied colour channels and soft-mask image validation.
 pub(all) struct SoftMaskInfo {
   source : ImageSoftMaskSource
   smask_in_data : Int?
@@ -51,6 +76,9 @@ pub(all) struct SoftMaskInfo {
 } derive(Eq, Debug)
 
 ///|
+/// Alternate image dictionary metadata from ISO 32000-2 8.9.5.4. The Image
+/// entry identifies the alternate image XObject, DefaultForPrinting records
+/// print selection, and OC stores optional content selection input.
 pub(all) struct AlternateImageInfo {
   image : @objects.PdfObject
   default_for_printing : Bool
@@ -58,6 +86,10 @@ pub(all) struct AlternateImageInfo {
 } derive(Eq, Debug)
 
 ///|
+/// Structural entries specific to image dictionaries: rendering Intent,
+/// Interpolate-adjacent alternate image data, Name, StructParent,
+/// StructParents, ID, Metadata, OPI, OC optional content, associated files
+/// (AF), Measure, and PtData. These are preserved without rendering.
 pub(all) struct ImageStructuralMetadata {
   intent : @objects.PdfName?
   alternates : Array[AlternateImageInfo]
@@ -74,6 +106,11 @@ pub(all) struct ImageStructuralMetadata {
 } derive(Eq, Debug)
 
 ///|
+/// Validated image dictionary descriptor for image XObjects and inline images.
+/// It records image parameters, sample representation, Decode arrays,
+/// Interpolate hints, image masks, colour key masks, explicit masks, soft
+/// masks, alternate images, optional content, and the image coordinate system
+/// needed by the `Do` operator or inline image painting event.
 pub(all) struct ImageDescriptor {
   source : ImageSource
   width : Int
@@ -92,6 +129,10 @@ pub(all) struct ImageDescriptor {
 } derive(Eq, Debug)
 
 ///|
+/// Validates an image XObject stream from the XObject resource dictionary.
+/// `/Type /XObject` and `/Subtype /Image` are required for painted image
+/// XObjects, and the returned descriptor is the sampled image semantics used
+/// by the graphics interpreter.
 pub fn validate_image_stream(
   name : @objects.PdfName?,
   stream : @objects.PdfStream,
@@ -107,6 +148,10 @@ pub fn validate_image_stream(
 }
 
 ///|
+/// Validates an ISO 32000-2 8.9.7 inline image parsed from `BI`, `ID`, and
+/// `EI`. The inline image dictionary must provide Length, Length must match
+/// the captured data, Length must not exceed 4096 bytes, and inline filters
+/// must not include JPXDecode, JBIG2Decode, or Crypt.
 pub fn validate_inline_image(
   image : @content.PdfInlineImage,
 ) -> ImageDescriptor raise PdfGraphicsError {
@@ -120,6 +165,10 @@ pub fn validate_inline_image(
 }
 
 ///|
+/// Shared image dictionary validator for image XObjects and inline images.
+/// It validates Width, Height, ColorSpace, BitsPerComponent, Decode arrays,
+/// ImageMask, Mask, SMask, SMaskInData, Interpolate, Alternates, and PDF 2.0
+/// associated metadata while leaving raster rendering outside this package.
 pub fn validate_image_dictionary(
   source : ImageSource,
   dict : @objects.PdfDictionary,
@@ -141,6 +190,11 @@ pub fn validate_image_dictionary(
         let length = require_integer_value(value, offset, "inline image Length")
         if length < 0L {
           raise invalid_image(offset, "inline image Length must be nonnegative")
+        }
+        if length > 4096L {
+          raise invalid_image(
+            offset, "inline image Length must not exceed 4096 bytes",
+          )
         }
         if length.to_int() != data.length() {
           raise invalid_image(
@@ -206,6 +260,9 @@ pub fn validate_image_dictionary(
 }
 
 ///|
+/// Computes row bit layout for image space: samples are interleaved
+/// component-by-component, each row begins on a byte boundary, and row-end
+/// padding bits are excluded from the next row.
 pub fn ImageSampleLayout::from_values(
   width : Int,
   height : Int,
@@ -379,9 +436,63 @@ fn parse_image_mask(
       }
       ImageMaskInfo::ColourKeyMask(key)
     }
-    Some(object) => ImageMaskInfo::ExplicitMask(object)
+    Some(object) => {
+      validate_explicit_image_mask(object, offset)
+      ImageMaskInfo::ExplicitMask(object)
+    }
     None if image_mask => ImageMaskInfo::StencilImageMask
     None => ImageMaskInfo::NoImageMask
+  }
+}
+
+///|
+fn validate_explicit_image_mask(
+  object : @objects.PdfObject,
+  offset : Int64,
+) -> Unit raise PdfGraphicsError {
+  match object {
+    @objects.PdfObject::Ref(_) => ()
+    @objects.PdfObject::Stream(stream) => {
+      require_type_marker(stream.dict, b"XObject", offset, "explicit mask")
+      require_name_entry_value(
+        stream.dict,
+        b"Subtype",
+        b"Image",
+        offset,
+        "explicit mask Subtype",
+      )
+      if !image_optional_bool(
+          stream.dict,
+          b"ImageMask",
+          false,
+          offset,
+          "explicit mask ImageMask",
+        ) {
+        raise invalid_image(offset, "explicit Mask stream must be an ImageMask")
+      }
+      if optional_entry(stream.dict, b"ColorSpace") is Some(_) {
+        raise invalid_image(
+          offset, "explicit Mask ImageMask forbids ColorSpace",
+        )
+      }
+      match optional_entry(stream.dict, b"BitsPerComponent") {
+        Some(value) => {
+          let bits = require_integer_value(
+            value, offset, "explicit mask BitsPerComponent",
+          )
+          if bits != 1L {
+            raise invalid_image(
+              offset, "explicit Mask BitsPerComponent must be 1",
+            )
+          }
+        }
+        None => ()
+      }
+    }
+    _ =>
+      raise invalid_image(
+        offset, "Mask must be an image stream, reference, or colour key array",
+      )
   }
 }
 
@@ -579,8 +690,9 @@ fn parse_alternates(
                 offset, "alternate image cannot contain Alternates",
               )
             }
+            let image = required_entry(alt_dict, b"Image", offset)
             alternates.push(AlternateImageInfo::{
-              image: value,
+              image,
               default_for_printing: image_optional_bool(
                 alt_dict, b"DefaultForPrinting", false, offset, "DefaultForPrinting",
               ),
@@ -680,7 +792,9 @@ fn validate_inline_image_filters(
   offset : Int64,
 ) -> Unit raise PdfGraphicsError {
   for filter in filters {
-    if filter == pdf_name(b"Crypt") || filter == pdf_name(b"JBIG2Decode") {
+    if filter == pdf_name(b"Crypt") ||
+      filter == pdf_name(b"JBIG2Decode") ||
+      filter == pdf_name(b"JPXDecode") {
       raise invalid_image(offset, "inline image filter is not permitted")
     }
   }

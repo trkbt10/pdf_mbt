@@ -210,6 +210,8 @@ fn expand_inline_image_key(key : @objects.PdfName) -> @objects.PdfName {
     @objects.PdfName::new(b"DecodeParms")
   } else if key == @objects.PdfName::new(b"F") {
     @objects.PdfName::new(b"Filter")
+  } else if key == @objects.PdfName::new(b"L") {
+    @objects.PdfName::new(b"Length")
   } else {
     key
   }
@@ -238,6 +240,8 @@ fn expand_inline_image_name_value(name : @objects.PdfName) -> @objects.PdfName {
     @objects.PdfName::new(b"DeviceRGB")
   } else if name == @objects.PdfName::new(b"CMYK") {
     @objects.PdfName::new(b"DeviceCMYK")
+  } else if name == @objects.PdfName::new(b"I") {
+    @objects.PdfName::new(b"Indexed")
   } else if name == @objects.PdfName::new(b"AHx") {
     @objects.PdfName::new(b"ASCIIHexDecode")
   } else if name == @objects.PdfName::new(b"A85") {

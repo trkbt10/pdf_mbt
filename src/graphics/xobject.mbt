@@ -1,4 +1,8 @@
 ///|
+/// External object resource from ISO 32000-2 8.8.1. A `Do` operator names an
+/// entry in the current resource dictionary's XObject subdictionary; direct
+/// streams dispatch by Subtype to Image XObject or Form XObject, while
+/// unresolved indirect references are preserved for reader-owned loading.
 pub(all) enum XObjectResource {
   ImageResource(ImageDescriptor)
   FormResource(FormXObject)
@@ -6,6 +10,9 @@ pub(all) enum XObjectResource {
 } derive(Eq, Debug)
 
 ///|
+/// Resolves the named XObject resource used by the `Do` operator from content
+/// streams. Missing resources, null values, non-stream direct objects, and
+/// unsupported XObject Subtype names are reported as InvalidXObject errors.
 pub fn resolve_xobject_resource(
   resources : @content.ContentResources,
   name : @objects.PdfName,
@@ -29,6 +36,9 @@ pub fn resolve_xobject_resource(
 }
 
 ///|
+/// Parses a materialized XObject resource stream. `/Subtype /Image` validates
+/// image dictionaries, `/Subtype /Form` validates form dictionaries, and a
+/// reference remains an unresolved XObject for later document-reader loading.
 pub fn parse_xobject_resource(
   name : @objects.PdfName,
   object : @objects.PdfObject,

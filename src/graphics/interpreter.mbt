@@ -28,11 +28,12 @@ pub(all) enum PathPaintOperation {
 
 ///|
 /// Ordered graphics interpretation events for PDF graphics operators.
-/// The events cover the clause 8.1 groups that affect page appearance:
-/// graphics state operators, path construction operators, path-painting
-/// operators, other painting operators for self-describing graphics objects,
-/// text operators, and marked-content operators. They preserve snapshots
-/// without performing device-dependent rendering.
+/// The events cover clause 8 graphics state, paths, painting, external
+/// objects, sampled images, image XObjects, inline images, form XObjects,
+/// group XObjects, reference XObject proxy forms, optional content marked by
+/// BDC/DP/EMC, and whole-XObject OC visibility. Hidden marked content still
+/// applies graphics-state side effects, while hidden image or form XObjects
+/// are skipped as encapsulated objects.
 pub(all) enum GraphicsEvent {
   StateSaved(Int64, GraphicsState)
   StateRestored(Int64, GraphicsState)
@@ -63,11 +64,16 @@ pub(all) enum GraphicsEvent {
 } derive(Eq, Debug)
 
 ///|
+/// Graphics interpretation options, including the optional content group state
+/// used to evaluate OCG, OCMD, VE, marked-content scopes, image XObject OC
+/// entries, and form XObject OC entries.
 pub(all) struct GraphicsInterpretOptions {
   optional_content_state : OptionalContentState
 } derive(Eq, Debug)
 
 ///|
+/// Creates default graphics interpretation options where optional content is
+/// visible unless the document catalog OCProperties state says otherwise.
 pub fn GraphicsInterpretOptions::default() -> GraphicsInterpretOptions {
   GraphicsInterpretOptions::{
     optional_content_state: OptionalContentState::visible(),
@@ -94,6 +100,7 @@ pub(all) struct GraphicsProgram {
 ///
 /// Source excerpt:
 /// `spec/extracted/8.1-8.5-graphics-state.spec.txt`.
+/// `spec/extracted/8.8-8.11-xobjects-images-optional.spec.txt`.
 ///
 /// This accepts graphics state operators, path construction operators,
 /// path-painting operators, clipping, object context validation, text
@@ -115,6 +122,9 @@ pub fn interpret_content(
 }
 
 ///|
+/// Interprets content with caller-provided optional content state so BDC/DP
+/// marked-content property lists and XObject `OC` entries can gate visible
+/// painting while preserving graphics-state side effects.
 pub fn interpret_content_with_options(
   content : @content.ContentStream,
   initial : GraphicsInitialState,

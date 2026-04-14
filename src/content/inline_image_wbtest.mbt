@@ -31,6 +31,33 @@ test "inline image reader expands dictionary keys and captures raw data" {
 }
 
 ///|
+test "inline image reader expands Length and Indexed abbreviations" {
+  let image = InlineImageReader::new(
+    b"/W 1 /H 1 /CS [/I /RGB 1 <000000ffffff>] /BPC 8 /L 3 ID abc EI",
+  ).parse(0L)
+
+  assert_eq(
+    image.dictionary.get(@objects.PdfName::new(b"Length")) ==
+    Some(@objects.PdfObject::Integer(3L)),
+    true,
+  )
+  match image.dictionary.get(@objects.PdfName::new(b"ColorSpace")) {
+    Some(@objects.PdfObject::Array(values)) => {
+      assert_eq(
+        values[0] == @objects.PdfObject::Name(@objects.PdfName::new(b"Indexed")),
+        true,
+      )
+      assert_eq(
+        values[1] ==
+        @objects.PdfObject::Name(@objects.PdfName::new(b"DeviceRGB")),
+        true,
+      )
+    }
+    _ => fail("expected expanded Indexed colour space array")
+  }
+}
+
+///|
 test "inline image reader accepts CRLF before EI and excludes separator bytes" {
   let image = InlineImageReader::new(b"/W 1 ID xyz\r\nEI ").parse(5L)
   assert_eq(image.data, b"xyz")
