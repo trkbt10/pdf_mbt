@@ -1,13 +1,13 @@
 # Implementation Plan
 
-- [ ] 1. Establish reader-domain foundations
-- [ ] 1.1 Add domain diagnostics and shared structural parsing helpers
+- [x] 1. Establish reader-domain foundations
+- [x] 1.1 Add domain diagnostics and shared structural parsing helpers
   - Add distinct diagnostics for malformed form, FDF, signature, measure, and requirement structures while preserving existing reader errors.
   - Add reusable structural helpers for resolved dictionaries, arrays, names, strings, numbers, direct-object checks, and cycle tracking.
   - Completed state: present malformed structures raise domain-specific reader errors instead of low-level or generic action or annotation errors.
   - _Requirements: 0.1, 0.20, 0.30, 0.57, 0.64_
   - _Boundary: ReaderDiagnostics, StructuralHelpers_
-- [ ] 1.2 Prepare public model organization and compatibility shims
+- [x] 1.2 Prepare public model organization and compatibility shims
   - Create cohesive public reader model groups for forms, FDF, signatures, measurement, geospatial data, and requirements without adding external dependencies.
   - Keep existing raw action, widget, measure, and signature-adjacent payload access available while typed models are introduced.
   - Completed state: the reader package type-checks with the new model declarations and existing callers can still inspect raw compatibility payloads.

@@ -42,6 +42,33 @@ pub fn PdfCatalog::names_entry(self : PdfCatalog) -> @objects.PdfObject? {
 }
 
 ///|
+/// Returns the optional AcroForm entry as raw Catalog data. Typed form
+/// traversal is layered on top of this entry by the form reader.
+pub fn PdfCatalog::acro_form_entry(self : PdfCatalog) -> @objects.PdfObject? {
+  self.entry(@objects.PdfName::new(b"AcroForm"))
+}
+
+///|
+pub fn PdfCatalog::permissions_entry(self : PdfCatalog) -> @objects.PdfObject? {
+  self.entry(@objects.PdfName::new(b"Perms"))
+}
+
+///|
+pub fn PdfCatalog::legal_entry(self : PdfCatalog) -> @objects.PdfObject? {
+  self.entry(@objects.PdfName::new(b"Legal"))
+}
+
+///|
+pub fn PdfCatalog::dss_entry(self : PdfCatalog) -> @objects.PdfObject? {
+  self.entry(@objects.PdfName::new(b"DSS"))
+}
+
+///|
+pub fn PdfCatalog::requirements_entry(self : PdfCatalog) -> @objects.PdfObject? {
+  self.entry(@objects.PdfName::new(b"Requirements"))
+}
+
+///|
 fn require_catalog_type(
   object_id : @objects.ObjectId,
   dict : @objects.PdfDictionary,

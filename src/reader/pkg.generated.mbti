@@ -22,6 +22,11 @@ pub(all) suberror PdfDocumentError {
   InvalidNavigation(@objects.PdfName, String)
   InvalidAnnotation(@objects.ObjectId?, String)
   InvalidAction(@objects.ObjectId?, @objects.PdfName?, String)
+  InvalidForm(@objects.ObjectId?, String)
+  InvalidFDF(@objects.ObjectId?, String)
+  InvalidSignature(@objects.ObjectId?, String)
+  InvalidMeasure(@objects.ObjectId?, String)
+  InvalidRequirement(@objects.ObjectId?, String)
   ContentError(@content.PdfContentError)
   GraphicsError(@graphics.PdfGraphicsError)
   PageIndexOutOfRange(Int, Int)
@@ -87,6 +92,18 @@ pub struct ObjectStreamTableCacheEntry {
 type PageTreeIndex derive(Eq, @debug.Debug)
 
 type PageTreeRecord derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAcroForm {
+  root_fields : Array[PdfFormField]
+  need_appearances : Bool?
+  signature_flags : Int?
+  calculation_order : Array[@objects.PdfObject]
+  default_resources : @objects.PdfObject?
+  default_appearance : Bytes?
+  quadding : Int?
+  xfa : @objects.PdfObject?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
 
 pub(all) struct PdfAction {
   object_id : @objects.ObjectId?
@@ -377,8 +394,13 @@ pub struct PdfCatalog {
   dict : Map[@objects.PdfName, @objects.PdfObject]
   pages_ref : @objects.ObjectId
 } derive(Eq, @debug.Debug)
+pub fn PdfCatalog::acro_form_entry(Self) -> @objects.PdfObject?
+pub fn PdfCatalog::dss_entry(Self) -> @objects.PdfObject?
 pub fn PdfCatalog::entry(Self, @objects.PdfName) -> @objects.PdfObject?
+pub fn PdfCatalog::legal_entry(Self) -> @objects.PdfObject?
 pub fn PdfCatalog::names_entry(Self) -> @objects.PdfObject?
+pub fn PdfCatalog::permissions_entry(Self) -> @objects.PdfObject?
+pub fn PdfCatalog::requirements_entry(Self) -> @objects.PdfObject?
 
 pub(all) struct PdfCatalogAdditionalActions {
   before_close : PdfAction?
@@ -392,6 +414,16 @@ pub(all) struct PdfCatalogAdditionalActions {
 pub(all) enum PdfCatalogOpenAction {
   Destination(PdfDestination)
   Action(PdfAction)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfCatalogRequirement {
+  requirement_type : @objects.PdfName?
+  minimum_version : PdfVersion?
+  handlers : Array[PdfRequirementHandler]
+  penalty : @objects.PdfName?
+  support_status : PdfRequirementSupportStatus
+  raw_payload : @objects.PdfObject?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfCatalogUri {
@@ -446,6 +478,23 @@ pub(all) enum PdfCollectionView {
   Tile
   Hidden
   Custom(@objects.PdfName)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfCoordinateSystem {
+  kind : PdfCoordinateSystemKind
+  descriptor : PdfCoordinateSystemDescriptor
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfCoordinateSystemDescriptor {
+  EPSG(Int)
+  WKT(Bytes)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfCoordinateSystemKind {
+  Geographic
+  Projected
+  Unknown(@objects.PdfName)
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfDestination {
@@ -522,6 +571,58 @@ pub(all) struct PdfEmbeddedGoToAction {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfFDFCatalog {
+  version : @objects.PdfName?
+  fdf : PdfFDFDictionary?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfFDFDictionary {
+  file : PdfFDFFileSpecification?
+  fields : Array[PdfFDFField]
+  status : Bytes?
+  pages : Array[@objects.PdfObject]
+  encoding : @objects.PdfName?
+  annotations : Array[@objects.PdfObject]
+  differences : @objects.PdfObject?
+  target : @objects.PdfObject?
+  embedded_fdf : @objects.PdfObject?
+  javascript : @objects.PdfObject?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfFDFDocument {
+  catalog : PdfFDFCatalog
+  objects : Array[PdfFDFObjectRecord]
+  trailer : Map[@objects.PdfName, @objects.PdfObject]?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfFDFField {
+  partial_name : Bytes?
+  value : @objects.PdfObject?
+  default_value : @objects.PdfObject?
+  kids : Array[PdfFDFField]
+  flags : Int?
+  set_flags : Int?
+  clear_flags : Int?
+  widget_flags : Int?
+  set_widget_flags : Int?
+  clear_widget_flags : Int?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfFDFFileSpecification {
+  file : @objects.PdfObject?
+  identifier : @objects.PdfObject?
+  target : @objects.PdfObject?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfFDFObjectRecord {
+  object_id : @objects.ObjectId
+  value : @objects.PdfObject
+} derive(Eq, @debug.Debug)
+
 pub struct PdfFile {
   bytes : Bytes
   header : PdfHeader
@@ -562,11 +663,55 @@ pub(all) struct PdfFormActionRaw {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfFormField {
+  object_id : @objects.ObjectId?
+  partial_name : Bytes?
+  fully_qualified_name : Bytes?
+  field_type : PdfFormFieldType
+  flags : PdfFormFieldFlags
+  value : PdfFormFieldValue
+  default_value : PdfFormFieldValue
+  parent : @objects.ObjectId?
+  kids : Array[@objects.PdfObject]
+  widgets : Array[PdfFormWidgetRef]
+  variable_text : PdfVariableTextDescriptor?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfFormFieldAdditionalActions {
   keystroke : PdfAction?
   format : PdfAction?
   validate : PdfAction?
   calculate : PdfAction?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfFormFieldFlags {
+  bits : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfFormFieldType {
+  Button
+  Text
+  Choice
+  Signature
+  Unknown(@objects.PdfName)
+  Absent
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfFormFieldValue {
+  Name(@objects.PdfName)
+  String(Bytes)
+  Array(Array[@objects.PdfObject])
+  Raw(@objects.PdfObject)
+  Absent
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfFormWidgetRef {
+  object_id : @objects.ObjectId?
+  page_index : Int?
+  merged_field_dictionary : Bool
+  raw_annotation : PdfAnnotation?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
@@ -579,6 +724,17 @@ pub(all) struct PdfFreeTextAnnotation {
   intent : @objects.PdfName
   border_effect : PdfBorderEffect?
   difference_rectangle : PdfRectangle?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfGeospatialMeasure {
+  bounds : Array[Double]
+  geographic_coordinate_system : PdfCoordinateSystem?
+  display_coordinate_system : PdfCoordinateSystem?
+  preferred_display_units : Array[@objects.PdfObject]
+  gpts : Array[Double]
+  lpts : Array[Double]
+  pcsm : @objects.PdfObject?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfGoTo3DViewAction {
@@ -708,6 +864,21 @@ pub(all) struct PdfMarkupExternalData {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfMeasure {
+  kind : PdfMeasureKind
+  subtype : @objects.PdfName?
+  scale_ratio : Bytes?
+  number_formats : Array[PdfNumberFormatDescriptor]
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfMeasureKind {
+  Rectilinear
+  Geospatial
+  Unknown(@objects.PdfName)
+  Absent
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfMovieAction {
   target : PdfMovieTarget
   operation : PdfMovieOperation
@@ -758,6 +929,17 @@ pub(all) struct PdfNavigationNode {
 pub(all) struct PdfNavigator {
   layout : @objects.PdfName
   fallback_layouts : Array[@objects.PdfName]
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfNumberFormatDescriptor {
+  labels : Array[Bytes]
+  conversion_factor : Double
+  precision : Int?
+  fraction_denominator : Int?
+  decimal_separator : Bytes?
+  thousands_separator : Bytes?
+  label_position : @objects.PdfName?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
@@ -890,6 +1072,20 @@ pub(all) struct PdfPoint {
   y : Double
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfPointData {
+  subtype : @objects.PdfName?
+  names : Array[PdfPointDataColumn]
+  tuples : Array[Array[Double]]
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfPointDataColumn {
+  Latitude
+  Longitude
+  Altitude
+  Custom(@objects.PdfName)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfPolygonAnnotation {
   kind : PdfPolygonKind
   vertices : Array[PdfPoint]
@@ -974,6 +1170,18 @@ pub(all) struct PdfRenditionAction {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfRequirementHandler {
+  handler_type : @objects.PdfName?
+  version : PdfVersion?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfRequirementSupportStatus {
+  Supported
+  Unsupported
+  Unknown
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfRichMediaExecuteAction {
   target_annotation : @objects.PdfObject
   instance : @objects.PdfObject?
@@ -1004,6 +1212,61 @@ pub(all) struct PdfShapeAnnotation {
 pub(all) enum PdfShapeKind {
   Square
   Circle
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfSignatureByteRange {
+  offset : Int64
+  length : Int64
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfSignatureDictionary {
+  object_id : @objects.ObjectId?
+  filter : @objects.PdfName?
+  subfilter : PdfSignatureSubFilter
+  contents : Bytes?
+  cert : @objects.PdfObject?
+  byte_range : Array[PdfSignatureByteRange]
+  references : Array[PdfSignatureReference]
+  signer_name : Bytes?
+  signing_time : @objects.PdfObject?
+  location : Bytes?
+  reason : Bytes?
+  contact_info : Bytes?
+  changes : Array[Int]
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfSignatureField {
+  field : PdfFormField
+  signature : PdfSignatureDictionary?
+  lock : @objects.PdfObject?
+  seed_value : @objects.PdfObject?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfSignatureReference {
+  transform_method : @objects.PdfName?
+  digest_method : @objects.PdfName?
+  transform_params : @objects.PdfObject?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfSignatureSubFilter {
+  AdbeX509RsaSha1
+  AdbePkcs7Detached
+  AdbePkcs7Sha1
+  EtsiCAdESDetached
+  EtsiRFC3161
+  Unknown(@objects.PdfName)
+  Absent
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfSignatureValidationPlan {
+  signature : PdfSignatureDictionary
+  byte_ranges : Array[PdfSignatureByteRange]
+  raw_contents : Bytes?
+  transform_constraints : Array[PdfSignatureReference]
+  evidence_sources : Array[@objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfSoundAction {
@@ -1120,6 +1383,15 @@ pub(all) struct PdfUriAction {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfVariableTextDescriptor {
+  default_appearance : Bytes?
+  quadding : Int?
+  default_style : Bytes?
+  rich_text : @objects.PdfObject?
+  default_resources : @objects.PdfObject?
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfVersion {
   major : Int
   minor : Int
@@ -1153,6 +1425,14 @@ pub(all) struct PdfViewerPreferences {
   print_page_ranges : Array[PdfPageRange]
   num_copies : Int?
   enforce : Array[PdfViewerPreferenceEnforceName]
+  raw_dict : Map[@objects.PdfName, @objects.PdfObject]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfViewport {
+  bbox : PdfRectangle?
+  name : Bytes?
+  measure : PdfMeasure?
+  point_data : @objects.PdfObject?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 
@@ -1191,6 +1471,8 @@ pub(all) struct PdfWindowsLaunchParams {
   parameter : @objects.PdfObject?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+
+type StructuralDomain derive(Eq, @debug.Debug)
 
 pub(all) struct TrailerInfo {
   size : Int
