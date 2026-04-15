@@ -28,6 +28,20 @@ pub(all) struct CalGrayParams {
 } derive(Eq, Debug)
 
 ///|
+pub fn CalGrayParams::to_xyz(
+  self : CalGrayParams,
+  gray : Double,
+) -> CieXyzColour {
+  let decoded_gray = colour_component(gray)
+  let a = @math.pow(decoded_gray, self.gamma)
+  CieXyzColour::{
+    x: self.white_point[0] * a,
+    y: self.white_point[1] * a,
+    z: self.white_point[2] * a,
+  }
+}
+
+///|
 /// CalRGB CIE-based ABC colour space parameters. Gamma and Matrix define the
 /// one-stage nonlinear transformation from calibrated red, green, and blue
 /// components into the CIE 1931 XYZ representation.
@@ -46,6 +60,19 @@ pub(all) struct LabParams {
   black_point : Array[Double]
   range : Array[Double]
 } derive(Eq, Debug)
+
+///|
+pub fn LabParams::clamp_ab(
+  self : LabParams,
+  a : Double,
+  b : Double,
+) -> (Double, Double) {
+  let a_min = self.range[0]
+  let a_max = self.range[1]
+  let b_min = self.range[2]
+  let b_max = self.range[3]
+  (clamp_double(a, a_min, a_max), clamp_double(b, b_min, b_max))
+}
 
 ///|
 /// ICCBased profile header summary. PDF 2.0 uses ICC.1:2010
@@ -890,6 +917,29 @@ pub fn ColourSpace::component_count(self : ColourSpace) -> Int {
       }
     Separation(_) => 1
     DeviceN(params) => params.colorants.length()
+  }
+}
+
+///|
+pub fn ColourSpace::is_device_space(self : ColourSpace) -> Bool {
+  match self {
+    Device(_) => true
+    CalGray(_) | CalRGB(_) | Lab(_) => false
+    ICCBased(_) | Pattern(_) | Indexed(_) => false
+    Separation(_) | DeviceN(_) => false
+  }
+}
+
+///|
+pub fn ColourSpace::to_device_family(self : ColourSpace) -> DeviceColourSpace? {
+  match self {
+    Device(device) => {
+      let family = device
+      Some(family)
+    }
+    CalGray(_) | CalRGB(_) | Lab(_) => None
+    ICCBased(_) | Pattern(_) | Indexed(_) => None
+    Separation(_) | DeviceN(_) => None
   }
 }
 

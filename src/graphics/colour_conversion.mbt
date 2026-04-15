@@ -87,19 +87,6 @@ pub fn device_cmyk_to_rgb(cmyk : DeviceCmykColour) -> DeviceRgbColour {
 }
 
 ///|
-pub fn CalGrayParams::to_xyz(
-  self : CalGrayParams,
-  gray : Double,
-) -> CieXyzColour {
-  let a = @math.pow(colour_component(gray), self.gamma)
-  CieXyzColour::{
-    x: self.white_point[0] * a,
-    y: self.white_point[1] * a,
-    z: self.white_point[2] * a,
-  }
-}
-
-///|
 pub fn CalGrayParams::to_srgb(
   self : CalGrayParams,
   gray : Double,
@@ -151,8 +138,7 @@ pub fn LabParams::to_xyz(
     )
   }
   let l_star = clamp_double(components[0], 0.0, 100.0)
-  let a_star = clamp_double(components[1], self.range[0], self.range[1])
-  let b_star = clamp_double(components[2], self.range[2], self.range[3])
+  let (a_star, b_star) = self.clamp_ab(components[1], components[2])
   let m = (l_star + 16.0) / 116.0
   let l = m + a_star / 500.0
   let n = m - b_star / 200.0

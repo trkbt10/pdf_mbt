@@ -7,6 +7,11 @@ test "device and calibrated colour spaces expose components ranges and initial v
   )
   assert_eq(cmyk.component_count(), 4)
   assert_eq(cmyk.initial_value().components, [0.0, 0.0, 0.0, 1.0])
+  assert_eq(cmyk.is_device_space(), true)
+  assert_eq(
+    cmyk.to_device_family() == Some(DeviceColourSpace::DeviceCMYK),
+    true,
+  )
 
   let dict : @objects.PdfDictionary = Map::new()
   dict[@objects.PdfName::new(b"WhitePoint")] = number_array([1.0, 1.0, 1.0])
@@ -20,6 +25,8 @@ test "device and calibrated colour spaces expose components ranges and initial v
     2L,
   )
   assert_eq(cal_gray.component_count(), 1)
+  assert_eq(cal_gray.is_device_space(), false)
+  assert_eq(cal_gray.to_device_family() == None, true)
   assert_eq(
     cal_gray.component_ranges() == [ColourRange::{ min: 0.0, max: 1.0 }],
     true,
@@ -404,6 +411,10 @@ fn icc_stream_with_class(
 test "colour space dispatch methods expose families decode and rgb conversion" {
   let cmyk = ColourSpace::Device(DeviceColourSpace::DeviceCMYK)
   assert_eq(cmyk.family() == ColourSpaceFamily::DeviceColourSpaceFamily, true)
+  assert_eq(
+    cmyk.to_device_family() == Some(DeviceColourSpace::DeviceCMYK),
+    true,
+  )
   assert_eq(cmyk.default_decode_array(), [
     0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0,
   ])
@@ -412,6 +423,28 @@ test "colour space dispatch methods expose families decode and rgb conversion" {
   assert_eq(rgb.red, 1.0)
   assert_eq(rgb.green, 0.0)
   assert_eq(rgb.blue, 0.0)
+}
+
+///|
+test "CalGray and Lab parameter methods live beside their type definitions" {
+  let cal_gray = CalGrayParams::{
+    white_point: [0.95047, 1.0, 1.08883],
+    black_point: [0.0, 0.0, 0.0],
+    gamma: 2.0,
+  }
+  let xyz = cal_gray.to_xyz(0.5)
+  assert_eq(xyz.x.is_close(0.2376175, absolute_tolerance=0.000001), true)
+  assert_eq(xyz.y.is_close(0.25, absolute_tolerance=0.000001), true)
+  assert_eq(xyz.z.is_close(0.2722075, absolute_tolerance=0.000001), true)
+
+  let lab = LabParams::{
+    white_point: [0.95047, 1.0, 1.08883],
+    black_point: [0.0, 0.0, 0.0],
+    range: [-10.0, 20.0, -30.0, 40.0],
+  }
+  let (a, b) = lab.clamp_ab(-20.0, 45.0)
+  assert_eq(a, -10.0)
+  assert_eq(b, 40.0)
 }
 
 ///|
