@@ -89,6 +89,42 @@ pub(all) struct DocumentPermissions {
 } derive(Eq, Debug)
 
 ///|
+/// Standard security-handler file key plus reader-visible policy derived from
+/// the Encrypt dictionary. Kept as an alias so callers can use the requested
+/// encryption-key vocabulary without duplicating EncryptionContext state.
+pub type EncryptionKey = EncryptionContext
+
+///|
+pub fn DocumentPermissions::from_raw(raw_permissions : Int64) -> DocumentPermissions {
+  DocumentPermissions::{
+    raw_permissions,
+    print: (raw_permissions & 0x04L) != 0L,
+    modify: (raw_permissions & 0x08L) != 0L,
+    copy: (raw_permissions & 0x10L) != 0L,
+    annotate: (raw_permissions & 0x20L) != 0L,
+    fill_forms: (raw_permissions & 0x100L) != 0L,
+    accessibility_extract: (raw_permissions & 0x200L) != 0L,
+    assemble: (raw_permissions & 0x400L) != 0L,
+    high_quality_print: (raw_permissions & 0x800L) != 0L,
+  }
+}
+
+///|
+pub fn DocumentPermissions::unrestricted() -> DocumentPermissions {
+  DocumentPermissions::{
+    raw_permissions: -1L,
+    print: true,
+    modify: true,
+    copy: true,
+    annotate: true,
+    fill_forms: true,
+    accessibility_extract: true,
+    assemble: true,
+    high_quality_print: true,
+  }
+}
+
+///|
 pub(all) struct FileIdentifier {
   first : Bytes
   second : Bytes?

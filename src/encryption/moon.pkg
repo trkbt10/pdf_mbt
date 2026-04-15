@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/core/encoding/utf8",
   "trkbt10/pdf/src/objects",
   "trkbt10/pdf/src/common_data",
   "trkbt10/pdf/src/crypto",
