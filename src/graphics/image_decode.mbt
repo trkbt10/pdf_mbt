@@ -51,6 +51,24 @@ pub fn extract_image_xobject(
 }
 
 ///|
+/// Validates and extracts an inline image parsed from a content stream. Inline
+/// dictionary abbreviations are already expanded by `content`, while this
+/// function enforces image semantics and decodes supported filters into the
+/// same extracted image data model used for Image XObjects.
+pub fn extract_inline_image(
+  image : @content.PdfInlineImage,
+) -> ExtractedImage raise PdfGraphicsError {
+  let descriptor = validate_inline_image(image)
+  let data = extract_image_data(
+    descriptor,
+    image.dictionary,
+    image.data,
+    image.start_offset,
+  )
+  ExtractedImage::{ descriptor, data }
+}
+
+///|
 fn extract_image_data(
   descriptor : ImageDescriptor,
   dict : @objects.PdfDictionary,

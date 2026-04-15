@@ -25,6 +25,8 @@ pub fn effective_black_point_compensation(RenderingIntent, BlackPointCompensatio
 
 pub fn extract_image_xobject(@objects.PdfName?, @objects.PdfStream, Int64) -> ExtractedImage raise PdfGraphicsError
 
+pub fn extract_inline_image(@content.PdfInlineImage) -> ExtractedImage raise PdfGraphicsError
+
 pub fn interpret_content(@content.ContentStream, GraphicsInitialState) -> GraphicsProgram raise PdfGraphicsError
 
 pub fn interpret_content_with_options(@content.ContentStream, GraphicsInitialState, GraphicsInterpretOptions) -> GraphicsProgram raise PdfGraphicsError

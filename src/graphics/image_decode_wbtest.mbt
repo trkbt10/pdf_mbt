@@ -122,6 +122,30 @@ test "image extraction applies direct soft mask alpha" {
 }
 
 ///|
+test "inline image extraction decodes abbreviated dictionary data" {
+  let content = @content.parse_decoded_content(
+    Bytes::from_array([
+      b'B', b'I', b' ', b'/', b'W', b' ', b'1', b' ', b'/', b'H', b' ', b'1', b' ',
+      b'/', b'C', b'S', b' ', b'/', b'R', b'G', b'B', b' ', b'/', b'B', b'P', b'C',
+      b' ', b'8', b' ', b'/', b'L', b' ', b'3', b' ', b'I', b'D', b' ', 1, 2, 3,
+      b' ', b'E', b'I',
+    ]),
+    @content.ContentResources::empty(),
+  )
+  match content.instructions[0] {
+    @content.ContentInstruction::InlineImage(image) => {
+      let extracted = extract_inline_image(image)
+      match extracted.data {
+        DeviceRgbRaster(raster) =>
+          assert_eq(raster.rgba, Bytes::from_array([1, 2, 3, 255]))
+        _ => fail("expected inline image RGB raster")
+      }
+    }
+    _ => fail("expected inline image instruction")
+  }
+}
+
+///|
 fn decode_test_image_stream(
   width : Int,
   height : Int,
