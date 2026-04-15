@@ -1,1 +1,9 @@
+import {
+  "trkbt10/pdf/src/lib" @pdfapi,
+  "trkbt10/pdf/src/reader",
+  "trkbt10/pdf/src/text",
+}
 
+import {
+  "moonbitlang/x/fs",
+} for "test"

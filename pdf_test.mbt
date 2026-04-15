@@ -1,3 +1,8 @@
-// Blackbox tests run against the package's public API. Use `@pdf` to import.
-// Prefer high-level behaviors over implementation details.
-// Run `moon test` to execute and `moon test --update` to refresh snapshots.
+///|
+test "root package opens PDF through high-level API" {
+  let document = @pdf.open(
+    @fs.read_file_to_bytes("spec/pdf20examples/Simple PDF 2.0 file.pdf"),
+  )
+  assert_eq(document.page_count(), 1)
+  assert_eq(@pdf.extract_all_text(document), "HelloWorld")
+}

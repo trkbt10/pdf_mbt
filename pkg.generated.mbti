@@ -1,13 +1,55 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/pdf"
 
+import {
+  "trkbt10/pdf/src/lib",
+  "trkbt10/pdf/src/reader",
+  "trkbt10/pdf/src/text",
+}
+
 // Values
+pub fn document_author(@lib.PdfDocument) -> String?
+
+pub fn document_creator(@lib.PdfDocument) -> String?
+
+pub fn document_subject(@lib.PdfDocument) -> String?
+
+pub fn document_title(@lib.PdfDocument) -> String?
+
+pub fn extract_all_text(@lib.PdfDocument) -> String
+
+pub fn extract_page_text(@lib.PdfPage) -> String
+
+pub fn open(Bytes) -> @lib.PdfDocument raise @reader.PdfDocumentError
+
+pub fn page_height(@lib.PdfPage) -> Double
+
+pub fn page_images(@lib.PdfPage) -> Array[@lib.PdfImage]
+
+pub fn page_width(@lib.PdfPage) -> Double
+
+pub fn text_spans(@lib.PdfPage) -> Array[@text.TextSpan]
 
 // Errors
 
 // Types and methods
 
 // Type aliases
+pub using @lib {type OutlineItem}
+
+pub using @lib {type PdfCapabilityEntry}
+
+pub using @lib {type PdfCapabilityReport}
+
+pub using @lib {type PdfCapabilityStatus}
+
+pub using @lib {type PdfDocument}
+
+pub using @lib {type PdfImage}
+
+pub using @lib {type PdfPage}
+
+pub using @lib {type PdfWarning}
 
 // Traits
 
