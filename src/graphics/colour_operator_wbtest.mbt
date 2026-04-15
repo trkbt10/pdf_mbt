@@ -241,6 +241,15 @@ fn test_icc_stream(n : Int64, signature : Bytes) -> @objects.PdfStream {
   data[17] = signature[1]
   data[18] = signature[2]
   data[19] = signature[3]
+  data[20] = b'X'
+  data[21] = b'Y'
+  data[22] = b'Z'
+  data[23] = b' '
+  data[36] = b'a'
+  data[37] = b'c'
+  data[38] = b's'
+  data[39] = b'p'
+  data[67] = b'\x01'
   let dict : @objects.PdfDictionary = Map::new()
   dict[@objects.PdfName::new(b"N")] = @objects.PdfObject::Integer(n)
   @objects.PdfStream::{ dict, data: Bytes::from_array(data) }

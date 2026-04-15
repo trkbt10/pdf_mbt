@@ -75,40 +75,6 @@ pub fn LabParams::clamp_ab(
 }
 
 ///|
-/// ICCBased profile header summary. PDF 2.0 uses ICC.1:2010
-/// (ISO 15076-1:2010) as listed in Table 66, and graphics source profiles are
-/// constrained by Table 67 profile types: deviceClass must be scnr, mntr,
-/// prtr, or spac, and colorSpace must be GRAY, RGB, CMYK, or Lab.
-pub(all) struct IccProfileInfo {
-  component_count : Int
-  data_colour_space : @objects.PdfName
-  decoded_length : Int
-} derive(Eq, Debug)
-
-///|
-/// Source of an ICCBased colour space profile. DirectProfile stores validated
-/// bytes from an ICC profile stream; IndirectProfile preserves reader-owned
-/// object loading for a later integration layer.
-pub(all) enum IccProfileSource {
-  DirectProfile(IccProfileInfo)
-  IndirectProfile(@objects.ObjectId)
-} derive(Eq, Debug)
-
-///|
-/// ICCBased colour space dictionary parameters: required N component count,
-/// optional Alternate colour space, optional Range array, and optional Metadata
-/// stream. Source colour values are interpreted through the embedded ICC
-/// profile; tint transformation and alternate conversion are not performed by
-/// the graphics interpreter.
-pub(all) struct IccBasedParams {
-  source : IccProfileSource
-  component_count : Int
-  range : Array[ColourRange]
-  alternate : ColourSpace?
-  metadata : @objects.PdfObject?
-} derive(Eq, Debug)
-
-///|
 /// Parameters for the special ISO 32000-2 Pattern colour space family.
 /// A bare Pattern space selects coloured tiling patterns and shading patterns;
 /// a Pattern space with an underlying colour space supplies components for
@@ -908,7 +874,7 @@ pub fn ColourSpace::component_count(self : ColourSpace) -> Int {
     CalGray(_) => 1
     CalRGB(_) => 3
     Lab(_) => 3
-    ICCBased(params) => params.component_count
+    ICCBased(params) => params.component_count()
     Indexed(_) => 1
     Pattern(params) =>
       match params.underlying {

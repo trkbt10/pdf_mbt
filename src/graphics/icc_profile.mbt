@@ -1,4 +1,83 @@
 ///|
+/// ICCBased profile header summary. PDF 2.0 uses ICC.1:2010
+/// (ISO 15076-1:2010) as listed in Table 66, and graphics source profiles are
+/// constrained by Table 67 profile types: deviceClass must be scnr, mntr,
+/// prtr, or spac, and colorSpace must be GRAY, RGB, CMYK, or Lab.
+pub(all) struct IccProfileInfo {
+  component_count : Int
+  data_colour_space : @objects.PdfName
+  decoded_length : Int
+  rendering_intent : RenderingIntent
+} derive(Eq, Debug)
+
+///|
+/// Source of an ICCBased colour space profile. DirectProfile stores validated
+/// bytes from an ICC profile stream; IndirectProfile preserves reader-owned
+/// object loading for a later integration layer.
+pub(all) enum IccProfileSource {
+  DirectProfile(IccProfileInfo)
+  IndirectProfile(@objects.ObjectId)
+} derive(Eq, Debug)
+
+///|
+/// ICCBased colour space dictionary parameters: required N component count,
+/// optional Alternate colour space, optional Range array, and optional Metadata
+/// stream. Source colour values are interpreted through the embedded ICC
+/// profile; tint transformation and alternate conversion are not performed by
+/// the graphics interpreter.
+pub(all) struct IccBasedParams {
+  source : IccProfileSource
+  component_count : Int
+  range : Array[ColourRange]
+  alternate : ColourSpace?
+  metadata : @objects.PdfObject?
+} derive(Eq, Debug)
+
+///|
+pub fn IccBasedParams::from_profile_header(bytes : Bytes) -> IccBasedParams {
+  let signature = read_signature_or(bytes, 16, b"")
+  let component_count = icc_signature_component_count_or_zero(signature)
+  let rendering_intent = icc_rendering_intent_or_default(
+    read_u32_be_or(bytes, 64, 1L),
+  )
+  let info = IccProfileInfo::{
+    component_count,
+    data_colour_space: @objects.PdfName::new(signature),
+    decoded_length: bytes.length(),
+    rendering_intent,
+  }
+  IccBasedParams::{
+    source: IccProfileSource::DirectProfile(info),
+    component_count,
+    range: default_icc_ranges(component_count),
+    alternate: None,
+    metadata: None,
+  }
+}
+
+///|
+pub fn IccBasedParams::component_count(self : IccBasedParams) -> Int {
+  let declared_count = self.component_count
+  match self.source {
+    DirectProfile(info) =>
+      if info.component_count > 0 {
+        info.component_count
+      } else {
+        declared_count
+      }
+    IndirectProfile(_) => declared_count
+  }
+}
+
+///|
+pub fn IccBasedParams::detected_component_count(self : IccBasedParams) -> Int {
+  match self.source {
+    DirectProfile(info) => info.component_count
+    IndirectProfile(_) => self.component_count
+  }
+}
+
+///|
 fn validate_icc_based_stream(
   stream : @objects.PdfStream,
   defaults : ColourDefaults,
@@ -80,25 +159,12 @@ pub fn validate_icc_profile_stream(
   offset : Int64,
 ) -> IccProfileInfo raise PdfGraphicsError {
   let decoded = decode_colour_stream(stream, offset)
-  if decoded.length() < 128 {
-    raise PdfGraphicsError::InvalidGraphicsState(
-      offset, "ICC profile stream must contain at least a 128-byte header",
-    )
-  }
-  let declared_size = read_u32_be(decoded, 0)
-  if declared_size <= 0L || declared_size > decoded.length().to_int64() {
-    raise PdfGraphicsError::InvalidGraphicsState(
-      offset, "ICC profile declared size exceeds decoded stream length",
-    )
-  }
-  let device_class = read_signature(decoded, 12)
-  validate_icc_device_class(device_class, offset)
-  let signature = read_signature(decoded, 16)
-  let component_count = icc_signature_component_count(signature, offset)
+  let header = parse_icc_profile_header(decoded, offset)
   IccProfileInfo::{
-    component_count,
-    data_colour_space: @objects.PdfName::new(signature),
+    component_count: header.component_count,
+    data_colour_space: header.data_colour_space,
     decoded_length: decoded.length(),
+    rendering_intent: header.rendering_intent,
   }
 }
 
@@ -206,6 +272,24 @@ fn read_signature(data : Bytes, start : Int) -> Bytes {
 }
 
 ///|
+fn read_u32_be_or(data : Bytes, start : Int, fallback : Int64) -> Int64 {
+  if start < 0 || start + 4 > data.length() {
+    fallback
+  } else {
+    read_u32_be(data, start)
+  }
+}
+
+///|
+fn read_signature_or(data : Bytes, start : Int, fallback : Bytes) -> Bytes {
+  if start < 0 || start + 4 > data.length() {
+    fallback
+  } else {
+    read_signature(data, start)
+  }
+}
+
+///|
 fn validate_icc_device_class(
   signature : Bytes,
   offset : Int64,
@@ -219,6 +303,19 @@ fn validate_icc_device_class(
     raise PdfGraphicsError::InvalidGraphicsState(
       offset, "ICC profile deviceClass is not permitted for PDF graphics",
     )
+  }
+}
+
+///|
+fn icc_signature_component_count_or_zero(signature : Bytes) -> Int {
+  if signature == b"GRAY" {
+    1
+  } else if signature == b"RGB " || signature == b"Lab " {
+    3
+  } else if signature == b"CMYK" {
+    4
+  } else {
+    0
   }
 }
 
@@ -237,6 +334,19 @@ fn icc_signature_component_count(
     raise PdfGraphicsError::InvalidGraphicsState(
       offset, "ICC profile source colour space is not permitted for PDF graphics",
     )
+  }
+}
+
+///|
+fn icc_rendering_intent_or_default(value : Int64) -> RenderingIntent {
+  if value == 0L {
+    RenderingIntent::Perceptual
+  } else if value == 2L {
+    RenderingIntent::Saturation
+  } else if value == 3L {
+    RenderingIntent::AbsoluteColorimetric
+  } else {
+    RenderingIntent::RelativeColorimetric
   }
 }
 

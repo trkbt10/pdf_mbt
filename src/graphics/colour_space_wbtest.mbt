@@ -402,6 +402,13 @@ fn icc_stream_with_class(
     data[18] = signature[2]
     data[19] = signature[3]
   }
+  if size >= 68 {
+    data[36] = b'a'
+    data[37] = b'c'
+    data[38] = b's'
+    data[39] = b'p'
+    data[67] = b'\x01'
+  }
   let dict : @objects.PdfDictionary = Map::new()
   dict[@objects.PdfName::new(b"N")] = @objects.PdfObject::Integer(n)
   @objects.PdfStream::{ dict, data: Bytes::from_array(data) }

@@ -190,6 +190,7 @@ test "ICCBased component detection and pattern state accessors are exposed" {
     component_count: 3,
     data_colour_space: colour_fn_name(b"RGB "),
     decoded_length: 128,
+    rendering_intent: RenderingIntent::RelativeColorimetric,
   }
   let params = IccBasedParams::{
     source: IccProfileSource::DirectProfile(info),

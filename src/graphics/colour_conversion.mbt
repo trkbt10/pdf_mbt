@@ -275,14 +275,6 @@ pub fn DeviceNParams::alternate_colour_value(
 }
 
 ///|
-pub fn IccBasedParams::detected_component_count(self : IccBasedParams) -> Int {
-  match self.source {
-    DirectProfile(info) => info.component_count
-    IndirectProfile(_) => self.component_count
-  }
-}
-
-///|
 pub fn ColourSpace::components_to_device_rgb(
   self : ColourSpace,
   components : Array[Double],
@@ -376,7 +368,7 @@ fn icc_based_to_device_rgb(
   components : Array[Double],
   offset : Int64,
 ) -> DeviceRgbColour raise PdfGraphicsError {
-  if components.length() != params.component_count {
+  if components.length() != params.component_count() {
     raise PdfGraphicsError::BadOperand(
       offset, "ICCBased colour value component count mismatch",
     )
