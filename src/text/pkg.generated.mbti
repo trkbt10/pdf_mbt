@@ -15,9 +15,19 @@ pub fn glyph_name_to_unicode(@objects.PdfName) -> String?
 
 pub fn map_glyph_name_to_unicode(Bytes, GlyphIdentifier, GlyphFallback) -> UnicodeMapping
 
+pub fn parse_cmap_stream(@objects.PdfStream, Int64, TextInterpretationLimits) -> CMap raise PdfTextError
+
+pub fn parse_decoded_cmap(Bytes, Int64, TextInterpretationLimits) -> CMap raise PdfTextError
+
+pub fn parse_decoded_to_unicode_cmap(Bytes, Int64, TextInterpretationLimits) -> ToUnicodeCMap raise PdfTextError
+
 pub fn parse_simple_encoding(@objects.PdfObject?, Int64) -> SimpleEncoding raise PdfTextError
 
+pub fn parse_to_unicode_stream(@objects.PdfStream, Int64, TextInterpretationLimits) -> ToUnicodeCMap raise PdfTextError
+
 pub fn resolve_named_encoding(@objects.PdfName, Int64) -> SimpleEncoding raise PdfTextError
+
+pub fn resolve_predefined_cmap(@objects.PdfName, Int64) -> CMap raise PdfTextError
 
 // Errors
 pub(all) suberror PdfTextError {
@@ -33,6 +43,46 @@ pub(all) suberror PdfTextError {
 } derive(Eq, @debug.Debug)
 
 // Types and methods
+pub(all) struct CIDSystemInfo {
+  registry : String
+  ordering : String
+  supplement : Int
+} derive(Eq, @debug.Debug)
+pub fn CIDSystemInfo::compatible_with(Self, Self) -> Bool
+
+pub(all) struct CMap {
+  mut name : @objects.PdfName?
+  mut writing_mode : WritingMode
+  mut cid_system_info : CIDSystemInfo?
+  mut use_cmap : @objects.PdfName?
+  codespaces : Array[CMapCodespaceRange]
+  cid_mappings : Array[CMapCIDMapping]
+  notdef_mappings : Array[CMapCIDMapping]
+} derive(Eq, @debug.Debug)
+pub fn CMap::decode_next(Self, Bytes, Int) -> CMapDecodeResult raise PdfTextError
+pub fn CMap::empty() -> Self
+
+pub(all) struct CMapCIDMapping {
+  low : Bytes
+  high : Bytes
+  cid_start : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CMapCodespaceRange {
+  low : Bytes
+  high : Bytes
+} derive(Eq, @debug.Debug)
+pub fn CMapCodespaceRange::length(Self) -> Int
+
+pub(all) struct CMapDecodeResult {
+  source_bytes : Bytes
+  source_code : Int
+  cid : Int
+  consumed : Int
+  writing_mode : WritingMode
+  fallback : GlyphFallback
+} derive(Eq, @debug.Debug)
+
 pub(all) struct DecodedGlyph {
   source_bytes : Bytes
   source_code : Int
@@ -272,6 +322,21 @@ pub(all) struct TextStateStack {
 pub fn TextStateStack::new() -> Self
 pub fn TextStateStack::restore(Self, TextErrorContext) -> TextStateSnapshot raise PdfTextError
 pub fn TextStateStack::save(Self, TextState, TextObjectState?) -> Unit
+
+pub(all) struct ToUnicodeCMap {
+  name : @objects.PdfName?
+  use_cmap : @objects.PdfName?
+  codespaces : Array[CMapCodespaceRange]
+  mappings : Array[ToUnicodeCodeMapping]
+} derive(Eq, @debug.Debug)
+pub fn ToUnicodeCMap::empty() -> Self
+pub fn ToUnicodeCMap::map_source_code(Self, Bytes) -> String?
+
+pub(all) struct ToUnicodeCodeMapping {
+  low : Bytes
+  high : Bytes
+  values : Array[String]
+} derive(Eq, @debug.Debug)
 
 pub(all) enum UnicodeMapping {
   Unicode(String)
