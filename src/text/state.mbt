@@ -160,6 +160,56 @@ pub fn TextState::with_font(
 }
 
 ///|
+pub fn TextState::with_character_spacing(
+  self : TextState,
+  value : Double,
+) -> TextState {
+  TextState::{ ..self, character_spacing: value }
+}
+
+///|
+pub fn TextState::with_word_spacing(
+  self : TextState,
+  value : Double,
+) -> TextState {
+  TextState::{ ..self, word_spacing: value }
+}
+
+///|
+pub fn TextState::with_horizontal_scaling_percent(
+  self : TextState,
+  value : Double,
+) -> TextState {
+  TextState::{ ..self, horizontal_scaling: value / 100.0 }
+}
+
+///|
+pub fn TextState::with_leading(self : TextState, value : Double) -> TextState {
+  TextState::{ ..self, leading: value }
+}
+
+///|
+pub fn TextState::with_rendering_mode(
+  self : TextState,
+  value : TextRenderingMode,
+) -> TextState {
+  TextState::{ ..self, rendering_mode: value }
+}
+
+///|
+pub fn TextState::with_text_rise(self : TextState, value : Double) -> TextState {
+  TextState::{ ..self, text_rise: value }
+}
+
+///|
+pub fn TextState::with_text_knockout(
+  self : TextState,
+  value : Bool,
+) -> TextState {
+  TextState::{ ..self, text_knockout: value }
+}
+
+///|
 pub fn TextObjectState::initial() -> TextObjectState {
   TextObjectState::{
     text_matrix: TextMatrix::identity(),

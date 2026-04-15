@@ -13,6 +13,8 @@ pub fn decode_utf16be_text(Bytes, TextErrorContext) -> String raise PdfTextError
 
 pub fn glyph_name_to_unicode(@objects.PdfName) -> String?
 
+pub fn interpret_text(@content.ContentStream, TextResources, TextInitialState) -> TextProgram raise PdfTextError
+
 pub fn map_glyph_name_to_unicode(Bytes, GlyphIdentifier, GlyphFallback) -> UnicodeMapping
 
 pub fn parse_cmap_stream(@objects.PdfStream, Int64, TextInterpretationLimits) -> CMap raise PdfTextError
@@ -309,7 +311,14 @@ pub(all) struct TextState {
   text_knockout : Bool
 } derive(Eq, @debug.Debug)
 pub fn TextState::initial() -> Self
+pub fn TextState::with_character_spacing(Self, Double) -> Self
 pub fn TextState::with_font(Self, @objects.PdfName, Double) -> Self
+pub fn TextState::with_horizontal_scaling_percent(Self, Double) -> Self
+pub fn TextState::with_leading(Self, Double) -> Self
+pub fn TextState::with_rendering_mode(Self, TextRenderingMode) -> Self
+pub fn TextState::with_text_knockout(Self, Bool) -> Self
+pub fn TextState::with_text_rise(Self, Double) -> Self
+pub fn TextState::with_word_spacing(Self, Double) -> Self
 
 pub(all) struct TextStateSnapshot {
   state : TextState
