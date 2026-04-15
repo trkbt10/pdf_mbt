@@ -11,9 +11,7 @@ pub fn document_author(doc : PdfDocument) -> String? {
 }
 
 ///|
-/// Implements Requirement 4.1 document metadata:
-/// `PdfDocument::subject() -> String?` SHALL return the Info dictionary
-/// Subject entry when present.
+/// Returns the document Info dictionary Subject entry when present.
 pub fn document_subject(doc : PdfDocument) -> String? {
   document_info_string(doc, b"Subject")
 }
@@ -49,9 +47,8 @@ pub fn PdfDocument::creator(self : PdfDocument) -> String? {
 }
 
 ///|
-/// Implements Requirement 4.3 page geometry:
-/// `PdfPage::width() -> Double` SHALL return the effective page width after
-/// rotation, using the MediaBox dimensions.
+/// Returns the effective page width after rotation, using the MediaBox
+/// dimensions.
 pub fn page_width(page : PdfPage) -> Double {
   let (width, height) = page_dimensions(page)
   if page_is_rotated_sideways(page) {
@@ -62,9 +59,8 @@ pub fn page_width(page : PdfPage) -> Double {
 }
 
 ///|
-/// Implements Requirement 4.3 page geometry:
-/// `PdfPage::height() -> Double` SHALL return the effective page height after
-/// rotation, using the MediaBox dimensions.
+/// Returns the effective page height after rotation, using the MediaBox
+/// dimensions.
 pub fn page_height(page : PdfPage) -> Double {
   let (width, height) = page_dimensions(page)
   if page_is_rotated_sideways(page) {

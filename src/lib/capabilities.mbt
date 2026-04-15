@@ -1,7 +1,5 @@
 ///|
-/// Implements Requirement 6.1 capability introspection support status. Each
-/// document capability report entry SHALL use supported, partial, unsupported,
-/// or unused status for PDF features found during `PdfDocument::check()`.
+/// Support status for PDF features found during `PdfDocument::check()`.
 pub(all) enum PdfCapabilityStatus {
   Supported
   Partial
@@ -21,18 +19,16 @@ pub(all) struct PdfCapabilityEntry {
 } derive(Eq, Debug)
 
 ///|
-/// Implements Requirement 6.1 document capability report. `PdfCapabilityReport`
-/// contains structured entries for used features and whether the library can
-/// handle them, rather than failing silently.
+/// Document capability report containing structured entries for used features
+/// and whether the library can handle them, rather than failing silently.
 pub(all) struct PdfCapabilityReport {
   entries : Array[PdfCapabilityEntry]
 } derive(Eq, Debug)
 
 ///|
-/// Implements Requirement 6.2 and 6.3 warning visibility. `PdfWarning`
-/// describes non-fatal unsupported font type, missing ToUnicode, unknown
-/// operator, unsupported filter, unsupported colour space, or skipped image
-/// extraction details.
+/// Non-fatal warning for unsupported font types, missing ToUnicode maps,
+/// unknown operators, unsupported filters, unsupported colour spaces, or
+/// skipped image extraction details.
 pub(all) struct PdfWarning {
   feature_name : String
   category : String
@@ -75,10 +71,8 @@ pub fn PdfPage::extract_text_with_warnings(
 }
 
 ///|
-/// Implements Requirement 6.3:
-/// `PdfPage::images_with_warnings() -> (Array[PdfImage], Array[PdfWarning])`
-/// SHALL enumerate images and collect warnings for images that could not be
-/// fully decoded because of unsupported filters or unsupported colour spaces.
+/// Enumerates images and collects warnings for images that could not be fully
+/// decoded because of unsupported filters or unsupported colour spaces.
 pub fn PdfPage::images_with_warnings(
   self : PdfPage,
 ) -> (Array[PdfImage], Array[PdfWarning]) {

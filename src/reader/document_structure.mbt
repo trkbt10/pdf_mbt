@@ -123,8 +123,7 @@ pub fn PdfPage::annots(self : PdfPage) -> @objects.PdfObject? {
 
 ///|
 /// Returns the inheritable Resources entry from this Page or the nearest
-/// ancestor Pages node via Parent, following Requirement 4 and ISO 32000-2
-/// section 7.7.3.4.
+/// ancestor Pages node via Parent, following ISO 32000-2 section 7.7.3.4.
 pub fn PdfPage::resources(
   self : PdfPage,
 ) -> @objects.PdfObject? raise PdfDocumentError {
@@ -178,10 +177,10 @@ pub fn PdfPage::user_unit(self : PdfPage) -> Double? raise PdfDocumentError {
 }
 
 ///|
-/// Implements Page Attribute Inheritance for Requirement 4. When a Page object
-/// lacks Resources, MediaBox, CropBox, or Rotate, the ancestor Pages nodes are
-/// searched through Parent links until the nearest ancestor value is found or
-/// the root is reached; missing inherited entries are returned as absent.
+/// Resolves inheritable page attributes. When a Page object lacks Resources,
+/// MediaBox, CropBox, or Rotate, ancestor Pages nodes are searched through
+/// Parent links until the nearest ancestor value is found or the root is
+/// reached; missing inherited entries are returned as absent.
 pub fn PdfPage::inherited_entry(
   self : PdfPage,
   key : @objects.PdfName,

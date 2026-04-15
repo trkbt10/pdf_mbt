@@ -69,11 +69,7 @@ fn AesSchedule::new(key : Bytes) -> AesSchedule raise PdfCryptoError {
         "AES key must be 16 or 32 bytes, got " + other.to_string(),
       )
   }
-  let rounds = match nk {
-    4 => 10
-    8 => 14
-    _ => abort("unreachable AES key word count")
-  }
+  let rounds = if nk == 4 { 10 } else { 14 }
   let words = aes_nb * (rounds + 1)
   let expanded = Array::make(words * 4, b'\x00')
   for index in 0..<key.length() {
@@ -121,7 +117,7 @@ fn sub_bytes(state : Array[Byte]) -> Unit {
 }
 
 ///|
-fn inv_sub_bytes(state : Array[Byte]) -> Unit {
+fn inv_sub_bytes(state : Array[Byte]) -> Unit raise PdfCryptoError {
   for index in 0..<16 {
     state[index] = aes_inv_sbox(state[index])
   }
@@ -258,7 +254,7 @@ fn aes_sbox(value : Byte) -> Byte {
 }
 
 ///|
-fn aes_inv_sbox(value : Byte) -> Byte {
+fn aes_inv_sbox(value : Byte) -> Byte raise PdfCryptoError {
   let target = value
   let mut candidate = 0
   while candidate < 256 {
@@ -267,7 +263,7 @@ fn aes_inv_sbox(value : Byte) -> Byte {
     }
     candidate += 1
   }
-  abort("AES inverse S-box search failed")
+  raise PdfCryptoError::InvalidLength("AES inverse S-box search failed")
 }
 
 ///|

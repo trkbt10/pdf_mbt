@@ -149,10 +149,28 @@ fn Lexer::read_header_marker(
   self : Lexer,
   offset : Int64,
 ) -> PdfToken raise @objects.PdfParseError {
-  let major = self.cursor.peek_n(5).unwrap().to_int() - b'0'.to_int()
-  let minor = self.cursor.peek_n(7).unwrap().to_int() - b'0'.to_int()
+  let major = self.header_digit_at(5, offset)
+  let minor = self.header_digit_at(7, offset)
   self.consume_bytes(8)
   PdfToken::HeaderMarker(major, minor, offset)
+}
+
+///|
+fn Lexer::header_digit_at(
+  self : Lexer,
+  index : Int,
+  offset : Int64,
+) -> Int raise @objects.PdfParseError {
+  match self.cursor.peek_n(index) {
+    Some(byte) if byte >= b'0' && byte <= b'9' => byte.to_int() - b'0'.to_int()
+    Some(byte) =>
+      raise @objects.PdfParseError::UnexpectedToken(
+        offset,
+        "PDF header digit",
+        String::from_array([byte.to_char()]),
+      )
+    None => raise @objects.PdfParseError::UnexpectedEof(offset, "PDF header")
+  }
 }
 
 ///|

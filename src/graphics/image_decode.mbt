@@ -214,12 +214,13 @@ fn decode_sample_bytes_to_rgb(
   }
   let samples = decode_image_sample_values(decoded, descriptor.layout, offset~)
   let alpha = alpha_for_image_descriptor(descriptor, samples, offset)
+  let bits_per_component = require_bits_per_component(descriptor, offset)
   let rgba : Array[Byte] = []
   for pixel in 0..<(descriptor.width * descriptor.height) {
     let (r, g, b) = pixel_to_device_rgb(
       space,
       descriptor.decode,
-      descriptor.bits_per_component.unwrap(),
+      bits_per_component,
       samples,
       pixel,
       offset,
@@ -243,9 +244,10 @@ fn decode_stencil_alpha_mask(
   offset : Int64,
 ) -> ImageAlphaMaskRaster raise PdfGraphicsError {
   let samples = decode_image_sample_values(decoded, descriptor.layout, offset~)
+  let bits_per_component = require_bits_per_component(descriptor, offset)
   let alpha = alpha_from_single_component_samples(
     samples,
-    descriptor.bits_per_component.unwrap(),
+    bits_per_component,
     descriptor.decode[0],
   )
   ImageAlphaMaskRaster::{
@@ -367,9 +369,10 @@ fn decode_gray_alpha_mask(
     )
   }
   let samples = decode_image_sample_values(decoded, descriptor.layout, offset~)
+  let bits_per_component = require_bits_per_component(descriptor, offset)
   let alpha = alpha_from_single_component_samples(
     samples,
-    descriptor.bits_per_component.unwrap(),
+    bits_per_component,
     descriptor.decode[0],
   )
   ImageAlphaMaskRaster::{
@@ -415,6 +418,20 @@ fn colour_key_alpha(
     alpha.push(if masked { b'\x00' } else { b'\xff' })
   }
   Bytes::from_array(alpha)
+}
+
+///|
+fn require_bits_per_component(
+  descriptor : ImageDescriptor,
+  offset : Int64,
+) -> Int raise PdfGraphicsError {
+  match descriptor.bits_per_component {
+    Some(value) => value
+    None =>
+      raise PdfGraphicsError::InvalidImage(
+        offset, "image decoding requires BitsPerComponent",
+      )
+  }
 }
 
 ///|

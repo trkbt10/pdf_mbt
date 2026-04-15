@@ -1,32 +1,30 @@
 ///|
 /// High-level document handle exported from the single-import public API
-/// package `trkbt10/pdf`; callers can open raw bytes, inspect pages,
-/// metadata, outline bookmarks, and capability reports without importing
-/// internal subpackages.
+/// package. Callers can open raw bytes, inspect pages, metadata, outline
+/// bookmarks, and capability reports without importing internal subpackages.
 pub(all) struct PdfDocument {
   inner : @reader.PdfDocument
 }
 
 ///|
 /// High-level page handle returned by `PdfDocument::pages()` and
-/// `PdfDocument::page(index)`. It supports Requirement 2 text extraction,
-/// Requirement 3 image extraction, Requirement 4 page geometry, and
-/// Requirement 6 page-level warnings without exposing internal subpackages.
+/// `PdfDocument::page(index)`. It exposes text extraction, image extraction,
+/// page geometry, and page-level warnings without exposing internal
+/// subpackages.
 pub(all) struct PdfPage {
   inner : @reader.PdfPage
 }
 
 ///|
-/// Opens a PDF from raw bytes through the `trkbt10/pdf` single-import public
-/// API and returns a `PdfDocument` for page access, metadata queries, and
-/// structure traversal.
+/// Opens a PDF from raw bytes through the public API and returns a
+/// `PdfDocument` for page access, metadata queries, and structure traversal.
 pub fn open(bytes : Bytes) -> PdfDocument raise @reader.PdfDocumentError {
   PdfDocument::{ inner: @reader.PdfDocument::open(bytes) }
 }
 
 ///|
 /// Wraps an internal reader document so applications can bridge from lower
-/// level parser code into the high-level `trkbt10/pdf` API.
+/// level parser code into the high-level API.
 pub fn PdfDocument::from_reader(document : @reader.PdfDocument) -> PdfDocument {
   PdfDocument::{ inner: document }
 }
@@ -78,9 +76,8 @@ pub fn PdfPage::from_reader(page : @reader.PdfPage) -> PdfPage {
 
 ///|
 /// Returns the underlying reader page for advanced callers while keeping the
-/// high-level `trkbt10/pdf` package as the single-import public API for page
-/// access, text extraction, image extraction, metadata, and structure
-/// traversal.
+/// high-level API as the single-import entry point for page access, text
+/// extraction, image extraction, metadata, and structure traversal.
 /// The bridge signature is `PdfPage::reader_page() -> reader.PdfPage`.
 pub fn PdfPage::reader_page(self : PdfPage) -> @reader.PdfPage {
   self.inner

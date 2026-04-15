@@ -252,24 +252,3 @@ fn bytes_text(bytes : Bytes?) -> String {
     None => ""
   }
 }
-
-///|
-fn json_escape(value : String) -> String {
-  let out = StringBuilder::new()
-  for char in value {
-    match char {
-      '"' => out.write_string("\\\"")
-      '\\' => out.write_string("\\\\")
-      '\n' => out.write_string("\\n")
-      '\r' => out.write_string("\\r")
-      '\t' => out.write_string("\\t")
-      _ => out.write_char(char)
-    }
-  }
-  out.to_string()
-}
-
-///|
-fn json_string(value : String) -> String {
-  "\"" + json_escape(value) + "\""
-}

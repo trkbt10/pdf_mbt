@@ -6,10 +6,8 @@ pub fn extract_page_text(page : PdfPage) -> String {
 }
 
 ///|
-/// Implements Requirement 2.2 structured text extraction:
-/// `PdfPage::text_spans() -> Array[TextSpan]` SHALL return text spans with
-/// positional metadata, including text matrix and font name, for layout-aware
-/// consumers.
+/// Returns text spans with positional metadata, including text matrix and font
+/// name, for layout-aware consumers.
 /// The function-style alias is `text_spans(page : PdfPage) -> Array[TextSpan]`.
 pub fn text_spans(page : PdfPage) -> Array[@text.TextSpan] {
   reader_page_text_spans(page.inner)

@@ -1,8 +1,7 @@
 ///|
-/// Implements Requirement 10 `PdfImage` public image facade type. `PdfImage`
-/// represents an image XObject referenced by page content; each `PdfImage`
-/// SHALL expose width, height, bits per component, colour space information,
-/// image metadata, and RGBA pixel access.
+/// Public image facade for image XObjects referenced by page content. Each
+/// `PdfImage` exposes dimensions, bits per component, colour space
+/// information, image metadata, and RGBA pixel access.
 pub(all) struct PdfImage {
   name : @objects.PdfName?
   stream : @objects.PdfStream
@@ -31,10 +30,9 @@ pub fn PdfPage::images(self : PdfPage) -> Array[PdfImage] {
 }
 
 ///|
-/// Implements Requirement 3.2 image pixel access:
-/// `PdfImage::to_rgba() -> Bytes` SHALL return the image as RGBA pixel data
-/// with 4 bytes per pixel in row-major order. DCTDecode JPEG and unsupported
-/// filters are surfaced through `PdfPage::images_with_warnings()`.
+/// Returns the image as RGBA pixel data with 4 bytes per pixel in row-major
+/// order. DCTDecode JPEG and unsupported filters are surfaced through
+/// `PdfPage::images_with_warnings()`.
 pub fn PdfImage::to_rgba(self : PdfImage) -> Bytes {
   match self.data {
     DeviceRgbRaster(raster) => raster.rgba
@@ -44,25 +42,19 @@ pub fn PdfImage::to_rgba(self : PdfImage) -> Bytes {
 }
 
 ///|
-/// Implements Requirement 3.3 image metadata:
-/// `PdfImage::width() -> Int` SHALL expose image width without requiring
-/// pixel decoding.
+/// Returns the image width without requiring pixel decoding.
 pub fn PdfImage::width(self : PdfImage) -> Int {
   self.descriptor.width
 }
 
 ///|
-/// Implements Requirement 3.3 image metadata:
-/// `PdfImage::height() -> Int` SHALL expose image height without requiring
-/// pixel decoding.
+/// Returns the image height without requiring pixel decoding.
 pub fn PdfImage::height(self : PdfImage) -> Int {
   self.descriptor.height
 }
 
 ///|
-/// Implements Requirement 3.3 image metadata:
-/// `PdfImage::color_space() -> String` SHALL expose colour space information
-/// without requiring pixel decoding.
+/// Returns colour space information without requiring pixel decoding.
 pub fn PdfImage::color_space(self : PdfImage) -> String {
   match self.descriptor.color_space {
     Some(space) => colour_space_label(space)

@@ -243,8 +243,8 @@ fn CMapParser::apply_definition(
     self.stack.clear()
     return
   }
-  let value = self.stack.pop().unwrap()
-  let key_object = self.stack.pop().unwrap()
+  let value = self.pop_definition_operand(op_offset)
+  let key_object = self.pop_definition_operand(op_offset)
   match key_object {
     @objects.PdfObject::Name(key) =>
       if key == @objects.PdfName::new(b"CMapName") {
@@ -273,6 +273,21 @@ fn CMapParser::apply_definition(
     _ => ()
   }
   self.stack.clear()
+}
+
+///|
+fn CMapParser::pop_definition_operand(
+  self : CMapParser,
+  op_offset : Int64,
+) -> @objects.PdfObject raise PdfTextError {
+  match self.stack.pop() {
+    Some(object) => object
+    None =>
+      raise PdfTextError::InvalidCMap(
+        TextErrorContext::at(op_offset),
+        "definition stack underflow",
+      )
+  }
 }
 
 ///|

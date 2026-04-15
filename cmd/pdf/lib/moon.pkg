@@ -1,6 +1,7 @@
 import {
   "moonbitlang/core/argparse",
   "moonbitlang/core/buffer",
+  "moonbitlang/core/json",
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/string",
   "trkbt10/pdf/src/common_data",

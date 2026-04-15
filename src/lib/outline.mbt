@@ -1,7 +1,6 @@
 ///|
-/// Implements Requirement 5 outline bookmarks API. `OutlineItem` is the
-/// public table-of-contents entry returned by `PdfDocument::outline()`;
-/// each item SHALL expose title, destination page index, and nesting level.
+/// Public table-of-contents entry returned by `PdfDocument::outline()`.
+/// Each item exposes title, destination page index, and nesting level.
 pub(all) struct OutlineItem {
   title : String
   destination_page_index : Int?

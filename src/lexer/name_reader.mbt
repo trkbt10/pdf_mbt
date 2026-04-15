@@ -13,8 +13,8 @@ pub fn read_name(
         if byte == b'#' && has_name_hex_escape(cursor) {
           let offset = cursor.offset()
           cursor.read_byte() |> ignore
-          let high = name_hex_value(cursor.read_byte().unwrap())
-          let low = name_hex_value(cursor.read_byte().unwrap())
+          let high = name_hex_value(read_name_escape_byte(cursor, offset))
+          let low = name_hex_value(read_name_escape_byte(cursor, offset))
           let decoded = (high * 16 + low).to_byte()
           if decoded == b'\x00' {
             raise @objects.PdfParseError::InvalidName(
@@ -30,6 +30,17 @@ pub fn read_name(
     }
   }
   @objects.PdfName::new(Bytes::from_array(bytes))
+}
+
+///|
+fn read_name_escape_byte(
+  cursor : ByteCursor,
+  offset : Int64,
+) -> Byte raise @objects.PdfParseError {
+  match cursor.read_byte() {
+    Some(byte) => byte
+    None => raise @objects.PdfParseError::UnexpectedEof(offset, "name escape")
+  }
 }
 
 ///|

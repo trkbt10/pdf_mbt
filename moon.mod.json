@@ -2,10 +2,10 @@
   "name": "trkbt10/pdf",
   "version": "0.1.0",
   "readme": "README.mbt.md",
-  "repository": "",
+  "repository": "https://github.com/trkbt10/pdf",
   "license": "Apache-2.0",
-  "keywords": [],
-  "description": "",
+  "keywords": ["pdf", "parser", "reader", "iso-32000"],
+  "description": "Pure MoonBit ISO 32000-2 (PDF 2.0) reader library",
   "deps": {
     "moonbitlang/x": "0.4.41"
   }

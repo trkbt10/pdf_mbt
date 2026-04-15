@@ -101,49 +101,45 @@ fn info_json(
   let info = document.document_info()
   let version = file.version()
   let trailer = file.trailer()
-  let out = StringBuilder::new()
-  out.write_string("{")
-  out.write_string("\"title\":" + json_string(document_info_title(info)) + ",")
-  out.write_string(
-    "\"author\":" + json_string(document_info_author(info)) + ",",
-  )
-  out.write_string(
-    "\"subject\":" + json_string(document_info_subject(info)) + ",",
-  )
-  out.write_string(
-    "\"creator\":" + json_string(document_info_creator(info)) + ",",
-  )
-  out.write_string(
-    "\"pdf_version\":" +
-    json_string(version.major.to_string() + "." + version.minor.to_string()) +
-    ",",
-  )
-  out.write_string("\"page_count\":" + document.page_count().to_string() + ",")
-  out.write_string(
-    "\"encrypted\":" +
-    (if trailer.encrypt is Some(_) { "true" } else { "false" }) +
-    ",",
-  )
-  out.write_string("\"file_size\":" + file_size.to_string())
+  let entries : Map[String, Json] = {
+    "title": Json::string(document_info_title(info)),
+    "author": Json::string(document_info_author(info)),
+    "subject": Json::string(document_info_subject(info)),
+    "creator": Json::string(document_info_creator(info)),
+    "pdf_version": Json::string(
+      version.major.to_string() + "." + version.minor.to_string(),
+    ),
+    "page_count": json_number(document.page_count().to_string()),
+    "encrypted": json_bool(trailer.encrypt is Some(_)),
+    "file_size": json_number(file_size.to_string()),
+  }
   if include_pages {
-    out.write_string(",\"pages\":[")
+    let pages : Array[Json] = []
     let count = document.page_count()
     for page_index in 0..<count {
-      if page_index > 0 {
-        out.write_string(",")
-      }
       let page = document.page(page_index)
-      out.write_string("{")
-      out.write_string("\"number\":" + (page_index + 1).to_string() + ",")
-      out.write_string("\"width\":" + page_media_width(page) + ",")
-      out.write_string("\"height\":" + page_media_height(page) + ",")
-      out.write_string("\"rotation\":" + page_rotation(page).to_string())
-      out.write_string("}")
+      pages.push(
+        Json::object({
+          "number": json_number((page_index + 1).to_string()),
+          "width": json_number(page_media_width(page)),
+          "height": json_number(page_media_height(page)),
+          "rotation": json_number(page_rotation(page).to_string()),
+        }),
+      )
     }
-    out.write_string("]")
+    entries["pages"] = Json::array(pages)
   }
-  out.write_string("}")
-  out.to_string()
+  Json::object(entries).stringify()
+}
+
+///|
+fn json_number(repr : String) -> Json {
+  Json::number(0.0, repr~)
+}
+
+///|
+fn json_bool(value : Bool) -> Json {
+  Json::boolean(value)
 }
 
 ///|
