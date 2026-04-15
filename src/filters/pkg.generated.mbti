@@ -9,6 +9,8 @@ import {
 // Values
 pub fn decode_ccitt_fax(Bytes, DecodeParams) -> Bytes raise PdfFilterError
 
+pub fn decode_dct(Bytes, DecodeParams) -> Bytes raise PdfFilterError
+
 pub fn decode_jpx_image(Bytes) -> JpxImageData raise PdfFilterError
 
 pub fn decode_stream(@objects.PdfStream) -> Bytes raise PdfFilterError

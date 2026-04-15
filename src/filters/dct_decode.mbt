@@ -64,7 +64,11 @@ priv struct JpegEntropyReader {
 }
 
 ///|
-fn decode_dct(
+/// Decodes image stream bytes with the DCTDecode baseline JPEG decoder.
+///
+/// DecodeParms such as ColorTransform are applied after entropy decoding and
+/// inverse DCT so callers receive raw interleaved sample bytes.
+pub fn decode_dct(
   data : Bytes,
   params : DecodeParams,
 ) -> Bytes raise PdfFilterError {
