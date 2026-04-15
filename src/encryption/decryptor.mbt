@@ -4,6 +4,9 @@ let aes_object_salt : Bytes = Bytes::from_array([
 ])
 
 ///|
+/// Decrypts encrypted strings with the string crypt filter and the per-object
+/// encryption key derived from the file encryption key, object number, and
+/// generation number.
 pub fn decrypt_string(
   key : EncryptionKey,
   object_id : @objects.ObjectId,
@@ -13,21 +16,32 @@ pub fn decrypt_string(
 }
 
 ///|
+/// Decrypts encrypted streams with the regular stream crypt filter and the
+/// per-object encryption key for this object.
 pub fn decrypt_stream(
   key : EncryptionKey,
   object_id : @objects.ObjectId,
   encrypted_bytes : Bytes,
 ) -> Bytes raise PdfEncryptionError {
-  decrypt_payload(key, key.stream_filter, object_id, encrypted_bytes)
+  decrypt_payload(
+    key,
+    key.crypt_filter_for_stream(StreamDecryptPurpose::RegularStream),
+    object_id,
+    encrypted_bytes,
+  )
 }
 
 ///|
+/// Decrypts encrypted embedded file streams with EFF when present, otherwise
+/// with the regular stream crypt filter and per-object encryption key.
 pub fn decrypt_embedded_file_stream(
   key : EncryptionKey,
   object_id : @objects.ObjectId,
   encrypted_bytes : Bytes,
 ) -> Bytes raise PdfEncryptionError {
-  let filter = key.embedded_file_filter.unwrap_or(key.stream_filter)
+  let filter = key.crypt_filter_for_stream(
+    StreamDecryptPurpose::EmbeddedFileStream,
+  )
   decrypt_payload(key, filter, object_id, encrypted_bytes)
 }
 

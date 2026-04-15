@@ -8,6 +8,69 @@ let ccitt_eol_bits = 12
 let ccitt_eofb_bits = 24
 
 ///|
+/// CCITTFaxDecode output format for decoded bilevel image samples. The
+/// decoded output is 1 bit per pixel, packed 8 pixels per byte, MSB first,
+/// with rows padded to byte boundaries; this is the PDF image sample format
+/// for 1-BPC images.
+priv struct CcittPackedOutputFormat {
+  bits_per_pixel : Int
+  pixels_per_byte : Int
+  msb_first : Bool
+  row_bytes : Int
+}
+
+///|
+fn CcittPackedOutputFormat::from_columns(
+  columns : Int,
+) -> CcittPackedOutputFormat raise PdfFilterError {
+  if columns <= 0 {
+    raise PdfFilterError::InvalidDecodeParms(
+      ccitt_filter_name, "Columns must be positive for packed output",
+    )
+  }
+  CcittPackedOutputFormat::{
+    bits_per_pixel: 1,
+    pixels_per_byte: 8,
+    msb_first: true,
+    row_bytes: (columns + 7) / 8,
+  }
+}
+
+///|
+fn CcittPackedOutputFormat::from_params(
+  config : CcittParams,
+) -> CcittPackedOutputFormat raise PdfFilterError {
+  let row_bytes = config.packed_row_bytes()
+  CcittPackedOutputFormat::{
+    bits_per_pixel: 1,
+    pixels_per_byte: 8,
+    msb_first: true,
+    row_bytes,
+  }
+}
+
+///|
+fn CcittPackedOutputFormat::validate_row_boundary(
+  self : CcittPackedOutputFormat,
+  output_length : Int,
+) -> Unit raise PdfFilterError {
+  if self.bits_per_pixel != 1 || self.pixels_per_byte != 8 || !self.msb_first {
+    raise PdfFilterError::DecodeError(
+      ccitt_filter_name, "invalid CCITT 1-BPC packed output format",
+    )
+  }
+  if output_length % self.row_bytes != 0 {
+    raise PdfFilterError::DecodeError(
+      ccitt_filter_name, "packed CCITT row did not end on byte boundary",
+    )
+  }
+}
+
+///|
+/// CCITTFaxDecode DecodeParms normalized for Group 3 one-dimensional,
+/// mixed Group 3 two-dimensional, and Group 4 decoding. The same parameters
+/// control the final output format: 1 bit per pixel, MSB first, with rows
+/// padded to byte boundaries.
 priv struct CcittParams {
   k : Int
   columns : Int
@@ -19,6 +82,9 @@ priv struct CcittParams {
 }
 
 ///|
+/// Group 4 two-dimensional mode code decoded from the CCITT bit stream.
+/// Pass, Horizontal, and Vertical modes update the changing-element position
+/// against the previous reference line.
 priv enum CcittMode {
   Pass
   Horizontal
@@ -26,6 +92,9 @@ priv enum CcittMode {
 }
 
 ///|
+/// Bit reader for CCITT Group 3 and Group 4 Huffman streams. CCITT codes are
+/// consumed MSB first, while EncodedByteAlign can advance to the next byte
+/// boundary between encoded rows.
 priv struct CcittBitReader {
   data : Bytes
   mut bit_position : Int
@@ -38,9 +107,9 @@ fn decode_ccitt_fax(
 ) -> Bytes raise PdfFilterError {
   let config = read_ccitt_params(params)
   let reader = CcittBitReader::new(data)
-  let rows = if config.k < 0 {
+  let rows = if config.is_group4() {
     decode_ccitt_group4(reader, config)
-  } else if config.k == 0 {
+  } else if config.is_group3_1d() {
     decode_ccitt_group3_1d(reader, config)
   } else {
     decode_ccitt_mixed(reader, config)
@@ -76,6 +145,23 @@ fn read_ccitt_params(params : DecodeParams) -> CcittParams raise PdfFilterError 
       ccitt_filter_name, raw, "EndOfBlock", true,
     ),
   }
+}
+
+///|
+fn CcittParams::is_group4(self : CcittParams) -> Bool {
+  self.k < 0
+}
+
+///|
+fn CcittParams::is_group3_1d(self : CcittParams) -> Bool {
+  self.k == 0
+}
+
+///|
+fn CcittParams::packed_row_bytes(
+  self : CcittParams,
+) -> Int raise PdfFilterError {
+  CcittPackedOutputFormat::from_columns(self.columns).row_bytes
 }
 
 ///|
@@ -453,10 +539,9 @@ fn decode_ccitt_run_code(
           ccitt_filter_name, "truncated CCITT Huffman code",
         )
     }
-    for entry in table {
-      if entry.length == bits_read && entry.bits == code {
-        return entry
-      }
+    match lookup_ccitt_huffman_code(table, code, bits_read) {
+      Some(entry) => return entry
+      None => ()
     }
     bits_read += 1
   }
@@ -507,13 +592,14 @@ fn append_ccitt_run(
 }
 
 ///|
-/// Packs decoded CCITTFaxDecode image rows as one bit per pixel, eight pixels
-/// per byte, most-significant bit first, with each row padded to a byte
-/// boundary. BlackIs1 controls whether black pixels are written as 1-bits.
+/// Packs decoded CCITTFaxDecode image rows as 1 bit per pixel, eight pixels
+/// per byte, MSB first, with rows padded to byte boundaries. BlackIs1 controls
+/// whether black pixels are written as 1-bits.
 fn pack_ccitt_rows(
   rows : Array[Array[Bool]],
   config : CcittParams,
 ) -> Bytes raise PdfFilterError {
+  let output_format = CcittPackedOutputFormat::from_params(config)
   let output : Array[Byte] = []
   for row in rows {
     if row.length() != config.columns {
@@ -546,6 +632,7 @@ fn pack_ccitt_rows(
     if bits_filled > 0 {
       output.push((current_byte << (8 - bits_filled)).to_byte())
     }
+    output_format.validate_row_boundary(output.length())
   }
   Bytes::from_array(output)
 }

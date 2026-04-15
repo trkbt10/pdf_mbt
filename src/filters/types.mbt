@@ -27,16 +27,6 @@ fn FilterName::to_text(self : FilterName) -> String {
 }
 
 ///|
-pub(all) struct JpxImageData {
-  width : Int
-  height : Int
-  num_components : Int
-  bits_per_component : Int
-  is_signed : Bool
-  data : Bytes
-} derive(Eq, Debug)
-
-///|
 priv struct DecodeParams {
   raw : @objects.PdfDictionary?
 }

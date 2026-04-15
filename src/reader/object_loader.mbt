@@ -1,4 +1,8 @@
 ///|
+/// Loads an indirect object and applies transparent decryption when the file
+/// is encrypted. Encrypted strings and encrypted streams are decrypted with
+/// the per-object encryption key before text extraction, image extraction, or
+/// other downstream consumers see the object.
 pub fn PdfFile::load_object(
   self : PdfFile,
   id : @objects.ObjectId,

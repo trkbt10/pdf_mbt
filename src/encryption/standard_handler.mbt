@@ -7,6 +7,10 @@ let standard_password_padding : Bytes = Bytes::from_array([
 ])
 
 ///|
+/// Authenticates an Encrypt dictionary with /Filter /Standard for revisions
+/// 2, 3, 4, 5, and 6 using a user or owner password. On success it returns
+/// the derived EncryptionKey, permission flags, and crypt filters needed for
+/// encrypted strings, encrypted streams, and per-object encryption keys.
 pub fn authenticate(
   encrypt_dict : @objects.PdfDictionary,
   password : Bytes,

@@ -47,6 +47,8 @@ pub(all) struct CryptFilter {
   auth_event : CryptFilterAuthEvent
   length_bits : Int?
 } derive(Eq, @debug.Debug)
+pub fn CryptFilter::decrypts_payload(Self) -> Bool
+pub fn CryptFilter::identity() -> Self
 
 pub(all) enum CryptFilterAuthEvent {
   DocOpen
@@ -99,6 +101,8 @@ pub(all) struct EncryptionContext {
   stream_filter : CryptFilter
   embedded_file_filter : CryptFilter?
 } derive(Eq, @debug.Debug)
+pub fn EncryptionContext::can_decrypt_objects(Self) -> Bool
+pub fn EncryptionContext::crypt_filter_for_stream(Self, StreamDecryptPurpose) -> CryptFilter
 
 pub(all) struct EncryptionCredentials {
   password : Bytes

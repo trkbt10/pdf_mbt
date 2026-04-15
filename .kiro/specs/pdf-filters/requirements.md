@@ -81,7 +81,7 @@ The filter decoder shall decode DCTDecode streams per §7.4.8, decompressing JPE
 The filter decoder shall gracefully handle filters that are not yet implemented.
 
 #### Acceptance Criteria
-- For CCITTFaxDecode, JBIG2Decode, JPXDecode, and Crypt filters, the filter decoder shall return a descriptive error indicating the filter is not yet supported
+- For CCITTFaxDecode, JBIG2Decode, and Crypt filters, the filter decoder shall return a descriptive error indicating the filter is not yet supported
 - The error shall include the filter name so that callers can identify which filter caused the failure
 - The filter decoder shall not silently skip unsupported filters or return corrupted data
 

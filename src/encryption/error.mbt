@@ -14,6 +14,8 @@ pub(all) suberror PdfEncryptionError {
 } derive(Eq, Debug)
 
 ///|
+/// Converts a lower-level crypto failure into the encryption package's typed
+/// error model without losing the original diagnostic.
 pub fn wrap_crypto_error(error : @crypto.PdfCryptoError) -> PdfEncryptionError {
   PdfEncryptionError::CryptoFailure(error)
 }

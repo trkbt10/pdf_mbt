@@ -139,10 +139,12 @@ pub fn decode_stencil_mask_to_colour(
 }
 
 ///|
-/// Validates and extracts an image XObject stream. This decodes filters already
-/// supported by `filters.decode_stream`, interprets the decoded bytes using the
-/// image Width, Height, BitsPerComponent, Decode, and row-padding rules, and
-/// converts supported colour spaces to DeviceRGB for display-oriented callers.
+/// Validates and extracts an image XObject stream. For JPXDecode, the
+/// JPEG 2000 image pipeline integration uses decoded sample data and metadata
+/// from the filter layer so JPEG 2000 Width, Height, and component count
+/// override PDF dictionary values, including the component count override.
+/// Other supported filters use the image Width, Height, BitsPerComponent,
+/// Decode, and row-padding rules before conversion to DeviceRGB.
 pub fn extract_image_xobject(
   name : @objects.PdfName?,
   stream : @objects.PdfStream,
@@ -155,8 +157,8 @@ pub fn extract_image_xobject(
 
 ///|
 /// Validates and extracts an inline image parsed from a content stream. Inline
-/// dictionary abbreviations are already expanded by `content`, while this
-/// function enforces image semantics and decodes supported filters into the
+/// dictionary abbreviations are already expanded by `content`; JPXDecode is
+/// rejected for inline images, while other supported filters decode into the
 /// same extracted image data model used for Image XObjects.
 pub fn extract_inline_image(
   image : @content.PdfInlineImage,

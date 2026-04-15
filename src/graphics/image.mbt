@@ -155,8 +155,8 @@ pub(all) struct ImageDescriptor {
 ///|
 /// Validates an image XObject stream from the XObject resource dictionary.
 /// `/Type /XObject` and `/Subtype /Image` are required for painted image
-/// XObjects, and the returned descriptor is the sampled image semantics used
-/// by the graphics interpreter.
+/// XObjects. When JPXDecode is present, JPEG 2000 dimensions and component
+/// count override PDF dictionary values for image pipeline integration.
 pub fn validate_image_stream(
   name : @objects.PdfName?,
   stream : @objects.PdfStream,
@@ -192,7 +192,8 @@ pub fn validate_inline_image(
 /// Shared image dictionary validator for image XObjects and inline images.
 /// It validates Width, Height, ColorSpace, BitsPerComponent, Decode arrays,
 /// ImageMask, Mask, SMask, SMaskInData, Interpolate, Alternates, and PDF 2.0
-/// associated metadata while leaving raster rendering outside this package.
+/// associated metadata. For JPXDecode, JPEG 2000 metadata supplies the image
+/// pipeline integration override for Width, Height, and component count.
 pub fn validate_image_dictionary(
   source : ImageSource,
   dict : @objects.PdfDictionary,
