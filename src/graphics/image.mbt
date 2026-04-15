@@ -46,6 +46,19 @@ pub(all) struct ImageSampleLayout {
 } derive(Eq, Debug)
 
 ///|
+/// Validation summary for an image dictionary's sample stream. The expected
+/// stream length is the decoded byte count implied by Width, Height,
+/// ColorSpace component count, BitsPerComponent, and per-row byte padding.
+pub(all) struct ImageDictionaryValidation {
+  width : Int
+  height : Int
+  component_count : Int
+  bits_per_component : Int
+  expected_stream_length : Int
+  actual_stream_length : Int
+} derive(Eq, Debug)
+
+///|
 /// Masked image model from ISO 32000-2 8.9.6: no mask, stencil ImageMask,
 /// explicit image mask XObject, or colour key masking with pre-decode sample
 /// ranges. Colour-key masks are arrays of min/max component integers.
@@ -279,6 +292,49 @@ pub fn ImageSampleLayout::from_values(
     bits_per_row,
     bytes_per_row,
     expected_decoded_length: bytes_per_row * height,
+  }
+}
+
+///|
+/// Verifies Width, Height, component count, BitsPerComponent, and decoded
+/// stream length consistency for an image sample layout.
+pub fn ImageSampleLayout::validate_stream_length(
+  self : ImageSampleLayout,
+  stream_length : Int,
+  offset? : Int64 = 0L,
+) -> ImageDictionaryValidation raise PdfGraphicsError {
+  validate_image_sample_layout(self, offset)
+  if stream_length < self.expected_decoded_length {
+    raise invalid_image(
+      offset, "decoded image data is shorter than expected stream length",
+    )
+  }
+  ImageDictionaryValidation::{
+    width: self.width,
+    height: self.height,
+    component_count: self.component_count,
+    bits_per_component: self.bits_per_component,
+    expected_stream_length: self.expected_decoded_length,
+    actual_stream_length: stream_length,
+  }
+}
+
+///|
+fn validate_image_sample_layout(
+  layout : ImageSampleLayout,
+  offset : Int64,
+) -> Unit raise PdfGraphicsError {
+  if layout.width <= 0 {
+    raise invalid_image(offset, "Width must be positive")
+  }
+  if layout.height <= 0 {
+    raise invalid_image(offset, "Height must be positive")
+  }
+  if layout.component_count <= 0 {
+    raise invalid_image(offset, "image sample layout requires components")
+  }
+  if !is_valid_bits_per_component(layout.bits_per_component.to_int64()) {
+    raise invalid_image(offset, "BitsPerComponent must be 1, 2, 4, 8, or 16")
   }
 }
 
@@ -756,11 +812,8 @@ fn validate_decoded_length(
 ) -> Unit raise PdfGraphicsError {
   match status {
     DecodedBytes(length) =>
-      if layout.expected_decoded_length > 0 &&
-        length < layout.expected_decoded_length {
-        raise invalid_image(
-          offset, "decoded image data is shorter than sample layout",
-        )
+      if layout.expected_decoded_length > 0 {
+        layout.validate_stream_length(length, offset~) |> ignore
       }
     _ => ()
   }

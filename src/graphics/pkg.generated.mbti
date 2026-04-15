@@ -9,11 +9,19 @@ import {
 }
 
 // Values
+pub fn apply_image_decode_array(Array[Int], ImageSampleLayout, Array[ImageDecodeRange], offset? : Int64) -> Array[Double] raise PdfGraphicsError
+
+pub fn apply_image_decode_range(Int, Int, ImageDecodeRange, offset? : Int64) -> Double raise PdfGraphicsError
+
 pub fn apply_transfer_function(Double, ColourTransformFunction, offset? : Int64) -> Double raise PdfGraphicsError
 
 pub fn apply_transfer_functions(Array[Double], ColourTransfer, offset? : Int64) -> Array[Double] raise PdfGraphicsError
 
 pub fn cie_xyz_d65_to_srgb(CieXyzColour) -> DeviceRgbColour
+
+pub fn decode_image_sample_values(Bytes, ImageSampleLayout, offset? : Int64) -> Array[Int] raise PdfGraphicsError
+
+pub fn decode_stencil_mask_to_colour(ImageDescriptor, Bytes, DeviceRgbColour, offset? : Int64) -> ImageDeviceRgbRaster raise PdfGraphicsError
 
 pub fn device_cmyk_to_rgb(DeviceCmykColour) -> DeviceRgbColour
 
@@ -34,6 +42,8 @@ pub fn interpret_content_with_options(@content.ContentStream, GraphicsInitialSta
 pub fn interpret_form_xobject(FormXObject, @content.ContentResources, GraphicsState, GraphicsInterpretOptions, Int64) -> GraphicsProgram raise PdfGraphicsError
 
 pub fn lab_d50_to_srgb(Double, Double, Double) -> DeviceRgbColour
+
+pub fn paint_stencil_mask_with_colour(ImageAlphaMaskRaster, DeviceRgbColour) -> ImageDeviceRgbRaster
 
 pub fn parse_colour_space_object(@objects.PdfObject, ColourDefaults, Int64) -> ColourSpace raise PdfGraphicsError
 
@@ -594,6 +604,15 @@ pub(all) struct ImageDeviceRgbRaster {
   rgba : Bytes
 } derive(Eq, @debug.Debug)
 
+pub(all) struct ImageDictionaryValidation {
+  width : Int
+  height : Int
+  component_count : Int
+  bits_per_component : Int
+  expected_stream_length : Int
+  actual_stream_length : Int
+} derive(Eq, @debug.Debug)
+
 pub(all) enum ImageMaskInfo {
   NoImageMask
   StencilImageMask
@@ -611,6 +630,7 @@ pub(all) struct ImageSampleLayout {
   expected_decoded_length : Int
 } derive(Eq, @debug.Debug)
 pub fn ImageSampleLayout::from_values(Int, Int, Int, Int) -> Self
+pub fn ImageSampleLayout::validate_stream_length(Self, Int, offset? : Int64) -> ImageDictionaryValidation raise PdfGraphicsError
 
 pub(all) enum ImageSoftMaskSource {
   NoImageSoftMask

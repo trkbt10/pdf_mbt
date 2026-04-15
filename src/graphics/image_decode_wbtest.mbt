@@ -28,6 +28,71 @@ test "image extraction decodes one-bit rows with byte padding to DeviceRGB" {
 }
 
 ///|
+test "sample value decoding unpacks 2 4 and 16 bit components" {
+  let two_bit = ImageSampleLayout::from_values(4, 1, 1, 2)
+  assert_eq(
+    decode_image_sample_values(Bytes::from_array([0b00011011]), two_bit),
+    [0, 1, 2, 3],
+  )
+
+  let four_bit = ImageSampleLayout::from_values(2, 1, 3, 4)
+  assert_eq(
+    decode_image_sample_values(Bytes::from_array([0x12, 0x34, 0x56]), four_bit),
+    [1, 2, 3, 4, 5, 6],
+  )
+
+  let sixteen_bit = ImageSampleLayout::from_values(2, 1, 1, 16)
+  assert_eq(
+    decode_image_sample_values(
+      Bytes::from_array([0x12, 0x34, 0xab, 0xcd]),
+      sixteen_bit,
+    ),
+    [4660, 43981],
+  )
+}
+
+///|
+test "image dictionary validation reports expected decoded stream length" {
+  let layout = ImageSampleLayout::from_values(3, 2, 3, 8)
+  let validation = layout.validate_stream_length(18)
+
+  assert_eq(validation.width, 3)
+  assert_eq(validation.height, 2)
+  assert_eq(validation.component_count, 3)
+  assert_eq(validation.bits_per_component, 8)
+  assert_eq(validation.expected_stream_length, 18)
+  assert_eq(validation.actual_stream_length, 18)
+}
+
+///|
+test "Decode array application maps raw samples into component ranges" {
+  let layout = ImageSampleLayout::from_values(2, 1, 3, 8)
+  let decoded = apply_image_decode_array([0, 255, 255, 255, 0, 0], layout, [
+    ImageDecodeRange::{ min: 0.0, max: 1.0 },
+    ImageDecodeRange::{ min: 1.0, max: 0.0 },
+    ImageDecodeRange::{ min: 0.0, max: 2.0 },
+  ])
+
+  assert_eq(decoded, [0.0, 0.0, 2.0, 1.0, 1.0, 0.0])
+}
+
+///|
+test "stencil mask painting combines one-bit mask with paint colour" {
+  let mask = ImageAlphaMaskRaster::{
+    width: 2,
+    height: 1,
+    alpha: Bytes::from_array([255, 0]),
+  }
+  let raster = paint_stencil_mask_with_colour(mask, DeviceRgbColour::{
+    red: 1.0,
+    green: 0.5,
+    blue: 0.0,
+  })
+
+  assert_eq(raster.rgba, Bytes::from_array([255, 128, 0, 255, 255, 128, 0, 0]))
+}
+
+///|
 test "image extraction preserves unsupported encoded image codecs" {
   let stream = decode_test_image_stream(
     1,

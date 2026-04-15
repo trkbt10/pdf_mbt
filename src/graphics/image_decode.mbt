@@ -36,6 +36,109 @@ pub(all) struct ExtractedImage {
 } derive(Eq, Debug)
 
 ///|
+/// Decodes PDF image sample bytes into unsigned component values. Bits are
+/// consumed most-significant first, rows start on byte boundaries, row padding
+/// bits are ignored, and 1, 2, 4, 8, and 16 bit components are supported.
+pub fn decode_image_sample_values(
+  data : Bytes,
+  layout : ImageSampleLayout,
+  offset? : Int64 = 0L,
+) -> Array[Int] raise PdfGraphicsError {
+  unpack_image_samples(data, layout, offset)
+}
+
+///|
+/// Applies one Decode array component range to a raw sample value by linear
+/// interpolation from `[0, 2^BitsPerComponent - 1]` to `[Dmin, Dmax]`.
+pub fn apply_image_decode_range(
+  sample : Int,
+  bits_per_component : Int,
+  range : ImageDecodeRange,
+  offset? : Int64 = 0L,
+) -> Double raise PdfGraphicsError {
+  validate_sample_value(sample, bits_per_component, offset)
+  decode_sample_value(sample, bits_per_component, range)
+}
+
+///|
+/// Applies an image Decode array to interleaved raw samples, returning
+/// interleaved colour component values in the image colour space.
+pub fn apply_image_decode_array(
+  samples : Array[Int],
+  layout : ImageSampleLayout,
+  decode : Array[ImageDecodeRange],
+  offset? : Int64 = 0L,
+) -> Array[Double] raise PdfGraphicsError {
+  if layout.component_count <= 0 {
+    raise PdfGraphicsError::InvalidImage(
+      offset, "Decode array application requires image components",
+    )
+  }
+  if decode.length() != layout.component_count {
+    raise PdfGraphicsError::InvalidImage(
+      offset, "Decode array length does not match component count",
+    )
+  }
+  let decoded : Array[Double] = []
+  for index in 0..<samples.length() {
+    let component = index % layout.component_count
+    decoded.push(
+      apply_image_decode_range(
+        samples[index],
+        layout.bits_per_component,
+        decode[component],
+        offset~,
+      ),
+    )
+  }
+  decoded
+}
+
+///|
+/// Combines a one-byte stencil alpha mask with the current nonstroking paint
+/// colour represented in DeviceRGB, producing masked RGBA pixels.
+pub fn paint_stencil_mask_with_colour(
+  mask : ImageAlphaMaskRaster,
+  paint : DeviceRgbColour,
+) -> ImageDeviceRgbRaster {
+  let rgba : Array[Byte] = []
+  let red = unit_to_byte(paint.red)
+  let green = unit_to_byte(paint.green)
+  let blue = unit_to_byte(paint.blue)
+  for alpha in mask.alpha {
+    rgba.push(red)
+    rgba.push(green)
+    rgba.push(blue)
+    rgba.push(alpha)
+  }
+  ImageDeviceRgbRaster::{
+    width: mask.width,
+    height: mask.height,
+    rgba: Bytes::from_array(rgba),
+  }
+}
+
+///|
+/// Decodes an ImageMask stream and paints every unmasked one-bit sample with
+/// the supplied DeviceRGB paint colour.
+pub fn decode_stencil_mask_to_colour(
+  descriptor : ImageDescriptor,
+  decoded : Bytes,
+  paint : DeviceRgbColour,
+  offset? : Int64 = 0L,
+) -> ImageDeviceRgbRaster raise PdfGraphicsError {
+  if !descriptor.image_mask {
+    raise PdfGraphicsError::InvalidImage(
+      offset, "stencil mask painting requires ImageMask true",
+    )
+  }
+  paint_stencil_mask_with_colour(
+    decode_stencil_alpha_mask(descriptor, decoded, offset),
+    paint,
+  )
+}
+
+///|
 /// Validates and extracts an image XObject stream. This decodes filters already
 /// supported by `filters.decode_stream`, interprets the decoded bytes using the
 /// image Width, Height, BitsPerComponent, Decode, and row-padding rules, and
@@ -109,7 +212,7 @@ fn decode_sample_bytes_to_rgb(
         descriptor.filters.copy(),
       )
   }
-  let samples = unpack_image_samples(decoded, descriptor.layout, offset)
+  let samples = decode_image_sample_values(decoded, descriptor.layout, offset~)
   let alpha = alpha_for_image_descriptor(descriptor, samples, offset)
   let rgba : Array[Byte] = []
   for pixel in 0..<(descriptor.width * descriptor.height) {
@@ -139,7 +242,7 @@ fn decode_stencil_alpha_mask(
   decoded : Bytes,
   offset : Int64,
 ) -> ImageAlphaMaskRaster raise PdfGraphicsError {
-  let samples = unpack_image_samples(decoded, descriptor.layout, offset)
+  let samples = decode_image_sample_values(decoded, descriptor.layout, offset~)
   let alpha = alpha_from_single_component_samples(
     samples,
     descriptor.bits_per_component.unwrap(),
@@ -263,7 +366,7 @@ fn decode_gray_alpha_mask(
       offset, "soft mask image must decode to one component",
     )
   }
-  let samples = unpack_image_samples(decoded, descriptor.layout, offset)
+  let samples = decode_image_sample_values(decoded, descriptor.layout, offset~)
   let alpha = alpha_from_single_component_samples(
     samples,
     descriptor.bits_per_component.unwrap(),
@@ -342,11 +445,7 @@ fn unpack_image_samples(
   layout : ImageSampleLayout,
   offset : Int64,
 ) -> Array[Int] raise PdfGraphicsError {
-  if layout.bits_per_component <= 0 || layout.component_count <= 0 {
-    raise PdfGraphicsError::InvalidImage(
-      offset, "image sample layout cannot be decoded",
-    )
-  }
+  validate_image_sample_layout(layout, offset)
   if data.length() < layout.expected_decoded_length {
     raise PdfGraphicsError::InvalidImage(
       offset, "decoded image data is shorter than sample layout",
@@ -368,6 +467,19 @@ fn unpack_image_samples(
     }
   }
   samples
+}
+
+///|
+fn validate_sample_value(
+  sample : Int,
+  bits_per_component : Int,
+  offset : Int64,
+) -> Unit raise PdfGraphicsError {
+  if sample < 0 || sample.to_int64() > max_sample_value(bits_per_component) {
+    raise PdfGraphicsError::InvalidImage(
+      offset, "image sample value is outside BitsPerComponent domain",
+    )
+  }
 }
 
 ///|
