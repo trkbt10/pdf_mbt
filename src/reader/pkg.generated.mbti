@@ -9,6 +9,7 @@ import {
   "trkbt10/pdf/src/graphics",
   "trkbt10/pdf/src/interchange",
   "trkbt10/pdf/src/objects",
+  "trkbt10/pdf/src/text",
 }
 
 // Values
@@ -53,6 +54,7 @@ pub(all) suberror PdfDocumentError {
   InterchangeError(@interchange.PdfInterchangeError)
   ContentError(@content.PdfContentError)
   GraphicsError(@graphics.PdfGraphicsError)
+  TextError(@text.PdfTextError)
   PageIndexOutOfRange(Int, Int)
   CycleDetected(@objects.ObjectId, String)
 } derive(Eq, @debug.Debug)
@@ -1443,6 +1445,7 @@ pub fn PdfPage::content_stream(Self) -> @content.ContentStream raise PdfDocument
 pub fn PdfPage::contents(Self) -> @objects.PdfObject?
 pub fn PdfPage::crop_box(Self) -> PdfRectangle? raise PdfDocumentError
 pub fn PdfPage::entry(Self, @objects.PdfName) -> @objects.PdfObject?
+pub fn PdfPage::extracted_text(Self, TextPageOptions) -> @text.ExtractedText raise PdfDocumentError
 pub fn PdfPage::graphics_events(Self, GraphicsPageOptions) -> Array[@graphics.GraphicsEvent] raise PdfDocumentError
 pub fn PdfPage::graphics_initial_state(Self, GraphicsPageOptions) -> @graphics.GraphicsInitialState raise PdfDocumentError
 pub fn PdfPage::graphics_program(Self, GraphicsPageOptions) -> @graphics.GraphicsProgram raise PdfDocumentError
@@ -1465,6 +1468,8 @@ pub fn PdfPage::resolve_entry(Self, @objects.PdfName) -> @objects.PdfObject? rai
 pub fn PdfPage::resources(Self) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfPage::rotate(Self) -> Int? raise PdfDocumentError
 pub fn PdfPage::shading_resource(Self, @objects.PdfName) -> @graphics.ShadingResource raise PdfDocumentError
+pub fn PdfPage::text_program(Self, TextPageOptions) -> @text.TextProgram raise PdfDocumentError
+pub fn PdfPage::text_resources(Self) -> @text.TextResources raise PdfDocumentError
 pub fn PdfPage::thumbnail(Self) -> PdfThumbnail? raise PdfDocumentError
 pub fn PdfPage::user_unit(Self) -> Double? raise PdfDocumentError
 
@@ -2497,6 +2502,12 @@ pub(all) struct PdfWindowsLaunchParams {
 } derive(Eq, @debug.Debug)
 
 type StructuralDomain derive(Eq, @debug.Debug)
+
+pub(all) struct TextPageOptions {
+  initial_ctm : @text.TextMatrix?
+  materialize_resources : Bool
+} derive(Eq, @debug.Debug)
+pub fn TextPageOptions::default() -> Self
 
 pub(all) struct TrailerInfo {
   size : Int
