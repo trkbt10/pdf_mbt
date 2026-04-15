@@ -217,9 +217,7 @@ fn TextInterpreter::move_text_position(
   if set_leading {
     self.state = self.state.with_leading(-ty)
   }
-  let object_state = self
-    .require_text_object(operation.offset)
-    .apply_td(tx, ty)
+  let object_state = self.require_text_object(operation.offset).apply_td(tx, ty)
   self.object_state = Some(object_state)
 }
 
@@ -230,7 +228,9 @@ fn TextInterpreter::set_text_matrix(
 ) -> Unit raise PdfTextError {
   require_operand_count(operation, 6)
   self.object_state = Some(
-    self.require_text_object(operation.offset).apply_tm(
+    self
+    .require_text_object(operation.offset)
+    .apply_tm(
       number_operand_at(operation, 0, "Tm a"),
       number_operand_at(operation, 1, "Tm b"),
       number_operand_at(operation, 2, "Tm c"),
@@ -331,7 +331,10 @@ fn TextInterpreter::show_string(
     )
     mappings.push(item.unicode)
     match item.unicode {
-      Unicode(text_value) => text = text + text_value
+      Unicode(text_value) =>
+        if !is_zero_width_spacing_glyph(item.glyph, text_value) {
+          text = text + text_value
+        }
       Unknown(_, _, _) => ()
     }
     self.advance_after_glyph(item.glyph, offset)
@@ -344,6 +347,13 @@ fn TextInterpreter::show_string(
     source_bytes: bytes,
     text_matrix: object_state.text_matrix,
   })
+}
+
+///|
+fn is_zero_width_spacing_glyph(glyph : DecodedGlyph, text : String) -> Bool {
+  text == " " &&
+  glyph.metrics.horizontal_displacement == 0.0 &&
+  glyph.metrics.width_source == GlyphWidthSource::FontDescriptorMissingWidth
 }
 
 ///|

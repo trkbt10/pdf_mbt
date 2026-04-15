@@ -194,6 +194,7 @@ fn materialize_font_dictionary(
   let output = dict.copy()
   materialize_font_entry(file, output, b"Encoding", page_id)
   materialize_font_entry(file, output, b"ToUnicode", page_id)
+  materialize_font_entry(file, output, b"Widths", page_id)
   materialize_font_entry(file, output, b"FontDescriptor", page_id)
   materialize_descendant_fonts(file, output, page_id)
   output
