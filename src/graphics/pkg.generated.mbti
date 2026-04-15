@@ -686,6 +686,18 @@ pub(all) enum ImageMaskInfo {
   ColourKeyMask(Array[Int64])
 } derive(Eq, @debug.Debug)
 
+pub(all) struct ImageParams {
+  width : Int
+  height : Int
+  bits_per_component : Int
+  component_count : Int
+  image_mask : Bool
+} derive(Eq, @debug.Debug)
+pub fn ImageParams::apply_decode_array(Self, Array[Int], Array[Double]) -> Array[Double]
+pub fn ImageParams::expected_data_length(Self) -> Int
+pub fn ImageParams::is_stencil_mask(Self) -> Bool
+pub fn ImageParams::unpack_samples(Self, Bytes) -> Array[Int]
+
 pub(all) struct ImageSampleLayout {
   width : Int
   height : Int

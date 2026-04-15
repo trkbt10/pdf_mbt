@@ -46,6 +46,17 @@ pub(all) struct ImageSampleLayout {
 } derive(Eq, Debug)
 
 ///|
+/// Lightweight image sample parameters used by requirements checks and callers
+/// that need sample-byte arithmetic without a full image dictionary.
+pub(all) struct ImageParams {
+  width : Int
+  height : Int
+  bits_per_component : Int
+  component_count : Int
+  image_mask : Bool
+} derive(Eq, Debug)
+
+///|
 /// Validation summary for an image dictionary's sample stream. The expected
 /// stream length is the decoded byte count implied by Width, Height,
 /// ColorSpace component count, BitsPerComponent, and per-row byte padding.
@@ -317,6 +328,97 @@ pub fn ImageSampleLayout::validate_stream_length(
     expected_stream_length: self.expected_decoded_length,
     actual_stream_length: stream_length,
   }
+}
+
+///|
+/// Computes the decoded sample byte count implied by Width, Height,
+/// BitsPerComponent, and component count. Each PDF image row is byte-aligned,
+/// so partial row bytes are rounded up before multiplying by Height.
+pub fn ImageParams::expected_data_length(self : ImageParams) -> Int {
+  if self.width <= 0 || self.height <= 0 || self.component_count <= 0 {
+    return 0
+  }
+  if !is_valid_bits_per_component(self.bits_per_component.to_int64()) {
+    return 0
+  }
+  let bits_per_row = self.width * self.component_count * self.bits_per_component
+  let bytes_per_row = (bits_per_row + 7) / 8
+  bytes_per_row * self.height
+}
+
+///|
+/// Unpacks interleaved image sample values from decoded bytes. Bits are read
+/// most-significant first, rows begin on byte boundaries, and padding bits at
+/// the end of each row are skipped.
+pub fn ImageParams::unpack_samples(
+  self : ImageParams,
+  data : Bytes,
+) -> Array[Int] {
+  let expected = self.expected_data_length()
+  if expected == 0 || data.length() < expected {
+    return []
+  }
+  let samples : Array[Int] = []
+  let row_sample_count = self.width * self.component_count
+  let row_bits = row_sample_count * self.bits_per_component
+  let row_stride_bits = (row_bits + 7) / 8 * 8
+  for row in 0..<self.height {
+    let row_bit_start = row * row_stride_bits
+    for sample in 0..<row_sample_count {
+      samples.push(
+        read_image_param_sample(
+          data,
+          row_bit_start + sample * self.bits_per_component,
+          self.bits_per_component,
+        ),
+      )
+    }
+  }
+  samples
+}
+
+///|
+/// Applies a raw Decode array to interleaved sample values. Each component
+/// consumes one `[Dmin, Dmax]` pair and linearly maps the sample domain
+/// `[0, 2^BitsPerComponent - 1]` into that range.
+pub fn ImageParams::apply_decode_array(
+  self : ImageParams,
+  samples : Array[Int],
+  decode : Array[Double],
+) -> Array[Double] {
+  if self.component_count <= 0 || decode.length() != self.component_count * 2 {
+    return []
+  }
+  if !is_valid_bits_per_component(self.bits_per_component.to_int64()) {
+    return []
+  }
+  let max_value = max_sample_value(self.bits_per_component).to_double()
+  let decoded : Array[Double] = []
+  for index in 0..<samples.length() {
+    let component = index % self.component_count
+    let min = decode[component * 2]
+    let max = decode[component * 2 + 1]
+    let sample = clamp_image_param_sample(
+      samples[index],
+      self.bits_per_component,
+    )
+    decoded.push(min + sample.to_double() / max_value * (max - min))
+  }
+  decoded
+}
+
+///|
+/// Reports whether these parameters describe an ImageMask stencil: a one-bit,
+/// single-component image whose colour is supplied by the current graphics
+/// state instead of an image colour space.
+pub fn ImageParams::is_stencil_mask(self : ImageParams) -> Bool {
+  if !self.image_mask {
+    return false
+  }
+  if self.component_count != 1 {
+    return false
+  }
+  self.bits_per_component == 1
 }
 
 ///|
@@ -887,6 +989,35 @@ fn max_sample_value(bits_per_component : Int) -> Int64 {
     value *= 2L
   }
   value - 1L
+}
+
+///|
+fn read_image_param_sample(
+  data : Bytes,
+  bit_position : Int,
+  bit_count : Int,
+) -> Int {
+  let mut value = 0
+  for bit in 0..<bit_count {
+    let absolute = bit_position + bit
+    let byte_index = absolute / 8
+    let shift = 7 - absolute % 8
+    let next_bit = (data[byte_index].to_int() >> shift) & 1
+    value = (value << 1) | next_bit
+  }
+  value
+}
+
+///|
+fn clamp_image_param_sample(sample : Int, bits_per_component : Int) -> Int {
+  let max_value = max_sample_value(bits_per_component).to_int()
+  if sample < 0 {
+    return 0
+  }
+  if sample > max_value {
+    return max_value
+  }
+  sample
 }
 
 ///|
