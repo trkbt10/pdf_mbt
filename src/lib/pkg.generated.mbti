@@ -1,0 +1,77 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/lib"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/pdf/src/graphics",
+  "trkbt10/pdf/src/objects",
+  "trkbt10/pdf/src/reader",
+  "trkbt10/pdf/src/text",
+}
+
+// Values
+pub fn document_author(PdfDocument) -> String?
+
+pub fn document_creator(PdfDocument) -> String?
+
+pub fn document_subject(PdfDocument) -> String?
+
+pub fn document_title(PdfDocument) -> String?
+
+pub fn extract_all_text(PdfDocument) -> String
+
+pub fn extract_page_text(PdfPage) -> String
+
+pub fn open(Bytes) -> PdfDocument raise @reader.PdfDocumentError
+
+pub fn page_height(PdfPage) -> Double
+
+pub fn page_images(PdfPage) -> Array[PdfImage]
+
+pub fn page_width(PdfPage) -> Double
+
+pub fn text_spans(PdfPage) -> Array[@text.TextSpan]
+
+// Errors
+
+// Types and methods
+pub(all) struct PdfDocument {
+  inner : @reader.PdfDocument
+}
+pub fn PdfDocument::author(Self) -> String?
+pub fn PdfDocument::creator(Self) -> String?
+pub fn PdfDocument::extract_all_text(Self) -> String
+pub fn PdfDocument::from_reader(@reader.PdfDocument) -> Self
+pub fn PdfDocument::page(Self, Int) -> PdfPage raise @reader.PdfDocumentError
+pub fn PdfDocument::page_count(Self) -> Int raise @reader.PdfDocumentError
+pub fn PdfDocument::pages(Self) -> Array[PdfPage] raise @reader.PdfDocumentError
+pub fn PdfDocument::reader_document(Self) -> @reader.PdfDocument
+pub fn PdfDocument::subject(Self) -> String?
+pub fn PdfDocument::title(Self) -> String?
+
+pub(all) struct PdfImage {
+  name : @objects.PdfName?
+  stream : @objects.PdfStream
+  descriptor : @graphics.ImageDescriptor
+  data : @graphics.ExtractedImageData
+} derive(Eq, @debug.Debug)
+pub fn PdfImage::color_space(Self) -> String
+pub fn PdfImage::height(Self) -> Int
+pub fn PdfImage::to_rgba(Self) -> Bytes
+pub fn PdfImage::width(Self) -> Int
+
+pub(all) struct PdfPage {
+  inner : @reader.PdfPage
+}
+pub fn PdfPage::extract_text(Self) -> String
+pub fn PdfPage::from_reader(@reader.PdfPage) -> Self
+pub fn PdfPage::height(Self) -> Double
+pub fn PdfPage::images(Self) -> Array[PdfImage]
+pub fn PdfPage::reader_page(Self) -> @reader.PdfPage
+pub fn PdfPage::text_spans(Self) -> Array[@text.TextSpan]
+pub fn PdfPage::width(Self) -> Double
+
+// Type aliases
+
+// Traits
+

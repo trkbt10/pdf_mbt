@@ -1,0 +1,13 @@
+import {
+  "trkbt10/pdf/src/reader",
+  "trkbt10/pdf/src/text",
+  "trkbt10/pdf/src/graphics",
+  "trkbt10/pdf/src/objects",
+  "trkbt10/pdf/src/content",
+  "trkbt10/pdf/src/filters",
+  "trkbt10/pdf/src/interchange",
+}
+
+import {
+  "moonbitlang/x/fs",
+} for "test"
