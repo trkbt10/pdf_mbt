@@ -7,9 +7,10 @@
 ///
 /// Applies the stream dictionary Filter and DecodeParms entries, including
 /// FlateDecode, LZWDecode, ASCIIHexDecode, ASCII85Decode with the ~> EOD
-/// marker, RunLengthDecode, DCTDecode, JPXDecode, and CCITTFaxDecode.
-/// Unsupported filter names are reported through PdfFilterError instead of
-/// being skipped.
+/// marker, RunLengthDecode, DCTDecode, JPXDecode JPEG 2000, and
+/// CCITTFaxDecode Group 3 Group 4 fax decompression. CCITTFaxDecode emits
+/// 1 bit per pixel MSB first rows padded byte boundaries. Unsupported filter
+/// names are reported through PdfFilterError instead of being skipped.
 pub fn decode_stream(stream : @objects.PdfStream) -> Bytes raise PdfFilterError {
   decode_stream_bytes(stream.dict, stream.data)
 }
@@ -23,7 +24,9 @@ pub fn decode_stream(stream : @objects.PdfStream) -> Bytes raise PdfFilterError 
 /// BitsPerComponent, and EarlyChange. CCITTFaxDecode handles Group 3 1D,
 /// Group 4 2D, and mixed Group 3 2D bilevel image data. RunLengthDecode
 /// handles literal runs, repeat runs, and byte 128 as the end-of-data marker.
-/// DCTDecode and JPXDecode decode image data to raw interleaved sample bytes.
+/// DCTDecode and JPXDecode JPEG 2000 decode image data to raw interleaved
+/// sample bytes. CCITTFaxDecode output is 1 bit per pixel MSB first rows
+/// padded byte boundaries.
 ///
 /// Missing Filter entries return the original byte sequence unchanged.
 pub fn decode_stream_bytes(
