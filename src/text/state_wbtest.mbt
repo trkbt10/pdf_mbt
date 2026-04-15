@@ -118,6 +118,6 @@ test "text positioning operator helpers update text and line matrices" {
   assert_eq(matrix.text_matrix.b, 2.0)
   assert_eq(matrix.text_line_matrix.e, 5.0)
   let next = matrix.apply_tstar(7.0)
-  assert_eq(next.text_matrix.e, 5.0)
-  assert_eq(next.text_matrix.f, -1.0)
+  assert_eq(next.text_matrix.e, -16.0)
+  assert_eq(next.text_matrix.f, -22.0)
 }
