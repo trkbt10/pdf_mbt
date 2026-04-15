@@ -9,6 +9,8 @@ import {
 }
 
 // Values
+pub fn cie_xyz_d65_to_srgb(CieXyzColour) -> DeviceRgbColour
+
 pub fn device_cmyk_to_rgb(DeviceCmykColour) -> DeviceRgbColour
 
 pub fn device_gray_to_rgb(Double) -> DeviceRgbColour
@@ -22,6 +24,8 @@ pub fn extract_image_xobject(@objects.PdfName?, @objects.PdfStream, Int64) -> Ex
 pub fn interpret_content(@content.ContentStream, GraphicsInitialState) -> GraphicsProgram raise PdfGraphicsError
 
 pub fn interpret_content_with_options(@content.ContentStream, GraphicsInitialState, GraphicsInterpretOptions) -> GraphicsProgram raise PdfGraphicsError
+
+pub fn lab_d50_to_srgb(Double, Double, Double) -> DeviceRgbColour
 
 pub fn parse_colour_space_object(@objects.PdfObject, ColourDefaults, Int64) -> ColourSpace raise PdfGraphicsError
 
@@ -142,6 +146,7 @@ pub(all) struct CalGrayParams {
   black_point : Array[Double]
   gamma : Double
 } derive(Eq, @debug.Debug)
+pub fn CalGrayParams::to_xyz(Self, Double) -> CieXyzColour
 
 pub(all) struct CalRGBParams {
   white_point : Array[Double]
@@ -149,6 +154,7 @@ pub(all) struct CalRGBParams {
   gamma : Array[Double]
   matrix : Array[Double]
 } derive(Eq, @debug.Debug)
+pub fn CalRGBParams::to_xyz(Self, Array[Double], offset? : Int64) -> CieXyzColour raise PdfGraphicsError
 
 pub(all) struct CieXyzColour {
   x : Double
@@ -318,6 +324,7 @@ pub(all) struct ExtractedImage {
 
 pub(all) enum ExtractedImageData {
   DeviceRgbRaster(ImageDeviceRgbRaster)
+  StencilMaskRaster(ImageAlphaMaskRaster)
   EncodedImageData(Bytes, Array[@objects.PdfName])
 } derive(Eq, @debug.Debug)
 
@@ -528,6 +535,12 @@ pub(all) enum IccProfileSource {
   IndirectProfile(@objects.ObjectId)
 } derive(Eq, @debug.Debug)
 
+pub(all) struct ImageAlphaMaskRaster {
+  width : Int
+  height : Int
+  alpha : Bytes
+} derive(Eq, @debug.Debug)
+
 pub(all) enum ImageByteStatus {
   EncodedBytes(Int)
   DecodedBytes(Int)
@@ -617,6 +630,8 @@ pub(all) struct LabParams {
   black_point : Array[Double]
   range : Array[Double]
 } derive(Eq, @debug.Debug)
+pub fn LabParams::to_srgb(Self, Array[Double], offset? : Int64) -> DeviceRgbColour raise PdfGraphicsError
+pub fn LabParams::to_xyz(Self, Array[Double], offset? : Int64) -> CieXyzColour raise PdfGraphicsError
 
 pub(all) struct LatticeMeshShading {
   bits_per_coordinate : Int

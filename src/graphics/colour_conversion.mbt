@@ -79,6 +79,113 @@ pub fn device_cmyk_to_rgb(cmyk : DeviceCmykColour) -> DeviceRgbColour {
 }
 
 ///|
+pub fn CalGrayParams::to_xyz(
+  self : CalGrayParams,
+  gray : Double,
+) -> CieXyzColour {
+  let a = @math.pow(colour_component(gray), self.gamma)
+  CieXyzColour::{
+    x: self.white_point[0] * a,
+    y: self.white_point[1] * a,
+    z: self.white_point[2] * a,
+  }
+}
+
+///|
+pub fn CalRGBParams::to_xyz(
+  self : CalRGBParams,
+  components : Array[Double],
+  offset? : Int64 = 0L,
+) -> CieXyzColour raise PdfGraphicsError {
+  if components.length() != 3 {
+    raise PdfGraphicsError::BadOperand(
+      offset, "CalRGB conversion requires three components",
+    )
+  }
+  let a = @math.pow(colour_component(components[0]), self.gamma[0])
+  let b = @math.pow(colour_component(components[1]), self.gamma[1])
+  let c = @math.pow(colour_component(components[2]), self.gamma[2])
+  CieXyzColour::{
+    x: self.matrix[0] * a + self.matrix[3] * b + self.matrix[6] * c,
+    y: self.matrix[1] * a + self.matrix[4] * b + self.matrix[7] * c,
+    z: self.matrix[2] * a + self.matrix[5] * b + self.matrix[8] * c,
+  }
+}
+
+///|
+pub fn LabParams::to_xyz(
+  self : LabParams,
+  components : Array[Double],
+  offset? : Int64 = 0L,
+) -> CieXyzColour raise PdfGraphicsError {
+  if components.length() != 3 {
+    raise PdfGraphicsError::BadOperand(
+      offset, "Lab conversion requires three components",
+    )
+  }
+  let l_star = clamp_double(components[0], 0.0, 100.0)
+  let a_star = clamp_double(components[1], self.range[0], self.range[1])
+  let b_star = clamp_double(components[2], self.range[2], self.range[3])
+  let m = (l_star + 16.0) / 116.0
+  let l = m + a_star / 500.0
+  let n = m - b_star / 200.0
+  CieXyzColour::{
+    x: self.white_point[0] * lab_g(l),
+    y: self.white_point[1] * lab_g(m),
+    z: self.white_point[2] * lab_g(n),
+  }
+}
+
+///|
+pub fn LabParams::to_srgb(
+  self : LabParams,
+  components : Array[Double],
+  offset? : Int64 = 0L,
+) -> DeviceRgbColour raise PdfGraphicsError {
+  cie_xyz_d65_to_srgb(
+    adapt_xyz_to_d65(self.to_xyz(components, offset~), self.white_point),
+  )
+}
+
+///|
+pub fn lab_d50_to_srgb(
+  lightness : Double,
+  a : Double,
+  b : Double,
+) -> DeviceRgbColour {
+  if a == 0.0 && b == 0.0 {
+    if lightness <= 0.0 {
+      return device_gray_to_rgb(0.0)
+    }
+    if lightness >= 100.0 {
+      return device_gray_to_rgb(1.0)
+    }
+  }
+  let params = LabParams::{
+    white_point: d50_white_point(),
+    black_point: [0.0, 0.0, 0.0],
+    range: [-128.0, 127.0, -128.0, 127.0],
+  }
+  try params.to_srgb([lightness, a, b]) catch {
+    _ => device_gray_to_rgb(0.0)
+  } noraise {
+    rgb => rgb
+  }
+}
+
+///|
+pub fn cie_xyz_d65_to_srgb(xyz : CieXyzColour) -> DeviceRgbColour {
+  let red_linear = 3.2406 * xyz.x - 1.5372 * xyz.y - 0.4986 * xyz.z
+  let green_linear = -0.9689 * xyz.x + 1.8758 * xyz.y + 0.0415 * xyz.z
+  let blue_linear = 0.0557 * xyz.x - 0.2040 * xyz.y + 1.0570 * xyz.z
+  DeviceRgbColour::{
+    red: srgb_encode(red_linear),
+    green: srgb_encode(green_linear),
+    blue: srgb_encode(blue_linear),
+  }
+}
+
+///|
 pub fn ColourTransformFunction::apply_scalar(
   self : ColourTransformFunction,
   input : Double,
@@ -126,6 +233,85 @@ fn min3(a : Double, b : Double, c : Double) -> Double {
 ///|
 fn colour_component(value : Double) -> Double {
   clamp_double(value, 0.0, 1.0)
+}
+
+///|
+fn lab_g(value : Double) -> Double {
+  let threshold = 6.0 / 29.0
+  if value >= threshold {
+    value * value * value
+  } else {
+    108.0 / 841.0 * (value - 4.0 / 29.0)
+  }
+}
+
+///|
+fn srgb_encode(linear : Double) -> Double {
+  let value = colour_component(linear)
+  if value <= 0.0031308 {
+    colour_component(12.92 * value)
+  } else {
+    colour_component(1.055 * @math.pow(value, 1.0 / 2.4) - 0.055)
+  }
+}
+
+///|
+fn d50_white_point() -> Array[Double] {
+  [0.96422, 1.0, 0.82521]
+}
+
+///|
+fn d65_white_point() -> Array[Double] {
+  [0.95047, 1.0, 1.08883]
+}
+
+///|
+fn adapt_xyz_to_d65(
+  xyz : CieXyzColour,
+  source_white : Array[Double],
+) -> CieXyzColour {
+  adapt_xyz_between_whites(xyz, source_white, d65_white_point())
+}
+
+///|
+fn adapt_xyz_between_whites(
+  xyz : CieXyzColour,
+  source_white : Array[Double],
+  target_white : Array[Double],
+) -> CieXyzColour {
+  let source_lms = bradford_to_lms(
+    source_white[0],
+    source_white[1],
+    source_white[2],
+  )
+  let target_lms = bradford_to_lms(
+    target_white[0],
+    target_white[1],
+    target_white[2],
+  )
+  let value_lms = bradford_to_lms(xyz.x, xyz.y, xyz.z)
+  let l = value_lms[0] * target_lms[0] / source_lms[0]
+  let m = value_lms[1] * target_lms[1] / source_lms[1]
+  let s = value_lms[2] * target_lms[2] / source_lms[2]
+  bradford_from_lms(l, m, s)
+}
+
+///|
+fn bradford_to_lms(x : Double, y : Double, z : Double) -> Array[Double] {
+  [
+    0.8951 * x + 0.2664 * y - 0.1614 * z,
+    -0.7502 * x + 1.7135 * y + 0.0367 * z,
+    0.0389 * x - 0.0685 * y + 1.0296 * z,
+  ]
+}
+
+///|
+fn bradford_from_lms(l : Double, m : Double, s : Double) -> CieXyzColour {
+  CieXyzColour::{
+    x: 0.9869929 * l - 0.1470543 * m + 0.1599627 * s,
+    y: 0.4323053 * l + 0.5183603 * m + 0.0492912 * s,
+    z: -0.0085287 * l + 0.0400428 * m + 0.9684867 * s,
+  }
 }
 
 ///|

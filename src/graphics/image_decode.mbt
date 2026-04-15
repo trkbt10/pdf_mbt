@@ -9,12 +9,22 @@ pub(all) struct ImageDeviceRgbRaster {
 } derive(Eq, Debug)
 
 ///|
+/// One-byte alpha mask extracted from an ImageMask, explicit Mask image, or
+/// SMask image. Values are row-major and already mapped through Decode.
+pub(all) struct ImageAlphaMaskRaster {
+  width : Int
+  height : Int
+  alpha : Bytes
+} derive(Eq, Debug)
+
+///|
 /// Extracted image data. Supported sample-byte filters are expanded into
 /// DeviceRGB pixels; unsupported encoded image codecs such as DCTDecode,
 /// JPXDecode, JBIG2Decode, CCITTFaxDecode, and Crypt preserve their original
 /// encoded bytes and filter names for a downstream codec.
 pub(all) enum ExtractedImageData {
   DeviceRgbRaster(ImageDeviceRgbRaster)
+  StencilMaskRaster(ImageAlphaMaskRaster)
   EncodedImageData(Bytes, Array[@objects.PdfName])
 } derive(Eq, Debug)
 
@@ -69,9 +79,8 @@ fn decode_sample_bytes_to_rgb(
   offset : Int64,
 ) -> ExtractedImageData raise PdfGraphicsError {
   if descriptor.image_mask {
-    return ExtractedImageData::EncodedImageData(
-      decoded,
-      descriptor.filters.copy(),
+    return ExtractedImageData::StencilMaskRaster(
+      decode_stencil_alpha_mask(descriptor, decoded, offset),
     )
   }
   let space = match descriptor.color_space {
@@ -83,6 +92,7 @@ fn decode_sample_bytes_to_rgb(
       )
   }
   let samples = unpack_image_samples(decoded, descriptor.layout, offset)
+  let alpha = alpha_for_image_descriptor(descriptor, samples, offset)
   let rgba : Array[Byte] = []
   for pixel in 0..<(descriptor.width * descriptor.height) {
     let (r, g, b) = pixel_to_device_rgb(
@@ -96,13 +106,216 @@ fn decode_sample_bytes_to_rgb(
     rgba.push(unit_to_byte(r))
     rgba.push(unit_to_byte(g))
     rgba.push(unit_to_byte(b))
-    rgba.push(b'\xff')
+    rgba.push(alpha_byte_at(alpha, pixel))
   }
   ExtractedImageData::DeviceRgbRaster(ImageDeviceRgbRaster::{
     width: descriptor.width,
     height: descriptor.height,
     rgba: Bytes::from_array(rgba),
   })
+}
+
+///|
+fn decode_stencil_alpha_mask(
+  descriptor : ImageDescriptor,
+  decoded : Bytes,
+  offset : Int64,
+) -> ImageAlphaMaskRaster raise PdfGraphicsError {
+  let samples = unpack_image_samples(decoded, descriptor.layout, offset)
+  let alpha = alpha_from_single_component_samples(
+    samples,
+    descriptor.bits_per_component.unwrap(),
+    descriptor.decode[0],
+  )
+  ImageAlphaMaskRaster::{
+    width: descriptor.width,
+    height: descriptor.height,
+    alpha,
+  }
+}
+
+///|
+fn alpha_for_image_descriptor(
+  descriptor : ImageDescriptor,
+  samples : Array[Int],
+  offset : Int64,
+) -> Bytes? raise PdfGraphicsError {
+  match descriptor.soft_mask.source {
+    ExplicitImageSoftMask(object) =>
+      explicit_soft_mask_alpha(
+        object,
+        descriptor.width,
+        descriptor.height,
+        offset,
+      )
+    EmbeddedImageSoftMask(_) => None
+    NoImageSoftMask =>
+      match descriptor.mask {
+        ColourKeyMask(ranges) =>
+          Some(
+            colour_key_alpha(
+              samples,
+              ranges,
+              descriptor.layout.component_count,
+              descriptor.width * descriptor.height,
+            ),
+          )
+        ExplicitMask(object) =>
+          explicit_image_mask_alpha(
+            object,
+            descriptor.width,
+            descriptor.height,
+            offset,
+          )
+        _ => None
+      }
+  }
+}
+
+///|
+fn explicit_image_mask_alpha(
+  object : @objects.PdfObject,
+  width : Int,
+  height : Int,
+  offset : Int64,
+) -> Bytes? raise PdfGraphicsError {
+  match object {
+    @objects.PdfObject::Stream(stream) => {
+      let descriptor = validate_image_stream(None, stream, offset)
+      let decoded = decode_mask_stream_bytes(stream, offset)
+      let mask = decode_stencil_alpha_mask(descriptor, decoded, offset)
+      require_alpha_dimensions(mask, width, height, offset)
+      Some(mask.alpha)
+    }
+    @objects.PdfObject::Ref(_) => None
+    _ =>
+      raise PdfGraphicsError::InvalidImage(
+        offset, "explicit Mask must be a direct image stream or reference",
+      )
+  }
+}
+
+///|
+fn explicit_soft_mask_alpha(
+  object : @objects.PdfObject,
+  width : Int,
+  height : Int,
+  offset : Int64,
+) -> Bytes? raise PdfGraphicsError {
+  match object {
+    @objects.PdfObject::Stream(stream) => {
+      let descriptor = validate_image_stream(None, stream, offset)
+      let decoded = decode_mask_stream_bytes(stream, offset)
+      let mask = decode_gray_alpha_mask(descriptor, decoded, offset)
+      require_alpha_dimensions(mask, width, height, offset)
+      Some(mask.alpha)
+    }
+    @objects.PdfObject::Ref(_) => None
+    _ =>
+      raise PdfGraphicsError::InvalidImage(
+        offset, "SMask must be a direct image stream or reference",
+      )
+  }
+}
+
+///|
+fn decode_mask_stream_bytes(
+  stream : @objects.PdfStream,
+  offset : Int64,
+) -> Bytes raise PdfGraphicsError {
+  try @filters.decode_stream(stream) catch {
+    error =>
+      raise PdfGraphicsError::InvalidImage(
+        offset,
+        "image mask filter decode failed: " + filter_error_label(error),
+      )
+  } noraise {
+    bytes => bytes
+  }
+}
+
+///|
+fn decode_gray_alpha_mask(
+  descriptor : ImageDescriptor,
+  decoded : Bytes,
+  offset : Int64,
+) -> ImageAlphaMaskRaster raise PdfGraphicsError {
+  if descriptor.layout.component_count != 1 {
+    raise PdfGraphicsError::InvalidImage(
+      offset, "soft mask image must decode to one component",
+    )
+  }
+  let samples = unpack_image_samples(decoded, descriptor.layout, offset)
+  let alpha = alpha_from_single_component_samples(
+    samples,
+    descriptor.bits_per_component.unwrap(),
+    descriptor.decode[0],
+  )
+  ImageAlphaMaskRaster::{
+    width: descriptor.width,
+    height: descriptor.height,
+    alpha,
+  }
+}
+
+///|
+fn alpha_from_single_component_samples(
+  samples : Array[Int],
+  bits_per_component : Int,
+  range : ImageDecodeRange,
+) -> Bytes {
+  let alpha : Array[Byte] = []
+  for sample in samples {
+    alpha.push(
+      unit_to_byte(decode_sample_value(sample, bits_per_component, range)),
+    )
+  }
+  Bytes::from_array(alpha)
+}
+
+///|
+fn colour_key_alpha(
+  samples : Array[Int],
+  ranges : Array[Int64],
+  component_count : Int,
+  pixel_count : Int,
+) -> Bytes {
+  let alpha : Array[Byte] = []
+  for pixel in 0..<pixel_count {
+    let mut masked = true
+    for component in 0..<component_count {
+      let sample = samples[pixel * component_count + component].to_int64()
+      let min = ranges[component * 2]
+      let max = ranges[component * 2 + 1]
+      if sample < min || sample > max {
+        masked = false
+      }
+    }
+    alpha.push(if masked { b'\x00' } else { b'\xff' })
+  }
+  Bytes::from_array(alpha)
+}
+
+///|
+fn require_alpha_dimensions(
+  mask : ImageAlphaMaskRaster,
+  width : Int,
+  height : Int,
+  offset : Int64,
+) -> Unit raise PdfGraphicsError {
+  if mask.width != width || mask.height != height {
+    raise PdfGraphicsError::InvalidImage(
+      offset, "image mask dimensions must match the base image",
+    )
+  }
+}
+
+///|
+fn alpha_byte_at(alpha : Bytes?, pixel : Int) -> Byte {
+  match alpha {
+    Some(bytes) => bytes[pixel]
+    None => b'\xff'
+  }
 }
 
 ///|
@@ -264,30 +477,31 @@ fn components_to_device_rgb(
   offset : Int64,
 ) -> (Double, Double, Double) raise PdfGraphicsError {
   match space {
-    Device(DeviceGray) | CalGray(_) | Separation(_) =>
-      (
-        clamp_double(components[0], 0.0, 1.0),
-        clamp_double(components[0], 0.0, 1.0),
-        clamp_double(components[0], 0.0, 1.0),
-      )
-    Device(DeviceRGB) | CalRGB(_) =>
+    Device(DeviceGray) => rgb_colour_tuple(device_gray_to_rgb(components[0]))
+    Device(DeviceRGB) =>
       (
         clamp_double(components[0], 0.0, 1.0),
         clamp_double(components[1], 0.0, 1.0),
         clamp_double(components[2], 0.0, 1.0),
       )
-    Device(DeviceCMYK) => cmyk_to_rgb(components)
-    Lab(_) => {
-      let l = clamp_double(components[0] / 100.0, 0.0, 1.0)
-      (l, l, l)
-    }
+    Device(DeviceCMYK) =>
+      rgb_colour_tuple(
+        device_cmyk_to_rgb(DeviceCmykColour::{
+          cyan: components[0],
+          magenta: components[1],
+          yellow: components[2],
+          black: components[3],
+        }),
+      )
+    CalGray(params) =>
+      rgb_colour_tuple(cie_xyz_d65_to_srgb(params.to_xyz(components[0])))
+    CalRGB(params) =>
+      rgb_colour_tuple(cie_xyz_d65_to_srgb(params.to_xyz(components, offset~)))
+    Lab(params) => rgb_colour_tuple(params.to_srgb(components, offset~))
+    Separation(_) => rgb_colour_tuple(device_gray_to_rgb(components[0]))
     ICCBased(params) =>
       if components.length() == 1 {
-        (
-          clamp_double(components[0], 0.0, 1.0),
-          clamp_double(components[0], 0.0, 1.0),
-          clamp_double(components[0], 0.0, 1.0),
-        )
+        rgb_colour_tuple(device_gray_to_rgb(components[0]))
       } else if components.length() == 3 {
         (
           clamp_double(components[0], 0.0, 1.0),
@@ -295,7 +509,14 @@ fn components_to_device_rgb(
           clamp_double(components[2], 0.0, 1.0),
         )
       } else if components.length() == 4 {
-        cmyk_to_rgb(components)
+        rgb_colour_tuple(
+          device_cmyk_to_rgb(DeviceCmykColour::{
+            cyan: components[0],
+            magenta: components[1],
+            yellow: components[2],
+            black: components[3],
+          }),
+        )
       } else {
         match params.alternate {
           Some(alternate) =>
@@ -321,16 +542,8 @@ fn components_to_device_rgb(
 }
 
 ///|
-fn cmyk_to_rgb(components : Array[Double]) -> (Double, Double, Double) {
-  let c = clamp_double(components[0], 0.0, 1.0)
-  let m = clamp_double(components[1], 0.0, 1.0)
-  let y = clamp_double(components[2], 0.0, 1.0)
-  let k = clamp_double(components[3], 0.0, 1.0)
-  (
-    1.0 - clamp_double(c + k, 0.0, 1.0),
-    1.0 - clamp_double(m + k, 0.0, 1.0),
-    1.0 - clamp_double(y + k, 0.0, 1.0),
-  )
+fn rgb_colour_tuple(rgb : DeviceRgbColour) -> (Double, Double, Double) {
+  (rgb.red, rgb.green, rgb.blue)
 }
 
 ///|

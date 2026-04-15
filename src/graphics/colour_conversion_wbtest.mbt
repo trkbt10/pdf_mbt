@@ -85,3 +85,40 @@ test "rgb to cmyk applies direct black generation and undercolour removal" {
   assert_close(cmyk.yellow, 0.225)
   assert_close(cmyk.black, 0.125)
 }
+
+///|
+test "calibrated gray and rgb convert to CIE XYZ" {
+  let cal_gray = CalGrayParams::{
+    white_point: [0.95047, 1.0, 1.08883],
+    black_point: [0.0, 0.0, 0.0],
+    gamma: 2.0,
+  }
+  let gray_xyz = cal_gray.to_xyz(0.5)
+  assert_close(gray_xyz.x, 0.2376175)
+  assert_close(gray_xyz.y, 0.25)
+  assert_close(gray_xyz.z, 0.2722075)
+
+  let cal_rgb = CalRGBParams::{
+    white_point: [0.95047, 1.0, 1.08883],
+    black_point: [0.0, 0.0, 0.0],
+    gamma: [1.0, 1.0, 1.0],
+    matrix: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+  }
+  let rgb_xyz = cal_rgb.to_xyz([0.2, 0.4, 0.6])
+  assert_close(rgb_xyz.x, 0.2)
+  assert_close(rgb_xyz.y, 0.4)
+  assert_close(rgb_xyz.z, 0.6)
+}
+
+///|
+test "Lab D50 conversion maps neutral endpoints to sRGB endpoints" {
+  let white = lab_d50_to_srgb(100.0, 0.0, 0.0)
+  assert_close(white.red, 1.0)
+  assert_close(white.green, 1.0)
+  assert_close(white.blue, 1.0)
+
+  let black = lab_d50_to_srgb(0.0, 0.0, 0.0)
+  assert_close(black.red, 0.0)
+  assert_close(black.green, 0.0)
+  assert_close(black.blue, 0.0)
+}
