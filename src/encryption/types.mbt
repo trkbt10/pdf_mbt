@@ -95,7 +95,9 @@ pub(all) struct DocumentPermissions {
 pub type EncryptionKey = EncryptionContext
 
 ///|
-pub fn DocumentPermissions::from_raw(raw_permissions : Int64) -> DocumentPermissions {
+pub fn DocumentPermissions::from_raw(
+  raw_permissions : Int64,
+) -> DocumentPermissions {
   DocumentPermissions::{
     raw_permissions,
     print: (raw_permissions & 0x04L) != 0L,

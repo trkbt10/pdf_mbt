@@ -1,5 +1,7 @@
 ///|
-let aes_object_salt : Bytes = Bytes::from_array([b'\x73', b'\x41', b'\x6c', b'\x54'])
+let aes_object_salt : Bytes = Bytes::from_array([
+  b'\x73', b'\x41', b'\x6c', b'\x54',
+])
 
 ///|
 pub fn decrypt_string(
@@ -39,11 +41,12 @@ fn decrypt_payload(
   match filter.filter_method {
     Identity | None => encrypted_bytes
     V2 => decrypt_rc4_payload(key, object_id, encrypted_bytes)
-    AESV2 => decrypt_aes_payload(
-      derive_object_key(key.file_key, object_id, use_aes_salt=true),
-      encrypted_bytes,
-      "AESV2",
-    )
+    AESV2 =>
+      decrypt_aes_payload(
+        derive_object_key(key.file_key, object_id, use_aes_salt=true),
+        encrypted_bytes,
+        "AESV2",
+      )
     AESV3 => decrypt_aes_payload(key.file_key, encrypted_bytes, "AESV3")
     Unsupported(name) =>
       raise PdfEncryptionError::UnsupportedAlgorithm(
@@ -58,7 +61,11 @@ fn decrypt_rc4_payload(
   object_id : @objects.ObjectId,
   encrypted_bytes : Bytes,
 ) -> Bytes raise PdfEncryptionError {
-  let object_key = derive_object_key(key.file_key, object_id, use_aes_salt=false)
+  let object_key = derive_object_key(
+    key.file_key,
+    object_id,
+    use_aes_salt=false,
+  )
   crypto_rc4(object_key, encrypted_bytes)
 }
 

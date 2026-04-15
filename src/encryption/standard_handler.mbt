@@ -1,9 +1,9 @@
 ///|
 let standard_password_padding : Bytes = Bytes::from_array([
-  b'\x28', b'\xbf', b'\x4e', b'\x5e', b'\x4e', b'\x75', b'\x8a', b'\x41',
-  b'\x64', b'\x00', b'\x4e', b'\x56', b'\xff', b'\xfa', b'\x01', b'\x08',
-  b'\x2e', b'\x2e', b'\x00', b'\xb6', b'\xd0', b'\x68', b'\x3e', b'\x80',
-  b'\x2f', b'\x0c', b'\xa9', b'\xfe', b'\x64', b'\x53', b'\x69', b'\x7a',
+  b'\x28', b'\xbf', b'\x4e', b'\x5e', b'\x4e', b'\x75', b'\x8a', b'\x41', b'\x64',
+  b'\x00', b'\x4e', b'\x56', b'\xff', b'\xfa', b'\x01', b'\x08', b'\x2e', b'\x2e',
+  b'\x00', b'\xb6', b'\xd0', b'\x68', b'\x3e', b'\x80', b'\x2f', b'\x0c', b'\xa9',
+  b'\xfe', b'\x64', b'\x53', b'\x69', b'\x7a',
 ])
 
 ///|
@@ -53,13 +53,17 @@ fn authenticate_legacy(
 ) -> EncryptionKey? raise PdfEncryptionError {
   let user_key = derive_legacy_file_key(parsed, password, file_id)
   if verify_legacy_user_entry(parsed, user_key, file_id) {
-    return Some(encryption_context(parsed, user_key, EncryptionAccessMode::UserAccess))
+    return Some(
+      encryption_context(parsed, user_key, EncryptionAccessMode::UserAccess),
+    )
   }
 
   let owner_user_password = recover_legacy_owner_user_password(parsed, password)
   let owner_key = derive_legacy_file_key(parsed, owner_user_password, file_id)
   if verify_legacy_user_entry(parsed, owner_key, file_id) {
-    Some(encryption_context(parsed, owner_key, EncryptionAccessMode::OwnerAccess))
+    Some(
+      encryption_context(parsed, owner_key, EncryptionAccessMode::OwnerAccess),
+    )
   } else {
     None
   }
@@ -73,12 +77,20 @@ fn authenticate_aes256(
   let user_key = verify_aes256_user_password(parsed, password)
   match user_key {
     Some(file_key) =>
-      Some(encryption_context(parsed, file_key, EncryptionAccessMode::UserAccess))
+      Some(
+        encryption_context(parsed, file_key, EncryptionAccessMode::UserAccess),
+      )
     None => {
       let owner_key = verify_aes256_owner_password(parsed, password)
       match owner_key {
         Some(file_key) =>
-          Some(encryption_context(parsed, file_key, EncryptionAccessMode::OwnerAccess))
+          Some(
+            encryption_context(
+              parsed,
+              file_key,
+              EncryptionAccessMode::OwnerAccess,
+            ),
+          )
         None => None
       }
     }
@@ -116,9 +128,19 @@ fn parse_standard_encryption_dictionary(
     )
   }
 
-  let cipher_version = parse_cipher_version(read_optional_int(dict, b"V", "V").unwrap_or(0L))
-  let default_key_bits = if revision == 2 { 40 } else if revision >= 5 { 256 } else { 128 }
-  let length_bits = read_optional_int(dict, b"Length", "Length").unwrap_or(default_key_bits.to_int64()).to_int()
+  let cipher_version = parse_cipher_version(
+    read_optional_int(dict, b"V", "V").unwrap_or(0L),
+  )
+  let default_key_bits = if revision == 2 {
+    40
+  } else if revision >= 5 {
+    256
+  } else {
+    128
+  }
+  let length_bits = read_optional_int(dict, b"Length", "Length")
+    .unwrap_or(default_key_bits.to_int64())
+    .to_int()
   let key_length_bytes = if revision == 2 { 5 } else { length_bits / 8 }
   if key_length_bytes <= 0 || key_length_bytes > 32 {
     raise PdfEncryptionError::MalformedEncryptionDictionary(
@@ -128,14 +150,20 @@ fn parse_standard_encryption_dictionary(
 
   let owner_entry = read_required_string(dict, b"O", "O")
   let user_entry = read_required_string(dict, b"U", "U")
-  let permissions = DocumentPermissions::from_raw(read_required_int(dict, b"P", "P"))
-  let encrypt_metadata = read_optional_bool(dict, b"EncryptMetadata", "EncryptMetadata").unwrap_or(true)
+  let permissions = DocumentPermissions::from_raw(
+    read_required_int(dict, b"P", "P"),
+  )
+  let encrypt_metadata = read_optional_bool(
+    dict, b"EncryptMetadata", "EncryptMetadata",
+  ).unwrap_or(true)
 
   let owner_encrypted_file_key = read_optional_string(dict, b"OE", "OE")
   let user_encrypted_file_key = read_optional_string(dict, b"UE", "UE")
   read_optional_string(dict, b"Perms", "Perms") |> ignore
 
-  validate_entry_lengths(revision, owner_entry, user_entry, owner_encrypted_file_key, user_encrypted_file_key)
+  validate_entry_lengths(
+    revision, owner_entry, user_entry, owner_encrypted_file_key, user_encrypted_file_key,
+  )
 
   let filters = parse_filters(dict, cipher_version, length_bits)
   StandardEncryptionDictionary::{
@@ -282,7 +310,11 @@ fn compute_legacy_owner_entry(
   user_password : Bytes,
   owner_password : Bytes,
 ) -> Bytes raise PdfEncryptionError {
-  let owner_source = if owner_password.length() == 0 { user_password } else { owner_password }
+  let owner_source = if owner_password.length() == 0 {
+    user_password
+  } else {
+    owner_password
+  }
   let mut key = crypto_md5(pad_password_legacy(owner_source))
   if revision >= 3 {
     for _ in 0..<50 {
@@ -315,7 +347,8 @@ fn verify_aes256_user_password(
   let key_salt = bytes_slice(parsed.user_entry, 40, 48)
   let wrapping_key = aes256_hash(parsed.revision, password, key_salt, None)
   match parsed.user_encrypted_file_key {
-    Some(encrypted_key) => Some(decrypt_aes256_file_key(wrapping_key, encrypted_key))
+    Some(encrypted_key) =>
+      Some(decrypt_aes256_file_key(wrapping_key, encrypted_key))
     None => None
   }
 }
@@ -328,14 +361,25 @@ fn verify_aes256_owner_password(
   let validation_salt = bytes_slice(parsed.owner_entry, 32, 40)
   let expected = bytes_slice(parsed.owner_entry, 0, 32)
   let user_entry = parsed.user_entry
-  let actual = aes256_hash(parsed.revision, password, validation_salt, Some(user_entry))
+  let actual = aes256_hash(
+    parsed.revision,
+    password,
+    validation_salt,
+    Some(user_entry),
+  )
   if actual != expected {
     return None
   }
   let key_salt = bytes_slice(parsed.owner_entry, 40, 48)
-  let wrapping_key = aes256_hash(parsed.revision, password, key_salt, Some(user_entry))
+  let wrapping_key = aes256_hash(
+    parsed.revision,
+    password,
+    key_salt,
+    Some(user_entry),
+  )
   match parsed.owner_encrypted_file_key {
-    Some(encrypted_key) => Some(decrypt_aes256_file_key(wrapping_key, encrypted_key))
+    Some(encrypted_key) =>
+      Some(decrypt_aes256_file_key(wrapping_key, encrypted_key))
     None => None
   }
 }
@@ -412,21 +456,30 @@ fn parse_filters(
     V5 => CryptFilterMethod::AESV3
   }
   let default_string_name = if cipher_version == CipherVersion::V4 {
-    read_optional_name(dict, b"StrF", "StrF").unwrap_or(@objects.PdfName::new(b"Identity"))
+    read_optional_name(dict, b"StrF", "StrF").unwrap_or(
+      @objects.PdfName::new(b"Identity"),
+    )
   } else {
     @objects.PdfName::new(b"StdCF")
   }
   let default_stream_name = if cipher_version == CipherVersion::V4 {
-    read_optional_name(dict, b"StmF", "StmF").unwrap_or(@objects.PdfName::new(b"Identity"))
+    read_optional_name(dict, b"StmF", "StmF").unwrap_or(
+      @objects.PdfName::new(b"Identity"),
+    )
   } else {
     @objects.PdfName::new(b"StdCF")
   }
   let embedded_name = read_optional_name(dict, b"EFF", "EFF")
   let cf_dict = read_optional_dictionary(dict, b"CF", "CF")
-  let string_filter = parse_crypt_filter(default_string_name, cf_dict, default_method, length_bits)
-  let stream_filter = parse_crypt_filter(default_stream_name, cf_dict, default_method, length_bits)
+  let string_filter = parse_crypt_filter(
+    default_string_name, cf_dict, default_method, length_bits,
+  )
+  let stream_filter = parse_crypt_filter(
+    default_stream_name, cf_dict, default_method, length_bits,
+  )
   let embedded_file_filter = match embedded_name {
-    Some(name) => Some(parse_crypt_filter(name, cf_dict, default_method, length_bits))
+    Some(name) =>
+      Some(parse_crypt_filter(name, cf_dict, default_method, length_bits))
     None => None
   }
   (string_filter, stream_filter, embedded_file_filter)
@@ -467,12 +520,21 @@ fn parse_crypt_filter(
         Some(value) => parse_crypt_filter_method(value)
         None => CryptFilterMethod::None
       }
-      let auth_event = match read_optional_name(filter_dict, b"AuthEvent", "AuthEvent") {
+      let auth_event = match
+        read_optional_name(filter_dict, b"AuthEvent", "AuthEvent") {
         Some(value) => parse_auth_event(value)
         None => CryptFilterAuthEvent::DocOpen
       }
-      let length_bits = read_optional_int(filter_dict, b"Length", "Length").map(value => value.to_int())
-      CryptFilter::{ name, filter_method: crypt_method, auth_event, length_bits }
+      let length_bits = read_optional_int(filter_dict, b"Length", "Length").map(value => {
+          value.to_int()
+        },
+      )
+      CryptFilter::{
+        name,
+        filter_method: crypt_method,
+        auth_event,
+        length_bits,
+      }
     }
     None =>
       CryptFilter::{
@@ -511,7 +573,9 @@ fn parse_auth_event(name : @objects.PdfName) -> CryptFilterAuthEvent {
 }
 
 ///|
-fn parse_cipher_version(value : Int64) -> CipherVersion raise PdfEncryptionError {
+fn parse_cipher_version(
+  value : Int64,
+) -> CipherVersion raise PdfEncryptionError {
   match value {
     1L => CipherVersion::V1
     2L => CipherVersion::V2
@@ -531,7 +595,8 @@ fn require_standard_filter(
   dict : @objects.PdfDictionary,
 ) -> Unit raise PdfEncryptionError {
   match dict.get(@objects.PdfName::new(b"Filter")) {
-    Some(@objects.PdfObject::Name(name)) if name == @objects.PdfName::new(b"Standard") => ()
+    Some(@objects.PdfObject::Name(name)) if name ==
+      @objects.PdfName::new(b"Standard") => ()
     Some(@objects.PdfObject::Name(name)) =>
       raise PdfEncryptionError::UnsupportedSecurityHandler(name.to_text())
     Some(_) =>

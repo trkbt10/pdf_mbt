@@ -15,15 +15,18 @@ pub fn PdfFile::open(input : Bytes) -> PdfFile raise PdfReaderError {
   let sections = read_section_chain(source, latest_startxref, header.version)
   let trailer = sections[0].trailer
   let xref_index = merge_sections(sections)
-  PdfFile::{
+  let file = PdfFile::{
     bytes: input,
     header,
     trailer,
     sections,
     xref_index,
+    encryption: None,
     cache: Map::new(),
     object_stream_tables: Map::new(),
   }
+  initialize_encryption(file)
+  file
 }
 
 ///|
@@ -44,4 +47,20 @@ pub fn PdfFile::trailer(self : PdfFile) -> TrailerInfo {
 /// dictionary for document structure access.
 pub fn PdfFile::root_ref(self : PdfFile) -> @objects.ObjectId {
   self.trailer.root
+}
+
+///|
+/// Reports whether the latest trailer declares an Encrypt dictionary.
+pub fn PdfFile::is_encrypted(self : PdfFile) -> Bool {
+  self.trailer.encrypt is Some(_)
+}
+
+///|
+/// Returns Standard security-handler permission flags, or unrestricted
+/// permissions for unencrypted files.
+pub fn PdfFile::permissions(self : PdfFile) -> @encryption.DocumentPermissions {
+  match self.encryption {
+    Some(context) => context.permissions
+    None => @encryption.DocumentPermissions::unrestricted()
+  }
 }

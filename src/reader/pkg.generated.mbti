@@ -606,6 +606,7 @@ pub fn PdfDocument::document_info(Self) -> @interchange.PdfDocumentInfo? raise P
 pub fn PdfDocument::document_language(Self) -> Bytes? raise PdfDocumentError
 pub fn PdfDocument::embedded_files(Self) -> Array[PdfEmbeddedFileEntry] raise PdfDocumentError
 pub fn PdfDocument::extensions(Self) -> PdfExtensions? raise PdfDocumentError
+pub fn PdfDocument::is_encrypted(Self) -> Bool
 pub fn PdfDocument::lookup_name(Self, NameTreeCategory, Bytes) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfDocument::mark_info(Self) -> PdfMarkInfo raise PdfDocumentError
 pub fn PdfDocument::metadata_sources(Self) -> @interchange.PdfDocumentMetadataSources raise PdfDocumentError
@@ -630,6 +631,7 @@ pub fn PdfDocument::parse_action_from_object(Self, @objects.PdfObject, @objects.
 pub fn PdfDocument::parse_annotation_additional_action_object(Self, @objects.PdfObject, @objects.ObjectId?) -> PdfAnnotationAdditionalActions raise PdfDocumentError
 pub fn PdfDocument::parse_file_spec(Self, @objects.PdfObject) -> PdfFileSpecification raise PdfDocumentError
 pub fn PdfDocument::parse_form_field_additional_action_object(Self, @objects.PdfObject, @objects.ObjectId?) -> PdfFormFieldAdditionalActions raise PdfDocumentError
+pub fn PdfDocument::permissions(Self) -> @encryption.DocumentPermissions
 pub fn PdfDocument::piece_info(Self) -> @interchange.PdfPagePieceDictionary? raise PdfDocumentError
 pub fn PdfDocument::structure_content_report(Self) -> PdfStructureContentReport raise PdfDocumentError
 pub fn PdfDocument::structure_tree(Self) -> PdfStructureTree? raise PdfDocumentError
@@ -772,13 +774,16 @@ pub struct PdfFile {
   xref_index : Map[@objects.ObjectId, ObjectLocation]
   cache : Map[@objects.ObjectId, @objects.PdfObject]
   object_stream_tables : Map[@objects.ObjectId, ObjectStreamTableCache]
+  // private fields
 } derive(Eq, @debug.Debug)
 pub fn PdfFile::compare_file_id_reference(Self, PdfFileId) -> @interchange.PdfFileIdMatch
 pub fn PdfFile::document(Self) -> PdfDocument raise PdfDocumentError
 pub fn PdfFile::file_id(Self) -> PdfFileId?
+pub fn PdfFile::is_encrypted(Self) -> Bool
 pub fn PdfFile::load_object(Self, @objects.ObjectId) -> @objects.PdfObject raise PdfReaderError
 pub fn PdfFile::open(Bytes) -> Self raise PdfReaderError
 pub fn PdfFile::parse_file_spec(Self, @objects.PdfObject) -> PdfFileSpecification raise PdfDocumentError
+pub fn PdfFile::permissions(Self) -> @encryption.DocumentPermissions
 pub fn PdfFile::root_ref(Self) -> @objects.ObjectId
 pub fn PdfFile::trailer(Self) -> TrailerInfo
 pub fn PdfFile::version(Self) -> PdfVersion
@@ -2548,6 +2553,8 @@ pub(all) enum XrefSectionSource {
 } derive(Eq, @debug.Debug)
 
 // Type aliases
+pub using @encryption {type DocumentPermissions as PdfPermissions}
+
 pub type XrefIndex = Map[@objects.ObjectId, ObjectLocation]
 
 // Traits

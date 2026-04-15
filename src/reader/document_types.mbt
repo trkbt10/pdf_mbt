@@ -14,6 +14,11 @@ pub struct PdfDocument {
 }
 
 ///|
+/// Reader-facing Standard security-handler permission bits from the Encrypt
+/// dictionary. Unencrypted documents report unrestricted permissions.
+pub type PdfPermissions = @encryption.DocumentPermissions
+
+///|
 /// Validated Catalog dictionary resolved from the trailer Root reference. The
 /// Catalog Type is checked as Catalog, the required Pages indirect reference
 /// points to the root page tree node, and optional entries such as PageLabels,

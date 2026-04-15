@@ -4,7 +4,10 @@ fn test_name(bytes : Bytes) -> @objects.PdfName {
 }
 
 ///|
-fn test_filter(crypt_method : CryptFilterMethod, length_bits : Int) -> CryptFilter {
+fn test_filter(
+  crypt_method : CryptFilterMethod,
+  length_bits : Int,
+) -> CryptFilter {
   CryptFilter::{
     name: test_name(b"StdCF"),
     filter_method: crypt_method,
@@ -23,7 +26,11 @@ fn legacy_test_parsed(
   let crypt_filter = test_filter(CryptFilterMethod::V2, key_length_bytes * 8)
   StandardEncryptionDictionary::{
     revision,
-    cipher_version: if revision == 2 { CipherVersion::V1 } else { CipherVersion::V2 },
+    cipher_version: if revision == 2 {
+      CipherVersion::V1
+    } else {
+      CipherVersion::V2
+    },
     key_length_bytes,
     owner_entry,
     user_entry,
@@ -46,18 +53,25 @@ fn build_legacy_test_dict(
   file_id : FileIdentifier,
 ) -> @objects.PdfDictionary raise PdfEncryptionError {
   let owner_entry = compute_legacy_owner_entry(
-    revision,
-    key_length_bytes,
-    user_password,
-    owner_password,
+    revision, key_length_bytes, user_password, owner_password,
   )
-  let parsed_without_u = legacy_test_parsed(revision, key_length_bytes, owner_entry, b"")
-  let file_key = derive_legacy_file_key(parsed_without_u, user_password, file_id)
-  let user_entry = compute_legacy_user_entry(parsed_without_u, file_key, file_id)
+  let parsed_without_u = legacy_test_parsed(
+    revision, key_length_bytes, owner_entry, b"",
+  )
+  let file_key = derive_legacy_file_key(
+    parsed_without_u, user_password, file_id,
+  )
+  let user_entry = compute_legacy_user_entry(
+    parsed_without_u, file_key, file_id,
+  )
   let dict : @objects.PdfDictionary = Map::new()
   dict[test_name(b"Filter")] = @objects.PdfObject::Name(test_name(b"Standard"))
   dict[test_name(b"V")] = @objects.PdfObject::Integer(
-    if revision == 2 { 1L } else { 2L },
+    if revision == 2 {
+      1L
+    } else {
+      2L
+    },
   )
   dict[test_name(b"R")] = @objects.PdfObject::Integer(revision.to_int64())
   dict[test_name(b"Length")] = @objects.PdfObject::Integer(
@@ -85,7 +99,8 @@ test "Standard handler authenticates revision 2 user and owner passwords" {
 
   let owner_key = authenticate(dict, b"owner", file_id)
   match owner_key {
-    Some(key) => assert_eq(key.access_mode == EncryptionAccessMode::OwnerAccess, true)
+    Some(key) =>
+      assert_eq(key.access_mode == EncryptionAccessMode::OwnerAccess, true)
     None => fail("expected owner password authentication")
   }
 
@@ -133,10 +148,22 @@ test "decryptor handles AESV2 and AESV3 CBC payloads" {
     embedded_file_filter: None,
   }
   let iv = b"abcdefghijklmnop"
-  let aesv2_key = derive_object_key(aesv2_context.file_key, object_id, use_aes_salt=true)
+  let aesv2_key = derive_object_key(
+    aesv2_context.file_key,
+    object_id,
+    use_aes_salt=true,
+  )
   let aesv2_encrypted = iv +
-    crypto_aes_cbc_encrypt(aesv2_key, iv, b"aes two", @crypto.PaddingMode::PKCS7)
-  assert_eq(decrypt_string(aesv2_context, object_id, aesv2_encrypted), b"aes two")
+    crypto_aes_cbc_encrypt(
+      aesv2_key,
+      iv,
+      b"aes two",
+      @crypto.PaddingMode::PKCS7,
+    )
+  assert_eq(
+    decrypt_string(aesv2_context, object_id, aesv2_encrypted),
+    b"aes two",
+  )
 
   let aesv3_context = EncryptionContext::{
     status: EncryptionStatus::EncryptedAuthorized,
@@ -150,6 +177,14 @@ test "decryptor handles AESV2 and AESV3 CBC payloads" {
     embedded_file_filter: None,
   }
   let aesv3_encrypted = iv +
-    crypto_aes_cbc_encrypt(aesv3_context.file_key, iv, b"aes three", @crypto.PaddingMode::PKCS7)
-  assert_eq(decrypt_stream(aesv3_context, object_id, aesv3_encrypted), b"aes three")
+    crypto_aes_cbc_encrypt(
+      aesv3_context.file_key,
+      iv,
+      b"aes three",
+      @crypto.PaddingMode::PKCS7,
+    )
+  assert_eq(
+    decrypt_stream(aesv3_context, object_id, aesv3_encrypted),
+    b"aes three",
+  )
 }

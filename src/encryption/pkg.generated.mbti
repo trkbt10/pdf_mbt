@@ -9,6 +9,14 @@ import {
 }
 
 // Values
+pub fn authenticate(Map[@objects.PdfName, @objects.PdfObject], Bytes, FileIdentifier) -> EncryptionContext? raise PdfEncryptionError
+
+pub fn decrypt_embedded_file_stream(EncryptionContext, @objects.ObjectId, Bytes) -> Bytes raise PdfEncryptionError
+
+pub fn decrypt_stream(EncryptionContext, @objects.ObjectId, Bytes) -> Bytes raise PdfEncryptionError
+
+pub fn decrypt_string(EncryptionContext, @objects.ObjectId, Bytes) -> Bytes raise PdfEncryptionError
+
 pub fn wrap_crypto_error(@crypto.PdfCryptoError) -> PdfEncryptionError
 
 // Errors
@@ -66,6 +74,8 @@ pub(all) struct DocumentPermissions {
   assemble : Bool
   high_quality_print : Bool
 } derive(Eq, @debug.Debug)
+pub fn DocumentPermissions::from_raw(Int64) -> Self
+pub fn DocumentPermissions::unrestricted() -> Self
 
 pub(all) struct EncryptedPayloadInfo {
   subtype : @objects.PdfName
@@ -77,6 +87,7 @@ pub(all) enum EncryptionAccessMode {
   OwnerAccess
 } derive(Eq, @debug.Debug)
 
+#alias(EncryptionKey)
 pub(all) struct EncryptionContext {
   status : EncryptionStatus
   file_key : Bytes

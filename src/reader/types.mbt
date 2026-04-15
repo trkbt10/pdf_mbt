@@ -105,6 +105,7 @@ pub struct PdfFile {
   trailer : TrailerInfo
   sections : Array[XrefSection]
   xref_index : XrefIndex
+  priv mut encryption : @encryption.EncryptionKey?
   cache : Map[@objects.ObjectId, @objects.PdfObject]
   object_stream_tables : Map[@objects.ObjectId, ObjectStreamTableCache]
 } derive(Eq, Debug)

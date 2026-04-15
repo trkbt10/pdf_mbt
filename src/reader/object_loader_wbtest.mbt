@@ -19,6 +19,7 @@ fn make_reader_file(bytes : Bytes, xref_index : XrefIndex) -> PdfFile {
     },
     sections: [],
     xref_index,
+    encryption: None,
     cache: Map::new(),
     object_stream_tables: Map::new(),
   }
@@ -78,6 +79,86 @@ fn make_flate_object_stream_file() -> PdfFile {
 }
 
 ///|
+fn encrypted_loader_filter() -> @encryption.CryptFilter {
+  @encryption.CryptFilter::{
+    name: @objects.PdfName::new(b"StdCF"),
+    filter_method: @encryption.CryptFilterMethod::V2,
+    auth_event: @encryption.CryptFilterAuthEvent::DocOpen,
+    length_bits: Some(40),
+  }
+}
+
+///|
+fn encrypted_loader_context() -> @encryption.EncryptionContext {
+  let filter = encrypted_loader_filter()
+  @encryption.EncryptionContext::{
+    status: @encryption.EncryptionStatus::EncryptedAuthorized,
+    file_key: b"abcde",
+    access_mode: @encryption.EncryptionAccessMode::UserAccess,
+    permissions: @encryption.DocumentPermissions::unrestricted(),
+    cipher_version: @encryption.CipherVersion::V2,
+    encrypt_metadata: true,
+    string_filter: filter,
+    stream_filter: filter,
+    embedded_file_filter: None,
+  }
+}
+
+///|
+fn loader_hex_digit(value : Int) -> Byte {
+  if value < 10 {
+    (b'0'.to_int() + value).to_byte()
+  } else {
+    (b'a'.to_int() + value - 10).to_byte()
+  }
+}
+
+///|
+fn loader_hex_encode(bytes : Bytes) -> Bytes {
+  let out : Array[Byte] = []
+  for byte in bytes {
+    let value = byte.to_int()
+    out.push(loader_hex_digit((value >> 4) & 0x0f))
+    out.push(loader_hex_digit(value & 0x0f))
+  }
+  Bytes::from_array(out)
+}
+
+///|
+fn make_encrypted_string_file() -> PdfFile raise @encryption.PdfEncryptionError {
+  let object_id = @objects.ObjectId::{ object_number: 1, generation_number: 0 }
+  let context = encrypted_loader_context()
+  let encrypted = @encryption.decrypt_string(context, object_id, b"Brillig")
+  let xref_index : XrefIndex = Map::new()
+  xref_index[object_id] = ObjectLocation::Uncompressed(0L, 0)
+  let file = make_reader_file(
+    b"1 0 obj\n<" + loader_hex_encode(encrypted) + b">\nendobj",
+    xref_index,
+  )
+  file.encryption = Some(context)
+  file
+}
+
+///|
+fn make_encrypted_stream_file() -> PdfFile raise @encryption.PdfEncryptionError {
+  let object_id = @objects.ObjectId::{ object_number: 1, generation_number: 0 }
+  let context = encrypted_loader_context()
+  let encrypted = @encryption.decrypt_stream(context, object_id, b"Hello")
+  let xref_index : XrefIndex = Map::new()
+  xref_index[object_id] = ObjectLocation::Uncompressed(0L, 0)
+  let file = make_reader_file(
+    b"1 0 obj\r\n" +
+    b"<< /Length 5 >>\r\n" +
+    b"stream\r\n" +
+    encrypted +
+    b"\r\nendstream\r\nendobj",
+    xref_index,
+  )
+  file.encryption = Some(context)
+  file
+}
+
+///|
 test "load_object returns null for missing and generation-mismatched references" {
   let file = make_uncompressed_object_file()
   assert_eq(
@@ -96,6 +177,27 @@ test "load_object returns null for missing and generation-mismatched references"
     @objects.PdfObject::Null,
     true,
   )
+}
+
+///|
+test "load_object decrypts encrypted strings before caching" {
+  let file = make_encrypted_string_file()
+  let object_id = @objects.ObjectId::{ object_number: 1, generation_number: 0 }
+
+  let object = file.load_object(object_id)
+  assert_eq(object == @objects.PdfObject::String(b"Brillig"), true)
+  assert_eq(file.cache.get(object_id) == Some(object), true)
+}
+
+///|
+test "load_object decrypts stream data before downstream filters" {
+  let file = make_encrypted_stream_file()
+  let object_id = @objects.ObjectId::{ object_number: 1, generation_number: 0 }
+
+  match file.load_object(object_id) {
+    @objects.PdfObject::Stream(stream) => assert_eq(stream.data, b"Hello")
+    _ => fail("expected decrypted stream")
+  }
 }
 
 ///|

@@ -36,6 +36,7 @@ test "reader metadata contracts are constructible" {
     trailer,
     sections: [section],
     xref_index,
+    encryption: None,
     cache: Map::new(),
     object_stream_tables: Map::new(),
   }

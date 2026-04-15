@@ -7,7 +7,10 @@ pub fn PdfFile::load_object(
     Some(object) => object
     None => {
       let object = match self.xref_index.resolve(id) {
-        Some(location) => load_object_at_location(self, id, location)
+        Some(location) => {
+          let raw_object = load_object_at_location(self, id, location)
+          decrypt_loaded_object(self, id, raw_object)
+        }
         None => @objects.PdfObject::Null
       }
       self.cache[id] = object
