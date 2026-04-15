@@ -37,6 +37,19 @@ pub struct DecodeParams {
 }
 pub fn DecodeParams::columns(Self, String, Int) -> Int raise PdfFilterError
 
+pub(all) enum FilterName {
+  ASCIIHexDecode
+  ASCII85Decode
+  FlateDecode
+  LZWDecode
+  RunLengthDecode
+  DCTDecode
+  CCITTFaxDecode
+  JPXDecode
+  Unsupported(String)
+}
+pub fn FilterName::is_jpx(Self) -> Bool
+
 pub(all) struct JpxImageData {
   width : Int
   height : Int
