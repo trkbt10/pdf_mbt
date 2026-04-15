@@ -129,6 +129,35 @@ pub fn FormXObject::geometry(self : FormXObject) -> FormXObjectGeometry {
 }
 
 ///|
+/// Applies the form Matrix to the BBox corners and returns the axis-aligned
+/// transformed bounds as `(left, bottom, right, top)` coordinates.
+pub fn FormXObject::transformed_bbox(
+  self : FormXObject,
+) -> (Double, Double, Double, Double) {
+  let transformed = self.bbox.transform_bounds(self.matrix)
+  let left = transformed.left
+  let bottom = transformed.bottom
+  let right = transformed.right
+  let top = transformed.top
+  (left, bottom, right, top)
+}
+
+///|
+/// Reports whether the form's Group attributes identify an ISO transparency
+/// group. Parsed transparency metadata is authoritative, while the subtype
+/// name keeps the predicate true for equivalent preserved group metadata.
+pub fn FormXObject::has_transparency_group(self : FormXObject) -> Bool {
+  match self.group {
+    Some(group) =>
+      match group.transparency {
+        Some(_) => true
+        None => group.subtype == Some(pdf_name(b"Transparency"))
+      }
+    None => false
+  }
+}
+
+///|
 /// Applies a form XObject's Matrix and BBox clip to a graphics-state copy,
 /// producing the scoped state in which the form content is interpreted.
 pub fn apply_form_xobject_geometry(

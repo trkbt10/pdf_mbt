@@ -429,6 +429,8 @@ pub(all) struct FormXObject {
   stream : @objects.PdfStream
 } derive(Eq, @debug.Debug)
 pub fn FormXObject::geometry(Self) -> FormXObjectGeometry
+pub fn FormXObject::has_transparency_group(Self) -> Bool
+pub fn FormXObject::transformed_bbox(Self) -> (Double, Double, Double, Double)
 
 pub(all) struct FormXObjectGeometry {
   matrix : GraphicsMatrix
