@@ -9,6 +9,15 @@ import {
 }
 
 // Values
+pub fn decode_utf16be_text(Bytes, TextErrorContext) -> String raise PdfTextError
+
+pub fn glyph_name_to_unicode(@objects.PdfName) -> String?
+
+pub fn map_glyph_name_to_unicode(Bytes, GlyphIdentifier, GlyphFallback) -> UnicodeMapping
+
+pub fn parse_simple_encoding(@objects.PdfObject?, Int64) -> SimpleEncoding raise PdfTextError
+
+pub fn resolve_named_encoding(@objects.PdfName, Int64) -> SimpleEncoding raise PdfTextError
 
 // Errors
 pub(all) suberror PdfTextError {
@@ -76,6 +85,22 @@ pub(all) enum GlyphWidthSource {
   CIDExplicitWidth
   Type3GlyphProgram
   UnknownWidth
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SimpleEncoding {
+  base : SimpleEncodingName
+  differences : Map[Int, @objects.PdfName]
+  names : Map[Int, @objects.PdfName]
+} derive(Eq, @debug.Debug)
+pub fn SimpleEncoding::from_name(SimpleEncodingName) -> Self
+pub fn SimpleEncoding::glyph_name_for_code(Self, Int) -> @objects.PdfName
+pub fn SimpleEncoding::standard() -> Self
+
+pub(all) enum SimpleEncodingName {
+  StandardEncoding
+  WinAnsiEncoding
+  MacRomanEncoding
+  MacExpertEncoding
 } derive(Eq, @debug.Debug)
 
 pub(all) struct TextErrorContext {
