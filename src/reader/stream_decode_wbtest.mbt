@@ -99,7 +99,7 @@ test "decode_structural_stream wraps unsupported filter names from the filter la
   let stream = make_structural_stream(
     b"0 1 2",
     b"ObjStm",
-    Some(@objects.PdfObject::Name(@objects.PdfName::new(b"DCTDecode"))),
+    Some(@objects.PdfObject::Name(@objects.PdfName::new(b"JPXDecode"))),
   )
 
   let result : Result[Bytes, PdfReaderError] = try? decode_structural_stream(
@@ -115,7 +115,7 @@ test "decode_structural_stream wraps unsupported filter names from the filter la
       )
     ) => {
       assert_eq(actual_offset, 41L)
-      assert_eq(filter_name, "DCTDecode")
+      assert_eq(filter_name, "JPXDecode")
     }
     _ => fail("expected unsupported filter failures to be wrapped with offset")
   }
@@ -179,7 +179,7 @@ test "decode_structural_stream rejects xref array filters with crypt and unsuppo
     b"XRef",
     Some(
       @objects.PdfObject::Array([
-        @objects.PdfObject::Name(@objects.PdfName::new(b"DCTDecode")),
+        @objects.PdfObject::Name(@objects.PdfName::new(b"JPXDecode")),
         @objects.PdfObject::Name(@objects.PdfName::new(b"FlateDecode")),
       ]),
     ),
@@ -197,7 +197,7 @@ test "decode_structural_stream rejects xref array filters with crypt and unsuppo
       )
     ) => {
       assert_eq(actual_offset, 53L)
-      assert_eq(filter_name, "DCTDecode")
+      assert_eq(filter_name, "JPXDecode")
     }
     _ => fail("expected wrapped unsupported filter failure")
   }

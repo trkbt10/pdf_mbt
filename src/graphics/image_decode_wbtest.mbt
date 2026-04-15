@@ -99,18 +99,18 @@ test "image extraction preserves unsupported encoded image codecs" {
     1,
     @objects.PdfName::new(b"DeviceRGB"),
     8,
-    b"jpeg",
+    b"jpx",
   )
   stream.dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(
-    @objects.PdfName::new(b"DCTDecode"),
+    @objects.PdfName::new(b"JPXDecode"),
   )
   let extracted = extract_image_xobject(None, stream, 2L)
   match extracted.data {
     EncodedImageData(bytes, filters) => {
-      assert_eq(bytes, b"jpeg")
-      assert_eq(filters[0] == @objects.PdfName::new(b"DCTDecode"), true)
+      assert_eq(bytes, b"jpx")
+      assert_eq(filters[0] == @objects.PdfName::new(b"JPXDecode"), true)
     }
-    _ => fail("expected encoded image data for DCTDecode")
+    _ => fail("expected encoded image data for JPXDecode")
   }
 }
 

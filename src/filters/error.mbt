@@ -5,8 +5,8 @@
 /// InvalidDecodeParms covers malformed predictor configuration, including
 /// Predictor, Columns, Colors, BitsPerComponent, and EarlyChange values.
 /// UnsupportedFilter carries unsupported filter names such as CCITTFaxDecode,
-/// JBIG2Decode, DCTDecode, JPXDecode, and Crypt so callers can identify the
-/// failed filter and avoid corrupted data.
+/// JBIG2Decode, JPXDecode, and Crypt so callers can identify the failed filter
+/// and avoid corrupted data.
 pub(all) suberror PdfFilterError {
   InvalidFilterSpec(String)
   InvalidDecodeParms(String, String)

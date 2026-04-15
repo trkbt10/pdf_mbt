@@ -499,12 +499,11 @@ test "decode_stream_bytes rejects all named unsupported filters with their names
   let filter_names : Array[@objects.PdfName] = [
     @objects.PdfName::new(b"CCITTFaxDecode"),
     @objects.PdfName::new(b"JBIG2Decode"),
-    @objects.PdfName::new(b"DCTDecode"),
     @objects.PdfName::new(b"JPXDecode"),
     @objects.PdfName::new(b"Crypt"),
   ]
   let expected_names : Array[String] = [
-    "CCITTFaxDecode", "JBIG2Decode", "DCTDecode", "JPXDecode", "Crypt",
+    "CCITTFaxDecode", "JBIG2Decode", "JPXDecode", "Crypt",
   ]
   let mut index = 0
   while index < filter_names.length() {

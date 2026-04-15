@@ -66,11 +66,22 @@ The filter decoder shall decode RunLengthDecode streams per §7.4.5.
 - When the length byte is in the range 129 to 255, the filter decoder shall replicate the next single byte (257 - length) times
 - When the length byte is 128, the filter decoder shall treat it as the end-of-data (EOD) marker
 
-### Requirement 7: Unsupported Filter Handling
-The filter decoder shall gracefully handle filters that are not implemented in this phase.
+### Requirement 7: DCTDecode Filter
+The filter decoder shall decode DCTDecode streams per §7.4.8, decompressing JPEG-encoded image data.
 
 #### Acceptance Criteria
-- For CCITTFaxDecode, JBIG2Decode, DCTDecode, JPXDecode, and Crypt filters, the filter decoder shall return a descriptive error indicating the filter is not yet supported
+- The filter decoder shall decode baseline JPEG (ISO/IEC 10918-1) encoded data into raw sample bytes
+- The filter decoder shall support 8-bit grayscale (1 component) and 8-bit colour (3 component YCbCr) JPEG data
+- The filter decoder shall convert YCbCr colour data to RGB during decoding
+- When `DecodeParms` specifies `ColorTransform`, the filter decoder shall respect the colour transformation flag (0 = no transform, 1 = YCbCr to RGB)
+- The filter decoder shall handle JPEG markers: SOI, SOF0 (baseline), DHT, DQT, SOS, EOI
+- The decoded output shall be interleaved sample bytes in component order (e.g., R G B R G B ... for 3-component images)
+
+### Requirement 7b: Unsupported Filter Handling
+The filter decoder shall gracefully handle filters that are not yet implemented.
+
+#### Acceptance Criteria
+- For CCITTFaxDecode, JBIG2Decode, JPXDecode, and Crypt filters, the filter decoder shall return a descriptive error indicating the filter is not yet supported
 - The error shall include the filter name so that callers can identify which filter caused the failure
 - The filter decoder shall not silently skip unsupported filters or return corrupted data
 

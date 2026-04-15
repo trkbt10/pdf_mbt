@@ -20,7 +20,8 @@ pub fn decode_stream(stream : @objects.PdfStream) -> Bytes raise PdfFilterError 
 /// dictionaries by index, and returns the fully decoded bytes. FlateDecode and
 /// LZWDecode honor predictor parameters such as Predictor, Columns, Colors,
 /// BitsPerComponent, and EarlyChange. RunLengthDecode handles literal runs,
-/// repeat runs, and byte 128 as the end-of-data marker.
+/// repeat runs, and byte 128 as the end-of-data marker. DCTDecode decodes
+/// baseline JPEG image data to raw interleaved sample bytes.
 ///
 /// Missing Filter entries return the original byte sequence unchanged.
 pub fn decode_stream_bytes(
@@ -44,6 +45,7 @@ fn execute_pipeline(
       FlateDecode => decode_flate(current, spec.params)
       LZWDecode => decode_lzw(current, spec.params)
       RunLengthDecode => decode_run_length(current)
+      DCTDecode => decode_dct(current, spec.params)
       Unsupported(name) => raise PdfFilterError::UnsupportedFilter(name)
     }
   }

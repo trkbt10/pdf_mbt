@@ -168,6 +168,7 @@ fn parse_filter_name(name : @objects.PdfName) -> FilterName {
   let flate = @objects.PdfName::new(b"FlateDecode")
   let lzw = @objects.PdfName::new(b"LZWDecode")
   let run_length = @objects.PdfName::new(b"RunLengthDecode")
+  let dct = @objects.PdfName::new(b"DCTDecode")
 
   if name == ascii_hex {
     ASCIIHexDecode
@@ -179,6 +180,8 @@ fn parse_filter_name(name : @objects.PdfName) -> FilterName {
     LZWDecode
   } else if name == run_length {
     RunLengthDecode
+  } else if name == dct {
+    DCTDecode
   } else {
     Unsupported(name.to_text())
   }

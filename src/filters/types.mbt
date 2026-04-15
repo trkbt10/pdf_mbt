@@ -5,6 +5,7 @@ priv enum FilterName {
   FlateDecode
   LZWDecode
   RunLengthDecode
+  DCTDecode
   Unsupported(String)
 }
 
@@ -16,6 +17,7 @@ fn FilterName::to_text(self : FilterName) -> String {
     FlateDecode => "FlateDecode"
     LZWDecode => "LZWDecode"
     RunLengthDecode => "RunLengthDecode"
+    DCTDecode => "DCTDecode"
     Unsupported(name) => name
   }
 }
