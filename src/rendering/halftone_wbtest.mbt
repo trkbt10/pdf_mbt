@@ -32,3 +32,62 @@ test "spot function samples stay ordered for simple dot center" {
 
   assert_eq(center > corner, true)
 }
+
+///|
+fn halftone_test_name(bytes : Bytes) -> @objects.PdfName {
+  @objects.PdfName::new(bytes)
+}
+
+///|
+test "type one halftone dictionary parses screen fields and generates thresholds" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[halftone_test_name(b"HalftoneType")] = @objects.PdfObject::Integer(1L)
+  dict[halftone_test_name(b"Frequency")] = @objects.PdfObject::Real(120.0)
+  dict[halftone_test_name(b"Angle")] = @objects.PdfObject::Real(30.0)
+  dict[halftone_test_name(b"SpotFunction")] = @objects.PdfObject::Name(
+    halftone_test_name(b"CosineDot"),
+  )
+  dict[halftone_test_name(b"AccurateScreens")] = @objects.PdfObject::Boolean(
+    true,
+  )
+
+  match parse_halftone_object(@objects.PdfObject::Dictionary(dict)) {
+    TypeOneHalftone(halftone) => {
+      assert_eq(halftone.screen.frequency, 120.0)
+      assert_eq(halftone.screen.angle, 30.0)
+      assert_eq(halftone.screen.spot_function == SpotFunction::CosineDot, true)
+      assert_eq(halftone.accurate_screens, true)
+      assert_eq(halftone.generate_threshold_array(2, 2).values.length(), 4)
+    }
+    _ => fail("expected Type 1 halftone")
+  }
+}
+
+///|
+test "type sixteen halftone stream parses big endian threshold rectangles" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[halftone_test_name(b"HalftoneType")] = @objects.PdfObject::Integer(16L)
+  dict[halftone_test_name(b"Width")] = @objects.PdfObject::Integer(2L)
+  dict[halftone_test_name(b"Height")] = @objects.PdfObject::Integer(1L)
+  dict[halftone_test_name(b"Width2")] = @objects.PdfObject::Integer(1L)
+  dict[halftone_test_name(b"Height2")] = @objects.PdfObject::Integer(1L)
+  let stream = @objects.PdfStream::{
+    dict,
+    data: Bytes::from_array([
+      b'\x00', b'\x01', b'\x12', b'\x34', b'\xff', b'\xff',
+    ]),
+  }
+
+  match parse_halftone_object(@objects.PdfObject::Stream(stream)) {
+    TypeSixteenHalftone(halftone) => {
+      assert_eq(halftone.primary_thresholds.width, 2)
+      assert_eq(halftone.primary_thresholds.values[0], 1)
+      assert_eq(halftone.primary_thresholds.values[1], 4660)
+      match halftone.secondary_thresholds {
+        Some(second) => assert_eq(second.values[0], 65535)
+        None => fail("expected second rectangle")
+      }
+    }
+    _ => fail("expected Type 16 halftone")
+  }
+}
