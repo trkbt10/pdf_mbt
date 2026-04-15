@@ -17,7 +17,9 @@ test "E2E: extract text from Simple PDF 2.0 file" {
 
 ///|
 /// E2E test: extract text from the incremental PDF 2.0 example.
-/// Object 6 stream contains "PDF 2.0 Words Have Spacing".
+/// Requirement 2: Text extraction from incremental-save PDF 2.0.
+/// "PDF 2.0 via incremental save.pdf" object 6 stream contains
+/// "PDF 2.0 Words Have Spacing".
 test "E2E: extract text from incremental PDF 2.0 file" {
   let document = PdfDocument::open(incremental_pdf20_file)
   let page = document.page(0)
@@ -33,7 +35,9 @@ test "E2E: extract text from incremental PDF 2.0 file" {
 }
 
 ///|
-test "E2E: extract text from CalRGB PDF 2.0 example" {
+/// Requirement 3: Text extraction from CalRGB colour-space PDF.
+/// "PDF 2.0 image with BPC.pdf" includes calibrated RGB text content.
+test "E2E: extract text from CalRGB colour-space PDF 2.0 example" {
   assert_pdf_file_text_contains(
     "spec/pdf20examples/PDF 2.0 image with BPC.pdf",
     "This text is in a Calibrated RGB (CalRGB) colorspace",
