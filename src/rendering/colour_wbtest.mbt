@@ -49,3 +49,42 @@ test "raster device converts device rgb to native gray with ntsc weights" {
   assert_eq(native.colour_space == NativeColourSpace::NativeGray, true)
   assert_close(native.components[0], 0.4375)
 }
+
+///|
+test "cie rendering intents map to explicit gamut mapping strategies" {
+  let absolute = apply_cie_rendering_intent(
+    @graphics.RenderingIntent::AbsoluteColorimetric,
+  )
+  assert_eq(
+    absolute.strategy == GamutMappingStrategy::AbsoluteColorimetricGamutMapping,
+    true,
+  )
+  assert_eq(absolute.preserve_source_white, true)
+
+  let relative = apply_cie_rendering_intent(
+    @graphics.RenderingIntent::RelativeColorimetric,
+  )
+  assert_eq(
+    relative.strategy == GamutMappingStrategy::RelativeColorimetricGamutMapping,
+    true,
+  )
+  assert_eq(relative.preserve_source_white, false)
+
+  let saturation = apply_cie_rendering_intent(
+    @graphics.RenderingIntent::Saturation,
+  )
+  assert_eq(
+    saturation.strategy == GamutMappingStrategy::SaturationGamutMapping,
+    true,
+  )
+  assert_eq(saturation.preserve_saturation, true)
+
+  let perceptual = apply_cie_rendering_intent(
+    @graphics.RenderingIntent::Perceptual,
+  )
+  assert_eq(
+    perceptual.strategy == GamutMappingStrategy::PerceptualGamutMapping,
+    true,
+  )
+  assert_eq(perceptual.perceptual_compression, true)
+}

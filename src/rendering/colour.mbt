@@ -5,8 +5,64 @@ pub(all) struct NativeColour {
 } derive(Eq, Debug)
 
 ///|
+pub(all) enum GamutMappingStrategy {
+  AbsoluteColorimetricGamutMapping
+  RelativeColorimetricGamutMapping
+  SaturationGamutMapping
+  PerceptualGamutMapping
+} derive(Eq, Debug)
+
+///|
+pub(all) struct CieRenderingIntentApplication {
+  intent : @graphics.RenderingIntent
+  strategy : GamutMappingStrategy
+  preserve_source_white : Bool
+  preserve_saturation : Bool
+  perceptual_compression : Bool
+} derive(Eq, Debug)
+
+///|
 pub fn NativeColour::component_count(self : NativeColour) -> Int {
   self.components.length()
+}
+
+///|
+pub fn apply_cie_rendering_intent(
+  intent : @graphics.RenderingIntent,
+) -> CieRenderingIntentApplication {
+  let strategy = gamut_mapping_strategy_for_intent(intent)
+  CieRenderingIntentApplication::{
+    intent,
+    strategy,
+    preserve_source_white: strategy == AbsoluteColorimetricGamutMapping,
+    preserve_saturation: strategy == SaturationGamutMapping,
+    perceptual_compression: strategy == PerceptualGamutMapping,
+  }
+}
+
+///|
+pub fn gamut_mapping_strategy_for_intent(
+  intent : @graphics.RenderingIntent,
+) -> GamutMappingStrategy {
+  match intent {
+    AbsoluteColorimetric => AbsoluteColorimetricGamutMapping
+    RelativeColorimetric => RelativeColorimetricGamutMapping
+    Saturation => SaturationGamutMapping
+    Perceptual => PerceptualGamutMapping
+  }
+}
+
+///|
+pub fn GamutMappingStrategy::map_component(
+  self : GamutMappingStrategy,
+  component : Double,
+) -> Double {
+  match self {
+    AbsoluteColorimetricGamutMapping | RelativeColorimetricGamutMapping =>
+      colour_component(component)
+    SaturationGamutMapping => colour_component(component)
+    PerceptualGamutMapping => colour_component(component)
+  }
 }
 
 ///|
