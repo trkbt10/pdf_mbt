@@ -101,7 +101,9 @@ priv struct CcittBitReader {
 }
 
 ///|
-fn decode_ccitt_fax(
+/// Decodes CCITTFaxDecode Group 3 1D Group 4 2D DecodeParms output format
+/// 1 bit per pixel MSB first padded at row boundaries.
+pub fn decode_ccitt_fax(
   data : Bytes,
   params : DecodeParams,
 ) -> Bytes raise PdfFilterError {

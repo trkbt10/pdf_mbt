@@ -27,7 +27,7 @@ fn FilterName::to_text(self : FilterName) -> String {
 }
 
 ///|
-priv struct DecodeParams {
+pub struct DecodeParams {
   raw : @objects.PdfDictionary?
 }
 

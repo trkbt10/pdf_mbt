@@ -2,7 +2,7 @@
 /// CCITT run-length Huffman table entry for white or black pixels. The code
 /// bits are stored MSB first with an explicit bit length and the decoded run
 /// length, including terminating and make-up codes.
-priv struct CcittCode {
+pub struct CcittCode {
   bits : Int
   length : Int
   run : Int
@@ -14,7 +14,10 @@ fn CcittCode::matches(self : CcittCode, bits : Int, length : Int) -> Bool {
 }
 
 ///|
-fn lookup_ccitt_huffman_code(
+/// CCITT Group 3 Group 4 Huffman code lookup white black run-length table
+/// helper. It matches an MSB-first Huffman bit pattern against the selected
+/// white or black run-length table and returns the decoded code entry.
+pub fn lookup_ccitt_huffman_code(
   table : Array[CcittCode],
   bits : Int,
   length : Int,

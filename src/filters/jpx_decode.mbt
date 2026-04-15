@@ -16,7 +16,8 @@ pub(all) struct JpxImageData {
 /// Decodes raw JPXDecode stream bytes by passing the PDF stream payload
 /// directly to the JPEG 2000 decoder. The returned metadata supplies image
 /// pipeline integration data: JPEG 2000 Width, Height, BitsPerComponent, and
-/// component count override values alongside interleaved sample bytes.
+/// component count override values for JPXDecode JPEG 2000 filter integration
+/// decoded sample bytes.
 pub fn decode_jpx_image(data : Bytes) -> JpxImageData raise PdfFilterError {
   let decoded = try @jpeg2000.decode(data) catch {
     error => raise PdfFilterError::DecodeError("JPXDecode", error.to_string())
