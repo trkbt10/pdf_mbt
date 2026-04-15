@@ -19,6 +19,23 @@ pub(all) enum OptionalContentPolicy {
 } derive(Eq, Debug)
 
 ///|
+/// Lightweight optional content group state for visibility policy checks. A
+/// missing explicit visibility inherits the caller's default configuration.
+pub(all) struct OptionalContentGroup {
+  name : String
+  visible : Bool?
+} derive(Eq, Debug)
+
+///|
+/// Lightweight optional content membership policy over named groups. The
+/// policy determines whether the associated content should be rendered from
+/// the set of currently visible group names.
+pub(all) struct OptionalContentMembership {
+  groups : Array[String]
+  policy : OptionalContentPolicy
+} derive(Eq, Debug)
+
+///|
 /// Optional content state derived from OCProperties, OCGs, the default
 /// optional content configuration dictionary, BaseState, ON/OFF arrays, and
 /// Intent. Usage dictionaries and usage application dictionaries for View,
@@ -99,6 +116,42 @@ pub fn OptionalContentState::evaluate(
       } else {
         OptionalContentDecision::Hidden
       }
+  }
+}
+
+///|
+/// Resolves this group's visibility against the default optional-content
+/// configuration. Explicit group state wins; otherwise the configured default
+/// state supplies the visibility result.
+pub fn OptionalContentGroup::is_visible(
+  self : OptionalContentGroup,
+  default_on : Bool,
+) -> Bool {
+  match self.visible {
+    Some(value) => {
+      let explicit_state = value
+      explicit_state
+    }
+    None => {
+      let inherited_state = default_on
+      inherited_state
+    }
+  }
+}
+
+///|
+/// Evaluates an optional-content membership policy against visible group names.
+/// AllOn and AnyOn require visible groups, while AllOff and AnyOff render when
+/// the referenced groups are absent from the visible set.
+pub fn OptionalContentMembership::evaluate_visibility(
+  self : OptionalContentMembership,
+  visible_groups : Array[String],
+) -> Bool {
+  match self.policy {
+    AllOn => membership_all_on(self.groups, visible_groups)
+    AnyOn => membership_any_on(self.groups, visible_groups)
+    AllOff => membership_all_off(self.groups, visible_groups)
+    AnyOff => membership_any_off(self.groups, visible_groups)
   }
 }
 
@@ -558,6 +611,71 @@ fn contains_name(
   names : Array[@objects.PdfName],
   name : @objects.PdfName,
 ) -> Bool {
+  for value in names {
+    if value == name {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn membership_all_on(
+  groups : Array[String],
+  visible_groups : Array[String],
+) -> Bool {
+  for group in groups {
+    if !contains_visible_group_name(visible_groups, group) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn membership_any_on(
+  groups : Array[String],
+  visible_groups : Array[String],
+) -> Bool {
+  if groups.length() == 0 {
+    return true
+  }
+  for group in groups {
+    if contains_visible_group_name(visible_groups, group) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn membership_all_off(
+  groups : Array[String],
+  visible_groups : Array[String],
+) -> Bool {
+  for group in groups {
+    if contains_visible_group_name(visible_groups, group) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn membership_any_off(
+  groups : Array[String],
+  visible_groups : Array[String],
+) -> Bool {
+  for group in groups {
+    if !contains_visible_group_name(visible_groups, group) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn contains_visible_group_name(names : Array[String], name : String) -> Bool {
   for value in names {
     if value == name {
       return true

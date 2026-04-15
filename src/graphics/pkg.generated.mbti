@@ -800,6 +800,18 @@ pub(all) enum OptionalContentPolicy {
   AllOff
 } derive(Eq, @debug.Debug)
 
+pub(all) struct OptionalContentGroup {
+  name : String
+  visible : Bool?
+} derive(Eq, @debug.Debug)
+pub fn OptionalContentGroup::is_visible(Self, Bool) -> Bool
+
+pub(all) struct OptionalContentMembership {
+  groups : Array[String]
+  policy : OptionalContentPolicy
+} derive(Eq, @debug.Debug)
+pub fn OptionalContentMembership::evaluate_visibility(Self, Array[String]) -> Bool
+
 pub(all) struct OptionalContentState {
   hidden_refs : Array[@objects.ObjectId]
   hidden_names : Array[@objects.PdfName]

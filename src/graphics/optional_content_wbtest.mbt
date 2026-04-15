@@ -9,6 +9,50 @@ test "OCG Intent outside active configuration has no visibility effect" {
 }
 
 ///|
+test "OptionalContentGroup resolves explicit and default visibility" {
+  let explicit_off = OptionalContentGroup::{
+    name: "LayerA",
+    visible: Some(false),
+  }
+  let explicit_on = OptionalContentGroup::{
+    name: "LayerB",
+    visible: Some(true),
+  }
+  let inherited = OptionalContentGroup::{ name: "LayerC", visible: None }
+
+  assert_eq(explicit_off.is_visible(true), false)
+  assert_eq(explicit_on.is_visible(false), true)
+  assert_eq(inherited.is_visible(true), true)
+  assert_eq(inherited.is_visible(false), false)
+}
+
+///|
+test "OptionalContentMembership evaluates visibility policies" {
+  let visible = ["A", "C"]
+  let all_on = OptionalContentMembership::{
+    groups: ["A", "C"],
+    policy: OptionalContentPolicy::AllOn,
+  }
+  let any_on = OptionalContentMembership::{
+    groups: ["B", "C"],
+    policy: OptionalContentPolicy::AnyOn,
+  }
+  let all_off = OptionalContentMembership::{
+    groups: ["B", "D"],
+    policy: OptionalContentPolicy::AllOff,
+  }
+  let any_off = OptionalContentMembership::{
+    groups: ["A", "B"],
+    policy: OptionalContentPolicy::AnyOff,
+  }
+
+  assert_eq(all_on.evaluate_visibility(visible), true)
+  assert_eq(any_on.evaluate_visibility(visible), true)
+  assert_eq(all_off.evaluate_visibility(visible), true)
+  assert_eq(any_off.evaluate_visibility(visible), true)
+}
+
+///|
 test "empty configuration Intent makes optional content groups inert" {
   let object_id = @objects.ObjectId::{ object_number: 4, generation_number: 0 }
   let properties : @objects.PdfDictionary = Map::new()
