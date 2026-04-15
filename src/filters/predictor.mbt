@@ -14,7 +14,7 @@ fn DecodeParams::predictor_context(
   let raw = self.raw
   let colors = read_positive_parameter(filter_name, raw, "Colors", 1)
   let bits_per_component = read_bits_per_component(filter_name, raw)
-  let columns = read_positive_parameter(filter_name, raw, "Columns", 1)
+  let columns = self.columns(filter_name, 1)
   let row_bytes = row_byte_width(colors, bits_per_component, columns)
   PredictorContext::{ colors, bits_per_component, columns, row_bytes }
 }

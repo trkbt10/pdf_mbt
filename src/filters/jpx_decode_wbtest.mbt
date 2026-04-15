@@ -56,6 +56,7 @@ test "decode_jpx_image exposes JPEG 2000 metadata and sample bytes" {
   assert_eq(image.bits_per_component, 8)
   assert_eq(image.is_signed, false)
   assert_eq(image.data, jpx_expected_samples())
+  assert_eq(image.pdf_image_sample_bytes(), jpx_expected_samples().length())
 }
 
 ///|

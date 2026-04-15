@@ -243,6 +243,7 @@ test "predictor context applies defaults and rounds row width" {
   assert_eq(context.bits_per_component, 8)
   assert_eq(context.columns, 1)
   assert_eq(context.row_bytes, 1)
+  assert_eq(params.columns("FlateDecode", 1), 1)
 }
 
 ///|
@@ -257,6 +258,7 @@ test "predictor context rounds row width from colors bits and columns" {
 
   let context = params.predictor_context("FlateDecode")
   assert_eq(context.row_bytes, 4)
+  assert_eq(params.columns("FlateDecode", 1), 10)
 }
 
 ///|

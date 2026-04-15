@@ -35,6 +35,7 @@ pub struct CcittCode {
 pub struct DecodeParams {
   raw : Map[@objects.PdfName, @objects.PdfObject]?
 }
+pub fn DecodeParams::columns(Self, String, Int) -> Int raise PdfFilterError
 
 pub(all) struct JpxImageData {
   width : Int
@@ -44,6 +45,7 @@ pub(all) struct JpxImageData {
   is_signed : Bool
   data : Bytes
 } derive(Eq, @debug.Debug)
+pub fn JpxImageData::pdf_image_sample_bytes(Self) -> Int raise PdfFilterError
 
 // Type aliases
 

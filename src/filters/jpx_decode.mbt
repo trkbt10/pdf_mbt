@@ -58,9 +58,12 @@ fn JpxImageData::expected_sample_bytes(self : JpxImageData) -> Int {
 }
 
 ///|
-fn JpxImageData::validate_jpx_decode_payload(
+/// Returns the decoded sample byte count expected by PDF image integration
+/// after JPXDecode supplies width, height, component count, and bits per
+/// component from the JPEG 2000 codestream.
+pub fn JpxImageData::pdf_image_sample_bytes(
   self : JpxImageData,
-) -> Unit raise PdfFilterError {
+) -> Int raise PdfFilterError {
   if self.pixel_count() == 0 {
     raise PdfFilterError::DecodeError(
       "JPXDecode", "JPEG 2000 image dimensions must be positive",
@@ -76,7 +79,15 @@ fn JpxImageData::validate_jpx_decode_payload(
       "JPXDecode", "JPEG 2000 bits per component must be positive",
     )
   }
-  if self.data.length() < self.expected_sample_bytes() {
+  self.expected_sample_bytes()
+}
+
+///|
+fn JpxImageData::validate_jpx_decode_payload(
+  self : JpxImageData,
+) -> Unit raise PdfFilterError {
+  let expected_sample_bytes = self.pdf_image_sample_bytes()
+  if self.data.length() < expected_sample_bytes {
     raise PdfFilterError::DecodeError(
       "JPXDecode", "JPEG 2000 decoded sample data is truncated",
     )

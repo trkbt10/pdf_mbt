@@ -123,7 +123,7 @@ pub fn decode_ccitt_fax(
 fn read_ccitt_params(params : DecodeParams) -> CcittParams raise PdfFilterError {
   let raw = params.raw
   let k = read_integer_parameter(ccitt_filter_name, raw, "K", 0)
-  let columns = read_positive_parameter(ccitt_filter_name, raw, "Columns", 1728)
+  let columns = params.columns(ccitt_filter_name, 1728)
   let rows = read_integer_parameter(ccitt_filter_name, raw, "Rows", 0)
   if rows < 0 {
     raise PdfFilterError::InvalidDecodeParms(
