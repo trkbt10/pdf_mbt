@@ -9,12 +9,47 @@ priv struct RuntimeFont {
   kind : RuntimeFontKind
   to_unicode : ToUnicodeCMap?
   widths : Map[Int, Double]
+  default_width : Double?
+  default_width_source : GlyphWidthSource
 }
 
 ///|
 priv struct RuntimeGlyph {
   glyph : DecodedGlyph
   unicode : UnicodeMapping
+}
+
+///|
+fn GlyphMetrics::from_horizontal_width(
+  width : Double,
+  source : GlyphWidthSource,
+) -> GlyphMetrics {
+  GlyphMetrics::{
+    horizontal_displacement: width,
+    vertical_displacement_x: 0.0,
+    vertical_displacement_y: width,
+    vertical_origin_x: 0.0,
+    vertical_origin_y: 0.0,
+    width_source: source,
+  }
+}
+
+///|
+fn GlyphMetrics::resolve_width(
+  code : Int,
+  widths : Map[Int, Double],
+  default_width : Double?,
+  default_source : GlyphWidthSource,
+) -> GlyphMetrics {
+  match widths.get(code) {
+    Some(width) =>
+      GlyphMetrics::from_horizontal_width(width, GlyphWidthSource::FontDictionary)
+    None =>
+      match default_width {
+        Some(width) => GlyphMetrics::from_horizontal_width(width, default_source)
+        None => GlyphMetrics::unknown()
+      }
+  }
 }
 
 ///|
@@ -55,17 +90,30 @@ fn parse_runtime_font_dictionary(
   let subtype = optional_name_entry(dict, b"Subtype")
   let to_unicode = parse_optional_to_unicode(dict, offset, limits)
   let widths = parse_widths(dict, offset)
+  let default_width = font_descriptor_missing_width(dict, offset)
   match subtype {
     Some(name) if name == @objects.PdfName::new(b"Type0") => {
       let cmap = parse_type0_encoding(dict, offset, limits)
-      RuntimeFont::{ kind: Composite(cmap), to_unicode, widths }
+      RuntimeFont::{
+        kind: Composite(cmap),
+        to_unicode,
+        widths,
+        default_width: Some(1000.0),
+        default_width_source: GlyphWidthSource::CIDDefaultWidth,
+      }
     }
     _ => {
       let encoding = parse_simple_encoding(
         dict.get(@objects.PdfName::new(b"Encoding")),
         offset,
       )
-      RuntimeFont::{ kind: Simple(encoding), to_unicode, widths }
+      RuntimeFont::{
+        kind: Simple(encoding),
+        to_unicode,
+        widths,
+        default_width,
+        default_width_source: GlyphWidthSource::FontDescriptorMissingWidth,
+      }
     }
   }
 }
@@ -208,18 +256,12 @@ fn decode_composite_font_string(
 
 ///|
 fn glyph_metrics_for_code(font : RuntimeFont, code : Int) -> GlyphMetrics {
-  match font.widths.get(code) {
-    Some(width) =>
-      GlyphMetrics::{
-        horizontal_displacement: width,
-        vertical_displacement_x: 0.0,
-        vertical_displacement_y: width,
-        vertical_origin_x: 0.0,
-        vertical_origin_y: 0.0,
-        width_source: GlyphWidthSource::FontDictionary,
-      }
-    None => GlyphMetrics::unknown()
-  }
+  GlyphMetrics::resolve_width(
+    code,
+    font.widths,
+    font.default_width,
+    font.default_width_source,
+  )
 }
 
 ///|
@@ -271,6 +313,26 @@ fn object_number(
       raise PdfTextError::InvalidFont(
         TextErrorContext::at(offset),
         label + " must be numeric",
+      )
+  }
+}
+
+///|
+fn font_descriptor_missing_width(
+  dict : @objects.PdfDictionary,
+  offset : Int64,
+) -> Double? raise PdfTextError {
+  match dict.get(@objects.PdfName::new(b"FontDescriptor")) {
+    Some(@objects.PdfObject::Dictionary(descriptor)) =>
+      match descriptor.get(@objects.PdfName::new(b"MissingWidth")) {
+        Some(@objects.PdfObject::Null) | None => None
+        Some(object) => Some(object_number(object, "MissingWidth", offset))
+      }
+    Some(@objects.PdfObject::Null) | None => None
+    Some(_) =>
+      raise PdfTextError::InvalidFont(
+        TextErrorContext::at(offset),
+        "FontDescriptor must be a dictionary",
       )
   }
 }

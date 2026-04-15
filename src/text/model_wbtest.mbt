@@ -60,3 +60,43 @@ test "text program summary preserves empty strings and span mappings" {
     _ => fail("expected empty string event")
   }
 }
+
+
+///|
+test "glyph metrics resolve explicit and default widths" {
+  let widths : Map[Int, Double] = Map::new()
+  widths[65] = 600.0
+  let explicit = GlyphMetrics::resolve_width(
+    65,
+    widths,
+    Some(250.0),
+    GlyphWidthSource::FontDescriptorMissingWidth,
+  )
+  assert_eq(explicit.horizontal_displacement, 600.0)
+  assert_eq(explicit.width_source == GlyphWidthSource::FontDictionary, true)
+
+  let missing = GlyphMetrics::resolve_width(
+    90,
+    widths,
+    Some(250.0),
+    GlyphWidthSource::FontDescriptorMissingWidth,
+  )
+  assert_eq(missing.horizontal_displacement, 250.0)
+  assert_eq(
+    missing.width_source == GlyphWidthSource::FontDescriptorMissingWidth,
+    true,
+  )
+}
+
+///|
+test "glyph metrics return unknown when no width source applies" {
+  let widths : Map[Int, Double] = Map::new()
+  let metrics = GlyphMetrics::resolve_width(
+    5,
+    widths,
+    None,
+    GlyphWidthSource::CIDDefaultWidth,
+  )
+  assert_eq(metrics.horizontal_displacement, 0.0)
+  assert_eq(metrics.width_source == GlyphWidthSource::UnknownWidth, true)
+}
