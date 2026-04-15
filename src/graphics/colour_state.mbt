@@ -40,6 +40,46 @@ pub fn ColourState::copy(self : ColourState) -> ColourState {
 }
 
 ///|
+pub fn ColourState::with_fill_colour(
+  self : ColourState,
+  value : ColourValue,
+  offset? : Int64 = 0L,
+) -> ColourState raise PdfGraphicsError {
+  let space = self.colour_space.copy()
+  let normalized = value.normalized_for_space(space, offset~)
+  ColourState::{ colour_space: space, colour_value: normalized }
+}
+
+///|
+pub fn ColourState::with_stroke_colour(
+  self : ColourState,
+  value : ColourValue,
+  offset? : Int64 = 0L,
+) -> ColourState raise PdfGraphicsError {
+  let space = self.colour_space.copy()
+  let normalized = value.normalized_for_space(space, offset~)
+  ColourState::{ colour_space: space, colour_value: normalized }
+}
+
+///|
+pub fn ColourState::resolve_default_space(
+  self : ColourState,
+  defaults : ColourDefaults,
+  offset? : Int64 = 0L,
+) -> ColourSpace raise PdfGraphicsError {
+  match self.colour_space.to_device_family() {
+    Some(device) => {
+      let resolved = defaults.resolve_device_space(device, offset~)
+      resolved
+    }
+    None => {
+      let retained = self.colour_space.copy()
+      retained
+    }
+  }
+}
+
+///|
 /// Initial graphics-state colour is DeviceGray with a single black component
 /// value 0.0 for both stroking and nonstroking operations.
 pub fn ColourState::initial() -> ColourState {
