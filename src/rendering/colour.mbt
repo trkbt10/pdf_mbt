@@ -22,6 +22,17 @@ pub(all) struct CieRenderingIntentApplication {
 } derive(Eq, Debug)
 
 ///|
+pub(all) struct DeviceRgbToCmykConversion {
+  intermediate_cyan : Double
+  intermediate_magenta : Double
+  intermediate_yellow : Double
+  nominal_black : Double
+  undercolour_removed : Double
+  generated_black : Double
+  colour : @graphics.DeviceCmykColour
+} derive(Eq, Debug)
+
+///|
 pub fn NativeColour::component_count(self : NativeColour) -> Int {
   self.components.length()
 }
@@ -62,6 +73,59 @@ pub fn GamutMappingStrategy::map_component(
       colour_component(component)
     SaturationGamutMapping => colour_component(component)
     PerceptualGamutMapping => colour_component(component)
+  }
+}
+
+///|
+pub fn convert_device_rgb_to_device_cmyk(
+  rgb : @graphics.DeviceRgbColour,
+  black_generation? : @graphics.ColourTransformFunction = @graphics.ColourTransformFunction::IdentityTransformFunction,
+  undercolour_removal? : @graphics.ColourTransformFunction = @graphics.ColourTransformFunction::IdentityTransformFunction,
+  offset? : Int64 = 0L,
+) -> DeviceRgbToCmykConversion raise PdfRenderingError {
+  let c = 1.0 - colour_component(rgb.red)
+  let m = 1.0 - colour_component(rgb.green)
+  let y = 1.0 - colour_component(rgb.blue)
+  let k = min3(c, m, y)
+  let ucr = try undercolour_removal.apply_scalar(k, offset~) catch {
+    _ =>
+      raise PdfRenderingError::ProviderFailure(
+        "undercolour removal", "UCR(k) could not be evaluated",
+      )
+  } noraise {
+    value => value
+  }
+  let bg = try black_generation.apply_scalar(k, offset~) catch {
+    _ =>
+      raise PdfRenderingError::ProviderFailure(
+        "black generation", "BG(k) could not be evaluated",
+      )
+  } noraise {
+    value => value
+  }
+  let colour = try
+    @graphics.device_rgb_to_cmyk(
+      rgb,
+      black_generation~,
+      undercolour_removal~,
+      offset~,
+    )
+  catch {
+    _ =>
+      raise PdfRenderingError::ProviderFailure(
+        "DeviceRGB to DeviceCMYK", "RGB to CMYK conversion could not be evaluated",
+      )
+  } noraise {
+    value => value
+  }
+  DeviceRgbToCmykConversion::{
+    intermediate_cyan: c,
+    intermediate_magenta: m,
+    intermediate_yellow: y,
+    nominal_black: k,
+    undercolour_removed: ucr,
+    generated_black: bg,
+    colour,
   }
 }
 
@@ -253,5 +317,15 @@ fn colour_component(value : Double) -> Double {
     1.0
   } else {
     value
+  }
+}
+
+///|
+fn min3(a : Double, b : Double, c : Double) -> Double {
+  let ab = if a < b { a } else { b }
+  if ab < c {
+    ab
+  } else {
+    c
   }
 }
