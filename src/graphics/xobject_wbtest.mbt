@@ -137,6 +137,34 @@ test "Form XObject invocation scopes nested graphics and restores parent state" 
 }
 
 ///|
+test "direct form helper interprets loaded form with scoped resources" {
+  let base = form_stream_with_ref(Map::new())
+  base.dict.remove(@objects.PdfName::new(b"Ref")) |> ignore
+  let stream = @objects.PdfStream::{ dict: base.dict, data: b"0 0 2 2 re f" }
+  let form = validate_form_xobject(
+    Some(@objects.PdfName::new(b"Fm1")),
+    stream,
+    15L,
+  )
+  let parent = GraphicsState::initial(GraphicsInitialState::default())
+  parent.set_line_width(3.0, 15L)
+  let program = interpret_form_xobject(
+    form,
+    @content.ContentResources::empty(),
+    parent,
+    GraphicsInterpretOptions::default(),
+    15L,
+  )
+  assert_eq(program.final_state.line_width, 3.0)
+  assert_eq(program.events.length(), 3)
+  match program.events[1] {
+    PathPainted(_, FillPath(NonZero), _, state) =>
+      assert_eq(state.line_width, 3.0)
+    _ => fail("expected nested form paint from direct helper")
+  }
+}
+
+///|
 test "reference XObject dictionary requires target file and page" {
   let stream = form_stream_with_ref(Map::new())
   let missing : Result[FormXObject, PdfGraphicsError] = try? validate_form_xobject(

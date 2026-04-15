@@ -9,6 +9,10 @@ import {
 }
 
 // Values
+pub fn apply_transfer_function(Double, ColourTransformFunction, offset? : Int64) -> Double raise PdfGraphicsError
+
+pub fn apply_transfer_functions(Array[Double], ColourTransfer, offset? : Int64) -> Array[Double] raise PdfGraphicsError
+
 pub fn cie_xyz_d65_to_srgb(CieXyzColour) -> DeviceRgbColour
 
 pub fn device_cmyk_to_rgb(DeviceCmykColour) -> DeviceRgbColour
@@ -24,6 +28,8 @@ pub fn extract_image_xobject(@objects.PdfName?, @objects.PdfStream, Int64) -> Ex
 pub fn interpret_content(@content.ContentStream, GraphicsInitialState) -> GraphicsProgram raise PdfGraphicsError
 
 pub fn interpret_content_with_options(@content.ContentStream, GraphicsInitialState, GraphicsInterpretOptions) -> GraphicsProgram raise PdfGraphicsError
+
+pub fn interpret_form_xobject(FormXObject, @content.ContentResources, GraphicsState, GraphicsInterpretOptions, Int64) -> GraphicsProgram raise PdfGraphicsError
 
 pub fn lab_d50_to_srgb(Double, Double, Double) -> DeviceRgbColour
 
@@ -146,6 +152,7 @@ pub(all) struct CalGrayParams {
   black_point : Array[Double]
   gamma : Double
 } derive(Eq, @debug.Debug)
+pub fn CalGrayParams::to_srgb(Self, Double) -> DeviceRgbColour
 pub fn CalGrayParams::to_xyz(Self, Double) -> CieXyzColour
 
 pub(all) struct CalRGBParams {
@@ -154,6 +161,7 @@ pub(all) struct CalRGBParams {
   gamma : Array[Double]
   matrix : Array[Double]
 } derive(Eq, @debug.Debug)
+pub fn CalRGBParams::to_srgb(Self, Array[Double], offset? : Int64) -> DeviceRgbColour raise PdfGraphicsError
 pub fn CalRGBParams::to_xyz(Self, Array[Double], offset? : Int64) -> CieXyzColour raise PdfGraphicsError
 
 pub(all) struct CieXyzColour {
@@ -207,6 +215,7 @@ pub(all) enum ColourSpace {
 } derive(Eq, @debug.Debug)
 pub fn ColourSpace::component_count(Self) -> Int
 pub fn ColourSpace::component_ranges(Self) -> Array[ColourRange]
+pub fn ColourSpace::components_to_device_rgb(Self, Array[Double], offset? : Int64) -> DeviceRgbColour raise PdfGraphicsError
 pub fn ColourSpace::copy(Self) -> Self
 pub fn ColourSpace::initial_value(Self) -> ColourValue
 
@@ -216,6 +225,12 @@ pub(all) struct ColourState {
 } derive(Eq, @debug.Debug)
 pub fn ColourState::copy(Self) -> Self
 pub fn ColourState::initial() -> Self
+pub fn ColourState::selected_pattern(Self) -> @objects.PdfName?
+
+pub(all) enum ColourTransfer {
+  SingleTransfer(ColourTransformFunction)
+  ComponentTransfers(Array[ColourTransformFunction])
+} derive(Eq, @debug.Debug)
 
 pub(all) enum ColourTransformFunction {
   IdentityTransformFunction
@@ -280,6 +295,7 @@ pub(all) struct DeviceNParams {
   tint_transform : @objects.PdfObject
   attributes : DeviceNAttributes?
 } derive(Eq, @debug.Debug)
+pub fn DeviceNParams::alternate_colour_value(Self, Array[Double], offset? : Int64) -> ColourValue raise PdfGraphicsError
 
 pub(all) struct DeviceRgbColour {
   red : Double
@@ -523,6 +539,7 @@ pub(all) struct IccBasedParams {
   alternate : ColourSpace?
   metadata : @objects.PdfObject?
 } derive(Eq, @debug.Debug)
+pub fn IccBasedParams::detected_component_count(Self) -> Int
 
 pub(all) struct IccProfileInfo {
   component_count : Int
@@ -624,6 +641,8 @@ pub(all) struct IndexedParams {
   hival : Int
   lookup : @objects.PdfObject
 } derive(Eq, @debug.Debug)
+pub fn IndexedParams::lookup_colour_value(Self, Double, offset? : Int64) -> ColourValue raise PdfGraphicsError
+pub fn IndexedParams::lookup_device_rgb(Self, Double, offset? : Int64) -> DeviceRgbColour raise PdfGraphicsError
 
 pub(all) struct LabParams {
   white_point : Array[Double]
@@ -762,6 +781,7 @@ pub(all) struct SeparationParams {
   alternate : ColourSpace
   tint_transform : @objects.PdfObject
 } derive(Eq, @debug.Debug)
+pub fn SeparationParams::alternate_colour_value(Self, Double, offset? : Int64) -> ColourValue raise PdfGraphicsError
 
 pub(all) struct Shading {
   common : ShadingCommon

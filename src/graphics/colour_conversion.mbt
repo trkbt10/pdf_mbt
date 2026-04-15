@@ -39,6 +39,14 @@ pub(all) enum ColourTransformFunction {
 } derive(Eq, Debug)
 
 ///|
+/// Transfer function bundle for a colour value. A single function applies to
+/// every component; otherwise the function count must match the component count.
+pub(all) enum ColourTransfer {
+  SingleTransfer(ColourTransformFunction)
+  ComponentTransfers(Array[ColourTransformFunction])
+} derive(Eq, Debug)
+
+///|
 pub fn device_gray_to_rgb(gray : Double) -> DeviceRgbColour {
   let value = colour_component(gray)
   DeviceRgbColour::{ red: value, green: value, blue: value }
@@ -92,6 +100,14 @@ pub fn CalGrayParams::to_xyz(
 }
 
 ///|
+pub fn CalGrayParams::to_srgb(
+  self : CalGrayParams,
+  gray : Double,
+) -> DeviceRgbColour {
+  cie_xyz_d65_to_srgb(adapt_xyz_to_d65(self.to_xyz(gray), self.white_point))
+}
+
+///|
 pub fn CalRGBParams::to_xyz(
   self : CalRGBParams,
   components : Array[Double],
@@ -110,6 +126,17 @@ pub fn CalRGBParams::to_xyz(
     y: self.matrix[1] * a + self.matrix[4] * b + self.matrix[7] * c,
     z: self.matrix[2] * a + self.matrix[5] * b + self.matrix[8] * c,
   }
+}
+
+///|
+pub fn CalRGBParams::to_srgb(
+  self : CalRGBParams,
+  components : Array[Double],
+  offset? : Int64 = 0L,
+) -> DeviceRgbColour raise PdfGraphicsError {
+  cie_xyz_d65_to_srgb(
+    adapt_xyz_to_d65(self.to_xyz(components, offset~), self.white_point),
+  )
 }
 
 ///|
@@ -182,6 +209,234 @@ pub fn cie_xyz_d65_to_srgb(xyz : CieXyzColour) -> DeviceRgbColour {
     red: srgb_encode(red_linear),
     green: srgb_encode(green_linear),
     blue: srgb_encode(blue_linear),
+  }
+}
+
+///|
+pub fn IndexedParams::lookup_colour_value(
+  self : IndexedParams,
+  index : Double,
+  offset? : Int64 = 0L,
+) -> ColourValue raise PdfGraphicsError {
+  let selected = clamp_double(
+    @math.floor(index + 0.5),
+    0.0,
+    self.hival.to_double(),
+  ).to_int()
+  let lookup = colour_indexed_lookup_bytes(self.lookup, offset)
+  let component_count = self.base.component_count()
+  let start = selected * component_count
+  if start + component_count > lookup.length() {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "Indexed lookup table is shorter than selected colour index",
+    )
+  }
+  let ranges = self.base.component_ranges()
+  let components : Array[Double] = []
+  for component in 0..<component_count {
+    let range = ranges[component]
+    let byte_value = lookup[start + component].to_int().to_double()
+    components.push(range.min + byte_value / 255.0 * (range.max - range.min))
+  }
+  numeric_colour_value(self.base, components, offset)
+}
+
+///|
+pub fn IndexedParams::lookup_device_rgb(
+  self : IndexedParams,
+  index : Double,
+  offset? : Int64 = 0L,
+) -> DeviceRgbColour raise PdfGraphicsError {
+  let value = self.lookup_colour_value(index, offset~)
+  self.base.components_to_device_rgb(value.components, offset~)
+}
+
+///|
+pub fn SeparationParams::alternate_colour_value(
+  self : SeparationParams,
+  tint : Double,
+  offset? : Int64 = 0L,
+) -> ColourValue raise PdfGraphicsError {
+  let outputs = DirectTransformFunction(self.tint_transform).apply(
+    [colour_component(tint)],
+    self.alternate.component_count(),
+    offset~,
+  )
+  numeric_colour_value(self.alternate, outputs, offset)
+}
+
+///|
+pub fn DeviceNParams::alternate_colour_value(
+  self : DeviceNParams,
+  tints : Array[Double],
+  offset? : Int64 = 0L,
+) -> ColourValue raise PdfGraphicsError {
+  if tints.length() != self.colorants.length() {
+    raise PdfGraphicsError::BadOperand(
+      offset, "DeviceN tint value count must match colorant count",
+    )
+  }
+  let normalized : Array[Double] = []
+  for tint in tints {
+    normalized.push(colour_component(tint))
+  }
+  let outputs = DirectTransformFunction(self.tint_transform).apply(
+    normalized,
+    self.alternate.component_count(),
+    offset~,
+  )
+  numeric_colour_value(self.alternate, outputs, offset)
+}
+
+///|
+pub fn IccBasedParams::detected_component_count(self : IccBasedParams) -> Int {
+  match self.source {
+    DirectProfile(info) => info.component_count
+    IndirectProfile(_) => self.component_count
+  }
+}
+
+///|
+pub fn ColourSpace::components_to_device_rgb(
+  self : ColourSpace,
+  components : Array[Double],
+  offset? : Int64 = 0L,
+) -> DeviceRgbColour raise PdfGraphicsError {
+  let value = numeric_colour_value(self, components, offset)
+  match self {
+    Device(DeviceGray) => device_gray_to_rgb(value.components[0])
+    Device(DeviceRGB) =>
+      DeviceRgbColour::{
+        red: value.components[0],
+        green: value.components[1],
+        blue: value.components[2],
+      }
+    Device(DeviceCMYK) =>
+      device_cmyk_to_rgb(DeviceCmykColour::{
+        cyan: value.components[0],
+        magenta: value.components[1],
+        yellow: value.components[2],
+        black: value.components[3],
+      })
+    CalGray(params) => params.to_srgb(value.components[0])
+    CalRGB(params) => params.to_srgb(value.components, offset~)
+    Lab(params) => params.to_srgb(value.components, offset~)
+    Indexed(params) => params.lookup_device_rgb(value.components[0], offset~)
+    Separation(params) => {
+      let alternate = params.alternate_colour_value(
+        value.components[0],
+        offset~,
+      )
+      params.alternate.components_to_device_rgb(alternate.components, offset~)
+    }
+    DeviceN(params) => {
+      let alternate = params.alternate_colour_value(value.components, offset~)
+      params.alternate.components_to_device_rgb(alternate.components, offset~)
+    }
+    ICCBased(params) =>
+      icc_based_to_device_rgb(params, value.components, offset)
+    Pattern(_) =>
+      raise PdfGraphicsError::InvalidGraphicsState(
+        offset, "Pattern colour space cannot be converted without pattern painting",
+      )
+  }
+}
+
+///|
+pub fn apply_transfer_function(
+  component : Double,
+  transfer : ColourTransformFunction,
+  offset? : Int64 = 0L,
+) -> Double raise PdfGraphicsError {
+  colour_component(transfer.apply_scalar(colour_component(component), offset~))
+}
+
+///|
+pub fn apply_transfer_functions(
+  components : Array[Double],
+  transfer : ColourTransfer,
+  offset? : Int64 = 0L,
+) -> Array[Double] raise PdfGraphicsError {
+  let outputs : Array[Double] = []
+  match transfer {
+    SingleTransfer(function) =>
+      for component in components {
+        outputs.push(apply_transfer_function(component, function, offset~))
+      }
+    ComponentTransfers(functions) => {
+      if functions.length() != components.length() {
+        raise PdfGraphicsError::BadOperand(
+          offset, "transfer function count must match colour component count",
+        )
+      }
+      for index in 0..<components.length() {
+        outputs.push(
+          apply_transfer_function(components[index], functions[index], offset~),
+        )
+      }
+    }
+  }
+  outputs
+}
+
+///|
+pub fn ColourState::selected_pattern(self : ColourState) -> @objects.PdfName? {
+  self.colour_value.pattern
+}
+
+///|
+fn icc_based_to_device_rgb(
+  params : IccBasedParams,
+  components : Array[Double],
+  offset : Int64,
+) -> DeviceRgbColour raise PdfGraphicsError {
+  if components.length() != params.component_count {
+    raise PdfGraphicsError::BadOperand(
+      offset, "ICCBased colour value component count mismatch",
+    )
+  }
+  match params.alternate {
+    Some(alternate) => alternate.components_to_device_rgb(components, offset~)
+    None =>
+      match params.detected_component_count() {
+        1 => device_gray_to_rgb(components[0])
+        3 =>
+          DeviceRgbColour::{
+            red: colour_component(components[0]),
+            green: colour_component(components[1]),
+            blue: colour_component(components[2]),
+          }
+        4 =>
+          device_cmyk_to_rgb(DeviceCmykColour::{
+            cyan: components[0],
+            magenta: components[1],
+            yellow: components[2],
+            black: components[3],
+          })
+        _ =>
+          raise PdfGraphicsError::InvalidGraphicsState(
+            offset, "ICCBased colour component count cannot be converted to DeviceRGB",
+          )
+      }
+  }
+}
+
+///|
+fn colour_indexed_lookup_bytes(
+  object : @objects.PdfObject,
+  offset : Int64,
+) -> Bytes raise PdfGraphicsError {
+  match object {
+    @objects.PdfObject::String(bytes) => bytes
+    @objects.PdfObject::Stream(stream) => decode_colour_stream(stream, offset)
+    @objects.PdfObject::Ref(_) =>
+      raise PdfGraphicsError::InvalidGraphicsState(
+        offset, "Indexed lookup stream must be resolved before conversion",
+      )
+    _ =>
+      raise PdfGraphicsError::InvalidGraphicsState(
+        offset, "Indexed lookup must be a direct string or stream",
+      )
   }
 }
 

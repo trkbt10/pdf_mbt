@@ -139,6 +139,30 @@ pub fn interpret_content_with_options(
 }
 
 ///|
+/// Interprets a validated Form XObject as a nested graphics program using the
+/// same form matrix, BBox clipping, resource scoping, group transparency
+/// handling, and state restoration rules used by the `Do` operator path.
+pub fn interpret_form_xobject(
+  form : FormXObject,
+  parent_resources : @content.ContentResources,
+  parent_state : GraphicsState,
+  options : GraphicsInterpretOptions,
+  offset : Int64,
+) -> GraphicsProgram raise PdfGraphicsError {
+  let interpreter = GraphicsInterpreter::new(
+    parent_resources,
+    GraphicsInitialState::default(),
+    options,
+  )
+  interpreter.state = parent_state.copy()
+  interpreter.invoke_form_xobject(form, offset)
+  GraphicsProgram::{
+    events: interpreter.events.copy(),
+    final_state: interpreter.state.copy(),
+  }
+}
+
+///|
 struct GraphicsInterpreter {
   mut state : GraphicsState
   stack : GraphicsStateStack
