@@ -241,7 +241,9 @@ pub fn ColourSpace::copy(Self) -> Self
 pub fn ColourSpace::default_decode_array(Self) -> Array[Double]
 pub fn ColourSpace::family(Self) -> ColourSpaceFamily
 pub fn ColourSpace::initial_value(Self) -> ColourValue
+pub fn ColourSpace::is_device_space(Self) -> Bool
 pub fn ColourSpace::is_valid_device_default(Self, DeviceColourSpace) -> Bool
+pub fn ColourSpace::to_device_family(Self) -> DeviceColourSpace?
 
 pub(all) enum ColourSpaceFamily {
   DeviceColourSpaceFamily
@@ -261,7 +263,10 @@ pub fn ColourState::convert_to_rgb(Self, offset? : Int64) -> DeviceRgbColour rai
 pub fn ColourState::copy(Self) -> Self
 pub fn ColourState::initial() -> Self
 pub fn ColourState::normalized(Self, offset? : Int64) -> Self raise PdfGraphicsError
+pub fn ColourState::resolve_default_space(Self, ColourDefaults, offset? : Int64) -> ColourSpace raise PdfGraphicsError
 pub fn ColourState::selected_pattern(Self) -> @objects.PdfName?
+pub fn ColourState::with_fill_colour(Self, ColourValue, offset? : Int64) -> Self raise PdfGraphicsError
+pub fn ColourState::with_stroke_colour(Self, ColourValue, offset? : Int64) -> Self raise PdfGraphicsError
 
 pub(all) struct ColourStateSnapshot {
   stroking : ColourState
@@ -610,7 +615,9 @@ pub(all) struct IccBasedParams {
   alternate : ColourSpace?
   metadata : @objects.PdfObject?
 } derive(Eq, @debug.Debug)
+pub fn IccBasedParams::component_count(Self) -> Int
 pub fn IccBasedParams::detected_component_count(Self) -> Int
+pub fn IccBasedParams::from_profile_header(Bytes) -> Self
 
 pub(all) struct IccProfileHeader {
   declared_size : Int64
@@ -625,6 +632,7 @@ pub(all) struct IccProfileInfo {
   component_count : Int
   data_colour_space : @objects.PdfName
   decoded_length : Int
+  rendering_intent : RenderingIntent
 } derive(Eq, @debug.Debug)
 
 pub(all) enum IccProfileSource {
@@ -751,6 +759,7 @@ pub(all) struct LabParams {
   black_point : Array[Double]
   range : Array[Double]
 } derive(Eq, @debug.Debug)
+pub fn LabParams::clamp_ab(Self, Double, Double) -> (Double, Double)
 pub fn LabParams::to_srgb(Self, Array[Double], offset? : Int64) -> DeviceRgbColour raise PdfGraphicsError
 pub fn LabParams::to_xyz(Self, Array[Double], offset? : Int64) -> CieXyzColour raise PdfGraphicsError
 
@@ -793,13 +802,6 @@ pub(all) enum OptionalContentDecision {
   InertVisible
 } derive(Eq, @debug.Debug)
 
-pub(all) enum OptionalContentPolicy {
-  AllOn
-  AnyOn
-  AnyOff
-  AllOff
-} derive(Eq, @debug.Debug)
-
 pub(all) struct OptionalContentGroup {
   name : String
   visible : Bool?
@@ -811,6 +813,13 @@ pub(all) struct OptionalContentMembership {
   policy : OptionalContentPolicy
 } derive(Eq, @debug.Debug)
 pub fn OptionalContentMembership::evaluate_visibility(Self, Array[String]) -> Bool
+
+pub(all) enum OptionalContentPolicy {
+  AllOn
+  AnyOn
+  AnyOff
+  AllOff
+} derive(Eq, @debug.Debug)
 
 pub(all) struct OptionalContentState {
   hidden_refs : Array[@objects.ObjectId]
@@ -1027,3 +1036,4 @@ pub fn XObjectType::is_image(Self) -> Bool
 // Type aliases
 
 // Traits
+

@@ -39,16 +39,13 @@ test "E2E: extract text from incremental PDF 2.0 file" {
 /// "PDF 2.0 image with BPC.pdf" includes calibrated RGB text content.
 test "E2E: extract text from CalRGB colour-space PDF 2.0 example" {
   assert_pdf_file_text_contains(
-    "spec/pdf20examples/PDF 2.0 image with BPC.pdf",
-    "This text is in a Calibrated RGB (CalRGB) colorspace",
+    "spec/pdf20examples/PDF 2.0 image with BPC.pdf", "This text is in a Calibrated RGB (CalRGB) colorspace",
   )
 }
 
 ///|
 test "E2E: extract text from UTF-8 PDF 2.0 example" {
-  let text = extract_pdf_file_text(
-    "spec/pdf20examples/pdf20-utf8-test.pdf",
-  )
+  let text = extract_pdf_file_text("spec/pdf20examples/pdf20-utf8-test.pdf")
   assert_true(text.contains("PDF 2.0 with UTF-8 test file"))
   assert_true(text.contains("Heading Level 2"))
 }
@@ -56,8 +53,7 @@ test "E2E: extract text from UTF-8 PDF 2.0 example" {
 ///|
 test "E2E: extract text from offset-start PDF 2.0 example" {
   assert_pdf_file_text_contains(
-    "spec/pdf20examples/PDF 2.0 with offset start.pdf",
-    "This is a PDF 2.0 document",
+    "spec/pdf20examples/PDF 2.0 with offset start.pdf", "This is a PDF 2.0 document",
   )
 }
 
@@ -71,7 +67,10 @@ fn collect_extracted_text(extracted : @text.ExtractedText) -> String {
 }
 
 ///|
-fn assert_pdf_file_text_contains(path : String, expected : String) -> Unit raise {
+fn assert_pdf_file_text_contains(
+  path : String,
+  expected : String,
+) -> Unit raise {
   let text = extract_pdf_file_text(path)
   assert_true(text.contains(expected))
 }

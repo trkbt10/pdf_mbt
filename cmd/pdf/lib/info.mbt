@@ -1,5 +1,7 @@
 ///|
-fn info_command() -> @argparse.Command {
+/// Defines the `pdf info [options] <input.pdf>` subcommand with `--pages` for
+/// page geometry and `--json` for machine-readable pdfinfo-style output.
+pub fn info_command() -> @argparse.Command {
   @argparse.Command(
     "info",
     about="Print PDF metadata and structure information.",
@@ -21,7 +23,10 @@ fn info_command() -> @argparse.Command {
 }
 
 ///|
-fn run_info(matches : @argparse.Matches) -> Unit raise {
+/// Implements the pdfinfo-equivalent info subcommand. It prints Title, Author,
+/// Subject, Creator, PDF version, page count, encrypted status, file size, and
+/// optional per-page MediaBox dimensions and rotation.
+pub fn run_info(matches : @argparse.Matches) -> Unit raise {
   let input = required_value(matches, "input")
   let (file, document, bytes) = open_file_and_document(input)
   if flag_is_set(matches, "json") {

@@ -1,0 +1,13 @@
+{
+  "name": "pdf-text-extraction",
+  "description": "End-to-end PDF text extraction integration",
+  "approvals": {
+    "requirements": { "approved": true },
+    "design": { "approved": false },
+    "tasks": { "approved": false }
+  },
+  "requirements": {
+    "generated": false,
+    "source": "spec/pdf20examples/"
+  }
+}

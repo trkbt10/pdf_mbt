@@ -35,13 +35,39 @@ pub fn text_spans(PdfPage) -> Array[@text.TextSpan]
 // Errors
 
 // Types and methods
+pub(all) struct OutlineItem {
+  title : String
+  destination_page_index : Int?
+  level : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfCapabilityEntry {
+  feature_name : String
+  category : String
+  status : PdfCapabilityStatus
+  description : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfCapabilityReport {
+  entries : Array[PdfCapabilityEntry]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfCapabilityStatus {
+  Supported
+  Partial
+  Unsupported
+  Unused
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfDocument {
   inner : @reader.PdfDocument
 }
 pub fn PdfDocument::author(Self) -> String?
+pub fn PdfDocument::check(Self) -> PdfCapabilityReport raise @reader.PdfDocumentError
 pub fn PdfDocument::creator(Self) -> String?
 pub fn PdfDocument::extract_all_text(Self) -> String
 pub fn PdfDocument::from_reader(@reader.PdfDocument) -> Self
+pub fn PdfDocument::outline(Self) -> Array[OutlineItem] raise @reader.PdfDocumentError
 pub fn PdfDocument::page(Self, Int) -> PdfPage raise @reader.PdfDocumentError
 pub fn PdfDocument::page_count(Self) -> Int raise @reader.PdfDocumentError
 pub fn PdfDocument::pages(Self) -> Array[PdfPage] raise @reader.PdfDocumentError
@@ -64,12 +90,20 @@ pub(all) struct PdfPage {
   inner : @reader.PdfPage
 }
 pub fn PdfPage::extract_text(Self) -> String
+pub fn PdfPage::extract_text_with_warnings(Self) -> (String, Array[PdfWarning])
 pub fn PdfPage::from_reader(@reader.PdfPage) -> Self
 pub fn PdfPage::height(Self) -> Double
 pub fn PdfPage::images(Self) -> Array[PdfImage]
+pub fn PdfPage::images_with_warnings(Self) -> (Array[PdfImage], Array[PdfWarning])
 pub fn PdfPage::reader_page(Self) -> @reader.PdfPage
 pub fn PdfPage::text_spans(Self) -> Array[@text.TextSpan]
 pub fn PdfPage::width(Self) -> Double
+
+pub(all) struct PdfWarning {
+  feature_name : String
+  category : String
+  description : String
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 

@@ -1,0 +1,96 @@
+[
+  {
+    "timestamp": "0",
+    "operation": "pages add",
+    "actor": "agent:claude",
+    "summary": "Added page: Project Overview",
+    "details": {},
+    "affected_pages": [
+      "overview"
+    ]
+  },
+  {
+    "timestamp": "0",
+    "operation": "pages add",
+    "actor": "agent:claude",
+    "summary": "Added page: Object Model",
+    "details": {},
+    "affected_pages": [
+      "object-model"
+    ]
+  },
+  {
+    "timestamp": "0",
+    "operation": "pages add",
+    "actor": "agent:claude",
+    "summary": "Added page: File Reading Pipeline",
+    "details": {},
+    "affected_pages": [
+      "file-reading"
+    ]
+  },
+  {
+    "timestamp": "0",
+    "operation": "pages add",
+    "actor": "agent:claude",
+    "summary": "Added page: Content Streams",
+    "details": {},
+    "affected_pages": [
+      "content-streams"
+    ]
+  },
+  {
+    "timestamp": "0",
+    "operation": "pages add",
+    "actor": "agent:claude",
+    "summary": "Added page: Graphics System",
+    "details": {},
+    "affected_pages": [
+      "graphics"
+    ]
+  },
+  {
+    "timestamp": "0",
+    "operation": "pages add",
+    "actor": "agent:claude",
+    "summary": "Added page: Text Extraction",
+    "details": {},
+    "affected_pages": [
+      "text-extraction"
+    ]
+  },
+  {
+    "timestamp": "0",
+    "operation": "pages add",
+    "actor": "agent:claude",
+    "summary": "Added page: Cryptography",
+    "details": {},
+    "affected_pages": [
+      "cryptography"
+    ]
+  },
+  {
+    "timestamp": "0",
+    "operation": "lint",
+    "actor": "indexion",
+    "summary": "0 issues found across 7 pages",
+    "details": {},
+    "affected_pages": []
+  },
+  {
+    "timestamp": "0",
+    "operation": "index build",
+    "actor": "indexion",
+    "summary": "Built index: 1 categories, 7 hub pages",
+    "details": {},
+    "affected_pages": []
+  },
+  {
+    "timestamp": "1776245640844",
+    "operation": "ingest",
+    "actor": "indexion",
+    "summary": "0 pages need attention (dry-run)",
+    "details": {},
+    "affected_pages": []
+  }
+]

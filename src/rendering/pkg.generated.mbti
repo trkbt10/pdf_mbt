@@ -3,10 +3,18 @@ package "trkbt10/pdf/src/rendering"
 
 import {
   "moonbitlang/core/debug",
+  "trkbt10/pdf/src/graphics",
   "trkbt10/pdf/src/objects",
 }
 
 // Values
+pub fn apply_cie_rendering_intent(@graphics.RenderingIntent) -> CieRenderingIntentApplication
+
+pub fn convert_device_rgb_to_device_cmyk(@graphics.DeviceRgbColour, black_generation? : @graphics.ColourTransformFunction, undercolour_removal? : @graphics.ColourTransformFunction, offset? : Int64) -> DeviceRgbToCmykConversion raise PdfRenderingError
+
+pub fn gamut_mapping_strategy_for_intent(@graphics.RenderingIntent) -> GamutMappingStrategy
+
+pub fn parse_halftone_object(@objects.PdfObject, limits? : RenderLimits, offset? : Int64) -> HalftoneDefinition raise PdfRenderingError
 
 // Errors
 pub(all) suberror PdfRenderingError {
@@ -19,11 +27,57 @@ pub(all) suberror PdfRenderingError {
 } derive(Eq, @debug.Debug)
 
 // Types and methods
+pub(all) struct CieRenderingIntentApplication {
+  intent : @graphics.RenderingIntent
+  strategy : GamutMappingStrategy
+  preserve_source_white : Bool
+  preserve_saturation : Bool
+  perceptual_compression : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DeviceRgbToCmykConversion {
+  intermediate_cyan : Double
+  intermediate_magenta : Double
+  intermediate_yellow : Double
+  nominal_black : Double
+  undercolour_removed : Double
+  generated_black : Double
+  colour : @graphics.DeviceCmykColour
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GamutMappingStrategy {
+  AbsoluteColorimetricGamutMapping
+  RelativeColorimetricGamutMapping
+  SaturationGamutMapping
+  PerceptualGamutMapping
+} derive(Eq, @debug.Debug)
+pub fn GamutMappingStrategy::map_component(Self, Double) -> Double
+
+pub(all) enum HalftoneDefinition {
+  TypeOneHalftone(TypeOneHalftone)
+  TypeSixteenHalftone(TypeSixteenHalftone)
+} derive(Eq, @debug.Debug)
+
 pub(all) enum HalftoneRef {
   DefaultHalftone
   DirectHalftone(@objects.PdfObject)
   IndirectHalftone(@objects.ObjectId)
 } derive(Eq, @debug.Debug)
+
+pub(all) struct HalftoneScreen {
+  frequency : Double
+  angle : Double
+  spot_function : SpotFunction
+} derive(Eq, @debug.Debug)
+pub fn HalftoneScreen::generate_threshold_array(Self, Int, Int, bits_per_sample? : Int, limits? : RenderLimits) -> ThresholdArray raise PdfRenderingError
+pub fn HalftoneScreen::new(Double, Double, SpotFunction) -> Self raise PdfRenderingError
+
+pub(all) struct NativeColour {
+  colour_space : NativeColourSpace
+  components : Array[Double]
+} derive(Eq, @debug.Debug)
+pub fn NativeColour::as_graphics_colour_value(Self) -> @graphics.ColourValue
+pub fn NativeColour::component_count(Self) -> Int
 
 pub(all) enum NativeColourSpace {
   NativeGray
@@ -32,6 +86,7 @@ pub(all) enum NativeColourSpace {
 } derive(Eq, @debug.Debug)
 pub fn NativeColourSpace::component_count(Self) -> Int
 pub fn NativeColourSpace::default_process_colourants(Self) -> Array[@objects.PdfName]
+pub fn NativeColourSpace::to_device_colour_space(Self) -> @graphics.DeviceColourSpace
 
 pub(all) enum OutputProfileRef {
   DirectOutputProfile(@objects.PdfObject)
@@ -80,7 +135,9 @@ pub(all) struct RasterDevice {
 pub fn RasterDevice::bytes_per_component(Self) -> Int
 pub fn RasterDevice::cmyk(Int, Int) -> Self
 pub fn RasterDevice::component_count(Self) -> Int
+pub fn RasterDevice::convert_colour(Self, @graphics.ColourValue, @graphics.ColourSpace, offset? : Int64) -> NativeColour raise PdfRenderingError
 pub fn RasterDevice::gray(Int, Int) -> Self
+pub fn RasterDevice::native_space(Self) -> NativeColourSpace
 pub fn RasterDevice::new(Int, Int, NativeColourSpace) -> Self
 pub fn RasterDevice::rgb(Int, Int) -> Self
 pub fn RasterDevice::surface_byte_count(Self) -> Int
@@ -160,10 +217,44 @@ pub(all) enum SkippedRenderReason {
   GuardLimit(String)
 } derive(Eq, @debug.Debug)
 
+pub(all) enum SpotFunction {
+  SimpleDot
+  InvertedSimpleDot
+  CosineDot
+  Line
+  LineX
+  LineY
+  Round
+} derive(Eq, @debug.Debug)
+pub fn SpotFunction::sample(Self, Double, Double) -> Double
+
+pub(all) struct ThresholdArray {
+  width : Int
+  height : Int
+  bits_per_sample : Int
+  values : Array[Int]
+} derive(Eq, @debug.Debug)
+pub fn ThresholdArray::screen_component(Self, Double, Int, Int) -> Bool raise PdfRenderingError
+pub fn ThresholdArray::threshold_at(Self, Int, Int) -> Int raise PdfRenderingError
+pub fn ThresholdArray::validate(Self) -> Unit raise PdfRenderingError
+
 pub(all) enum TransferFunctionRef {
   IdentityTransfer
   DirectTransfer(@objects.PdfObject)
   IndirectTransfer(@objects.ObjectId)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TypeOneHalftone {
+  screen : HalftoneScreen
+  accurate_screens : Bool
+  transfer_function : @graphics.ColourTransformFunction?
+} derive(Eq, @debug.Debug)
+pub fn TypeOneHalftone::generate_threshold_array(Self, Int, Int, bits_per_sample? : Int, limits? : RenderLimits) -> ThresholdArray raise PdfRenderingError
+
+pub(all) struct TypeSixteenHalftone {
+  primary_thresholds : ThresholdArray
+  secondary_thresholds : ThresholdArray?
+  transfer_function : @graphics.ColourTransformFunction?
 } derive(Eq, @debug.Debug)
 
 // Type aliases

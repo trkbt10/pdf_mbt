@@ -3,4 +3,5 @@ _build/
 .mooncakes/
 .moonagent/
 .codex/
-.indexion/
+.indexion/cache
+.indexion/sdd-reports

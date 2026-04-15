@@ -1,5 +1,8 @@
 ///|
-fn text_command() -> @argparse.Command {
+/// Defines the `pdf text [options] <input.pdf> [output.txt]` subcommand,
+/// including global page range options `-f` / `--first-page`, `-l` /
+/// `--last-page`, `--password`, and the reserved `--layout` flag.
+pub fn text_command() -> @argparse.Command {
   @argparse.Command(
     "text",
     about="Extract text from PDF pages.",
@@ -23,7 +26,11 @@ fn text_command() -> @argparse.Command {
 }
 
 ///|
-fn run_text(matches : @argparse.Matches) -> Unit raise {
+/// Implements the pdftotext-equivalent text subcommand. It extracts Unicode
+/// text with `PdfPage::extracted_text`, applies 1-based clamped page ranges,
+/// separates pages with form-feed characters (`\f`), and writes to stdout or
+/// an optional output text file.
+pub fn run_text(matches : @argparse.Matches) -> Unit raise {
   let input = required_value(matches, "input")
   let document = open_document(input)
   let range = page_range(matches, document.page_count())
@@ -37,12 +44,13 @@ fn run_text(matches : @argparse.Matches) -> Unit raise {
 ///|
 fn extract_document_text(
   document : @reader.PdfDocument,
-  range : PageRange,
+  range : (Int, Int),
 ) -> String raise {
   let out = StringBuilder::new()
-  if range.first <= range.last {
-    for page_index in (range.first - 1)..<range.last {
-      if page_index > range.first - 1 {
+  let (first, last) = range
+  if first <= last {
+    for page_index in (first - 1)..<last {
+      if page_index > first - 1 {
         out.write_string("\f")
       }
       let page = document.page(page_index)

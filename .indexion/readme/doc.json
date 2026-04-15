@@ -1,0 +1,36 @@
+{
+  "root": {
+    "template": ".indexion/readme/template.md",
+    "output": "README.md",
+    "sections": [
+      {
+        "type": "static",
+        "file": "docs/intro.md"
+      },
+      {
+        "type": "toc",
+        "title": "Packages"
+      },
+      {
+        "type": "packages",
+        "filter": "src/**"
+      }
+    ]
+  },
+  "packages": [
+    { "path": "src/objects", "title": "objects", "description": "Core PDF object types (ISO 32000-2 §7.3)", "include_in_root": true, "sections": [] },
+    { "path": "src/lexer", "title": "lexer", "description": "Byte cursor and tokenizer (§7.2)", "include_in_root": true, "sections": [] },
+    { "path": "src/parser", "title": "parser", "description": "Recursive descent object parser", "include_in_root": true, "sections": [] },
+    { "path": "src/reader", "title": "reader", "description": "File structure, xref, catalog, annotations, actions, forms, signatures", "include_in_root": true, "sections": [] },
+    { "path": "src/content", "title": "content", "description": "Content stream parser (~70 operators)", "include_in_root": true, "sections": [] },
+    { "path": "src/graphics", "title": "graphics", "description": "Graphics state machine, colour spaces, paths, XObjects", "include_in_root": true, "sections": [] },
+    { "path": "src/text", "title": "text", "description": "Text extraction with CMap, font encoding, Unicode mapping", "include_in_root": true, "sections": [] },
+    { "path": "src/filters", "title": "filters", "description": "Stream decompression (DEFLATE, LZW, ASCII85, ASCIIHex, RunLength)", "include_in_root": true, "sections": [] },
+    { "path": "src/crypto", "title": "crypto", "description": "AES-128/CBC, RC4, MD5, SHA-256/384/512", "include_in_root": true, "sections": [] },
+    { "path": "src/encryption", "title": "encryption", "description": "Encryption handler type model", "include_in_root": true, "sections": [] },
+    { "path": "src/common_data", "title": "common_data", "description": "Shared types (dates, rectangles, PDFDocEncoding)", "include_in_root": true, "sections": [] },
+    { "path": "src/interchange", "title": "interchange", "description": "Metadata, marked content, file identifiers", "include_in_root": true, "sections": [] },
+    { "path": "src/functions", "title": "functions", "description": "PDF computational functions (Type 4 PostScript)", "include_in_root": true, "sections": [] },
+    { "path": "src/rendering", "title": "rendering", "description": "Halftone, surface, device rendering abstractions", "include_in_root": true, "sections": [] }
+  ]
+}

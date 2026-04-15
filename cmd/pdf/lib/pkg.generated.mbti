@@ -1,0 +1,45 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/cmd/pdf/lib"
+
+import {
+  "moonbitlang/core/argparse",
+}
+
+// Values
+pub fn check_command() -> @argparse.Command
+
+pub fn dispatch(@argparse.Matches) -> Unit raise
+
+pub fn images_command() -> @argparse.Command
+
+pub fn info_command() -> @argparse.Command
+
+pub fn pages_command() -> @argparse.Command
+
+pub fn pdf_command() -> @argparse.Command
+
+pub fn run_check(@argparse.Matches) -> Unit raise
+
+pub fn run_cli() -> Unit
+
+pub fn run_images(@argparse.Matches) -> Unit raise
+
+pub fn run_info(@argparse.Matches) -> Unit raise
+
+pub fn run_pages(@argparse.Matches) -> Unit raise
+
+pub fn run_text(@argparse.Matches) -> Unit raise
+
+pub fn text_command() -> @argparse.Command
+
+// Errors
+pub(all) suberror CliError {
+  Message(String)
+}
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

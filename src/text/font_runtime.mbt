@@ -43,10 +43,14 @@ fn GlyphMetrics::resolve_width(
 ) -> GlyphMetrics {
   match widths.get(code) {
     Some(width) =>
-      GlyphMetrics::from_horizontal_width(width, GlyphWidthSource::FontDictionary)
+      GlyphMetrics::from_horizontal_width(
+        width,
+        GlyphWidthSource::FontDictionary,
+      )
     None =>
       match default_width {
-        Some(width) => GlyphMetrics::from_horizontal_width(width, default_source)
+        Some(width) =>
+          GlyphMetrics::from_horizontal_width(width, default_source)
         None => GlyphMetrics::unknown()
       }
   }

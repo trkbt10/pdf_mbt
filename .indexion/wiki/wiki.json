@@ -1,0 +1,102 @@
+{
+  "title": "Wiki",
+  "pages": [
+    {
+      "id": "overview",
+      "title": "Project Overview",
+      "file": "overview.md",
+      "sources": [
+        "src/reader/document.mbt",
+        "src/reader/document_structure.mbt",
+        "src/reader/catalog.mbt"
+      ],
+      "children": [],
+      "provenance": "synthesized",
+      "last_actor": "agent:claude"
+    },
+    {
+      "id": "object-model",
+      "title": "Object Model",
+      "file": "object-model.md",
+      "sources": [
+        "src/objects/types.mbt",
+        "src/objects/accessors.mbt",
+        "src/objects/error.mbt"
+      ],
+      "children": [],
+      "provenance": "synthesized",
+      "last_actor": "agent:claude"
+    },
+    {
+      "id": "file-reading",
+      "title": "File Reading Pipeline",
+      "file": "file-reading.md",
+      "sources": [
+        "src/lexer/lexer.mbt",
+        "src/lexer/token.mbt",
+        "src/parser/parser.mbt",
+        "src/reader/document.mbt",
+        "src/filters/pipeline.mbt"
+      ],
+      "children": [],
+      "provenance": "synthesized",
+      "last_actor": "agent:claude"
+    },
+    {
+      "id": "content-streams",
+      "title": "Content Streams",
+      "file": "content-streams.md",
+      "sources": [
+        "src/content/parser.mbt",
+        "src/content/operator.mbt",
+        "src/content/operand.mbt"
+      ],
+      "children": [],
+      "provenance": "synthesized",
+      "last_actor": "agent:claude"
+    },
+    {
+      "id": "graphics",
+      "title": "Graphics System",
+      "file": "graphics.md",
+      "sources": [
+        "src/graphics/interpreter.mbt",
+        "src/graphics/state.mbt",
+        "src/graphics/colour_space.mbt",
+        "src/graphics/colour_conversion.mbt"
+      ],
+      "children": [],
+      "provenance": "synthesized",
+      "last_actor": "agent:claude"
+    },
+    {
+      "id": "text-extraction",
+      "title": "Text Extraction",
+      "file": "text-extraction.md",
+      "sources": [
+        "src/text/interpreter.mbt",
+        "src/text/cmap.mbt",
+        "src/text/cmap_parser.mbt",
+        "src/text/encoding.mbt"
+      ],
+      "children": [],
+      "provenance": "synthesized",
+      "last_actor": "agent:claude"
+    },
+    {
+      "id": "cryptography",
+      "title": "Cryptography",
+      "file": "cryptography.md",
+      "sources": [
+        "src/crypto/aes.mbt",
+        "src/crypto/md5.mbt",
+        "src/crypto/sha2.mbt",
+        "src/crypto/rc4.mbt",
+        "src/encryption/types.mbt"
+      ],
+      "children": [],
+      "provenance": "synthesized",
+      "last_actor": "agent:claude"
+    }
+  ]
+}

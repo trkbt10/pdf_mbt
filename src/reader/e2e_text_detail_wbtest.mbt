@@ -28,7 +28,10 @@ test "E2E: text_program on Simple PDF 2.0" {
   let document = PdfDocument::open(simple_pdf20_file)
   let page = document.page(0)
   // Step 1: get content instructions (lower level than text_program)
-  let content_result : Result[Array[@content.ContentInstruction], PdfDocumentError] = try? page.content_instructions()
+  let content_result : Result[
+    Array[@content.ContentInstruction],
+    PdfDocumentError,
+  ] = try? page.content_instructions()
   if content_result is Ok(instructions) {
     assert_eq(instructions.length(), 26)
   } else {

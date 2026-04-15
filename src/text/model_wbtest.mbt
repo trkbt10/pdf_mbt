@@ -61,7 +61,6 @@ test "text program summary preserves empty strings and span mappings" {
   }
 }
 
-
 ///|
 test "glyph metrics resolve explicit and default widths" {
   let widths : Map[Int, Double] = Map::new()

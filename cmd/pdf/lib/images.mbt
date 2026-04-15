@@ -1,5 +1,8 @@
 ///|
-fn images_command() -> @argparse.Command {
+/// Defines the `pdf images [options] <input.pdf> <output-prefix>` subcommand
+/// with page range options, `--raw` JPEG passthrough, and `--list` metadata
+/// mode for image width, height, colour space, bits per component, and filters.
+pub fn images_command() -> @argparse.Command {
   @argparse.Command(
     "images",
     about="Extract image XObjects.",
@@ -32,7 +35,11 @@ fn images_command() -> @argparse.Command {
 }
 
 ///|
-fn run_images(matches : @argparse.Matches) -> Unit raise {
+/// Implements the pdfimages-equivalent images subcommand. It enumerates image
+/// XObjects, writes decoded PPM P6 files named `<prefix>-<page>-<index>.ppm`,
+/// optionally writes raw DCTDecode JPEG bytes as `.jpg`, or lists image
+/// metadata without extraction.
+pub fn run_images(matches : @argparse.Matches) -> Unit raise {
   let input = required_value(matches, "input")
   let prefix = required_value(matches, "prefix")
   let (file, document, _) = open_file_and_document(input)
@@ -40,8 +47,9 @@ fn run_images(matches : @argparse.Matches) -> Unit raise {
   if flag_is_set(matches, "list") {
     println("page index name width height color bpc filters")
   }
-  if range.first <= range.last {
-    for page_index in (range.first - 1)..<range.last {
+  let (first, last) = range
+  if first <= last {
+    for page_index in (first - 1)..<last {
       extract_page_images(
         file,
         document.page(page_index),

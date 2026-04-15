@@ -80,7 +80,6 @@ test "text object state moves line matrix and stack restores snapshots" {
   }
 }
 
-
 ///|
 test "text state computes effective matrix factors" {
   let state = TextState::initial()

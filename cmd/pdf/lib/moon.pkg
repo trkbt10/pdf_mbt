@@ -1,0 +1,15 @@
+import {
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/string",
+  "trkbt10/pdf/src/common_data",
+  "trkbt10/pdf/src/reader",
+  "trkbt10/pdf/src/text",
+  "trkbt10/pdf/src/graphics",
+  "trkbt10/pdf/src/interchange",
+  "trkbt10/pdf/src/objects",
+  "trkbt10/pdf/src/lib" @pdfapi,
+  "moonbitlang/x/fs",
+  "moonbitlang/x/sys",
+}

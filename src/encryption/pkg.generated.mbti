@@ -118,3 +118,4 @@ pub(all) enum StreamDecryptPurpose {
 // Type aliases
 
 // Traits
+

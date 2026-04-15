@@ -244,8 +244,7 @@ fn TextState::effective_font_size(
     Some(size) => size
     None =>
       raise PdfTextError::InvalidTextState(
-        context,
-        "text operation requires a current font size",
+        context, "text operation requires a current font size",
       )
   }
 }
@@ -266,7 +265,11 @@ fn TextState::text_state_matrix(
   context : TextErrorContext,
 ) -> TextMatrix raise PdfTextError {
   let size = self.effective_font_size(context)
-  TextMatrix::text_state_matrix(size, self.horizontal_scale_factor(), self.text_rise)
+  TextMatrix::text_state_matrix(
+    size,
+    self.horizontal_scale_factor(),
+    self.text_rise,
+  )
 }
 
 ///|
@@ -278,7 +281,11 @@ fn TextState::rendering_matrix(
 ) -> TextRenderingMatrix raise PdfTextError {
   let size = self.effective_font_size(context)
   TextRenderingMatrix::from_text_state(
-    text_matrix, size, self.horizontal_scale_factor(), self.text_rise, ctm,
+    text_matrix,
+    size,
+    self.horizontal_scale_factor(),
+    self.text_rise,
+    ctm,
   )
 }
 

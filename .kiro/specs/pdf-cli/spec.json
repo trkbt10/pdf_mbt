@@ -1,0 +1,8 @@
+{
+  "name": "pdf-cli",
+  "approvals": {
+    "requirements": { "approved": true },
+    "design": { "approved": false },
+    "tasks": { "approved": false }
+  }
+}

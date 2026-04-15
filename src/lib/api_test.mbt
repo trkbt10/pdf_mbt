@@ -54,6 +54,31 @@ test "lib document_title returns Info dictionary metadata" {
 }
 
 ///|
+test "lib outline returns bookmark title destination page and level" {
+  let document = open(outline_fixture_bytes())
+  let outline = document.outline()
+  assert_eq(outline.length(), 1)
+  assert_eq(outline[0].title, "Chapter 1")
+  assert_eq(outline[0].destination_page_index, Some(0))
+  assert_eq(outline[0].level, 0)
+}
+
+///|
+test "lib capability and warning APIs return structured results" {
+  let document = open(simple_pdf20_file_bytes())
+  let report = document.check()
+  if report.entries.length() == 0 {
+    fail("expected capability report entries")
+  }
+  let (text, text_warnings) = document.page(0).extract_text_with_warnings()
+  assert_eq(text, "HelloWorld")
+  assert_eq(text_warnings.length(), 0)
+  let (images, image_warnings) = document.page(0).images_with_warnings()
+  assert_eq(images.length(), 0)
+  assert_eq(image_warnings.length(), 0)
+}
+
+///|
 fn simple_pdf20_file_bytes() -> Bytes raise {
   @fs.read_file_to_bytes("spec/pdf20examples/Simple PDF 2.0 file.pdf")
 }
@@ -88,6 +113,49 @@ fn metadata_fixture_bytes() -> Bytes {
   xref_entry_line(info_offset, 0, b'n') +
   b"trailer\r\n" +
   b"<< /Size 5 /Root 1 0 R /Info 4 0 R >>\r\n" +
+  b"startxref\r\n" +
+  decimal_bytes(xref_offset) +
+  b"\r\n%%EOF\r\n"
+}
+
+///|
+fn outline_fixture_bytes() -> Bytes {
+  let header = b"%PDF-2.0\r\n%\x80\x80\x80\x80\r\n"
+  let header_base = 0L
+  let bytes = header
+
+  let (bytes, catalog_offset) = append_indirect_object(
+    bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R /Outlines 5 0 R >>",
+  )
+  let (bytes, pages_offset) = append_indirect_object(
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+  )
+  let (bytes, page_offset) = append_indirect_object(
+    bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+  )
+  let (bytes, empty_offset) = append_indirect_object(
+    bytes, header_base, 4, 0, b"<< >>",
+  )
+  let (bytes, outlines_offset) = append_indirect_object(
+    bytes, header_base, 5, 0, b"<< /First 6 0 R /Last 6 0 R /Count 1 >>",
+  )
+  let (bytes, item_offset) = append_indirect_object(
+    bytes, header_base, 6, 0, b"<< /Title (Chapter 1) /Parent 5 0 R /Dest [3 0 R /Fit] >>",
+  )
+
+  let xref_offset = object_offset(bytes, header_base)
+  bytes +
+  b"xref\r\n" +
+  b"0 7\r\n" +
+  xref_entry_line(0L, 65535, b'f') +
+  xref_entry_line(catalog_offset, 0, b'n') +
+  xref_entry_line(pages_offset, 0, b'n') +
+  xref_entry_line(page_offset, 0, b'n') +
+  xref_entry_line(empty_offset, 0, b'n') +
+  xref_entry_line(outlines_offset, 0, b'n') +
+  xref_entry_line(item_offset, 0, b'n') +
+  b"trailer\r\n" +
+  b"<< /Size 7 /Root 1 0 R >>\r\n" +
   b"startxref\r\n" +
   decimal_bytes(xref_offset) +
   b"\r\n%%EOF\r\n"
