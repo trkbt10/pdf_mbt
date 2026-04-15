@@ -9,6 +9,8 @@ import {
 }
 
 // Values
+pub fn apply_form_xobject_geometry(FormXObject, GraphicsState) -> GraphicsState
+
 pub fn apply_image_decode_array(Array[Int], ImageSampleLayout, Array[ImageDecodeRange], offset? : Int64) -> Array[Double] raise PdfGraphicsError
 
 pub fn apply_image_decode_range(Int, Int, ImageDecodeRange, offset? : Int64) -> Double raise PdfGraphicsError
@@ -383,6 +385,14 @@ pub(all) struct FormXObject {
   oc : @objects.PdfObject?
   stream : @objects.PdfStream
 } derive(Eq, @debug.Debug)
+pub fn FormXObject::geometry(Self) -> FormXObjectGeometry
+
+pub(all) struct FormXObjectGeometry {
+  matrix : GraphicsMatrix
+  bbox : GraphicsRect
+  transformed_bbox : GraphicsRect
+  clip_path : GraphicsPath
+} derive(Eq, @debug.Debug)
 
 pub(all) struct FreeFormMeshShading {
   bits_per_coordinate : Int
@@ -486,6 +496,7 @@ pub(all) struct GraphicsRect {
   top : Double
 } derive(Eq, @debug.Debug)
 pub fn GraphicsRect::new(Double, Double, Double, Double) -> Self
+pub fn GraphicsRect::transform_bounds(Self, GraphicsMatrix) -> Self
 
 pub(all) struct GraphicsState {
   mut ctm : GraphicsMatrix

@@ -137,6 +137,40 @@ test "Form XObject invocation scopes nested graphics and restores parent state" 
 }
 
 ///|
+test "Form XObject geometry applies Matrix and BBox clip" {
+  let base = form_stream_with_ref(Map::new())
+  base.dict.remove(@objects.PdfName::new(b"Ref")) |> ignore
+  base.dict[@objects.PdfName::new(b"Matrix")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Integer(2L),
+    @objects.PdfObject::Integer(0L),
+    @objects.PdfObject::Integer(0L),
+    @objects.PdfObject::Integer(3L),
+    @objects.PdfObject::Integer(10L),
+    @objects.PdfObject::Integer(20L),
+  ])
+  let form = validate_form_xobject(
+    Some(@objects.PdfName::new(b"Fm1")),
+    base,
+    16L,
+  )
+  let parent = GraphicsState::initial(GraphicsInitialState::default())
+  parent.concat_ctm(GraphicsMatrix::translation(5.0, 7.0))
+
+  let geometry = form.geometry()
+  let state = apply_form_xobject_geometry(form, parent)
+
+  assert_eq(
+    geometry.transformed_bbox == GraphicsRect::new(10.0, 20.0, 30.0, 50.0),
+    true,
+  )
+  assert_eq(
+    state.ctm == GraphicsMatrix::from_six(2.0, 0.0, 0.0, 3.0, 15.0, 27.0),
+    true,
+  )
+  assert_eq(state.clipping_path.clips.length(), 1)
+}
+
+///|
 test "direct form helper interprets loaded form with scoped resources" {
   let base = form_stream_with_ref(Map::new())
   base.dict.remove(@objects.PdfName::new(b"Ref")) |> ignore

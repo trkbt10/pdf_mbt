@@ -45,6 +45,41 @@ pub fn GraphicsRect::new(
 }
 
 ///|
+/// Transforms the four rectangle corners and returns their axis-aligned bounds
+/// in the destination coordinate space.
+pub fn GraphicsRect::transform_bounds(
+  self : GraphicsRect,
+  matrix : GraphicsMatrix,
+) -> GraphicsRect {
+  let points = [
+    matrix.transform_point(GraphicsPoint::new(self.left, self.bottom)),
+    matrix.transform_point(GraphicsPoint::new(self.right, self.bottom)),
+    matrix.transform_point(GraphicsPoint::new(self.right, self.top)),
+    matrix.transform_point(GraphicsPoint::new(self.left, self.top)),
+  ]
+  let mut left = points[0].x
+  let mut right = points[0].x
+  let mut bottom = points[0].y
+  let mut top = points[0].y
+  for index in 1..<points.length() {
+    let point = points[index]
+    if point.x < left {
+      left = point.x
+    }
+    if point.x > right {
+      right = point.x
+    }
+    if point.y < bottom {
+      bottom = point.y
+    }
+    if point.y > top {
+      top = point.y
+    }
+  }
+  GraphicsRect::{ left, bottom, right, top }
+}
+
+///|
 pub fn GraphicsMatrix::identity() -> GraphicsMatrix {
   GraphicsMatrix::{ a: 1.0, b: 0.0, c: 0.0, d: 1.0, e: 0.0, f: 0.0 }
 }

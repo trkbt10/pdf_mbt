@@ -43,6 +43,17 @@ pub(all) struct FormXObject {
 } derive(Eq, Debug)
 
 ///|
+/// Geometry applied when painting a form XObject: its Matrix is concatenated
+/// with the caller CTM, its BBox becomes a clipping path in form space, and
+/// transformed_bbox records the Matrix-mapped BBox bounds for layout analysis.
+pub(all) struct FormXObjectGeometry {
+  matrix : GraphicsMatrix
+  bbox : GraphicsRect
+  transformed_bbox : GraphicsRect
+  clip_path : GraphicsPath
+} derive(Eq, Debug)
+
+///|
 /// Validates a form XObject stream dictionary: `/Type /XObject`,
 /// `/Subtype /Form`, Type 1 FormType, required BBox, default Matrix,
 /// optional Resources, Group, Ref, Metadata, StructParent/StructParents
@@ -103,6 +114,35 @@ pub fn validate_form_xobject(
     oc: optional_entry(stream.dict, b"OC"),
     stream,
   }
+}
+
+///|
+/// Computes the form Matrix transform and BBox clipping geometry used by the
+/// Do operator before interpreting the form content stream.
+pub fn FormXObject::geometry(self : FormXObject) -> FormXObjectGeometry {
+  FormXObjectGeometry::{
+    matrix: self.matrix,
+    bbox: self.bbox,
+    transformed_bbox: self.bbox.transform_bounds(self.matrix),
+    clip_path: GraphicsPath::from_rect(self.bbox),
+  }
+}
+
+///|
+/// Applies a form XObject's Matrix and BBox clip to a graphics-state copy,
+/// producing the scoped state in which the form content is interpreted.
+pub fn apply_form_xobject_geometry(
+  form : FormXObject,
+  parent_state : GraphicsState,
+) -> GraphicsState {
+  let state = parent_state.copy()
+  let geometry = form.geometry()
+  state.concat_ctm(geometry.matrix)
+  state.clipping_path = state.clipping_path.append_clip(
+    geometry.clip_path,
+    FillRule::NonZero,
+  )
+  state
 }
 
 ///|

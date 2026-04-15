@@ -643,11 +643,7 @@ fn GraphicsInterpreter::invoke_form_xobject(
   offset : Int64,
 ) -> Unit raise PdfGraphicsError {
   let parent_state = self.state.copy()
-  self.state.concat_ctm(form.matrix)
-  self.state.clipping_path = self.state.clipping_path.append_clip(
-    GraphicsPath::from_rect(form.bbox),
-    FillRule::NonZero,
-  )
+  self.state = apply_form_xobject_geometry(form, self.state)
   self.events.push(
     GraphicsEvent::FormXObjectBegan(offset, form, self.state.copy()),
   )
