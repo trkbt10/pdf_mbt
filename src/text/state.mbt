@@ -29,6 +29,15 @@ pub(all) struct TextPaintIntent {
 } derive(Eq, Debug)
 
 ///|
+priv struct TextPathConstruction {
+  build_glyph_path : Bool
+  fill_path : Bool
+  stroke_path : Bool
+  add_to_clip : Bool
+  suppress_type3_clip : Bool
+}
+
+///|
 /// Text state parameters stored in the graphics state for clause 9.
 pub(all) struct TextState {
   character_spacing : Double
@@ -115,13 +124,30 @@ pub fn TextPaintIntent::from_rendering_mode(
   mode : TextRenderingMode,
   is_type3_font : Bool,
 ) -> TextPaintIntent {
-  let clip = mode.clips()
+  let path = mode.path_construction(is_type3_font)
   TextPaintIntent::{
-    fill: mode.fills(),
-    stroke: mode.strokes(),
-    invisible: mode.is_invisible(),
-    clip: clip && !is_type3_font,
-    type3_clip_suppressed: clip && is_type3_font,
+    fill: path.fill_path,
+    stroke: path.stroke_path,
+    invisible: !path.build_glyph_path,
+    clip: path.add_to_clip,
+    type3_clip_suppressed: path.suppress_type3_clip,
+  }
+}
+
+///|
+fn TextRenderingMode::path_construction(
+  self : TextRenderingMode,
+  is_type3_font : Bool,
+) -> TextPathConstruction {
+  let wants_clip = self.clips()
+  let paints = self.fills() || self.strokes()
+  let build_glyph_path = paints || wants_clip
+  TextPathConstruction::{
+    build_glyph_path,
+    fill_path: self.fills(),
+    stroke_path: self.strokes(),
+    add_to_clip: wants_clip && !is_type3_font,
+    suppress_type3_clip: wants_clip && is_type3_font,
   }
 }
 
@@ -210,6 +236,53 @@ pub fn TextState::with_text_knockout(
 }
 
 ///|
+fn TextState::effective_font_size(
+  self : TextState,
+  context : TextErrorContext,
+) -> Double raise PdfTextError {
+  match self.font_size {
+    Some(size) => size
+    None =>
+      raise PdfTextError::InvalidTextState(
+        context,
+        "text operation requires a current font size",
+      )
+  }
+}
+
+///|
+fn TextState::horizontal_scale_factor(self : TextState) -> Double {
+  self.horizontal_scaling
+}
+
+///|
+fn TextState::vertical_scale_factor(_self : TextState) -> Double {
+  1.0
+}
+
+///|
+fn TextState::text_state_matrix(
+  self : TextState,
+  context : TextErrorContext,
+) -> TextMatrix raise PdfTextError {
+  let size = self.effective_font_size(context)
+  TextMatrix::text_state_matrix(size, self.horizontal_scale_factor(), self.text_rise)
+}
+
+///|
+fn TextState::rendering_matrix(
+  self : TextState,
+  text_matrix : TextMatrix,
+  ctm : TextMatrix,
+  context : TextErrorContext,
+) -> TextRenderingMatrix raise PdfTextError {
+  let size = self.effective_font_size(context)
+  TextRenderingMatrix::from_text_state(
+    text_matrix, size, self.horizontal_scale_factor(), self.text_rise, ctm,
+  )
+}
+
+///|
 pub fn TextObjectState::initial() -> TextObjectState {
   TextObjectState::{
     text_matrix: TextMatrix::identity(),
@@ -233,6 +306,36 @@ pub fn TextObjectState::set_text_matrix(
   matrix : TextMatrix,
 ) -> TextObjectState {
   TextObjectState::{ text_matrix: matrix, text_line_matrix: matrix }
+}
+
+///|
+fn TextObjectState::apply_td(
+  self : TextObjectState,
+  tx : Double,
+  ty : Double,
+) -> TextObjectState {
+  self.move_line(tx, ty)
+}
+
+///|
+fn TextObjectState::apply_tm(
+  self : TextObjectState,
+  a : Double,
+  b : Double,
+  c : Double,
+  d : Double,
+  e : Double,
+  f : Double,
+) -> TextObjectState {
+  self.set_text_matrix(TextMatrix::from_six(a, b, c, d, e, f))
+}
+
+///|
+fn TextObjectState::apply_tstar(
+  self : TextObjectState,
+  leading : Double,
+) -> TextObjectState {
+  self.move_line(0.0, -leading)
 }
 
 ///|

@@ -79,3 +79,45 @@ test "text object state moves line matrix and stack restores snapshots" {
     _ => fail("expected stack underflow")
   }
 }
+
+
+///|
+test "text state computes effective matrix factors" {
+  let state = TextState::initial()
+    .with_font(@objects.PdfName::new(b"F1"), 12.0)
+    .with_horizontal_scaling_percent(80.0)
+    .with_text_rise(3.0)
+  assert_eq(state.effective_font_size(TextErrorContext::at(1L)), 12.0)
+  assert_eq(state.horizontal_scale_factor(), 0.8)
+  assert_eq(state.vertical_scale_factor(), 1.0)
+  let matrix = state.text_state_matrix(TextErrorContext::at(1L))
+  assert_eq(matrix.a, 9.600000000000001)
+  assert_eq(matrix.d, 12.0)
+  assert_eq(matrix.f, 3.0)
+}
+
+///|
+test "rendering modes construct paint and clipping paths" {
+  let fill_clip = TextRenderingMode::FillClip.path_construction(false)
+  assert_eq(fill_clip.build_glyph_path, true)
+  assert_eq(fill_clip.fill_path, true)
+  assert_eq(fill_clip.add_to_clip, true)
+  let invisible = TextRenderingMode::Invisible.path_construction(false)
+  assert_eq(invisible.build_glyph_path, false)
+  let type3_clip = TextRenderingMode::Clip.path_construction(true)
+  assert_eq(type3_clip.add_to_clip, false)
+  assert_eq(type3_clip.suppress_type3_clip, true)
+}
+
+///|
+test "text positioning operator helpers update text and line matrices" {
+  let moved = TextObjectState::initial().apply_td(10.0, 20.0)
+  assert_eq(moved.text_matrix.e, 10.0)
+  assert_eq(moved.text_line_matrix.f, 20.0)
+  let matrix = moved.apply_tm(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+  assert_eq(matrix.text_matrix.b, 2.0)
+  assert_eq(matrix.text_line_matrix.e, 5.0)
+  let next = matrix.apply_tstar(7.0)
+  assert_eq(next.text_matrix.e, 5.0)
+  assert_eq(next.text_matrix.f, -1.0)
+}

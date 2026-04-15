@@ -219,7 +219,7 @@ fn TextInterpreter::move_text_position(
   }
   let object_state = self
     .require_text_object(operation.offset)
-    .move_line(tx, ty)
+    .apply_td(tx, ty)
   self.object_state = Some(object_state)
 }
 
@@ -229,16 +229,15 @@ fn TextInterpreter::set_text_matrix(
   operation : @content.ContentOperation,
 ) -> Unit raise PdfTextError {
   require_operand_count(operation, 6)
-  let matrix = TextMatrix::from_six(
-    number_operand_at(operation, 0, "Tm a"),
-    number_operand_at(operation, 1, "Tm b"),
-    number_operand_at(operation, 2, "Tm c"),
-    number_operand_at(operation, 3, "Tm d"),
-    number_operand_at(operation, 4, "Tm e"),
-    number_operand_at(operation, 5, "Tm f"),
-  )
   self.object_state = Some(
-    self.require_text_object(operation.offset).set_text_matrix(matrix),
+    self.require_text_object(operation.offset).apply_tm(
+      number_operand_at(operation, 0, "Tm a"),
+      number_operand_at(operation, 1, "Tm b"),
+      number_operand_at(operation, 2, "Tm c"),
+      number_operand_at(operation, 3, "Tm d"),
+      number_operand_at(operation, 4, "Tm e"),
+      number_operand_at(operation, 5, "Tm f"),
+    ),
   )
 }
 
@@ -249,7 +248,7 @@ fn TextInterpreter::move_to_next_line(
 ) -> Unit raise PdfTextError {
   let object_state = self
     .require_text_object(offset)
-    .move_line(0.0, -self.state.leading)
+    .apply_tstar(self.state.leading)
   self.object_state = Some(object_state)
 }
 
