@@ -243,3 +243,139 @@ fn clamp_double(value : Double, min : Double, max : Double) -> Double {
     value
   }
 }
+
+///|
+/// Pair of stroking and nonstroking colour states saved independently from
+/// the full graphics state stack for colour-only validation and replay.
+pub(all) struct ColourStateSnapshot {
+  stroking : ColourState
+  nonstroking : ColourState
+} derive(Eq, Debug)
+
+///|
+/// LIFO stack for the current colour-space and colour-value pair. This mirrors
+/// the q/Q graphics-state semantics for colour fields without copying path,
+/// transparency, or text-independent graphics parameters.
+pub(all) struct ColourStateStack {
+  stack : Array[ColourStateSnapshot]
+} derive(Eq, Debug)
+
+///|
+pub fn ColourValue::normalized_for_space(
+  self : ColourValue,
+  space : ColourSpace,
+  offset? : Int64 = 0L,
+) -> ColourValue raise PdfGraphicsError {
+  validate_colour_value_for_space(space, self, offset)
+  match self.pattern {
+    Some(pattern) =>
+      pattern_colour_value(space, self.components, pattern, offset)
+    None => numeric_colour_value(space, self.components, offset)
+  }
+}
+
+///|
+pub fn ColourValue::convert_to_rgb(
+  self : ColourValue,
+  space : ColourSpace,
+  offset? : Int64 = 0L,
+) -> DeviceRgbColour raise PdfGraphicsError {
+  let normalized = self.normalized_for_space(space, offset~)
+  space.convert_to_rgb(normalized, offset~)
+}
+
+///|
+pub fn ColourState::normalized(
+  self : ColourState,
+  offset? : Int64 = 0L,
+) -> ColourState raise PdfGraphicsError {
+  ColourState::{
+    colour_space: self.colour_space.copy(),
+    colour_value: self.colour_value.normalized_for_space(
+      self.colour_space,
+      offset~,
+    ),
+  }
+}
+
+///|
+pub fn ColourState::convert_to_rgb(
+  self : ColourState,
+  offset? : Int64 = 0L,
+) -> DeviceRgbColour raise PdfGraphicsError {
+  self.colour_value.convert_to_rgb(self.colour_space, offset~)
+}
+
+///|
+pub fn ColourStateSnapshot::from_graphics_state(
+  state : GraphicsState,
+) -> ColourStateSnapshot {
+  ColourStateSnapshot::{
+    stroking: state.stroking_colour.copy(),
+    nonstroking: state.nonstroking_colour.copy(),
+  }
+}
+
+///|
+pub fn ColourStateSnapshot::apply_to_graphics_state(
+  self : ColourStateSnapshot,
+  state : GraphicsState,
+) -> Unit {
+  state.stroking_colour = self.stroking.copy()
+  state.nonstroking_colour = self.nonstroking.copy()
+}
+
+///|
+pub fn ColourStateStack::new() -> ColourStateStack {
+  ColourStateStack::{ stack: [] }
+}
+
+///|
+pub fn ColourStateStack::depth(self : ColourStateStack) -> Int {
+  self.stack.length()
+}
+
+///|
+pub fn ColourStateStack::push_graphics_state(
+  self : ColourStateStack,
+  state : GraphicsState,
+) -> Unit {
+  self.stack.push(ColourStateSnapshot::from_graphics_state(state))
+}
+
+///|
+pub fn ColourStateStack::pop_into_graphics_state(
+  self : ColourStateStack,
+  state : GraphicsState,
+  offset : Int64,
+) -> Unit raise PdfGraphicsError {
+  match self.stack.pop() {
+    Some(snapshot) => snapshot.apply_to_graphics_state(state)
+    None => raise PdfGraphicsError::GraphicsStackUnderflow(offset)
+  }
+}
+
+///|
+pub fn GraphicsState::current_colour_space(
+  self : GraphicsState,
+  colour_use : ColourUse,
+) -> ColourSpace {
+  self.colour_state(colour_use).colour_space
+}
+
+///|
+pub fn GraphicsState::current_colour_value(
+  self : GraphicsState,
+  colour_use : ColourUse,
+) -> ColourValue {
+  self.colour_state(colour_use).colour_value
+}
+
+///|
+pub fn GraphicsState::current_colour_as_rgb(
+  self : GraphicsState,
+  colour_use : ColourUse,
+  offset? : Int64 = 0L,
+) -> DeviceRgbColour raise PdfGraphicsError {
+  self.colour_state(colour_use).convert_to_rgb(offset~)
+}

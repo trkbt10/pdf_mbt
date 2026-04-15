@@ -80,3 +80,30 @@ test "graphics state stack restores state without path ownership" {
     _ => fail("expected stack underflow")
   }
 }
+
+///|
+test "colour state stack restores colour fields and resolves current rgb" {
+  let state = GraphicsState::initial(GraphicsInitialState::default())
+  let stack = ColourStateStack::new()
+  stack.push_graphics_state(state)
+  state.set_colour_space(
+    ColourUse::Stroking,
+    ColourSpace::Device(DeviceColourSpace::DeviceRGB),
+  )
+  state.set_colour_value(
+    ColourUse::Stroking,
+    ColourValue::{ components: [1.2, 0.25, -1.0], pattern: None },
+    4L,
+  )
+  assert_eq(
+    state.current_colour_space(ColourUse::Stroking).component_count(),
+    3,
+  )
+  let rgb = state.current_colour_as_rgb(ColourUse::Stroking)
+  assert_eq(rgb.red, 1.0)
+  assert_eq(rgb.green, 0.25)
+  assert_eq(rgb.blue, 0.0)
+  stack.pop_into_graphics_state(state, 5L)
+  assert_eq(state.current_colour_value(ColourUse::Stroking).components, [0.0])
+  assert_eq(stack.depth(), 0)
+}

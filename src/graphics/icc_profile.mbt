@@ -239,3 +239,78 @@ fn icc_signature_component_count(
     )
   }
 }
+
+///|
+/// Parsed ICC profile header fields used by ICCBased colour spaces. Offsets
+/// follow ICC.1:2010 header layout: profile size at 0, device class at 12,
+/// data colour space at 16, profile connection space at 20, signature at 36,
+/// and rendering intent at 64.
+pub(all) struct IccProfileHeader {
+  declared_size : Int64
+  device_class : @objects.PdfName
+  data_colour_space : @objects.PdfName
+  profile_connection_space : @objects.PdfName
+  rendering_intent : RenderingIntent
+  component_count : Int
+} derive(Eq, Debug)
+
+///|
+pub fn parse_icc_profile_header(
+  decoded : Bytes,
+  offset : Int64,
+) -> IccProfileHeader raise PdfGraphicsError {
+  if decoded.length() < 128 {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "ICC profile stream must contain at least a 128-byte header",
+    )
+  }
+  let declared_size = read_u32_be(decoded, 0)
+  if declared_size <= 0L || declared_size > decoded.length().to_int64() {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "ICC profile declared size exceeds decoded stream length",
+    )
+  }
+  let device_class = read_signature(decoded, 12)
+  validate_icc_device_class(device_class, offset)
+  let profile_signature = read_signature(decoded, 36)
+  if profile_signature != b"acsp" {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "ICC profile header signature must be acsp",
+    )
+  }
+  let signature = read_signature(decoded, 16)
+  let component_count = icc_signature_component_count(signature, offset)
+  IccProfileHeader::{
+    declared_size,
+    device_class: @objects.PdfName::new(device_class),
+    data_colour_space: @objects.PdfName::new(signature),
+    profile_connection_space: @objects.PdfName::new(read_signature(decoded, 20)),
+    rendering_intent: icc_rendering_intent(read_u32_be(decoded, 64), offset),
+    component_count,
+  }
+}
+
+///|
+pub fn parse_icc_profile_stream_header(
+  stream : @objects.PdfStream,
+  offset : Int64,
+) -> IccProfileHeader raise PdfGraphicsError {
+  parse_icc_profile_header(decode_colour_stream(stream, offset), offset)
+}
+
+///|
+fn icc_rendering_intent(
+  value : Int64,
+  offset : Int64,
+) -> RenderingIntent raise PdfGraphicsError {
+  match value {
+    0L => RenderingIntent::Perceptual
+    1L => RenderingIntent::RelativeColorimetric
+    2L => RenderingIntent::Saturation
+    3L => RenderingIntent::AbsoluteColorimetric
+    _ =>
+      raise PdfGraphicsError::InvalidGraphicsState(
+        offset, "ICC profile rendering intent must be 0, 1, 2, or 3",
+      )
+  }
+}

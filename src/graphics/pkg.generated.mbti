@@ -49,6 +49,10 @@ pub fn paint_stencil_mask_with_colour(ImageAlphaMaskRaster, DeviceRgbColour) -> 
 
 pub fn parse_colour_space_object(@objects.PdfObject, ColourDefaults, Int64) -> ColourSpace raise PdfGraphicsError
 
+pub fn parse_icc_profile_header(Bytes, Int64) -> IccProfileHeader raise PdfGraphicsError
+
+pub fn parse_icc_profile_stream_header(@objects.PdfStream, Int64) -> IccProfileHeader raise PdfGraphicsError
+
 pub fn parse_optional_content_properties(@objects.PdfObject?, Int64) -> OptionalContentState raise PdfGraphicsError
 
 pub fn parse_pattern_object(@objects.PdfName, @objects.PdfObject, ColourDefaults, Int64) -> PatternResource raise PdfGraphicsError
@@ -204,6 +208,7 @@ pub(all) struct ColourDefaults {
 } derive(Eq, @debug.Debug)
 pub fn ColourDefaults::empty() -> Self
 pub fn ColourDefaults::from_resources(@content.ContentResources, Int64) -> Self raise PdfGraphicsError
+pub fn ColourDefaults::resolve_device_space(Self, DeviceColourSpace, offset? : Int64) -> ColourSpace raise PdfGraphicsError
 
 pub(all) struct ColourRange {
   min : Double
@@ -230,16 +235,48 @@ pub(all) enum ColourSpace {
 pub fn ColourSpace::component_count(Self) -> Int
 pub fn ColourSpace::component_ranges(Self) -> Array[ColourRange]
 pub fn ColourSpace::components_to_device_rgb(Self, Array[Double], offset? : Int64) -> DeviceRgbColour raise PdfGraphicsError
+pub fn ColourSpace::components_to_rgb(Self, Array[Double], offset? : Int64) -> DeviceRgbColour raise PdfGraphicsError
+pub fn ColourSpace::convert_to_rgb(Self, ColourValue, offset? : Int64) -> DeviceRgbColour raise PdfGraphicsError
 pub fn ColourSpace::copy(Self) -> Self
+pub fn ColourSpace::default_decode_array(Self) -> Array[Double]
+pub fn ColourSpace::family(Self) -> ColourSpaceFamily
 pub fn ColourSpace::initial_value(Self) -> ColourValue
+pub fn ColourSpace::is_valid_device_default(Self, DeviceColourSpace) -> Bool
+
+pub(all) enum ColourSpaceFamily {
+  DeviceColourSpaceFamily
+  CieBasedColourSpaceFamily
+  IccBasedColourSpaceFamily
+  PatternColourSpaceFamily
+  IndexedColourSpaceFamily
+  SeparationColourSpaceFamily
+  DeviceNColourSpaceFamily
+} derive(Eq, @debug.Debug)
 
 pub(all) struct ColourState {
   colour_space : ColourSpace
   colour_value : ColourValue
 } derive(Eq, @debug.Debug)
+pub fn ColourState::convert_to_rgb(Self, offset? : Int64) -> DeviceRgbColour raise PdfGraphicsError
 pub fn ColourState::copy(Self) -> Self
 pub fn ColourState::initial() -> Self
+pub fn ColourState::normalized(Self, offset? : Int64) -> Self raise PdfGraphicsError
 pub fn ColourState::selected_pattern(Self) -> @objects.PdfName?
+
+pub(all) struct ColourStateSnapshot {
+  stroking : ColourState
+  nonstroking : ColourState
+} derive(Eq, @debug.Debug)
+pub fn ColourStateSnapshot::apply_to_graphics_state(Self, GraphicsState) -> Unit
+pub fn ColourStateSnapshot::from_graphics_state(GraphicsState) -> Self
+
+pub(all) struct ColourStateStack {
+  stack : Array[ColourStateSnapshot]
+} derive(Eq, @debug.Debug)
+pub fn ColourStateStack::depth(Self) -> Int
+pub fn ColourStateStack::new() -> Self
+pub fn ColourStateStack::pop_into_graphics_state(Self, GraphicsState, Int64) -> Unit raise PdfGraphicsError
+pub fn ColourStateStack::push_graphics_state(Self, GraphicsState) -> Unit
 
 pub(all) enum ColourTransfer {
   SingleTransfer(ColourTransformFunction)
@@ -263,7 +300,9 @@ pub(all) struct ColourValue {
   components : Array[Double]
   pattern : @objects.PdfName?
 } derive(Eq, @debug.Debug)
+pub fn ColourValue::convert_to_rgb(Self, ColourSpace, offset? : Int64) -> DeviceRgbColour raise PdfGraphicsError
 pub fn ColourValue::copy(Self) -> Self
+pub fn ColourValue::normalized_for_space(Self, ColourSpace, offset? : Int64) -> Self raise PdfGraphicsError
 
 pub(all) struct CoonsPatchMeshShading {
   bits_per_coordinate : Int
@@ -295,6 +334,10 @@ pub(all) enum DeviceColourSpace {
   DeviceRGB
   DeviceCMYK
 } derive(Eq, @debug.Debug)
+pub fn DeviceColourSpace::component_count(Self) -> Int
+pub fn DeviceColourSpace::convert_to_rgb(Self, Array[Double], offset? : Int64) -> DeviceRgbColour raise PdfGraphicsError
+pub fn DeviceColourSpace::default_colour_value(Self) -> ColourValue
+pub fn DeviceColourSpace::default_decode_array(Self) -> Array[Double]
 
 pub(all) struct DeviceNAttributes {
   subtype : @objects.PdfName?
@@ -532,6 +575,9 @@ pub fn GraphicsState::apply_ext_gstate_non_colour(Self, ExtGStatePatch, Int64) -
 pub fn GraphicsState::colour_state(Self, ColourUse) -> ColourState
 pub fn GraphicsState::concat_ctm(Self, GraphicsMatrix) -> Unit
 pub fn GraphicsState::copy(Self) -> Self
+pub fn GraphicsState::current_colour_as_rgb(Self, ColourUse, offset? : Int64) -> DeviceRgbColour raise PdfGraphicsError
+pub fn GraphicsState::current_colour_space(Self, ColourUse) -> ColourSpace
+pub fn GraphicsState::current_colour_value(Self, ColourUse) -> ColourValue
 pub fn GraphicsState::initial(GraphicsInitialState) -> Self
 pub fn GraphicsState::reset_transparency_parameters(Self) -> Unit
 pub fn GraphicsState::set_colour_space(Self, ColourUse, ColourSpace) -> Unit
@@ -563,6 +609,15 @@ pub(all) struct IccBasedParams {
   metadata : @objects.PdfObject?
 } derive(Eq, @debug.Debug)
 pub fn IccBasedParams::detected_component_count(Self) -> Int
+
+pub(all) struct IccProfileHeader {
+  declared_size : Int64
+  device_class : @objects.PdfName
+  data_colour_space : @objects.PdfName
+  profile_connection_space : @objects.PdfName
+  rendering_intent : RenderingIntent
+  component_count : Int
+} derive(Eq, @debug.Debug)
 
 pub(all) struct IccProfileInfo {
   component_count : Int

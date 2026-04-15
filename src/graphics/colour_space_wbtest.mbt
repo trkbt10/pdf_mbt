@@ -399,3 +399,55 @@ fn icc_stream_with_class(
   dict[@objects.PdfName::new(b"N")] = @objects.PdfObject::Integer(n)
   @objects.PdfStream::{ dict, data: Bytes::from_array(data) }
 }
+
+///|
+test "colour space dispatch methods expose families decode and rgb conversion" {
+  let cmyk = ColourSpace::Device(DeviceColourSpace::DeviceCMYK)
+  assert_eq(cmyk.family() == ColourSpaceFamily::DeviceColourSpaceFamily, true)
+  assert_eq(cmyk.default_decode_array(), [
+    0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0,
+  ])
+  assert_eq(cmyk.is_valid_device_default(DeviceColourSpace::DeviceCMYK), true)
+  let rgb = cmyk.components_to_rgb([0.0, 1.0, 1.0, 0.0])
+  assert_eq(rgb.red, 1.0)
+  assert_eq(rgb.green, 0.0)
+  assert_eq(rgb.blue, 0.0)
+}
+
+///|
+test "ICC profile header parser extracts component count and rendering intent" {
+  let header = parse_icc_profile_header(test_icc_header_bytes(b"RGB ", 2L), 71L)
+  assert_eq(header.component_count, 3)
+  assert_eq(header.rendering_intent == RenderingIntent::Saturation, true)
+  assert_eq(header.data_colour_space == @objects.PdfName::new(b"RGB "), true)
+}
+
+///|
+fn test_icc_header_bytes(signature : Bytes, intent : Int64) -> Bytes {
+  let data : Array[Byte] = []
+  for _ in 0..<128 {
+    data.push(b'\x00')
+  }
+  data[3] = b'\x80'
+  data[12] = b'm'
+  data[13] = b'n'
+  data[14] = b't'
+  data[15] = b'r'
+  data[16] = signature[0]
+  data[17] = signature[1]
+  data[18] = signature[2]
+  data[19] = signature[3]
+  data[20] = b'X'
+  data[21] = b'Y'
+  data[22] = b'Z'
+  data[23] = b' '
+  data[36] = b'a'
+  data[37] = b'c'
+  data[38] = b's'
+  data[39] = b'p'
+  data[64] = ((intent >> 24) & 0xff).to_byte()
+  data[65] = ((intent >> 16) & 0xff).to_byte()
+  data[66] = ((intent >> 8) & 0xff).to_byte()
+  data[67] = (intent & 0xff).to_byte()
+  Bytes::from_array(data)
+}

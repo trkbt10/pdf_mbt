@@ -1311,3 +1311,180 @@ fn colour_object_number(
       )
   }
 }
+
+///|
+/// High-level ISO 32000-2 8.6 colour-space family classification used by
+/// colour resolution, image Decode defaults, and conversion dispatch.
+pub(all) enum ColourSpaceFamily {
+  DeviceColourSpaceFamily
+  CieBasedColourSpaceFamily
+  IccBasedColourSpaceFamily
+  PatternColourSpaceFamily
+  IndexedColourSpaceFamily
+  SeparationColourSpaceFamily
+  DeviceNColourSpaceFamily
+} derive(Eq, Debug)
+
+///|
+pub fn DeviceColourSpace::component_count(self : DeviceColourSpace) -> Int {
+  match self {
+    DeviceGray => 1
+    DeviceRGB => 3
+    DeviceCMYK => 4
+  }
+}
+
+///|
+pub fn DeviceColourSpace::default_decode_array(
+  self : DeviceColourSpace,
+) -> Array[Double] {
+  colour_space_repeat_decode(self.component_count(), 0.0, 1.0)
+}
+
+///|
+pub fn DeviceColourSpace::default_colour_value(
+  self : DeviceColourSpace,
+) -> ColourValue {
+  match self {
+    DeviceCMYK =>
+      ColourValue::{ components: [0.0, 0.0, 0.0, 1.0], pattern: None }
+    _ =>
+      ColourValue::{
+        components: colour_space_repeat_components(self.component_count(), 0.0),
+        pattern: None,
+      }
+  }
+}
+
+///|
+pub fn DeviceColourSpace::convert_to_rgb(
+  self : DeviceColourSpace,
+  components : Array[Double],
+  offset? : Int64 = 0L,
+) -> DeviceRgbColour raise PdfGraphicsError {
+  if components.length() != self.component_count() {
+    raise PdfGraphicsError::BadOperand(
+      offset, "device colour component count mismatch",
+    )
+  }
+  match self {
+    DeviceGray => device_gray_to_rgb(components[0])
+    DeviceRGB =>
+      DeviceRgbColour::{
+        red: clamp_double(components[0], 0.0, 1.0),
+        green: clamp_double(components[1], 0.0, 1.0),
+        blue: clamp_double(components[2], 0.0, 1.0),
+      }
+    DeviceCMYK =>
+      device_cmyk_to_rgb(DeviceCmykColour::{
+        cyan: components[0],
+        magenta: components[1],
+        yellow: components[2],
+        black: components[3],
+      })
+  }
+}
+
+///|
+pub fn ColourSpace::family(self : ColourSpace) -> ColourSpaceFamily {
+  match self {
+    Device(_) => ColourSpaceFamily::DeviceColourSpaceFamily
+    CalGray(_) | CalRGB(_) | Lab(_) =>
+      ColourSpaceFamily::CieBasedColourSpaceFamily
+    ICCBased(_) => ColourSpaceFamily::IccBasedColourSpaceFamily
+    Pattern(_) => ColourSpaceFamily::PatternColourSpaceFamily
+    Indexed(_) => ColourSpaceFamily::IndexedColourSpaceFamily
+    Separation(_) => ColourSpaceFamily::SeparationColourSpaceFamily
+    DeviceN(_) => ColourSpaceFamily::DeviceNColourSpaceFamily
+  }
+}
+
+///|
+pub fn ColourSpace::default_decode_array(self : ColourSpace) -> Array[Double] {
+  match self {
+    Device(device) => device.default_decode_array()
+    _ => {
+      let decode : Array[Double] = []
+      for range in self.component_ranges() {
+        decode.push(range.min)
+        decode.push(range.max)
+      }
+      decode
+    }
+  }
+}
+
+///|
+pub fn ColourSpace::convert_to_rgb(
+  self : ColourSpace,
+  value : ColourValue,
+  offset? : Int64 = 0L,
+) -> DeviceRgbColour raise PdfGraphicsError {
+  if value.pattern is Some(_) {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "Pattern colour values require pattern painting before RGB conversion",
+    )
+  }
+  match self {
+    Device(device) => device.convert_to_rgb(value.components, offset~)
+    _ => self.components_to_device_rgb(value.components, offset~)
+  }
+}
+
+///|
+pub fn ColourSpace::components_to_rgb(
+  self : ColourSpace,
+  components : Array[Double],
+  offset? : Int64 = 0L,
+) -> DeviceRgbColour raise PdfGraphicsError {
+  self.convert_to_rgb(
+    ColourValue::{ components: components.copy(), pattern: None },
+    offset~,
+  )
+}
+
+///|
+pub fn ColourSpace::is_valid_device_default(
+  self : ColourSpace,
+  device : DeviceColourSpace,
+) -> Bool {
+  if self.component_count() != device.component_count() {
+    return false
+  }
+  match self {
+    Lab(_) | Indexed(_) | Pattern(_) | Separation(_) | DeviceN(_) => false
+    _ => true
+  }
+}
+
+///|
+pub fn ColourDefaults::resolve_device_space(
+  self : ColourDefaults,
+  device : DeviceColourSpace,
+  offset? : Int64 = 0L,
+) -> ColourSpace raise PdfGraphicsError {
+  defaulted_device_space(device, self, true, offset)
+}
+
+///|
+fn colour_space_repeat_decode(
+  count : Int,
+  min : Double,
+  max : Double,
+) -> Array[Double] {
+  let decode : Array[Double] = []
+  for _ in 0..<count {
+    decode.push(min)
+    decode.push(max)
+  }
+  decode
+}
+
+///|
+fn colour_space_repeat_components(count : Int, value : Double) -> Array[Double] {
+  let values : Array[Double] = []
+  for _ in 0..<count {
+    values.push(value)
+  }
+  values
+}
