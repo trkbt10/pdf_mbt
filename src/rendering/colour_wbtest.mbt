@@ -9,7 +9,7 @@ fn assert_close(actual : Double, expected : Double) -> Unit raise {
 }
 
 ///|
-fn pdf_name(bytes : Bytes) -> @objects.PdfName {
+fn colour_test_pdf_name(bytes : Bytes) -> @objects.PdfName {
   @objects.PdfName::new(bytes)
 }
 
@@ -25,14 +25,14 @@ fn type2_function(
   exponent : Double,
 ) -> @graphics.ColourTransformFunction {
   let dict : @objects.PdfDictionary = Map::new()
-  dict[pdf_name(b"FunctionType")] = @objects.PdfObject::Integer(2L)
-  dict[pdf_name(b"Domain")] = @objects.PdfObject::Array([
+  dict[colour_test_pdf_name(b"FunctionType")] = @objects.PdfObject::Integer(2L)
+  dict[colour_test_pdf_name(b"Domain")] = @objects.PdfObject::Array([
     pdf_real(0.0),
     pdf_real(1.0),
   ])
-  dict[pdf_name(b"C0")] = @objects.PdfObject::Array([pdf_real(c0)])
-  dict[pdf_name(b"C1")] = @objects.PdfObject::Array([pdf_real(c1)])
-  dict[pdf_name(b"N")] = pdf_real(exponent)
+  dict[colour_test_pdf_name(b"C0")] = @objects.PdfObject::Array([pdf_real(c0)])
+  dict[colour_test_pdf_name(b"C1")] = @objects.PdfObject::Array([pdf_real(c1)])
+  dict[colour_test_pdf_name(b"N")] = pdf_real(exponent)
   @graphics.ColourTransformFunction::DirectTransformFunction(
     @objects.PdfObject::Dictionary(dict),
   )
