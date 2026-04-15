@@ -6,6 +6,8 @@ priv enum FilterName {
   LZWDecode
   RunLengthDecode
   DCTDecode
+  CCITTFaxDecode
+  JPXDecode
   Unsupported(String)
 }
 
@@ -18,9 +20,21 @@ fn FilterName::to_text(self : FilterName) -> String {
     LZWDecode => "LZWDecode"
     RunLengthDecode => "RunLengthDecode"
     DCTDecode => "DCTDecode"
+    CCITTFaxDecode => "CCITTFaxDecode"
+    JPXDecode => "JPXDecode"
     Unsupported(name) => name
   }
 }
+
+///|
+pub(all) struct JpxImageData {
+  width : Int
+  height : Int
+  num_components : Int
+  bits_per_component : Int
+  is_signed : Bool
+  data : Bytes
+} derive(Eq, Debug)
 
 ///|
 priv struct DecodeParams {

@@ -12,9 +12,9 @@ pub(all) enum ImageSource {
 
 ///|
 /// Availability of image sample data after structural filter handling.
-/// Encoded bytes remain for filters such as DCTDecode, JPXDecode,
-/// JBIG2Decode, CCITTFaxDecode, or Crypt; decoded bytes are checked against
-/// the image sample layout when supported filters produce sample bytes.
+/// Encoded bytes remain for filters such as JBIG2Decode, CCITTFaxDecode, or
+/// Crypt; decoded bytes are checked against the image sample layout when
+/// supported filters produce sample bytes.
 pub(all) enum ImageByteStatus {
   EncodedBytes(Int)
   DecodedBytes(Int)
@@ -230,20 +230,36 @@ pub fn validate_image_dictionary(
         raise invalid_image(offset, "inline image dictionary requires Length")
     }
   }
-  let width = required_positive_int(dict, b"Width", offset, "Width")
-  let height = required_positive_int(dict, b"Height", offset, "Height")
+  let dict_width = required_positive_int(dict, b"Width", offset, "Width")
+  let dict_height = required_positive_int(dict, b"Height", offset, "Height")
   let image_mask = image_optional_bool(
     dict, b"ImageMask", false, offset, "ImageMask",
   )
   let is_jpx = has_filter(filters, b"JPXDecode")
+  let jpx_image = decode_jpx_image_for_descriptor(data, filters, offset)
+  let width = match jpx_image {
+    Some(image) => image.width
+    None => dict_width
+  }
+  let height = match jpx_image {
+    Some(image) => image.height
+    None => dict_height
+  }
   let color_space = parse_image_colour_space(dict, image_mask, is_jpx, offset)
-  let bits = parse_bits_per_component(dict, image_mask, is_jpx, offset)
+  let bits = match jpx_image {
+    Some(image) => Some(image.bits_per_component)
+    None => parse_bits_per_component(dict, image_mask, is_jpx, offset)
+  }
   let component_count = if image_mask {
     1
   } else {
-    match color_space {
-      Some(space) => space.component_count()
-      None => 0
+    match jpx_image {
+      Some(image) => image.num_components
+      None =>
+        match color_space {
+          Some(space) => space.component_count()
+          None => 0
+        }
     }
   }
   let bits_value = match bits {
@@ -253,7 +269,9 @@ pub fn validate_image_dictionary(
   let layout = ImageSampleLayout::from_values(
     width, height, component_count, bits_value,
   )
-  let decode = parse_decode_ranges(dict, color_space, image_mask, offset)
+  let decode = parse_decode_ranges(
+    dict, color_space, image_mask, component_count, offset,
+  )
   let mask = parse_image_mask(
     dict, image_mask, component_count, bits_value, offset,
   )
@@ -505,19 +523,13 @@ fn parse_decode_ranges(
   dict : @objects.PdfDictionary,
   color_space : ColourSpace?,
   image_mask : Bool,
+  component_count : Int,
   offset : Int64,
 ) -> Array[ImageDecodeRange] raise PdfGraphicsError {
   match optional_entry(dict, b"Decode") {
     Some(object) => {
       let values = require_array_value(object, offset, "Decode")
-      let expected = if image_mask {
-        2
-      } else {
-        match color_space {
-          Some(space) => space.component_count() * 2
-          None => 0
-        }
-      }
+      let expected = if image_mask { 2 } else { component_count * 2 }
       if expected > 0 && values.length() != expected {
         raise invalid_image(
           offset, "Decode array length does not match component count",
@@ -529,9 +541,18 @@ fn parse_decode_ranges(
     None =>
       match color_space {
         Some(space) => colour_ranges_to_decode_ranges(space.component_ranges())
-        None => []
+        None => default_decode_ranges(component_count)
       }
   }
+}
+
+///|
+fn default_decode_ranges(component_count : Int) -> Array[ImageDecodeRange] {
+  let ranges : Array[ImageDecodeRange] = []
+  for _ in 0..<component_count {
+    ranges.push(ImageDecodeRange::{ min: 0.0, max: 1.0 })
+  }
+  ranges
 }
 
 ///|
@@ -907,6 +928,26 @@ fn classify_image_bytes(
 }
 
 ///|
+fn decode_jpx_image_for_descriptor(
+  data : Bytes,
+  filters : Array[@objects.PdfName],
+  offset : Int64,
+) -> @filters.JpxImageData? raise PdfGraphicsError {
+  if !has_filter(filters, b"JPXDecode") {
+    return None
+  }
+  try @filters.decode_jpx_image(data) catch {
+    error =>
+      raise invalid_image(
+        offset,
+        "JPXDecode image decode failed: " + filter_error_label(error),
+      )
+  } noraise {
+    image => Some(image)
+  }
+}
+
+///|
 fn validate_decoded_length(
   layout : ImageSampleLayout,
   status : ImageByteStatus,
@@ -964,7 +1005,8 @@ fn all_filters_supported_for_structural_decode(
       filter == pdf_name(b"ASCII85Decode") ||
       filter == pdf_name(b"FlateDecode") ||
       filter == pdf_name(b"LZWDecode") ||
-      filter == pdf_name(b"RunLengthDecode")) {
+      filter == pdf_name(b"RunLengthDecode") ||
+      filter == pdf_name(b"JPXDecode")) {
       return false
     }
   }

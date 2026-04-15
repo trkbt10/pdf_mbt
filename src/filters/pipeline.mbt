@@ -7,8 +7,9 @@
 ///
 /// Applies the stream dictionary Filter and DecodeParms entries, including
 /// FlateDecode, LZWDecode, ASCIIHexDecode, ASCII85Decode with the ~> EOD
-/// marker, and RunLengthDecode. Unsupported filter names are reported through
-/// PdfFilterError instead of being skipped.
+/// marker, RunLengthDecode, DCTDecode, JPXDecode, and CCITTFaxDecode.
+/// Unsupported filter names are reported through PdfFilterError instead of
+/// being skipped.
 pub fn decode_stream(stream : @objects.PdfStream) -> Bytes raise PdfFilterError {
   decode_stream_bytes(stream.dict, stream.data)
 }
@@ -19,9 +20,10 @@ pub fn decode_stream(stream : @objects.PdfStream) -> Bytes raise PdfFilterError 
 /// Applies a single Filter name or a Filter array in order, maps DecodeParms
 /// dictionaries by index, and returns the fully decoded bytes. FlateDecode and
 /// LZWDecode honor predictor parameters such as Predictor, Columns, Colors,
-/// BitsPerComponent, and EarlyChange. RunLengthDecode handles literal runs,
-/// repeat runs, and byte 128 as the end-of-data marker. DCTDecode decodes
-/// baseline JPEG image data to raw interleaved sample bytes.
+/// BitsPerComponent, and EarlyChange. CCITTFaxDecode handles Group 3 1D,
+/// Group 4 2D, and mixed Group 3 2D bilevel image data. RunLengthDecode
+/// handles literal runs, repeat runs, and byte 128 as the end-of-data marker.
+/// DCTDecode and JPXDecode decode image data to raw interleaved sample bytes.
 ///
 /// Missing Filter entries return the original byte sequence unchanged.
 pub fn decode_stream_bytes(
@@ -46,6 +48,8 @@ fn execute_pipeline(
       LZWDecode => decode_lzw(current, spec.params)
       RunLengthDecode => decode_run_length(current)
       DCTDecode => decode_dct(current, spec.params)
+      CCITTFaxDecode => decode_ccitt_fax(current, spec.params)
+      JPXDecode => decode_jpx(current)
       Unsupported(name) => raise PdfFilterError::UnsupportedFilter(name)
     }
   }

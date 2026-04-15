@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn decode_jpx_image(Bytes) -> JpxImageData raise PdfFilterError
+
 pub fn decode_stream(@objects.PdfStream) -> Bytes raise PdfFilterError
 
 pub fn decode_stream_bytes(Map[@objects.PdfName, @objects.PdfObject], Bytes) -> Bytes raise PdfFilterError
@@ -20,6 +22,14 @@ pub(all) suberror PdfFilterError {
 } derive(Eq, @debug.Debug)
 
 // Types and methods
+pub(all) struct JpxImageData {
+  width : Int
+  height : Int
+  num_components : Int
+  bits_per_component : Int
+  is_signed : Bool
+  data : Bytes
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 

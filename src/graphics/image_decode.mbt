@@ -19,9 +19,9 @@ pub(all) struct ImageAlphaMaskRaster {
 
 ///|
 /// Extracted image data. Supported sample-byte filters are expanded into
-/// DeviceRGB pixels; unsupported encoded image codecs such as DCTDecode,
-/// JPXDecode, JBIG2Decode, CCITTFaxDecode, and Crypt preserve their original
-/// encoded bytes and filter names for a downstream codec.
+/// DeviceRGB pixels; unsupported encoded image codecs such as JBIG2Decode,
+/// CCITTFaxDecode, and Crypt preserve their original encoded bytes and filter
+/// names for a downstream codec.
 pub(all) enum ExtractedImageData {
   DeviceRgbRaster(ImageDeviceRgbRaster)
   StencilMaskRaster(ImageAlphaMaskRaster)
@@ -211,6 +211,12 @@ fn decode_sample_bytes_to_rgb(
         decoded,
         descriptor.filters.copy(),
       )
+  }
+  if space.component_count() != descriptor.layout.component_count {
+    return ExtractedImageData::EncodedImageData(
+      decoded,
+      descriptor.filters.copy(),
+    )
   }
   let samples = decode_image_sample_values(decoded, descriptor.layout, offset~)
   let alpha = alpha_for_image_descriptor(descriptor, samples, offset)

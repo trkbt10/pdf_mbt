@@ -1,5 +1,6 @@
 import {
   "moonbitlang/core/math",
   "moonbitlang/core/encoding/utf8",
+  "trkbt10/jpeg2000",
   "trkbt10/pdf/src/objects",
 }

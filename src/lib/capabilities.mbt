@@ -190,6 +190,8 @@ fn filter_support_status(filter : @objects.PdfName) -> PdfCapabilityStatus {
     filter == @objects.PdfName::new(b"ASCII85Decode") ||
     filter == @objects.PdfName::new(b"RunLengthDecode") {
     Supported
+  } else if filter == @objects.PdfName::new(b"JPXDecode") {
+    Partial
   } else if filter == @objects.PdfName::new(b"DCTDecode") {
     Partial
   } else {
@@ -204,7 +206,7 @@ fn filter_support_description(filter : @objects.PdfName) -> String {
   } else if filter == @objects.PdfName::new(b"DCTDecode") {
     "DCTDecode JPEG image data is partially supported; raw passthrough and available decoded data are exposed, while unsupported conversions are reported as warnings."
   } else if filter == @objects.PdfName::new(b"JPXDecode") {
-    "JPXDecode JPEG 2000 image filter is unsupported and image extraction reports it as a warning."
+    "JPXDecode JPEG 2000 image data is partially supported; decoded sample bytes and image dimensions are available when the JPEG 2000 codestream can be decoded."
   } else if filter == @objects.PdfName::new(b"JBIG2Decode") {
     "JBIG2Decode image filter is unsupported and image extraction reports it as a warning."
   } else if filter == @objects.PdfName::new(b"CCITTFaxDecode") {

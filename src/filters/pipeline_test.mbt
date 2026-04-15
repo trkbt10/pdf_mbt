@@ -53,6 +53,29 @@ fn hex_digit(value : Int) -> Byte {
 }
 
 ///|
+fn pack_ccitt_bits(pattern : String) -> Bytes {
+  let output : Array[Byte] = []
+  let mut current_byte = 0
+  let mut bits_filled = 0
+  let mut index = 0
+  while index < pattern.length() {
+    let bit = if pattern.code_unit_at(index) == '1' { 1 } else { 0 }
+    current_byte = (current_byte << 1) | bit
+    bits_filled += 1
+    if bits_filled == 8 {
+      output.push(current_byte.to_byte())
+      current_byte = 0
+      bits_filled = 0
+    }
+    index += 1
+  }
+  if bits_filled > 0 {
+    output.push((current_byte << (8 - bits_filled)).to_byte())
+  }
+  Bytes::from_array(output)
+}
+
+///|
 test "decode_stream_bytes returns raw bytes unchanged when filter is absent" {
   let dict : @objects.PdfDictionary = Map::new()
   let data = Bytes::from_array([b'\x01', b'\x02', b'\xfe', b'\xff'])
@@ -67,6 +90,27 @@ test "decode_stream returns raw bytes unchanged when filter is absent" {
   let stream = @objects.PdfStream::{ dict, data }
   let decoded = @filters.decode_stream(stream)
   assert_eq(decoded, data)
+}
+
+///|
+test "decode_stream_bytes applies CCITTFaxDecode with DecodeParms" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"CCITTFaxDecode"),
+  )
+  let params : @objects.PdfDictionary = Map::new()
+  params[@objects.PdfName::new(b"K")] = @objects.PdfObject::Integer(0L)
+  params[@objects.PdfName::new(b"Columns")] = @objects.PdfObject::Integer(8L)
+  params[@objects.PdfName::new(b"Rows")] = @objects.PdfObject::Integer(1L)
+  dict[@objects.PdfName::new(b"DecodeParms")] = @objects.PdfObject::Dictionary(
+    params,
+  )
+
+  let decoded = @filters.decode_stream_bytes(
+    dict,
+    pack_ccitt_bits("1000111000"),
+  )
+  assert_eq(decoded, Bytes::from_array([b'\xe7']))
 }
 
 ///|
@@ -497,14 +541,10 @@ test "decode_stream_bytes rejects indirect decode parms before filters" {
 ///|
 test "decode_stream_bytes rejects all named unsupported filters with their names" {
   let filter_names : Array[@objects.PdfName] = [
-    @objects.PdfName::new(b"CCITTFaxDecode"),
     @objects.PdfName::new(b"JBIG2Decode"),
-    @objects.PdfName::new(b"JPXDecode"),
     @objects.PdfName::new(b"Crypt"),
   ]
-  let expected_names : Array[String] = [
-    "CCITTFaxDecode", "JBIG2Decode", "JPXDecode", "Crypt",
-  ]
+  let expected_names : Array[String] = ["JBIG2Decode", "Crypt"]
   let mut index = 0
   while index < filter_names.length() {
     let dict : @objects.PdfDictionary = Map::new()
