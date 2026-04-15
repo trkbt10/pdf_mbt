@@ -16,6 +16,22 @@ test "Do resolves direct image XObject into descriptor event" {
 }
 
 ///|
+test "XObjectType classifies image and form subtypes" {
+  let image_type = XObjectType::ImageXObject
+  let form_type = XObjectType::FormXObjectType
+  let unknown_type = XObjectType::UnsupportedXObjectType(
+    @objects.PdfName::new(b"PS"),
+  )
+
+  assert_eq(image_type.is_image(), true)
+  assert_eq(image_type.is_form(), false)
+  assert_eq(form_type.is_image(), false)
+  assert_eq(form_type.is_form(), true)
+  assert_eq(unknown_type.is_image(), false)
+  assert_eq(unknown_type.is_form(), false)
+}
+
+///|
 test "Do reports missing XObject resource as typed graphics error" {
   let content = @content.parse_decoded_content(
     b"/Missing Do",

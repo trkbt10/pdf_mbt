@@ -1002,7 +1002,14 @@ pub(all) enum XObjectResource {
   UnresolvedXObject(@objects.PdfName, @objects.ObjectId)
 } derive(Eq, @debug.Debug)
 
+pub(all) enum XObjectType {
+  ImageXObject
+  FormXObjectType
+  UnsupportedXObjectType(@objects.PdfName)
+} derive(Eq, @debug.Debug)
+pub fn XObjectType::is_form(Self) -> Bool
+pub fn XObjectType::is_image(Self) -> Bool
+
 // Type aliases
 
 // Traits
-

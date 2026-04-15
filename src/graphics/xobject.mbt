@@ -10,6 +10,50 @@ pub(all) enum XObjectResource {
 } derive(Eq, Debug)
 
 ///|
+/// XObject subtype classification from an XObject stream dictionary. Image and
+/// Form are the supported rendering subtypes; other names are retained for
+/// validation diagnostics and future extension points.
+pub(all) enum XObjectType {
+  ImageXObject
+  FormXObjectType
+  UnsupportedXObjectType(@objects.PdfName)
+} derive(Eq, Debug)
+
+///|
+/// Reports whether this XObject subtype is an image XObject. Unsupported names
+/// remain false so dispatch code can keep image and form handling disjoint.
+pub fn XObjectType::is_image(self : XObjectType) -> Bool {
+  match self {
+    ImageXObject => {
+      let is_supported_image = true
+      is_supported_image
+    }
+    FormXObjectType => {
+      let is_supported_image = false
+      is_supported_image
+    }
+    UnsupportedXObjectType(_) => false
+  }
+}
+
+///|
+/// Reports whether this XObject subtype is a form XObject. This mirrors image
+/// classification while keeping unknown subtype names out of form execution.
+pub fn XObjectType::is_form(self : XObjectType) -> Bool {
+  match self {
+    ImageXObject => {
+      let is_supported_form = false
+      is_supported_form
+    }
+    FormXObjectType => {
+      let is_supported_form = true
+      is_supported_form
+    }
+    UnsupportedXObjectType(_) => false
+  }
+}
+
+///|
 /// Resolves the named XObject resource used by the `Do` operator from content
 /// streams. Missing resources, null values, non-stream direct objects, and
 /// unsupported XObject Subtype names are reported as InvalidXObject errors.
