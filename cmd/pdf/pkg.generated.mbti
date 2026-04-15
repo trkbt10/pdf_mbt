@@ -1,0 +1,15 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/cmd/pdf"
+
+// Values
+
+// Errors
+type CliError
+
+// Types and methods
+type PageRange
+
+// Type aliases
+
+// Traits
+
