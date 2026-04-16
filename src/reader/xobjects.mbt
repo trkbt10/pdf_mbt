@@ -44,6 +44,12 @@ fn materialize_resource_dictionary(
     file, output, b"XObject", form_stack, page_id,
   )
   materialize_named_resource_category(
+    file, output, b"ExtGState", form_stack, page_id,
+  )
+  materialize_named_resource_category(
+    file, output, b"ColorSpace", form_stack, page_id,
+  )
+  materialize_named_resource_category(
     file, output, b"Properties", form_stack, page_id,
   )
   output

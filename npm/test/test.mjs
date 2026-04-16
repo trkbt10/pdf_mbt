@@ -42,8 +42,13 @@ assert.ok(
 );
 const svg = doc.pageToSvg(0);
 assert.ok(svg.startsWith("<svg"), "expected page SVG markup");
+assert.equal((svg.match(/<path/g) ?? []).length, 4, "expected Simple PDF paths");
 assert.ok(svg.includes("<text"), "expected SVG text element");
 assert.ok(svg.includes("<text transform=\"matrix("), "expected matrix-positioned SVG text");
+assert.ok(
+  svg.includes("<text transform=\"matrix(24 0 0 -24 100 100)"),
+  "expected SVG text to counter the flipped page group"
+);
 assert.ok(svg.includes("HelloWorld"), "expected SVG text content");
 console.log("✓ Lazy page geometry and text positions");
 
@@ -91,6 +96,16 @@ for (let index = 0; index < imageInfos.length; index += 1) {
   assert.ok(rgba instanceof Uint8Array, "expected RGBA as Uint8Array");
   assert.equal(rgba.length, info.width * info.height * 4);
 }
+const imageSvg = imageDoc.pageToSvg(0);
+assert.equal(
+  (imageSvg.match(/<image/g) ?? []).length,
+  2,
+  "expected images embedded in page SVG"
+);
+assert.ok(
+  imageSvg.includes("data:image/png;base64,"),
+  "expected SVG images to use data URLs"
+);
 console.log("✓ Image metadata and RGBA extraction");
 
 doc.close();

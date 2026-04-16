@@ -194,7 +194,7 @@ export default function PdfViewer({
         return;
       }
       const image = pageImages[pageIndex]?.items[imageIndex];
-      if (!image || image.status === "loading" || image.status === "ready") {
+      if (!image || image.status !== "idle") {
         return;
       }
       setPageImages((states) =>
@@ -763,6 +763,10 @@ function ImageTile({
     <figure ref={tileRef}>
       {image.info && image.rgba ? (
         <ImageCanvas image={image} />
+      ) : image.status === "error" ? (
+        <div className="imagePlaceholder" role="status">
+          RGBA unavailable
+        </div>
       ) : (
         <button
           className="imagePlaceholder"
