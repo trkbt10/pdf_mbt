@@ -40,14 +40,25 @@ assert.ok(
   texts.some((item) => item.text.includes("HelloWorld")),
   "expected HelloWorld in render text"
 );
+const svg = doc.pageToSvg(0);
+assert.ok(svg.startsWith("<svg"), "expected page SVG markup");
+assert.ok(svg.includes("<text"), "expected SVG text element");
+assert.ok(svg.includes("HelloWorld"), "expected SVG text content");
 console.log("✓ Lazy page geometry and text positions");
 
-// Test 3: Document info
+// Test 3: SVG path output
+const shapeDoc = await PdfDocument.open(minimalPdfWithPath());
+const shapeSvg = shapeDoc.pageToSvg(0);
+assert.ok(shapeSvg.includes("<path"), "expected SVG path element");
+assert.ok(shapeSvg.includes("fill=\"#000000\""), "expected default fill color");
+console.log("✓ SVG path rendering");
+
+// Test 4: Document info
 const info = doc.info();
 assert.equal(info.pageCount, 1);
 console.log("✓ Document info");
 
-// Test 4: Multi-page PDF
+// Test 5: Multi-page PDF
 const multiPage = await readFile(
   "../spec/pdf20examples/PDF 2.0 with page level output intent.pdf"
 );
@@ -55,7 +66,7 @@ const doc2 = await PdfDocument.open(multiPage);
 assert.equal(doc2.pageCount(), 2, "expected 2 pages");
 console.log("✓ Multi-page PDF");
 
-// Test 5: PdfContext create roundtrip
+// Test 6: PdfContext create roundtrip
 const ctx = PdfContext.create();
 ctx.addPage(612, 792);
 ctx.setTitle("Test Document");
@@ -65,6 +76,7 @@ assert.equal(roundtrip.pageCount(), 1);
 console.log("✓ PdfContext roundtrip");
 
 doc.close();
+shapeDoc.close();
 doc2.close();
 roundtrip.close();
 ctx.close();
@@ -75,4 +87,29 @@ function shouldRerunWithWasmFlags() {
     return false;
   }
   return requiredWasmFlags.some((flag) => !process.execArgv.includes(flag));
+}
+
+function minimalPdfWithPath() {
+  const content = "72 72 m 540 72 l 540 720 l h f";
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
+    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
+  ];
+  let pdf = "%PDF-2.0\n";
+  const offsets = [0];
+  for (let index = 0; index < objects.length; index += 1) {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${objects[index]}\nendobj\n`;
+  }
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += "0000000000 65535 f \n";
+  for (let index = 1; index < offsets.length; index += 1) {
+    pdf += `${offsets[index].toString().padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\n`;
+  pdf += `startxref\n${xrefOffset}\n%%EOF\n`;
+  return new TextEncoder().encode(pdf);
 }

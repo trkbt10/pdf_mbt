@@ -80,6 +80,7 @@ export class PdfDocument {
   extractTextLayout(page: number): string;
   pageGeometry(pageIndex: number): PdfPageGeometry;
   pageTextPositions(pageIndex: number): PdfRenderText[];
+  pageToSvg(pageIndex: number): string;
   pageImageCount(page: number): number;
   pageImageInfo(page: number, imageIndex: number): PdfImageInfo;
   pageImageRGBA(page: number, imageIndex: number): Uint8Array;
@@ -99,6 +100,7 @@ export class PdfPage {
   extractTextLayout(): string;
   geometry(): PdfPageGeometry;
   textPositions(): PdfRenderText[];
+  toSvg(): string;
   renderData(): PdfPageRenderData;
   images(): PdfImage[];
   imageCount(): number;

@@ -89,6 +89,15 @@ class PdfDocument {
     ).texts;
   }
 
+  pageToSvg(pageIndex) {
+    this.assertOpen();
+    const svg = this.wasm.pdf_page_to_svg(this.handle, pageIndex);
+    if (!svg) {
+      throw new Error("Failed to render page SVG");
+    }
+    return svg;
+  }
+
   pageImageCount(page) {
     this.assertOpen();
     const count = this.wasm.pdf_page_image_count(this.handle, page);
@@ -178,6 +187,10 @@ class PdfPage {
 
   textPositions() {
     return this.document.pageTextPositions(this.index);
+  }
+
+  toSvg() {
+    return this.document.pageToSvg(this.index);
   }
 
   images() {

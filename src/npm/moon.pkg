@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/core/math",
   "moonbitlang/core/encoding/utf8",
   "trkbt10/pdf/src/reader",
   "trkbt10/pdf/src/text",
@@ -23,6 +24,7 @@ options(
         "pdf_extract_text_layout",
         "pdf_page_geometry_json",
         "pdf_page_text_positions_json",
+        "pdf_page_to_svg",
         "pdf_page_image_count",
         "pdf_page_image_info_json",
         "pdf_page_image_rgba",

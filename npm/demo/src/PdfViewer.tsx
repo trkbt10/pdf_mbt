@@ -32,6 +32,12 @@ interface PageTextState {
   error?: string;
 }
 
+interface PageSvgState {
+  status: "idle" | "loading" | "ready" | "error";
+  svg: string;
+  error?: string;
+}
+
 interface PageImagesState {
   status: "idle" | "loading" | "ready" | "error";
   count: number;
@@ -62,6 +68,7 @@ export default function PdfViewer({
   const [zoomValue, setZoomValue] = useState<ZoomValue>("fit");
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [dragActive, setDragActive] = useState(false);
+  const [pageSvgs, setPageSvgs] = useState<Record<number, PageSvgState>>({});
   const [pageTexts, setPageTexts] = useState<Record<number, PageTextState>>({});
   const [pageImages, setPageImages] = useState<Record<number, PageImagesState>>(
     {}
@@ -69,9 +76,45 @@ export default function PdfViewer({
 
   useEffect(() => {
     setCurrentPageIndex(0);
+    setPageSvgs({});
     setPageTexts({});
     setPageImages({});
   }, [document]);
+
+  const loadPageSvg = useCallback(
+    (pageIndex: number) => {
+      if (!document) {
+        return;
+      }
+      const current = pageSvgs[pageIndex];
+      if (current && current.status !== "idle") {
+        return;
+      }
+      setPageSvgs((states) => ({
+        ...states,
+        [pageIndex]: { status: "loading", svg: "" },
+      }));
+      window.setTimeout(() => {
+        try {
+          const svg = document.source.pageToSvg(pageIndex);
+          setPageSvgs((states) => ({
+            ...states,
+            [pageIndex]: { status: "ready", svg },
+          }));
+        } catch (error) {
+          setPageSvgs((states) => ({
+            ...states,
+            [pageIndex]: {
+              error: errorMessage(error),
+              status: "error",
+              svg: "",
+            },
+          }));
+        }
+      }, 0);
+    },
+    [document, pageSvgs]
+  );
 
   const loadPageText = useCallback(
     (pageIndex: number) => {
@@ -283,9 +326,11 @@ export default function PdfViewer({
             document={document}
             loadImageRGBA={loadImageRGBA}
             loadPageImages={loadPageImages}
+            loadPageSvg={loadPageSvg}
             loadPageText={loadPageText}
             onSelectPage={setCurrentPageIndex}
             pageImages={pageImages}
+            pageSvgs={pageSvgs}
             pageTexts={pageTexts}
             zoomValue={zoomValue}
           />
@@ -368,9 +413,11 @@ function PageList({
   document,
   loadImageRGBA,
   loadPageImages,
+  loadPageSvg,
   loadPageText,
   onSelectPage,
   pageImages,
+  pageSvgs,
   pageTexts,
   zoomValue,
 }: {
@@ -378,9 +425,11 @@ function PageList({
   document: ViewerDocument | null;
   loadImageRGBA: (pageIndex: number, imageIndex: number) => void;
   loadPageImages: (pageIndex: number) => void;
+  loadPageSvg: (pageIndex: number) => void;
   loadPageText: (pageIndex: number) => void;
   onSelectPage: (index: number) => void;
   pageImages: Record<number, PageImagesState>;
+  pageSvgs: Record<number, PageSvgState>;
   pageTexts: Record<number, PageTextState>;
   zoomValue: ZoomValue;
 }) {
@@ -397,9 +446,11 @@ function PageList({
           key={page.index}
           loadImageRGBA={loadImageRGBA}
           loadPageImages={loadPageImages}
+          loadPageSvg={loadPageSvg}
           loadPageText={loadPageText}
           onSelectPage={onSelectPage}
           page={page}
+          svgState={pageSvgs[page.index] ?? emptyPageSvg("idle")}
           textState={pageTexts[page.index] ?? emptyPageText("idle")}
           zoomValue={zoomValue}
         />
@@ -413,9 +464,11 @@ function PageItem({
   imageState,
   loadImageRGBA,
   loadPageImages,
+  loadPageSvg,
   loadPageText,
   onSelectPage,
   page,
+  svgState,
   textState,
   zoomValue,
 }: {
@@ -423,9 +476,11 @@ function PageItem({
   imageState: PageImagesState;
   loadImageRGBA: (pageIndex: number, imageIndex: number) => void;
   loadPageImages: (pageIndex: number) => void;
+  loadPageSvg: (pageIndex: number) => void;
   loadPageText: (pageIndex: number) => void;
   onSelectPage: (index: number) => void;
   page: ViewerPage;
+  svgState: PageSvgState;
   textState: PageTextState;
   zoomValue: ZoomValue;
 }) {
@@ -438,9 +493,17 @@ function PageItem({
       return;
     }
     onSelectPage(page.index);
+    loadPageSvg(page.index);
     loadPageText(page.index);
     loadPageImages(page.index);
-  }, [isVisible, loadPageImages, loadPageText, onSelectPage, page.index]);
+  }, [
+    isVisible,
+    loadPageImages,
+    loadPageSvg,
+    loadPageText,
+    onSelectPage,
+    page.index,
+  ]);
 
   return (
     <li
@@ -455,6 +518,7 @@ function PageItem({
           <button
             onClick={() => {
               onSelectPage(page.index);
+              loadPageSvg(page.index);
               loadPageText(page.index);
               loadPageImages(page.index);
             }}
@@ -464,10 +528,11 @@ function PageItem({
           </button>
         </div>
       </header>
-      <RenderedPageCanvas
+      <RenderedPageSvg
         geometry={page.geometry}
         isNearViewport={isNearViewport}
         pageIndex={page.index}
+        svgState={svgState}
         textState={textState}
         zoomValue={zoomValue}
       />
@@ -484,20 +549,21 @@ function PageItem({
   );
 }
 
-function RenderedPageCanvas({
+function RenderedPageSvg({
   geometry,
   isNearViewport,
   pageIndex,
+  svgState,
   textState,
   zoomValue,
 }: {
   geometry: PdfPageGeometry;
   isNearViewport: boolean;
   pageIndex: number;
+  svgState: PageSvgState;
   textState: PageTextState;
   zoomValue: ZoomValue;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [fitWidth, setFitWidth] = useState(0);
   const scale = pageScale(geometry, zoomValue, fitWidth);
@@ -516,28 +582,28 @@ function RenderedPageCanvas({
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    if (!isNearViewport) {
-      return;
-    }
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    if (!canvas || !context) {
-      return;
-    }
-    drawPage(canvas, context, geometry, textState.texts, scale);
-  }, [geometry, isNearViewport, scale, textState.texts]);
-
   return (
     <div className="pageCanvasViewport" ref={frameRef}>
-      {isNearViewport ? (
-        <canvas
+      {isNearViewport && svgState.status === "ready" ? (
+        <div
           aria-label={`Rendered PDF page ${pageIndex + 1}`}
-          ref={canvasRef}
+          className="pageSvgSurface"
+          dangerouslySetInnerHTML={{ __html: svgState.svg }}
           style={{
             height: `${pageHeight}px`,
             width: `${pageWidth}px`,
           }}
+        />
+      ) : isNearViewport &&
+        svgState.status === "error" &&
+        textState.status === "ready" ? (
+        <FallbackPageCanvas
+          geometry={geometry}
+          pageHeight={pageHeight}
+          pageIndex={pageIndex}
+          pageWidth={pageWidth}
+          scale={scale}
+          texts={textState.texts}
         />
       ) : (
         <div
@@ -548,14 +614,55 @@ function RenderedPageCanvas({
           <span>Page {pageIndex + 1}</span>
         </div>
       )}
-      {textState.status === "loading" && (
-        <p className="pageLoading">Loading text positions...</p>
+      {(svgState.status === "loading" || textState.status === "loading") && (
+        <p className="pageLoading">Loading page SVG...</p>
+      )}
+      {svgState.status === "error" && (
+        <p className="imageError">{svgState.error}</p>
       )}
     </div>
   );
 }
 
-function drawPage(
+function FallbackPageCanvas({
+  geometry,
+  pageHeight,
+  pageIndex,
+  pageWidth,
+  scale,
+  texts,
+}: {
+  geometry: PdfPageGeometry;
+  pageHeight: number;
+  pageIndex: number;
+  pageWidth: number;
+  scale: number;
+  texts: PdfRenderText[];
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !context) {
+      return;
+    }
+    drawFallbackPage(canvas, context, geometry, texts, scale);
+  }, [geometry, scale, texts]);
+
+  return (
+    <canvas
+      aria-label={`Text fallback for PDF page ${pageIndex + 1}`}
+      ref={canvasRef}
+      style={{
+        height: `${pageHeight}px`,
+        width: `${pageWidth}px`,
+      }}
+    />
+  );
+}
+
+function drawFallbackPage(
   canvas: HTMLCanvasElement,
   context: CanvasRenderingContext2D,
   geometry: PdfPageGeometry,
@@ -745,6 +852,10 @@ function updateImageState(
 
 function emptyPageText(status: PageTextState["status"]): PageTextState {
   return { status, texts: [] };
+}
+
+function emptyPageSvg(status: PageSvgState["status"]): PageSvgState {
+  return { status, svg: "" };
 }
 
 function emptyPageImages(status: PageImagesState["status"]): PageImagesState {

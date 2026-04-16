@@ -411,11 +411,18 @@ pre {
   width: 100%;
 }
 
+.pageSvgSurface,
 .pageCanvasViewport canvas {
   background: #ffffff;
   box-shadow: 0 2px 12px rgb(17 17 17 / 18%);
   display: block;
   margin: 0 auto;
+}
+
+.pageSvgSurface svg {
+  display: block;
+  height: 100%;
+  width: 100%;
 }
 
 .pagePlaceholder {
