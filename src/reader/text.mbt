@@ -26,18 +26,7 @@ pub fn PdfPage::text_program(
   self : PdfPage,
   options : TextPageOptions,
 ) -> @text.TextProgram raise PdfDocumentError {
-  let text_resources = if options.materialize_resources {
-    self.text_resources()
-  } else {
-    let content_resources = self.content_resources()
-    try
-      @text.TextResources::from_content_resources(content_resources, 0L)
-    catch {
-      error => raise PdfDocumentError::TextError(error)
-    } noraise {
-      resources => resources
-    }
-  }
+  let text_resources = self.text_resources_for_program(options)
   let decoded = self.decoded_content_bytes()
   let content = try
     @content.parse_decoded_content(decoded, text_resources.content_resources)
@@ -65,7 +54,18 @@ pub fn PdfPage::extracted_text(
   self : PdfPage,
   options : TextPageOptions,
 ) -> @text.ExtractedText raise PdfDocumentError {
-  @text.ExtractedText::from_spans(self.text_program(options).spans)
+  let result : Result[@text.TextProgram, PdfDocumentError] = try? self.text_program(
+    options,
+  )
+  match result {
+    Ok(program) => @text.ExtractedText::from_spans(program.spans)
+    Err(error) =>
+      match error {
+        ReaderError(_) | ContentError(_) | TextError(_) =>
+          @text.ExtractedText::from_spans([])
+        _ => raise error
+      }
+  }
 }
 
 ///|
@@ -76,6 +76,34 @@ pub fn PdfPage::extract_text_layout(self : PdfPage) -> String {
   match result {
     Ok(extracted) => @layout.layout_text_spans(extracted.spans)
     Err(_) => ""
+  }
+}
+
+///|
+fn PdfPage::text_resources_for_program(
+  self : PdfPage,
+  options : TextPageOptions,
+) -> @text.TextResources raise PdfDocumentError {
+  if options.materialize_resources {
+    let result : Result[@text.TextResources, PdfDocumentError] = try? self.text_resources()
+    match result {
+      Ok(resources) => resources
+      Err(_) => self.unmaterialized_text_resources()
+    }
+  } else {
+    self.unmaterialized_text_resources()
+  }
+}
+
+///|
+fn PdfPage::unmaterialized_text_resources(
+  self : PdfPage,
+) -> @text.TextResources raise PdfDocumentError {
+  let content_resources = self.content_resources()
+  try @text.TextResources::from_content_resources(content_resources, 0L) catch {
+    error => raise PdfDocumentError::TextError(error)
+  } noraise {
+    resources => resources
   }
 }
 
@@ -163,11 +191,17 @@ fn materialize_text_resource_object(
 ) -> @objects.PdfObject raise PdfDocumentError {
   match object {
     @objects.PdfObject::Ref(id) => {
-      let loaded = load_document_object(file, id)
-      if category == b"Font" {
-        materialize_font_object(file, loaded, page_id)
-      } else {
-        loaded
+      let loaded : Result[@objects.PdfObject, PdfDocumentError] = try? load_document_object(
+        file, id,
+      )
+      match loaded {
+        Ok(value) =>
+          if category == b"Font" {
+            materialize_font_object(file, value, page_id)
+          } else {
+            value
+          }
+        Err(_) => object
       }
     }
     _ =>
@@ -217,15 +251,21 @@ fn materialize_font_entry(
   dict : @objects.PdfDictionary,
   key : Bytes,
   page_id : @objects.ObjectId,
-) -> Unit raise PdfDocumentError {
+) -> Unit {
   let name = @objects.PdfName::new(key)
   match dict.get(name) {
     Some(@objects.PdfObject::Ref(id)) => {
-      let loaded = load_document_object(file, id)
-      dict[name] = if key == b"FontDescriptor" {
-        materialize_font_descriptor(file, loaded, page_id)
-      } else {
-        loaded
+      let loaded : Result[@objects.PdfObject, PdfDocumentError] = try? load_document_object(
+        file, id,
+      )
+      match loaded {
+        Ok(value) =>
+          dict[name] = if key == b"FontDescriptor" {
+            materialize_font_descriptor(file, value, page_id)
+          } else {
+            value
+          }
+        Err(_) => ()
       }
     }
     _ => ()
@@ -237,7 +277,7 @@ fn materialize_font_descriptor(
   file : PdfFile,
   object : @objects.PdfObject,
   _page_id : @objects.ObjectId,
-) -> @objects.PdfObject raise PdfDocumentError {
+) -> @objects.PdfObject {
   match object {
     @objects.PdfObject::Dictionary(dict) => {
       let output = dict.copy()
@@ -255,11 +295,18 @@ fn materialize_font_program(
   file : PdfFile,
   dict : @objects.PdfDictionary,
   key : Bytes,
-) -> Unit raise PdfDocumentError {
+) -> Unit {
   let name = @objects.PdfName::new(key)
   match dict.get(name) {
-    Some(@objects.PdfObject::Ref(id)) =>
-      dict[name] = load_document_object(file, id)
+    Some(@objects.PdfObject::Ref(id)) => {
+      let loaded : Result[@objects.PdfObject, PdfDocumentError] = try? load_document_object(
+        file, id,
+      )
+      match loaded {
+        Ok(value) => dict[name] = value
+        Err(_) => ()
+      }
+    }
     _ => ()
   }
 }
@@ -276,14 +323,16 @@ fn materialize_descendant_fonts(
       let output : Array[@objects.PdfObject] = []
       for value in values {
         match value {
-          @objects.PdfObject::Ref(id) =>
-            output.push(
-              materialize_font_object(
-                file,
-                load_document_object(file, id),
-                page_id,
-              ),
+          @objects.PdfObject::Ref(id) => {
+            let loaded : Result[@objects.PdfObject, PdfDocumentError] = try? load_document_object(
+              file, id,
             )
+            match loaded {
+              Ok(object) =>
+                output.push(materialize_font_object(file, object, page_id))
+              Err(_) => output.push(value)
+            }
+          }
           _ => output.push(materialize_font_object(file, value, page_id))
         }
       }

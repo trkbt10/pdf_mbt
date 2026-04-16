@@ -62,15 +62,11 @@ fn load_runtime_font(
   summary : FontResourceSummary,
   offset : Int64,
   limits : TextInterpretationLimits,
-) -> RuntimeFont raise PdfTextError {
+) -> RuntimeFont {
   match summary.font_object {
     @objects.PdfObject::Dictionary(dict) =>
       parse_runtime_font_dictionary(dict, offset, limits)
-    _ =>
-      raise PdfTextError::InvalidFont(
-        TextErrorContext::with_resource(offset, summary.resource_name.to_text()),
-        "font resource must be a materialized dictionary",
-      )
+    _ => fallback_runtime_font(Map::new(), offset)
   }
 }
 
