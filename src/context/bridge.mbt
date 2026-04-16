@@ -22,7 +22,7 @@ pub fn PdfContext::from_file(
     objects: Map::new(),
     generations: Map::new(),
     dirty_objects: Map::new(),
-    catalog_ref: trailer.root,
+    catalog_ref: file.root_ref(),
     pages_ref: catalog.pages_ref,
     page_tree_refs: [catalog.pages_ref],
     info_ref: trailer.info,

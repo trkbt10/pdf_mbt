@@ -14,7 +14,7 @@ fn parse_trailer_info_impl(
   offset : Int64,
 ) -> TrailerInfo raise PdfReaderError {
   let size = read_required_trailer_size(dict, offset)
-  let root = read_required_trailer_ref(dict, b"Root", "Root", offset)
+  let root = read_optional_trailer_ref(dict, b"Root", "Root", offset)
   let prev = read_optional_trailer_offset(dict, b"Prev", "Prev", offset)
   let encrypt = read_optional_trailer_ref(dict, b"Encrypt", "Encrypt", offset)
   let info = read_optional_trailer_ref(dict, b"Info", "Info", offset)
@@ -102,28 +102,6 @@ fn read_optional_trailer_integer(
         "\{field_name} entry must be a direct integer",
       )
     None => None
-  }
-}
-
-///|
-fn read_required_trailer_ref(
-  dict : @objects.PdfDictionary,
-  key : Bytes,
-  field_name : String,
-  offset : Int64,
-) -> @objects.ObjectId raise PdfReaderError {
-  match dict.get(@objects.PdfName::new(key)) {
-    Some(Ref(value)) => value
-    Some(_) =>
-      raise PdfReaderError::InvalidTrailer(
-        offset,
-        "\{field_name} entry must be an indirect reference",
-      )
-    None =>
-      raise PdfReaderError::InvalidTrailer(
-        offset,
-        "missing \{field_name} entry",
-      )
   }
 }
 

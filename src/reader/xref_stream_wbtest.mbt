@@ -79,7 +79,7 @@ test "parse_xref_stream_section decodes W widths, explicit Index, and supported 
   assert_eq(section.trailer.size, 3)
   assert_eq(
     section.trailer.root ==
-    @objects.ObjectId::{ object_number: 1, generation_number: 0 },
+    Some(@objects.ObjectId::{ object_number: 1, generation_number: 0 }),
     true,
   )
 

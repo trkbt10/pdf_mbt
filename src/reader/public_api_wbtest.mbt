@@ -190,6 +190,65 @@ fn build_incremental_fixture() -> Bytes {
 }
 
 ///|
+fn build_rootless_final_trailer_fixture() -> Bytes {
+  let prefix = b"garbage\n"
+  let header = b"%PDF-1.7\r\n"
+  let header_base = prefix.length().to_int64()
+  let bytes = prefix + header
+
+  let (bytes, linearization_offset) = append_indirect_object(
+    bytes, header_base, 1, 0, b"<< /Linearized 1 /L 0 /H [0 0] /O 2 /E 0 /N 1 /T 0 >>",
+  )
+  let (bytes, catalog_offset) = append_indirect_object(
+    bytes, header_base, 2, 0, b"<< /Type /Catalog /Pages 3 0 R >>",
+  )
+  let (bytes, pages_offset) = append_indirect_object(
+    bytes, header_base, 3, 0, b"<< /Type /Pages /Kids [4 0 R] /Count 1 >>",
+  )
+  let (bytes, page_offset) = append_indirect_object(
+    bytes, header_base, 4, 0, b"<< /Type /Page /Parent 3 0 R /Contents 5 0 R /MediaBox [0 0 72 72] >>",
+  )
+  let (bytes, content_offset) = append_indirect_object(
+    bytes,
+    header_base,
+    5,
+    0,
+    build_stream_object_body(b"<< /Length 2 >>", b"OK"),
+  )
+  let (bytes, info_offset) = append_indirect_object(
+    bytes, header_base, 6, 0, b"<< /Producer (synthetic) >>",
+  )
+
+  let first_xref_offset = object_offset(bytes, header_base)
+  let bytes = bytes +
+    b"xref\r\n" +
+    b"0 7\r\n" +
+    xref_entry_line(0L, 65535, b'f') +
+    xref_entry_line(linearization_offset, 0, b'n') +
+    xref_entry_line(catalog_offset, 0, b'n') +
+    xref_entry_line(pages_offset, 0, b'n') +
+    xref_entry_line(page_offset, 0, b'n') +
+    xref_entry_line(content_offset, 0, b'n') +
+    xref_entry_line(info_offset, 0, b'n') +
+    b"trailer\r\n" +
+    b"<< /Size 7 /Root 2 0 R /Info 6 0 R >>\r\n"
+
+  let final_xref_offset = object_offset(bytes, header_base)
+  let bytes = bytes +
+    b"xref\r\n" +
+    b"0 1\r\n" +
+    xref_entry_line(0L, 65535, b'f') +
+    b"trailer\r\n" +
+    b"<< /Size 7 /Prev " +
+    decimal_bytes(first_xref_offset) +
+    b" >>\r\n" +
+    b"startxref\r\n" +
+    decimal_bytes(final_xref_offset) +
+    b"\r\n%%EOF\r\n"
+  bytes
+}
+
+///|
 fn bytes_to_u16_be(value : Int) -> Bytes {
   Bytes::from_array([(value / 256).to_byte(), (value % 256).to_byte()])
 }
@@ -549,7 +608,7 @@ test "PdfFile::open reads a synthetic traditional table file end to end" {
 
   assert_eq(file.version() == PdfVersion::{ major: 1, minor: 7 }, true)
   assert_eq(trailer.size, 6)
-  assert_eq(trailer.root == root_ref, true)
+  assert_eq(trailer.root == Some(root_ref), true)
   assert_eq(root_ref == catalog_ref, true)
 
   let catalog = file.load_object(catalog_ref)
@@ -683,7 +742,7 @@ test "PdfFile::open merges incremental updates and keeps deleted objects null" {
 
   assert_eq(file.version() == PdfVersion::{ major: 1, minor: 7 }, true)
   assert_eq(file.root_ref() == catalog_ref, true)
-  assert_eq(file.trailer().root == catalog_ref, true)
+  assert_eq(file.trailer().root == Some(catalog_ref), true)
 
   match file.load_object(catalog_ref) {
     @objects.PdfObject::Dictionary(dict) => {
@@ -742,6 +801,48 @@ test "PdfFile::open merges incremental updates and keeps deleted objects null" {
     @objects.PdfObject::Null,
     true,
   )
+}
+
+///|
+test "PdfFile::open resolves root and info through a rootless final trailer" {
+  let file = PdfFile::open(build_rootless_final_trailer_fixture())
+  let catalog_ref = @objects.ObjectId::{
+    object_number: 2,
+    generation_number: 0,
+  }
+  let info_ref = @objects.ObjectId::{ object_number: 6, generation_number: 0 }
+  let trailer = file.trailer()
+
+  assert_eq(file.sections[0].trailer.root is None, true)
+  assert_eq(file.root_ref() == catalog_ref, true)
+  assert_eq(trailer.root == Some(catalog_ref), true)
+  assert_eq(trailer.info == Some(info_ref), true)
+  assert_eq(
+    trailer.raw_dict.get(@objects.PdfName::new(b"Root")) ==
+    Some(@objects.PdfObject::Ref(catalog_ref)),
+    true,
+  )
+
+  match file.load_object(catalog_ref) {
+    @objects.PdfObject::Dictionary(dict) => {
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Type")) ==
+        Some(@objects.PdfObject::Name(@objects.PdfName::new(b"Catalog"))),
+        true,
+      )
+      assert_eq(
+        dict.get(@objects.PdfName::new(b"Pages")) ==
+        Some(
+          @objects.PdfObject::Ref(@objects.ObjectId::{
+            object_number: 3,
+            generation_number: 0,
+          }),
+        ),
+        true,
+      )
+    }
+    _ => fail("expected resolved catalog dictionary")
+  }
 }
 
 ///|

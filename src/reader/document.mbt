@@ -13,7 +13,7 @@ pub fn PdfFile::open(input : Bytes) -> PdfFile raise PdfReaderError {
   let source = ByteSource::new(input, header.base_offset)
   let latest_startxref = find_latest_startxref(source)
   let sections = read_section_chain(source, latest_startxref, header.version)
-  let trailer = sections[0].trailer
+  let trailer = resolve_merged_trailer(sections)
   let xref_index = merge_sections(sections)
   let file = PdfFile::{
     bytes: input,
@@ -36,7 +36,7 @@ pub fn PdfFile::version(self : PdfFile) -> PdfVersion {
 }
 
 ///|
-/// Returns trailer metadata from the latest cross-reference section, including
+/// Returns trailer metadata resolved from the cross-reference chain, including
 /// the Root entry used by the document-structure Catalog.
 pub fn PdfFile::trailer(self : PdfFile) -> TrailerInfo {
   self.trailer
@@ -46,7 +46,10 @@ pub fn PdfFile::trailer(self : PdfFile) -> TrailerInfo {
 /// Returns the trailer Root indirect reference that identifies the Catalog
 /// dictionary for document structure access.
 pub fn PdfFile::root_ref(self : PdfFile) -> @objects.ObjectId {
-  self.trailer.root
+  match self.trailer.root {
+    Some(root) => root
+    None => abort("opened PdfFile must have a resolved trailer Root")
+  }
 }
 
 ///|

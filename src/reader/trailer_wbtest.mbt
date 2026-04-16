@@ -58,7 +58,7 @@ test "parse_trailer_info validates required and optional trailer entries" {
   assert_eq(trailer.size, 8)
   assert_eq(
     trailer.root ==
-    @objects.ObjectId::{ object_number: 1, generation_number: 0 },
+    Some(@objects.ObjectId::{ object_number: 1, generation_number: 0 }),
     true,
   )
   match trailer.prev {
@@ -250,7 +250,7 @@ test "parse_trailer_info rejects malformed trailer field types" {
 }
 
 ///|
-test "parse_trailer_info rejects missing required trailer entries" {
+test "parse_trailer_info rejects missing size but permits missing root" {
   let root = @objects.PdfObject::Ref(@objects.ObjectId::{
     object_number: 1,
     generation_number: 0,
@@ -270,15 +270,15 @@ test "parse_trailer_info rejects missing required trailer entries" {
     "missing Size entry",
   )
 
-  let missing_root : @objects.PdfDictionary = Map::new()
-  missing_root[@objects.PdfName::new(b"Size")] = @objects.PdfObject::Integer(8L)
-  missing_root[@objects.PdfName::new(b"ID")] = id
-  expect_invalid_trailer(
-    missing_root,
+  let rootless : @objects.PdfDictionary = Map::new()
+  rootless[@objects.PdfName::new(b"Size")] = @objects.PdfObject::Integer(8L)
+  rootless[@objects.PdfName::new(b"ID")] = id
+  let trailer = parse_trailer_info(
+    rootless,
     PdfVersion::{ major: 2, minor: 0 },
-    99L,
-    "missing Root entry",
+    offset=99L,
   )
+  assert_eq(trailer.root is None, true)
 }
 
 ///|

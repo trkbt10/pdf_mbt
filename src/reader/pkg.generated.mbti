@@ -2519,7 +2519,7 @@ pub fn TextPageOptions::default() -> Self
 
 pub(all) struct TrailerInfo {
   size : Int
-  root : @objects.ObjectId
+  root : @objects.ObjectId?
   prev : Int64?
   encrypt : @objects.ObjectId?
   info : @objects.ObjectId?

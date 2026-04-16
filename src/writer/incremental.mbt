@@ -15,7 +15,7 @@ pub fn append_incremental_update(
   let xref_offset = body.length().to_int64() - header_base
   let writer_trailer = PdfTrailerSpec::new(
     max_int(trailer.size, max_object_number(objects) + 1),
-    trailer.root,
+    file.root_ref(),
     Some(previous_xref),
     writer_file_id(trailer.id),
   )

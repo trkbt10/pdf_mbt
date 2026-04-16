@@ -37,6 +37,86 @@ fn expect_valid_merged_xref_index(
 }
 
 ///|
+fn expect_valid_merged_trailer(
+  sections : Array[XrefSection],
+) -> TrailerInfo raise {
+  let result : Result[TrailerInfo, PdfReaderError] = try? resolve_merged_trailer(
+    sections,
+  )
+  match result {
+    Ok(trailer) => trailer
+    Err(_) => fail("expected valid merged trailer")
+  }
+}
+
+///|
+test "resolve_merged_trailer takes root and info from first trailer that provides them" {
+  let current = expect_merged_xref_table_section(
+    b"xref\r\n" +
+    b"0 1\r\n" +
+    b"0000000000 65535 f\r\n" +
+    b"trailer\r\n" +
+    b"<< /Size 4 /Prev 128 >>",
+  )
+  let previous = expect_merged_xref_table_section(
+    b"xref\r\n" +
+    b"0 1\r\n" +
+    b"0000000000 65535 f\r\n" +
+    b"trailer\r\n" +
+    b"<< /Size 4 /Root 2 0 R /Info 3 0 R >>",
+  )
+
+  let merged = expect_valid_merged_trailer([current, previous])
+  let root_ref = @objects.ObjectId::{ object_number: 2, generation_number: 0 }
+  let info_ref = @objects.ObjectId::{ object_number: 3, generation_number: 0 }
+
+  assert_eq(merged.size, 4)
+  assert_eq(merged.root == Some(root_ref), true)
+  assert_eq(merged.info == Some(info_ref), true)
+  assert_eq(merged.prev == Some(128L), true)
+  assert_eq(
+    merged.raw_dict.get(@objects.PdfName::new(b"Root")) ==
+    Some(@objects.PdfObject::Ref(root_ref)),
+    true,
+  )
+  assert_eq(
+    merged.raw_dict.get(@objects.PdfName::new(b"Info")) ==
+    Some(@objects.PdfObject::Ref(info_ref)),
+    true,
+  )
+}
+
+///|
+test "resolve_merged_trailer rejects a chain without root" {
+  let current = expect_merged_xref_table_section(
+    b"xref\r\n" +
+    b"0 1\r\n" +
+    b"0000000000 65535 f\r\n" +
+    b"trailer\r\n" +
+    b"<< /Size 4 /Prev 128 >>",
+  )
+  let previous = expect_merged_xref_table_section(
+    b"xref\r\n" +
+    b"0 1\r\n" +
+    b"0000000000 65535 f\r\n" +
+    b"trailer\r\n" +
+    b"<< /Size 4 >>",
+  )
+
+  let result : Result[TrailerInfo, PdfReaderError] = try? resolve_merged_trailer([
+      current, previous,
+    ],
+  )
+  match result {
+    Err(InvalidTrailer(offset, reason)) => {
+      assert_eq(offset, 0L)
+      assert_eq(reason, "missing Root entry in trailer chain")
+    }
+    _ => fail("expected missing Root trailer-chain error")
+  }
+}
+
+///|
 test "merge_sections keeps higher-priority parsed entries and drops free winners" {
   let current_table = expect_merged_xref_table_section(
     b"xref\r\n" +

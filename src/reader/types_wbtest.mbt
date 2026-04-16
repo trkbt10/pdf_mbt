@@ -9,7 +9,7 @@ test "reader metadata contracts are constructible" {
   let raw_dict : @objects.PdfDictionary = Map::new()
   let trailer = TrailerInfo::{
     size: 8,
-    root: @objects.ObjectId::{ object_number: 1, generation_number: 0 },
+    root: Some(@objects.ObjectId::{ object_number: 1, generation_number: 0 }),
     prev: Some(1024L),
     encrypt: Some(@objects.ObjectId::{ object_number: 9, generation_number: 0 }),
     info: Some(@objects.ObjectId::{ object_number: 10, generation_number: 0 }),
@@ -47,7 +47,7 @@ test "reader metadata contracts are constructible" {
   assert_eq(file.trailer.size, 8)
   assert_eq(
     file.trailer.root ==
-    @objects.ObjectId::{ object_number: 1, generation_number: 0 },
+    Some(@objects.ObjectId::{ object_number: 1, generation_number: 0 }),
     true,
   )
   match file.trailer.prev {

@@ -22,10 +22,11 @@ pub(all) struct PdfFileId {
 } derive(Eq, Debug)
 
 ///|
-/// Trailer metadata extracted from the latest cross-reference section.
+/// Trailer metadata extracted from a cross-reference section or resolved from
+/// a cross-reference section chain.
 pub(all) struct TrailerInfo {
   size : Int
-  root : @objects.ObjectId
+  root : @objects.ObjectId?
   prev : Int64?
   encrypt : @objects.ObjectId?
   info : @objects.ObjectId?

@@ -12,7 +12,7 @@ test "PdfFile::open reads bundled Simple PDF 2.0 file" {
 
   assert_eq(file.version() == PdfVersion::{ major: 2, minor: 0 }, true)
   assert_eq(file.root_ref() == root_ref, true)
-  assert_eq(trailer.root == root_ref, true)
+  assert_eq(trailer.root == Some(root_ref), true)
   assert_eq(trailer.size, 10)
 
   match file.load_object(root_ref) {
@@ -123,7 +123,7 @@ test "PdfFile::open follows bundled incremental updates to latest objects" {
 
   assert_eq(file.version() == PdfVersion::{ major: 1, minor: 7 }, true)
   assert_eq(file.root_ref() == root_ref, true)
-  assert_eq(trailer.root == root_ref, true)
+  assert_eq(trailer.root == Some(root_ref), true)
   assert_eq(trailer.size, 10)
   match trailer.prev {
     Some(prev) => assert_eq(prev > 0L, true)

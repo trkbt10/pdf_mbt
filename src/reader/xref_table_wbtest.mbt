@@ -90,7 +90,7 @@ test "parse_xref_table_section parses multiple subsections and the trailing dict
   assert_eq(section.trailer.size, 7)
   assert_eq(
     section.trailer.root ==
-    @objects.ObjectId::{ object_number: 1, generation_number: 0 },
+    Some(@objects.ObjectId::{ object_number: 1, generation_number: 0 }),
     true,
   )
   assert_eq(section.trailer.prev is None, true)

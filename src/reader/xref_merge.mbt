@@ -77,6 +77,74 @@ fn merge_sections(
 }
 
 ///|
+fn resolve_merged_trailer(
+  sections : Array[XrefSection],
+) -> TrailerInfo raise PdfReaderError {
+  if sections.length() == 0 {
+    raise PdfReaderError::InvalidTrailer(0L, "missing cross-reference sections")
+  }
+
+  let latest = sections[0].trailer
+  match find_first_trailer_root(sections) {
+    Some(root) => {
+      let info = find_first_trailer_info(sections)
+      let raw_dict = latest.raw_dict.copy()
+      raw_dict[@objects.PdfName::new(b"Root")] = @objects.PdfObject::Ref(root)
+      match info {
+        Some(info_ref) =>
+          raw_dict[@objects.PdfName::new(b"Info")] = @objects.PdfObject::Ref(
+            info_ref,
+          )
+        None => ()
+      }
+      TrailerInfo::{
+        size: latest.size,
+        root: Some(root),
+        prev: latest.prev,
+        encrypt: latest.encrypt,
+        info,
+        id: latest.id,
+        xref_stm: latest.xref_stm,
+        raw_dict,
+      }
+    }
+    None =>
+      raise PdfReaderError::InvalidTrailer(
+        sections[0].provenance.pdf_offset,
+        "missing Root entry in trailer chain",
+      )
+  }
+}
+
+///|
+fn find_first_trailer_root(sections : Array[XrefSection]) -> @objects.ObjectId? {
+  let mut found : @objects.ObjectId? = None
+  for section in sections {
+    if found is None {
+      match section.trailer.root {
+        Some(root) => found = Some(root)
+        None => ()
+      }
+    }
+  }
+  found
+}
+
+///|
+fn find_first_trailer_info(sections : Array[XrefSection]) -> @objects.ObjectId? {
+  let mut found : @objects.ObjectId? = None
+  for section in sections {
+    if found is None {
+      match section.trailer.info {
+        Some(info) => found = Some(info)
+        None => ()
+      }
+    }
+  }
+  found
+}
+
+///|
 fn XrefIndex::resolve(
   self : XrefIndex,
   id : @objects.ObjectId,

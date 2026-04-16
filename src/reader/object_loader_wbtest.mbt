@@ -9,7 +9,7 @@ fn make_reader_file(bytes : Bytes, xref_index : XrefIndex) -> PdfFile {
     },
     trailer: TrailerInfo::{
       size: 32,
-      root: @objects.ObjectId::{ object_number: 1, generation_number: 0 },
+      root: Some(@objects.ObjectId::{ object_number: 1, generation_number: 0 }),
       prev: None,
       encrypt: None,
       info: None,
