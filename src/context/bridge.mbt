@@ -1,4 +1,6 @@
 ///|
+/// Roundtrip fidelity bridge: builds PdfContext from a parsed PdfDocument so
+/// parser -> context -> builder preserves document structure.
 pub fn PdfContext::from_document(
   document : @reader.PdfDocument,
 ) -> PdfContext raise PdfContextError {

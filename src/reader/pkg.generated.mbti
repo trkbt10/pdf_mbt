@@ -606,6 +606,7 @@ pub fn PdfDocument::document_info(Self) -> @interchange.PdfDocumentInfo? raise P
 pub fn PdfDocument::document_language(Self) -> Bytes? raise PdfDocumentError
 pub fn PdfDocument::embedded_files(Self) -> Array[PdfEmbeddedFileEntry] raise PdfDocumentError
 pub fn PdfDocument::extensions(Self) -> PdfExtensions? raise PdfDocumentError
+pub fn PdfDocument::file(Self) -> PdfFile
 pub fn PdfDocument::form_field_values(Self) -> Map[String, String] raise PdfDocumentError
 pub fn PdfDocument::is_encrypted(Self) -> Bool
 pub fn PdfDocument::lookup_name(Self, NameTreeCategory, Bytes) -> @objects.PdfObject? raise PdfDocumentError

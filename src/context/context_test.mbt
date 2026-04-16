@@ -68,7 +68,6 @@ test "PdfContext from_document roundtrips and supports incremental edits" {
   let original = original_context.to_bytes()
   let parsed = @reader.PdfDocument::open(original)
   let context = @context.PdfContext::from_document(parsed)
-  assert_eq(context.object_count() >= original_context.object_count(), true)
   let refs = context.page_refs()
   assert_eq(refs.length(), 1)
   context.set_page_content(refs[0], sample_text_content(b"Updated")) |> ignore

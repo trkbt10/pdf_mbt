@@ -60,25 +60,23 @@ pub fn PdfContext::object(
 }
 
 ///|
+/// Enables optional stream compression for serialization to valid PDF bytes.
+/// When true, unfiltered stream data is emitted with FlateDecode.
+pub fn PdfContext::set_stream_compression(
+  self : PdfContext,
+  enabled : Bool,
+) -> Unit {
+  // Serialization builder stream compression option.
+  self.compress_streams = enabled
+}
+
+///|
 pub fn PdfContext::set_object(
   self : PdfContext,
   id : @objects.ObjectId,
   value : @objects.PdfObject,
 ) -> Unit {
   self.store_object(id, value, dirty=true)
-}
-
-///|
-pub fn PdfContext::object_count(self : PdfContext) -> Int {
-  self.objects.length()
-}
-
-///|
-pub fn PdfContext::set_stream_compression(
-  self : PdfContext,
-  enabled : Bool,
-) -> Unit {
-  self.compress_streams = enabled
 }
 
 ///|

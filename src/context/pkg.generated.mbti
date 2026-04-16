@@ -1,0 +1,65 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/context"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/pdf/src/objects",
+  "trkbt10/pdf/src/reader",
+}
+
+// Values
+pub fn serialize_indirect_object(@objects.IndirectObject) -> Bytes
+
+pub fn serialize_object(@objects.PdfObject) -> Bytes
+
+// Errors
+pub(all) suberror PdfContextError {
+  ReaderError(@reader.PdfReaderError)
+  DocumentError(@reader.PdfDocumentError)
+  MissingObject(@objects.ObjectId)
+  InvalidObject(@objects.ObjectId, String)
+  PageIndexOutOfRange(Int, Int)
+  InvalidPageReference(@objects.ObjectId, String)
+} derive(Eq, @debug.Debug)
+
+// Types and methods
+pub struct PdfContext {
+  objects : Map[Int, @objects.PdfObject]
+  generations : Map[Int, Int]
+  dirty_objects : Map[Int, Bool]
+  catalog_ref : @objects.ObjectId
+  pages_ref : @objects.ObjectId
+  page_tree_refs : Array[@objects.ObjectId]
+  mut info_ref : @objects.ObjectId?
+  mut version : @reader.PdfVersion
+  mut next_object_number : Int
+  mut compress_streams : Bool
+  file_id : PdfContextFileId?
+}
+pub fn PdfContext::add_font(Self, @objects.ObjectId, @objects.PdfName, @objects.PdfObject) -> @objects.ObjectId raise PdfContextError
+pub fn PdfContext::add_image(Self, @objects.ObjectId, @objects.PdfName, @objects.PdfStream) -> @objects.ObjectId raise PdfContextError
+pub fn PdfContext::add_page(Self, Double, Double) -> @objects.ObjectId
+pub fn PdfContext::from_document(@reader.PdfDocument) -> Self raise PdfContextError
+pub fn PdfContext::from_file(@reader.PdfFile) -> Self raise PdfContextError
+pub fn PdfContext::new() -> Self
+pub fn PdfContext::object(Self, @objects.ObjectId) -> @objects.PdfObject?
+pub fn PdfContext::page_refs(Self) -> Array[@objects.ObjectId] raise PdfContextError
+pub fn PdfContext::remove_page(Self, Int) -> Unit raise PdfContextError
+pub fn PdfContext::set_author(Self, Bytes) -> Unit
+pub fn PdfContext::set_object(Self, @objects.ObjectId, @objects.PdfObject) -> Unit
+pub fn PdfContext::set_page_content(Self, @objects.ObjectId, Bytes) -> @objects.ObjectId raise PdfContextError
+pub fn PdfContext::set_stream_compression(Self, Bool) -> Unit
+pub fn PdfContext::set_title(Self, Bytes) -> Unit
+pub fn PdfContext::set_version(Self, Int, Int) -> Unit
+pub fn PdfContext::to_bytes(Self) -> Bytes
+pub fn PdfContext::to_incremental_bytes(Self, Bytes) -> Bytes raise PdfContextError
+
+pub(all) struct PdfContextFileId {
+  first : Bytes
+  second : Bytes
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

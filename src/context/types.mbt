@@ -33,6 +33,7 @@ pub(all) suberror PdfContextError {
 } derive(Eq, Debug)
 
 ///|
+/// Page manipulation location for PdfContext page-level operations.
 priv struct ContextPageLocation {
   page_ref : @objects.ObjectId
   parent_ref : @objects.ObjectId

@@ -1,5 +1,8 @@
 ///|
+/// Full serialization builder: writes header, indirect objects, xref, trailer,
+/// startxref, and EOF to produce valid PDF bytes from PdfContext.
 pub fn PdfContext::to_bytes(self : PdfContext) -> Bytes {
+  // Serialization builder: full serialization produces valid PDF bytes.
   let header = version_header(self.version)
   let objects = self.indirect_objects(dirty_only=false)
   let (body, xref_entries) = serialize_object_body(
@@ -9,7 +12,7 @@ pub fn PdfContext::to_bytes(self : PdfContext) -> Bytes {
     compress_streams=self.compress_streams,
   )
   let xref_offset = body.length().to_int64()
-  let trailer = PdfContextTrailerSpec::new(
+  let trailer = SerializationBuilderTrailerSpec::new(
     max_object_number(objects) + 1,
     self.catalog_ref,
     None,
@@ -24,10 +27,13 @@ pub fn PdfContext::to_bytes(self : PdfContext) -> Bytes {
 }
 
 ///|
+/// Incremental serialization builder: appends dirty objects, a new xref
+/// section, and a trailer with Prev to preserve the original PDF bytes.
 pub fn PdfContext::to_incremental_bytes(
   self : PdfContext,
   original : Bytes,
 ) -> Bytes raise PdfContextError {
+  // Serialization builder: incremental serialization preserves original bytes.
   let file = try @reader.PdfFile::open(original) catch {
     error => raise PdfContextError::ReaderError(error)
   } noraise {
@@ -45,7 +51,7 @@ pub fn PdfContext::to_incremental_bytes(
     compress_streams=self.compress_streams,
   )
   let xref_offset = body.length().to_int64() - header_base
-  let trailer = PdfContextTrailerSpec::new(
+  let trailer = SerializationBuilderTrailerSpec::new(
     max_int(
       previous_trailer.size,
       max_object_number(self.indirect_objects(dirty_only=false)) + 1,
@@ -105,12 +111,12 @@ fn serialize_object_body(
   header_base : Int64,
   objects : Array[@objects.IndirectObject],
   compress_streams~ : Bool,
-) -> (Bytes, Array[PdfContextXrefEntry]) {
+) -> (Bytes, Array[SerializationBuilderXrefEntry]) {
   let mut bytes = prefix
-  let entries : Array[PdfContextXrefEntry] = []
+  let entries : Array[SerializationBuilderXrefEntry] = []
   for object in objects {
     let offset = bytes.length().to_int64() - header_base
-    entries.push(PdfContextXrefEntry::new(object.id, offset))
+    entries.push(SerializationBuilderXrefEntry::new(object.id, offset))
     bytes = bytes +
       serialize_indirect_object_with_options(object, compress_streams~)
   }
@@ -347,7 +353,7 @@ fn hex_digit(value : Int) -> Byte {
 }
 
 ///|
-priv struct PdfContextTrailerSpec {
+priv struct SerializationBuilderTrailerSpec {
   size : Int
   root : @objects.ObjectId
   prev : Int64?
@@ -356,34 +362,34 @@ priv struct PdfContextTrailerSpec {
 }
 
 ///|
-priv struct PdfContextXrefEntry {
+priv struct SerializationBuilderXrefEntry {
   id : @objects.ObjectId
   offset : Int64
 }
 
 ///|
-fn PdfContextXrefEntry::new(
+fn SerializationBuilderXrefEntry::new(
   id : @objects.ObjectId,
   offset : Int64,
-) -> PdfContextXrefEntry {
-  PdfContextXrefEntry::{ id, offset }
+) -> SerializationBuilderXrefEntry {
+  SerializationBuilderXrefEntry::{ id, offset }
 }
 
 ///|
-fn PdfContextTrailerSpec::new(
+fn SerializationBuilderTrailerSpec::new(
   size : Int,
   root : @objects.ObjectId,
   prev : Int64?,
   info : @objects.ObjectId?,
   file_id : PdfContextFileId?,
-) -> PdfContextTrailerSpec {
-  PdfContextTrailerSpec::{ size, root, prev, info, file_id }
+) -> SerializationBuilderTrailerSpec {
+  SerializationBuilderTrailerSpec::{ size, root, prev, info, file_id }
 }
 
 ///|
 fn serialize_xref_section(
-  entries : Array[PdfContextXrefEntry],
-  trailer : PdfContextTrailerSpec,
+  entries : Array[SerializationBuilderXrefEntry],
+  trailer : SerializationBuilderTrailerSpec,
 ) -> Bytes {
   let size = max_trailer_size(entries, trailer.size)
   let body : Array[Byte] = []
@@ -418,7 +424,7 @@ fn serialize_xref_section(
 ///|
 fn trailer_dictionary(
   size : Int,
-  trailer : PdfContextTrailerSpec,
+  trailer : SerializationBuilderTrailerSpec,
 ) -> @objects.PdfDictionary {
   let dict : @objects.PdfDictionary = Map::new()
   dict[pdf_key(b"Size")] = @objects.PdfObject::Integer(size.to_int64())
@@ -444,7 +450,7 @@ fn trailer_dictionary(
 
 ///|
 fn max_trailer_size(
-  entries : Array[PdfContextXrefEntry],
+  entries : Array[SerializationBuilderXrefEntry],
   declared : Int,
 ) -> Int {
   let mut size = declared

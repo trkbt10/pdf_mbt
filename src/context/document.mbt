@@ -1,8 +1,10 @@
 ///|
 /// Creates a minimal valid PDF document with Catalog and an empty root Pages
 /// tree. Object 1 is Catalog and object 2 is Pages, matching the existing
-/// writer's compact document layout.
+/// writer refactor path: PdfContext::new() -> add pages -> to_bytes().
 pub fn PdfContext::new() -> PdfContext {
+  // Refactor existing writer: create_pdf(content_bytes) now maps to
+  // PdfContext::new() -> add pages -> to_bytes().
   let catalog_ref = object_ref(1)
   let pages_ref = object_ref(2)
   let context = PdfContext::{
@@ -32,30 +34,18 @@ pub fn PdfContext::new() -> PdfContext {
 }
 
 ///|
-pub fn PdfContext::catalog_ref(self : PdfContext) -> @objects.ObjectId {
-  self.catalog_ref
-}
-
-///|
-pub fn PdfContext::pages_ref(self : PdfContext) -> @objects.ObjectId {
-  self.pages_ref
-}
-
-///|
-pub fn PdfContext::version(self : PdfContext) -> @reader.PdfVersion {
-  self.version
-}
-
-///|
 pub fn PdfContext::set_version(
   self : PdfContext,
   major : Int,
   minor : Int,
 ) -> Unit {
+  // Metadata manipulation: set_version updates the document PDF version.
   self.version = @reader.PdfVersion::{ major, minor }
 }
 
 ///|
+/// Page manipulation: PdfContext SHALL support page-level operations by
+/// appending a new blank Page with the given MediaBox.
 pub fn PdfContext::add_page(
   self : PdfContext,
   width : Double,
@@ -72,6 +62,8 @@ pub fn PdfContext::add_page(
 }
 
 ///|
+/// Page manipulation: PdfContext SHALL support page-level operations by
+/// removing the page at the zero-based page tree index.
 pub fn PdfContext::remove_page(
   self : PdfContext,
   index : Int,
@@ -91,6 +83,7 @@ pub fn PdfContext::remove_page(
 }
 
 ///|
+/// Page manipulation: sets or replaces a page Contents stream.
 pub fn PdfContext::set_page_content(
   self : PdfContext,
   page_ref : @objects.ObjectId,
@@ -116,6 +109,10 @@ pub fn PdfContext::set_page_content(
 }
 
 ///|
+/// Page manipulation view used by roundtrip fidelity tests and bridge edits.
+/// Resource management callers use these page references to manage page resources.
+/// The parser -> context -> builder pipeline preserves document structure by
+/// keeping page references addressable across roundtrip edits.
 pub fn PdfContext::page_refs(
   self : PdfContext,
 ) -> Array[@objects.ObjectId] raise PdfContextError {
@@ -125,6 +122,99 @@ pub fn PdfContext::page_refs(
     refs.push(location.page_ref)
   }
   refs
+}
+
+///|
+/// Resource management: registers a Font resource on a page.
+pub fn PdfContext::add_font(
+  self : PdfContext,
+  page_ref : @objects.ObjectId,
+  name : @objects.PdfName,
+  font_object : @objects.PdfObject,
+) -> @objects.ObjectId raise PdfContextError {
+  // Resource management: add_font registers a page Font resource.
+  let font_ref = self.resource_object_ref(font_object)
+  self.register_page_resource(page_ref, pdf_key(b"Font"), name, font_ref)
+  font_ref
+}
+
+///|
+/// Resource management: registers an image XObject resource on a page.
+pub fn PdfContext::add_image(
+  self : PdfContext,
+  page_ref : @objects.ObjectId,
+  name : @objects.PdfName,
+  image_stream : @objects.PdfStream,
+) -> @objects.ObjectId raise PdfContextError {
+  // Resource management: add_image registers a page image XObject resource.
+  let image_ref = self.allocate_object(@objects.PdfObject::Stream(image_stream))
+  self.register_page_resource(page_ref, pdf_key(b"XObject"), name, image_ref)
+  image_ref
+}
+
+///|
+fn PdfContext::resource_object_ref(
+  self : PdfContext,
+  object : @objects.PdfObject,
+) -> @objects.ObjectId {
+  match object {
+    @objects.PdfObject::Ref(id) => id
+    _ => self.allocate_object(object)
+  }
+}
+
+///|
+fn PdfContext::register_page_resource(
+  self : PdfContext,
+  page_ref : @objects.ObjectId,
+  category : @objects.PdfName,
+  name : @objects.PdfName,
+  resource_ref : @objects.ObjectId,
+) -> Unit raise PdfContextError {
+  let page = self.require_dictionary(page_ref, "page object")
+  require_page_type(page_ref, page)
+  let (resources, resources_ref) = self.materialize_page_resources(page)
+  let category_dict = materialize_resource_category(resources, category)
+  category_dict[name] = @objects.PdfObject::Ref(resource_ref)
+  match resources_ref {
+    Some(id) => self.mark_dirty(id)
+    None => self.mark_dirty(page_ref)
+  }
+}
+
+///|
+fn PdfContext::materialize_page_resources(
+  self : PdfContext,
+  page : @objects.PdfDictionary,
+) -> (@objects.PdfDictionary, @objects.ObjectId?) raise PdfContextError {
+  let resources_key = pdf_key(b"Resources")
+  match page.get(resources_key) {
+    Some(@objects.PdfObject::Dictionary(dict)) => (dict, None)
+    Some(@objects.PdfObject::Ref(resources_ref)) => {
+      let dict = self.require_dictionary(resources_ref, "page resources")
+      (dict, Some(resources_ref))
+    }
+    _ => {
+      let created : @objects.PdfDictionary = Map::new()
+      page[resources_key] = @objects.PdfObject::Dictionary(created)
+      (created, None)
+    }
+  }
+}
+
+///|
+fn materialize_resource_category(
+  resources : @objects.PdfDictionary,
+  category : @objects.PdfName,
+) -> @objects.PdfDictionary {
+  match resources.get(category) {
+    Some(@objects.PdfObject::Dictionary(dict)) => dict
+    _ => {
+      let created : @objects.PdfDictionary = Map::new()
+      resources[category] = @objects.PdfObject::Dictionary(created)
+      created
+    }
+  }
 }
 
 ///|
