@@ -84,6 +84,7 @@ pub(all) enum TextEvent {
 pub(all) struct TextSpan {
   offset : Int64
   font_name : @objects.PdfName?
+  font_size : Double
   text : String
   mappings : Array[UnicodeMapping]
   source_bytes : Bytes

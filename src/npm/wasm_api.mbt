@@ -367,7 +367,6 @@ fn page_render_texts_json(
     .text_program(@reader.TextPageOptions::default())
   match result {
     Ok(program) => {
-      let font_sizes = text_program_font_sizes(program)
       let mut written = 0
       for index in 0..<program.spans.length() {
         let span = program.spans[index]
@@ -375,11 +374,7 @@ fn page_render_texts_json(
           if written > 0 {
             builder.write_string(",")
           }
-          page_render_text_json(
-            builder,
-            span,
-            span_font_size(font_sizes, index),
-          )
+          page_render_text_json(builder, span)
           written += 1
         }
       }
@@ -392,7 +387,6 @@ fn page_render_texts_json(
 fn page_render_text_json(
   builder : StringBuilder,
   span : @text.TextSpan,
-  font_size : Double,
 ) -> Unit {
   builder.write_string("{\"text\":")
   builder.write_string(json_string(span.text))
@@ -401,49 +395,12 @@ fn page_render_text_json(
   builder.write_string(",\"y\":")
   builder.write_string(span.text_matrix.f.to_string())
   builder.write_string(",\"fontSize\":")
-  builder.write_string(font_size.to_string())
+  builder.write_string(span.font_size.to_string())
   builder.write_string(",\"fontName\":")
   builder.write_string(
     json_string_option(span.font_name.map(fn(name) { name.to_text() })),
   )
   builder.write_string("}")
-}
-
-///|
-fn text_program_font_sizes(program : @text.TextProgram) -> Array[Double] {
-  let sizes : Array[Double] = []
-  let mut saw_glyph = false
-  for event in program.events {
-    match event {
-      SourceString(_) => saw_glyph = false
-      GlyphShown(glyph) =>
-        if !saw_glyph {
-          sizes.push(text_rendering_font_size(glyph.rendering_matrix.matrix))
-          saw_glyph = true
-        }
-      _ => ()
-    }
-  }
-  sizes
-}
-
-///|
-fn text_rendering_font_size(matrix : @text.TextMatrix) -> Double {
-  let size = matrix.a.abs().max(matrix.d.abs())
-  if size > 0.0 {
-    size
-  } else {
-    12.0
-  }
-}
-
-///|
-fn span_font_size(font_sizes : Array[Double], index : Int) -> Double {
-  if index >= 0 && index < font_sizes.length() {
-    font_sizes[index]
-  } else {
-    12.0
-  }
 }
 
 ///|

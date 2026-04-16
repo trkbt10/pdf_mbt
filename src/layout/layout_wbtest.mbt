@@ -135,6 +135,7 @@ fn layout_span(text : String, x : Double, y : Double) -> @text.TextSpan {
   @text.TextSpan::{
     offset: 0L,
     font_name: None,
+    font_size: 12.0,
     text,
     mappings: [],
     source_bytes: b"",
@@ -152,6 +153,7 @@ fn layout_pdf_span(
   @text.TextSpan::{
     offset,
     font_name: None,
+    font_size: 12.0,
     text,
     mappings: [],
     source_bytes: b"x",

@@ -39,6 +39,7 @@ test "public text program values can be constructed without reader integration" 
   let span = TextSpan::{
     offset: 11L,
     font_name: Some(@objects.PdfName::new(b"F1")),
+    font_size: 12.0,
     text: "A",
     mappings: [UnicodeMapping::Unicode("A")],
     source_bytes: b"A",

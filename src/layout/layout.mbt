@@ -416,6 +416,7 @@ fn PositionedSpan::append_source_run(
     span: @text.TextSpan::{
       offset: self.span.offset,
       font_name: self.span.font_name,
+      font_size: self.span.font_size,
       text: self.span.text + item.span.text,
       mappings,
       source_bytes: self.span.source_bytes + item.span.source_bytes,
@@ -527,7 +528,7 @@ fn has_trailing_space(text : String) -> Bool {
 fn dominant_font_size(positioned : Array[PositionedSpan]) -> Double {
   let mut value = 12.0
   for item in positioned {
-    let candidate = matrix_font_size(item.span.text_matrix)
+    let candidate = item.span.font_size
     if candidate > 1.0 {
       value = candidate
       return value
@@ -540,18 +541,13 @@ fn dominant_font_size(positioned : Array[PositionedSpan]) -> Double {
 fn line_font_size(line : RawLayoutLine) -> Double {
   let mut value = 12.0
   for item in line.spans {
-    let candidate = matrix_font_size(item.span.text_matrix)
+    let candidate = item.span.font_size
     if candidate > 1.0 {
       value = candidate
       return value
     }
   }
   value
-}
-
-///|
-fn matrix_font_size(matrix : @text.TextMatrix) -> Double {
-  matrix.a.abs().max(matrix.d.abs())
 }
 
 ///|

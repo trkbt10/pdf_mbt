@@ -36,6 +36,7 @@ test "text program summary preserves empty strings and span mappings" {
   let span = TextSpan::{
     offset: 7L,
     font_name: Some(@objects.PdfName::new(b"F1")),
+    font_size: 12.0,
     text: "fi",
     mappings: [
       UnicodeMapping::Unicode("fi"),

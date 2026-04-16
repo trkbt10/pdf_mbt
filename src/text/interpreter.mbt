@@ -296,6 +296,7 @@ fn TextInterpreter::show_string(
 ) -> Unit raise PdfTextError {
   let object_state = self.require_text_object(offset)
   let font = self.current_font(offset)
+  let span_font_size = self.current_font_size(offset)
   let source = TextSourceString::{ bytes, operator_offset: offset, group_index }
   self.events.push(TextEvent::SourceString(source))
   if bytes.length() == 0 {
@@ -307,10 +308,9 @@ fn TextInterpreter::show_string(
   let mut text = ""
   for item in decoded {
     let before = self.require_text_object(offset)
-    let font_size = self.current_font_size(offset)
     let rendering_matrix = TextRenderingMatrix::from_text_state(
       before.text_matrix,
-      font_size,
+      span_font_size,
       self.state.horizontal_scaling,
       self.state.text_rise,
       self.initial.ctm,
@@ -342,6 +342,7 @@ fn TextInterpreter::show_string(
   self.spans.push(TextSpan::{
     offset,
     font_name: self.state.font_name,
+    font_size: span_font_size,
     text,
     mappings,
     source_bytes: bytes,

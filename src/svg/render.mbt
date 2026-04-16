@@ -591,7 +591,6 @@ fn page_render_texts_svg(
   )
   match result {
     Ok(program) => {
-      let matrices = text_program_span_rendering_matrices(program)
       let glyph_groups = text_program_span_glyphs(program)
       let font_families = page_svg_font_families(page)
       for index in 0..<program.spans.length() {
@@ -600,7 +599,6 @@ fn page_render_texts_svg(
           page_render_text_svg(
             builder,
             span,
-            span_svg_matrix(matrices, index),
             span_glyphs(glyph_groups, index),
             span_svg_font_family(font_families, span),
             page_height,
@@ -616,19 +614,27 @@ fn page_render_texts_svg(
 fn page_render_text_svg(
   builder : StringBuilder,
   span : @text.TextSpan,
-  matrix : @text.TextMatrix,
   glyphs : Array[@text.TextGlyphEvent],
   font_family : String,
   page_height : Double,
 ) -> Unit {
-  let font_size = svg_text_font_size(matrix)
+  let font_size = span.font_size
   let positioned = svg_positioned_text(
-    span, matrix, glyphs, font_size, page_height,
+    span,
+    span.text_matrix,
+    glyphs,
+    font_size,
+    page_height,
   )
   builder.write_string("<text transform=\"matrix(")
-  write_svg_text_matrix_normalized(builder, matrix, page_height, font_size)
+  write_svg_text_matrix_scaled(
+    builder,
+    span.text_matrix,
+    page_height,
+    font_size,
+  )
   builder.write_string(")\" font-size=\"")
-  builder.write_string(format_svg_number(font_size))
+  builder.write_string("1")
   builder.write_string(
     "\" text-rendering=\"geometricPrecision\" font-family=\"",
   )
@@ -640,7 +646,12 @@ fn page_render_text_svg(
       write_svg_positioned_tspans(
         builder,
         text,
-        svg_use_position_list_tspan(matrix, page_height, font_size, text),
+        svg_use_position_list_tspan(
+          span.text_matrix,
+          page_height,
+          font_size,
+          text,
+        ),
       )
     }
     None => {
@@ -662,7 +673,7 @@ fn svg_positioned_text(
   if glyphs.length() == 0 {
     return None
   }
-  let parent = svg_text_matrix_normalized(matrix, page_height, font_size)
+  let parent = svg_text_matrix_scaled(matrix, page_height, font_size)
   if !svg_matrix_is_invertible(parent) {
     return None
   }
@@ -675,9 +686,10 @@ fn svg_positioned_text(
         if string_char_count(value) != 1 {
           return None
         }
-        let glyph_matrix = svg_text_matrix(
-          glyph.rendering_matrix.matrix,
+        let glyph_matrix = svg_text_matrix_scaled(
+          glyph.text_matrix,
           page_height,
+          font_size,
         )
         let (x, y) = svg_matrix_local_point(
           parent,
@@ -699,23 +711,13 @@ fn svg_positioned_text(
 }
 
 ///|
-fn svg_text_font_size(matrix : @text.TextMatrix) -> Double {
-  let size = (matrix.a * matrix.a + matrix.b * matrix.b).sqrt()
-  if size > 0.0 {
-    size
-  } else {
-    1.0
-  }
-}
-
-///|
-fn write_svg_text_matrix_normalized(
+fn write_svg_text_matrix_scaled(
   builder : StringBuilder,
   matrix : @text.TextMatrix,
   page_height : Double,
   font_size : Double,
 ) -> Unit {
-  let svg_matrix = svg_text_matrix_normalized(matrix, page_height, font_size)
+  let svg_matrix = svg_text_matrix_scaled(matrix, page_height, font_size)
   builder.write_string(format_svg_number(svg_matrix.a))
   builder.write_string(" ")
   builder.write_string(format_svg_number(svg_matrix.b))
@@ -730,17 +732,17 @@ fn write_svg_text_matrix_normalized(
 }
 
 ///|
-fn svg_text_matrix_normalized(
+fn svg_text_matrix_scaled(
   matrix : @text.TextMatrix,
   page_height : Double,
   font_size : Double,
 ) -> @text.TextMatrix {
   let svg_matrix = svg_text_matrix(matrix, page_height)
   @text.TextMatrix::from_six(
-    svg_matrix.a / font_size,
-    svg_matrix.b / font_size,
-    svg_matrix.c / font_size,
-    svg_matrix.d / font_size,
+    svg_matrix.a * font_size,
+    svg_matrix.b * font_size,
+    svg_matrix.c * font_size,
+    svg_matrix.d * font_size,
     svg_matrix.e,
     svg_matrix.f,
   )
@@ -837,7 +839,7 @@ fn svg_text_translation_is_fractional(
   page_height : Double,
   font_size : Double,
 ) -> Bool {
-  let svg_matrix = svg_text_matrix_normalized(matrix, page_height, font_size)
+  let svg_matrix = svg_text_matrix_scaled(matrix, page_height, font_size)
   svg_number_is_fractional(svg_matrix.e) ||
   svg_number_is_fractional(svg_matrix.f)
 }
@@ -1005,26 +1007,6 @@ fn is_subset_font_tag_prefix(bytes : Bytes) -> Bool {
 }
 
 ///|
-fn text_program_span_rendering_matrices(
-  program : @text.TextProgram,
-) -> Array[@text.TextMatrix] {
-  let matrices : Array[@text.TextMatrix] = []
-  let mut saw_glyph = false
-  for event in program.events {
-    match event {
-      SourceString(_) => saw_glyph = false
-      GlyphShown(glyph) =>
-        if !saw_glyph {
-          matrices.push(glyph.rendering_matrix.matrix)
-          saw_glyph = true
-        }
-      _ => ()
-    }
-  }
-  matrices
-}
-
-///|
 fn text_program_span_glyphs(
   program : @text.TextProgram,
 ) -> Array[Array[@text.TextGlyphEvent]] {
@@ -1055,18 +1037,6 @@ fn text_program_span_glyphs(
     groups.push(current)
   }
   groups
-}
-
-///|
-fn span_svg_matrix(
-  matrices : Array[@text.TextMatrix],
-  index : Int,
-) -> @text.TextMatrix {
-  if index >= 0 && index < matrices.length() {
-    matrices[index]
-  } else {
-    @text.TextMatrix::identity()
-  }
 }
 
 ///|
