@@ -26,6 +26,34 @@ test "write_svg_text_matrix_normalized preserves translation and removes font sc
 }
 
 ///|
+test "write_svg_image uses unit image with CTM transform" {
+  let builder = StringBuilder::new()
+  write_svg_image(
+    builder,
+    "data:image/png;base64,AA==",
+    @graphics.GraphicsMatrix::from_six(100.0, 0.0, 0.0, 100.0, 72.0, 172.0),
+    396.0,
+  )
+  assert_eq(
+    builder.to_string(),
+    "<image x=\"0\" y=\"0\" width=\"1\" height=\"1\" href=\"data:image/png;base64,AA==\" transform=\"matrix(100.5 0 0 100.5 72 124)\"/>",
+  )
+}
+
+///|
+test "render_page_svg starts wrapped CalRGB continuation text at line origin" {
+  let document = @reader.PdfDocument::open(
+    @fs.read_file_to_bytes("spec/pdf20examples/PDF 2.0 image with BPC.pdf"),
+  )
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 36 110)"), true)
+  assert_eq(
+    svg.contains("<text transform=\"matrix(1 0 0 1 170.028 110)"),
+    false,
+  )
+}
+
+///|
 test "render_page_svg writes transformed path coordinates in SVG space" {
   let document = @reader.PdfDocument::open(build_svg_path_fixture())
   let svg = render_page_svg(document.page(0))

@@ -371,7 +371,9 @@ fn TextInterpreter::advance_after_glyph(
   tx *= self.state.horizontal_scaling
   let object_state = self.require_text_object(offset)
   self.object_state = Some(
-    object_state.set_text_matrix(object_state.text_matrix.translated(tx, 0.0)),
+    object_state.advance_text_matrix(
+      object_state.text_matrix.translated(tx, 0.0),
+    ),
   )
 }
 
@@ -385,7 +387,9 @@ fn TextInterpreter::apply_tj_adjustment(
   let tx = -value / 1000.0 * font_size * self.state.horizontal_scaling
   let object_state = self.require_text_object(offset)
   self.object_state = Some(
-    object_state.set_text_matrix(object_state.text_matrix.translated(tx, 0.0)),
+    object_state.advance_text_matrix(
+      object_state.text_matrix.translated(tx, 0.0),
+    ),
   )
 }
 

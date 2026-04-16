@@ -40,6 +40,34 @@ test "interpret text applies simple font encoding ToUnicode and advances matrix"
 }
 
 ///|
+test "interpret text keeps line matrix stable across glyph advance" {
+  let font = simple_font_with_to_unicode()
+  let font_resources : @objects.PdfDictionary = Map::new()
+  font_resources[@objects.PdfName::new(b"F1")] = @objects.PdfObject::Dictionary(
+    font,
+  )
+  let resources_dict : @objects.PdfDictionary = Map::new()
+  resources_dict[@objects.PdfName::new(b"Font")] = @objects.PdfObject::Dictionary(
+    font_resources,
+  )
+  let resources = TextResources::from_content_resources(
+    @content.ContentResources::from_dictionary(resources_dict),
+    0L,
+  )
+  let content = @content.parse_decoded_content(
+    b"BT /F1 10 Tf 12 TL 10 20 Td (AB) Tj T* (C) Tj ET",
+    resources.content_resources,
+  )
+
+  let program = interpret_text(content, resources, TextInitialState::default())
+  assert_eq(program.spans.length(), 2)
+  assert_eq(program.spans[0].text_matrix.e, 10.0)
+  assert_eq(program.spans[0].text_matrix.f, 20.0)
+  assert_eq(program.spans[1].text_matrix.e, 10.0)
+  assert_eq(program.spans[1].text_matrix.f, 8.0)
+}
+
+///|
 test "interpret TJ applies numeric adjustment between source strings" {
   let font = simple_font_with_to_unicode()
   let font_resources : @objects.PdfDictionary = Map::new()

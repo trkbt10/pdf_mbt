@@ -458,44 +458,13 @@ fn write_svg_image(
   matrix : @graphics.GraphicsMatrix,
   page_height : Double,
 ) -> Unit {
-  match svg_axis_aligned_image_rect(matrix, page_height) {
-    Some((x, y, width, height)) => {
-      builder.write_string("<image x=\"")
-      builder.write_string(format_svg_number(x))
-      builder.write_string("\" y=\"")
-      builder.write_string(format_svg_number(y))
-      builder.write_string("\" width=\"")
-      builder.write_string(format_svg_number(width))
-      builder.write_string("\" height=\"")
-      builder.write_string(format_svg_number(height))
-      builder.write_string("\" href=\"")
-      builder.write_string(href)
-      builder.write_string("\"/>")
-    }
-    None => {
-      builder.write_string(
-        "<image x=\"0\" y=\"0\" width=\"1\" height=\"1\" href=\"",
-      )
-      builder.write_string(href)
-      builder.write_string("\" transform=\"matrix(")
-      write_svg_image_matrix(builder, matrix, page_height)
-      builder.write_string(")\"/>")
-    }
-  }
-}
-
-///|
-fn svg_axis_aligned_image_rect(
-  matrix : @graphics.GraphicsMatrix,
-  page_height : Double,
-) -> (Double, Double, Double, Double)? {
-  if abs_double(matrix.b) > 0.001 || abs_double(matrix.c) > 0.001 {
-    return None
-  }
-  if matrix.a <= 0.0 || matrix.d <= 0.0 {
-    return None
-  }
-  Some((matrix.e, page_height - matrix.f - matrix.d, matrix.a, matrix.d))
+  builder.write_string(
+    "<image x=\"0\" y=\"0\" width=\"1\" height=\"1\" href=\"",
+  )
+  builder.write_string(href)
+  builder.write_string("\" transform=\"matrix(")
+  write_svg_image_matrix(builder, matrix, page_height)
+  builder.write_string(")\"/>")
 }
 
 ///|
@@ -504,17 +473,29 @@ fn write_svg_image_matrix(
   matrix : @graphics.GraphicsMatrix,
   page_height : Double,
 ) -> Unit {
-  builder.write_string(format_svg_number(matrix.a))
+  let x_scale = svg_image_axis_scale(matrix.a, matrix.b)
+  let y_scale = svg_image_axis_scale(matrix.c, matrix.d)
+  builder.write_string(format_svg_number(matrix.a * x_scale))
   builder.write_string(" ")
-  builder.write_string(format_svg_number(0.0 - matrix.b))
+  builder.write_string(format_svg_number((0.0 - matrix.b) * x_scale))
   builder.write_string(" ")
-  builder.write_string(format_svg_number(0.0 - matrix.c))
+  builder.write_string(format_svg_number((0.0 - matrix.c) * y_scale))
   builder.write_string(" ")
-  builder.write_string(format_svg_number(matrix.d))
+  builder.write_string(format_svg_number(matrix.d * y_scale))
   builder.write_string(" ")
   builder.write_string(format_svg_number(matrix.e + matrix.c))
   builder.write_string(" ")
   builder.write_string(format_svg_number(page_height - matrix.f - matrix.d))
+}
+
+///|
+fn svg_image_axis_scale(x : Double, y : Double) -> Double {
+  let length = (x * x + y * y).sqrt()
+  if length > 1.0 {
+    (length + 0.5) / length
+  } else {
+    1.0
+  }
 }
 
 ///|
@@ -566,7 +547,9 @@ fn page_render_text_svg(
   write_svg_text_matrix_normalized(builder, matrix, page_height, font_size)
   builder.write_string(")\" font-size=\"")
   builder.write_string(format_svg_number(font_size))
-  builder.write_string("\" text-rendering=\"optimizeSpeed\" font-family=\"")
+  builder.write_string(
+    "\" text-rendering=\"geometricPrecision\" font-family=\"",
+  )
   write_xml_escaped(builder, font_family)
   builder.write_string("\" fill=\"#000000\"")
   match positioned {

@@ -316,6 +316,17 @@ pub fn TextObjectState::set_text_matrix(
 }
 
 ///|
+fn TextObjectState::advance_text_matrix(
+  self : TextObjectState,
+  matrix : TextMatrix,
+) -> TextObjectState {
+  TextObjectState::{
+    text_matrix: matrix,
+    text_line_matrix: self.text_line_matrix,
+  }
+}
+
+///|
 fn TextObjectState::apply_td(
   self : TextObjectState,
   tx : Double,
