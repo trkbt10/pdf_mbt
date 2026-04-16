@@ -1,18 +1,16 @@
-import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-
-const here = dirname(fileURLToPath(import.meta.url));
-const wasmFile = join(here, "dist", "pdf.wasm");
+const wasmFile = new URL("./dist/pdf.wasm", import.meta.url);
 
 let defaultInstance = null;
 
 export function wasmPath() {
-  return wasmFile;
+  if (wasmFile.protocol === "file:") {
+    return pathFromFileUrl(wasmFile);
+  }
+  return wasmFile.href;
 }
 
 export async function wasmBytes() {
-  return readFile(wasmFile);
+  return sourceBytes(wasmFile);
 }
 
 export async function instantiate(imports = {}, wasmSource) {
@@ -251,13 +249,54 @@ async function sourceBytes(source) {
     return source;
   }
   if (typeof source === "string" || source instanceof URL) {
-    if (typeof fetch === "function" && source instanceof URL && source.protocol !== "file:") {
+    if (shouldFetchSource(source)) {
       const response = await fetch(source);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch wasm: ${response.status} ${response.statusText}`);
+      }
       return response.arrayBuffer();
     }
-    return readFile(source);
+    if (isNodeRuntime()) {
+      return readFileInNode(source);
+    }
   }
   throw new TypeError("wasmSource must be a path, URL, ArrayBuffer, or typed array");
+}
+
+async function readFileInNode(source) {
+  const nodeImport = Function("specifier", "return import(specifier)");
+  const { readFile } = await nodeImport("node:fs/promises");
+  return readFile(source);
+}
+
+function shouldFetchSource(source) {
+  if (typeof fetch !== "function") {
+    return false;
+  }
+  if (!isNodeRuntime()) {
+    return true;
+  }
+  if (source instanceof URL) {
+    return source.protocol !== "file:";
+  }
+  try {
+    const url = new URL(source);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isNodeRuntime() {
+  return typeof process !== "undefined" && !!process.versions?.node;
+}
+
+function pathFromFileUrl(url) {
+  const path = decodeURIComponent(url.pathname);
+  if (/^\/[A-Za-z]:/.test(path)) {
+    return path.slice(1);
+  }
+  return path;
 }
 
 function compileOptions() {

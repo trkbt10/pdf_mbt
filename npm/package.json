@@ -30,6 +30,7 @@
   ],
   "scripts": {
     "build": "scripts/build.sh",
+    "test": "node test/test.mjs",
     "prepack": "scripts/build.sh"
   },
   "engines": {
