@@ -53,7 +53,7 @@ fn ensure_prefix_parent_directory(prefix : String) -> Unit {
         value => value
       }
       if !exists {
-        try @fs.create_dir(path) catch {
+        @fs.create_dir(path) catch {
           _ => ()
         }
       }

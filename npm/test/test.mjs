@@ -46,8 +46,12 @@ assert.equal((svg.match(/<path/g) ?? []).length, 4, "expected Simple PDF paths")
 assert.ok(svg.includes("<text"), "expected SVG text element");
 assert.ok(svg.includes("<text transform=\"matrix("), "expected matrix-positioned SVG text");
 assert.ok(
-  svg.includes("<text transform=\"matrix(24 0 0 -24 100 100)"),
-  "expected SVG text to counter the flipped page group"
+  !svg.includes("<g transform=\"matrix(1 0 0 -1"),
+  "expected SVG text and graphics to avoid a flipped parent group"
+);
+assert.ok(
+  svg.includes("<text transform=\"matrix(24 0 0 -24 100 296)"),
+  "expected SVG text to use top-down page coordinates"
 );
 assert.ok(svg.includes("HelloWorld"), "expected SVG text content");
 console.log("✓ Lazy page geometry and text positions");

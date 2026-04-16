@@ -54,8 +54,7 @@ fn page_height(page : @reader.PdfPage) -> Double {
 
 ///|
 fn page_dimensions(page : @reader.PdfPage) -> (Double, Double) {
-  let result : Result[@reader.PdfRectangle?, @reader.PdfDocumentError] = try? page
-    .media_box()
+  let result : Result[@reader.PdfRectangle?, @reader.PdfDocumentError] = try? page.media_box()
   match result {
     Ok(Some(rect)) =>
       (abs_double(rect.right - rect.left), abs_double(rect.top - rect.bottom))
@@ -100,8 +99,9 @@ fn page_render_graphics_svg(
   page : @reader.PdfPage,
   page_height : Double,
 ) -> Unit {
-  let result : Result[Array[@graphics.GraphicsEvent], @reader.PdfDocumentError] = try? page
-    .graphics_events(@reader.GraphicsPageOptions::with_materialized_xobjects(None))
+  let result : Result[Array[@graphics.GraphicsEvent], @reader.PdfDocumentError] = try? page.graphics_events(
+    @reader.GraphicsPageOptions::with_materialized_xobjects(None),
+  )
   match result {
     Ok(events) =>
       for event in events {
@@ -217,7 +217,10 @@ fn svg_path_data(
 ) -> String {
   let builder = StringBuilder::new()
   for subpath in path.subpaths {
-    let start = svg_graphics_point(ctm.transform_point(subpath.start), page_height)
+    let start = svg_graphics_point(
+      ctm.transform_point(subpath.start),
+      page_height,
+    )
     builder.write_string("M ")
     builder.write_string(start.x.to_string())
     builder.write_string(" ")
@@ -233,13 +236,16 @@ fn svg_path_data(
         }
         @graphics.PathSegment::CurveTo(control1, control2, end_point) => {
           let p1 = svg_graphics_point(
-            ctm.transform_point(control1), page_height,
+            ctm.transform_point(control1),
+            page_height,
           )
           let p2 = svg_graphics_point(
-            ctm.transform_point(control2), page_height,
+            ctm.transform_point(control2),
+            page_height,
           )
           let p3 = svg_graphics_point(
-            ctm.transform_point(end_point), page_height,
+            ctm.transform_point(end_point),
+            page_height,
           )
           builder.write_string(" C ")
           builder.write_string(p1.x.to_string())
@@ -324,8 +330,9 @@ fn page_render_texts_svg(
   page : @reader.PdfPage,
   page_height : Double,
 ) -> Unit {
-  let result : Result[@text.TextProgram, @reader.PdfDocumentError] = try? page
-    .text_program(@reader.TextPageOptions::default())
+  let result : Result[@text.TextProgram, @reader.PdfDocumentError] = try? page.text_program(
+    @reader.TextPageOptions::default(),
+  )
   match result {
     Ok(program) => {
       let matrices = text_program_span_rendering_matrices(program)
@@ -417,8 +424,9 @@ fn svg_colour(
   state : @graphics.GraphicsState,
   colour_use : @graphics.ColourUse,
 ) -> String {
-  let result : Result[@graphics.DeviceRgbColour, @graphics.PdfGraphicsError] = try? state
-    .current_colour_as_rgb(colour_use)
+  let result : Result[@graphics.DeviceRgbColour, @graphics.PdfGraphicsError] = try? state.current_colour_as_rgb(
+    colour_use,
+  )
   match result {
     Ok(rgb) => rgb_hex_colour(rgb)
     Err(_) => "#000000"
@@ -513,8 +521,9 @@ fn page_image_entries_from_resources(
   resources : @content.ContentResources,
 ) -> Array[PageImageEntry] {
   let entries : Array[PageImageEntry] = []
-  let result : Result[@objects.PdfObject?, @content.PdfContentError] = try? resources
-    .category_object(@content.ResourceCategory::XObject)
+  let result : Result[@objects.PdfObject?, @content.PdfContentError] = try? resources.category_object(
+    @content.ResourceCategory::XObject,
+  )
   match result {
     Ok(Some(@objects.PdfObject::Dictionary(xobjects))) =>
       collect_xobject_image_entries(xobjects, resources.dictionary, entries)
@@ -580,12 +589,11 @@ fn page_image_data_url(
   entry : PageImageEntry,
   state : @graphics.GraphicsState,
 ) -> String {
-  let result : Result[@graphics.ExtractedImage, @graphics.PdfGraphicsError] = try? @graphics
-    .extract_image_xobject(
-      entry.name,
-      prepare_render_image_stream(entry.stream, entry.resources),
-      0L,
-    )
+  let result : Result[@graphics.ExtractedImage, @graphics.PdfGraphicsError] = try? @graphics.extract_image_xobject(
+    entry.name,
+    prepare_render_image_stream(entry.stream, entry.resources),
+    0L,
+  )
   match result {
     Ok(extracted) =>
       match extracted.data {
@@ -727,8 +735,9 @@ fn decode_external_image_bytes(data : Bytes) -> @image.ImageData? {
 
 ///|
 fn decode_png_image_bytes(data : Bytes) -> @image.ImageData? {
-  let result : Result[@image.ImageData, @image.DecodeError] = try? @image
-    .decode_png(data)
+  let result : Result[@image.ImageData, @image.DecodeError] = try? @image.decode_png(
+    data,
+  )
   match result {
     Ok(image) => Some(image)
     Err(_) => None
@@ -737,8 +746,9 @@ fn decode_png_image_bytes(data : Bytes) -> @image.ImageData? {
 
 ///|
 fn decode_bmp_image_bytes(data : Bytes) -> @image.ImageData? {
-  let result : Result[@image.ImageData, @image.DecodeError] = try? @image
-    .decode_bmp(data)
+  let result : Result[@image.ImageData, @image.DecodeError] = try? @image.decode_bmp(
+    data,
+  )
   match result {
     Ok(image) => Some(image)
     Err(_) => None
@@ -747,8 +757,9 @@ fn decode_bmp_image_bytes(data : Bytes) -> @image.ImageData? {
 
 ///|
 fn decode_jpeg_image_bytes(data : Bytes) -> @image.ImageData? {
-  let result : Result[@image.ImageData, @image.DecodeError] = try? @image
-    .decode_jpeg(data)
+  let result : Result[@image.ImageData, @image.DecodeError] = try? @image.decode_jpeg(
+    data,
+  )
   match result {
     Ok(image) => Some(image)
     Err(_) => None

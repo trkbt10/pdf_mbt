@@ -561,6 +561,7 @@ fn page_image_rgba(entry : PageImageEntry) -> Bytes {
   }
 }
 
+///|
 fn colour_space_label(space : @graphics.ColourSpace) -> String {
   match space {
     Device(device) =>
@@ -645,6 +646,7 @@ fn stencil_mask_to_rgba(mask : @graphics.ImageAlphaMaskRaster) -> Bytes {
   Bytes::from_array(rgba)
 }
 
+///|
 fn decode_external_image_bytes(data : Bytes) -> @image.ImageData? {
   match decode_png_image_bytes(data) {
     Some(image) => Some(image)
@@ -689,6 +691,7 @@ fn decode_jpeg_image_bytes(data : Bytes) -> @image.ImageData? {
   }
 }
 
+///|
 fn capability_report_json(report : @pdfapi.PdfCapabilityReport) -> String {
   let builder = StringBuilder::new()
   builder.write_string("{\"entries\":[")
