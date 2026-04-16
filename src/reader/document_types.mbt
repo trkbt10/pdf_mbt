@@ -1304,3 +1304,237 @@ pub(all) struct PdfStructureTree {
   document_language : Bytes?
   mark_info : PdfMarkInfo
 } derive(Eq, Debug)
+
+///|
+/// Computes a non-negative rectangle area after normalizing coordinate order.
+pub fn PdfRectangle::normalized_area(self : PdfRectangle) -> Double {
+  let width = if self.right >= self.left {
+    self.right - self.left
+  } else {
+    self.left - self.right
+  }
+  let height = if self.top >= self.bottom {
+    self.top - self.bottom
+  } else {
+    self.bottom - self.top
+  }
+  width * height
+}
+
+///|
+/// True when viewer preferences contain print-related policy beyond defaults.
+pub fn PdfViewerPreferences::has_print_policy(
+  self : PdfViewerPreferences,
+) -> Bool {
+  if self.print_page_ranges.length() > 0 {
+    true
+  } else if self.num_copies is Some(_) || self.duplex is Some(_) {
+    true
+  } else {
+    self.pick_tray_by_pdf_size || self.enforce.length() > 0
+  }
+}
+
+///|
+/// True when a destination points outside the current document page tree.
+pub fn PdfDestinationTarget::is_remote(self : PdfDestinationTarget) -> Bool {
+  match self {
+    RemotePageIndex(index) => index >= 0
+    RemoteStructureId(bytes) => bytes.length() > 0
+    LocalPage(_) => false
+    LocalStructure(_, _) => false
+  }
+}
+
+///|
+/// True when a collection carries a usable folder hierarchy or file listing.
+pub fn PdfCollection::has_navigation_payload(self : PdfCollection) -> Bool {
+  if self.folders.length() > 0 {
+    true
+  } else if self.files.length() > 0 {
+    true
+  } else {
+    self.navigator is Some(_)
+  }
+}
+
+///|
+/// Checks whether a label range can produce labels for the given page index.
+pub fn PdfPageLabelRange::covers_page_index(
+  self : PdfPageLabelRange,
+  page_index : Int,
+) -> Bool {
+  if self.start_index < 0 || self.start_number < 1 {
+    false
+  } else if page_index < self.start_index {
+    false
+  } else {
+    self.prefix.length() > 0 || self.style != PdfPageLabelStyle::PrefixOnly
+  }
+}
+
+///|
+/// True for annotation subtypes that use markup common fields.
+pub fn PdfAnnotationSubtype::is_markup_family(
+  self : PdfAnnotationSubtype,
+) -> Bool {
+  match self {
+    Text | FreeText | Line | Square | Circle => true
+    Polygon | PolyLine | Highlight | Underline | Squiggly => true
+    StrikeOut | Caret | Stamp | Ink | FileAttachment => true
+    Sound | Projection | Redact => true
+    Link | Popup | Movie | Screen | Widget | PrinterMark => false
+    TrapNet | Watermark | ThreeD | RichMedia | Unknown(_) => false
+  }
+}
+
+///|
+/// True when common annotation entries carry accessible text or language data.
+pub fn PdfAnnotationCommon::has_accessibility_text(
+  self : PdfAnnotationCommon,
+) -> Bool {
+  if self.contents is Some(bytes) && bytes.length() > 0 {
+    true
+  } else if self.language is Some(bytes) && bytes.length() > 0 {
+    true
+  } else {
+    self.name is Some(bytes) && bytes.length() > 0
+  }
+}
+
+///|
+/// True when border information can produce visible annotation stroke output.
+pub fn PdfAnnotationBorder::visible(self : PdfAnnotationBorder) -> Bool {
+  if self.width <= 0.0 {
+    false
+  } else {
+    match self.style {
+      Unknown(name) =>
+        name.to_text().length() > 0 || self.dash_pattern.length() > 0
+      Underline => self.width > 0.0
+      Solid | Dashed | Beveled | Inset => true
+    }
+  }
+}
+
+///|
+/// True when appearance data includes rollover, down, or selected-state data.
+pub fn PdfAnnotationAppearance::has_interactive_state(
+  self : PdfAnnotationAppearance,
+) -> Bool {
+  if self.selected_state is Some(_) {
+    true
+  } else {
+    match (self.rollover, self.down) {
+      (Raw(@objects.PdfObject::Null), Raw(@objects.PdfObject::Null)) => false
+      _ => true
+    }
+  }
+}
+
+///|
+/// Validates that a path has enough non-degenerate coordinate data.
+pub fn PdfAnnotationPath::has_usable_geometry(self : PdfAnnotationPath) -> Bool {
+  if self.points.length() < 2 {
+    false
+  } else {
+    let first = self.points[0]
+    let last = self.points[self.points.length() - 1]
+    first.x != last.x || first.y != last.y || self.points.length() > 2
+  }
+}
+
+///|
+/// True when a callout line contains the optional knee point.
+pub fn PdfAnnotationCallout::is_kneed(self : PdfAnnotationCallout) -> Bool {
+  if self.points.length() == 3 {
+    let start = self.points[0]
+    let knee = self.points[1]
+    let end = self.points[2]
+    (start.x != knee.x || start.y != knee.y) &&
+    (knee.x != end.x || knee.y != end.y)
+  } else {
+    false
+  }
+}
+
+///|
+/// True when line coordinates span at least one axis in user space.
+pub fn PdfLineCoordinates::has_extent(self : PdfLineCoordinates) -> Bool {
+  if self.start.x != self.end.x {
+    true
+  } else if self.start.y != self.end.y {
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// True when markup data is a reply or review-state carrier.
+pub fn PdfMarkupAnnotation::is_threaded_reply(
+  self : PdfMarkupAnnotation,
+) -> Bool {
+  if self.in_reply_to is Some(_) {
+    true
+  } else if self.reply_type is Some(_) {
+    true
+  } else {
+    self.state is Some(_) || self.state_model is Some(_)
+  }
+}
+
+///|
+/// True when a link can activate a navigation or action target.
+pub fn PdfLinkAnnotation::has_activation_target(
+  self : PdfLinkAnnotation,
+) -> Bool {
+  if self.action is Some(_) {
+    true
+  } else if self.destination is Some(_) {
+    true
+  } else {
+    self.previous_uri_action is Some(_)
+  }
+}
+
+///|
+/// True when line annotation layout includes leader, caption, or measure data.
+pub fn PdfLineAnnotation::has_extended_layout(self : PdfLineAnnotation) -> Bool {
+  if self.leader_line_length != 0.0 || self.leader_line_extension != 0.0 {
+    true
+  } else if self.leader_line_offset != 0.0 || self.caption {
+    true
+  } else {
+    self.measure is Some(_) || self.caption_offset is Some(_)
+  }
+}
+
+///|
+/// True for subtype payloads that hand off external media, files, or raw data.
+pub fn PdfAnnotationSpecific::requires_external_payload(
+  self : PdfAnnotationSpecific,
+) -> Bool {
+  match self {
+    FileAttachment(_) | Sound(_) | Movie(_) | Screen(_) => true
+    ThreeDRaw(_) | RichMediaRaw(_) | UnknownRaw(_) => true
+    Link(_) | Widget(_) | Projection(_) => true
+    Text(_) | FreeText(_) | Line(_) | Shape(_) | Polygon(_) => false
+    TextMarkup(_) | Caret(_) | Stamp(_) | Ink(_) | Popup(_) => false
+    PrinterMark(_) | TrapNetwork(_) | Watermark(_) | Redaction(_) => false
+  }
+}
+
+///|
+/// True when redaction data carries overlay content or visible replacement text.
+pub fn PdfRedactionAnnotation::has_overlay_instruction(
+  self : PdfRedactionAnnotation,
+) -> Bool {
+  if self.overlay is Some(_) {
+    true
+  } else if self.overlay_text is Some(bytes) && bytes.length() > 0 {
+    true
+  } else {
+    self.repeat || self.default_appearance is Some(_)
+  }
+}

@@ -144,3 +144,154 @@ pub(all) struct PdfSignatureValidationPlan {
   transform_constraints : Array[PdfSignatureReference]
   evidence_sources : Array[@objects.PdfObject]
 } derive(Eq, Debug)
+
+///|
+/// True when the byte range has non-negative bounds and no arithmetic wrap.
+pub fn PdfSignatureByteRange::is_well_ordered(
+  self : PdfSignatureByteRange,
+) -> Bool {
+  if self.offset < 0L || self.length < 0L {
+    false
+  } else {
+    let end_offset = self.offset + self.length
+    end_offset >= self.offset && end_offset >= self.length
+  }
+}
+
+///|
+/// True when SubFilter semantics route validation through CMS/CAdES handling.
+pub fn PdfSignatureSubFilter::uses_cms_container(
+  self : PdfSignatureSubFilter,
+) -> Bool {
+  match self {
+    AdbePkcs7Detached | AdbePkcs7Sha1 => true
+    EtsiCAdESDetached | EtsiRFC3161 => true
+    AdbeX509RsaSha1 | Absent => false
+    Unknown(name) => name.to_text().contains("pkcs7")
+  }
+}
+
+///|
+/// True when a signature reference carries transform or digest constraints.
+pub fn PdfSignatureReference::has_constraints(
+  self : PdfSignatureReference,
+) -> Bool {
+  if self.transform_method is Some(_) {
+    true
+  } else if self.digest_method is Some(_) {
+    true
+  } else {
+    self.transform_params is Some(_)
+  }
+}
+
+///|
+/// True when dictionary entries include enough payload to attempt digest work.
+pub fn PdfSignatureDictionary::has_digest_material(
+  self : PdfSignatureDictionary,
+) -> Bool {
+  if self.contents is Some(bytes) && bytes.length() > 0 {
+    self.byte_range.length() > 0
+  } else if self.cert is Some(_) {
+    self.references.length() > 0
+  } else {
+    false
+  }
+}
+
+///|
+/// True when the SubFilter selects a PAdES or document timestamp profile.
+pub fn PdfSignatureDictionary::declares_etsi_profile(
+  self : PdfSignatureDictionary,
+) -> Bool {
+  match self.subfilter {
+    EtsiCAdESDetached | EtsiRFC3161 => true
+    Unknown(name) => name.to_text().contains("ETSI")
+    AdbeX509RsaSha1 | AdbePkcs7Detached => false
+    AdbePkcs7Sha1 | Absent => false
+  }
+}
+
+///|
+/// True when a signature field can alter field locking or seed constraints.
+pub fn PdfSignatureField::has_signing_policy(self : PdfSignatureField) -> Bool {
+  if self.lock is Some(_) {
+    true
+  } else if self.seed_value is Some(_) {
+    true
+  } else {
+    self.signature is Some(sig) && sig.references.length() > 0
+  }
+}
+
+///|
+/// Counts DSS evidence arrays that may feed long-term validation.
+pub fn PdfDocumentSecurityStore::evidence_object_count(
+  self : PdfDocumentSecurityStore,
+) -> Int {
+  let mut count = self.certificates.length()
+  count += self.ocsps.length()
+  count += self.crls.length()
+  if self.validation_related_information is Some(_) {
+    count += 1
+  }
+  count
+}
+
+///|
+/// True when VRI data includes timestamp or fresh validation material.
+pub fn PdfValidationRelatedInformation::has_timestamp_evidence(
+  self : PdfValidationRelatedInformation,
+) -> Bool {
+  if self.timestamp is Some(_) {
+    true
+  } else if self.time_update is Some(_) {
+    true
+  } else {
+    self.ocsps.length() > 0 || self.crls.length() > 0
+  }
+}
+
+///|
+/// True when permissions dictionary names a document or usage-rights handler.
+pub fn PdfPermissionsDictionary::has_permission_handlers(
+  self : PdfPermissionsDictionary,
+) -> Bool {
+  if self.doc_mdp is Some(_) {
+    true
+  } else if self.ur3 is Some(_) {
+    true
+  } else {
+    self.raw_dict.length() > 0
+  }
+}
+
+///|
+/// True when legal attestation reports interactive or rendering risk signals.
+pub fn PdfLegalAttestation::declares_action_risk(
+  self : PdfLegalAttestation,
+) -> Bool {
+  if self.javascript_actions is Some(count) && count > 0 {
+    true
+  } else if self.launch_actions is Some(count) && count > 0 {
+    true
+  } else if self.uri_actions is Some(count) && count > 0 {
+    true
+  } else {
+    self.optional_content == Some(true) || self.attestation is Some(_)
+  }
+}
+
+///|
+/// True when a validation plan has both signed bytes and routed evidence.
+pub fn PdfSignatureValidationPlan::has_complete_evidence_route(
+  self : PdfSignatureValidationPlan,
+) -> Bool {
+  if self.byte_ranges.length() == 0 || self.raw_contents is None {
+    false
+  } else if self.transform_constraints.length() > 0 {
+    true
+  } else {
+    self.evidence_sources.length() > 0 || self.signature.references.length() > 0
+  }
+}

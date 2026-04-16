@@ -105,6 +105,7 @@ pub(all) enum ObjectLocation {
   Uncompressed(Int64, Int)
   Compressed(Int, Int)
 } derive(Eq, @debug.Debug)
+pub fn ObjectLocation::requires_object_stream(Self) -> Bool
 
 pub struct ObjectStreamTableCache {
   offset : Int64
@@ -139,6 +140,8 @@ pub(all) struct PdfAcroForm {
   xfa : @objects.PdfObject?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfAcroForm::has_calculation_workflow(Self) -> Bool
+pub fn PdfAcroForm::has_signature_workflow(Self) -> Bool
 
 pub(all) struct PdfAction {
   object_id : @objects.ObjectId?
@@ -148,6 +151,7 @@ pub(all) struct PdfAction {
   next : Array[PdfAction]
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfAction::has_follow_up_actions(Self) -> Bool
 
 pub(all) enum PdfActionKind {
   GoTo(PdfGoToAction)
@@ -172,6 +176,7 @@ pub(all) enum PdfActionKind {
   RichMediaExecute(PdfRichMediaExecuteAction)
   Unknown(@objects.PdfName, Map[@objects.PdfName, @objects.PdfObject])
 } derive(Eq, @debug.Debug)
+pub fn PdfActionKind::is_external_boundary(Self) -> Bool
 
 pub(all) enum PdfActionSource {
   Catalog(@objects.ObjectId)
@@ -182,6 +187,7 @@ pub(all) enum PdfActionSource {
   Presentation(@objects.ObjectId?)
   RawObject(@objects.ObjectId?)
 } derive(Eq, @debug.Debug)
+pub fn PdfActionSource::requires_page_context(Self) -> Bool
 
 pub(all) enum PdfActionTrigger {
   CatalogOpenAction
@@ -239,6 +245,7 @@ pub(all) struct PdfAnnotationAppearance {
   selected_state : @objects.PdfName?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfAnnotationAppearance::has_interactive_state(Self) -> Bool
 
 pub(all) struct PdfAnnotationBorder {
   horizontal_corner_radius : Double
@@ -250,10 +257,12 @@ pub(all) struct PdfAnnotationBorder {
   raw_border : @objects.PdfObject?
   raw_style : Map[@objects.PdfName, @objects.PdfObject]?
 } derive(Eq, @debug.Debug)
+pub fn PdfAnnotationBorder::visible(Self) -> Bool
 
 pub(all) struct PdfAnnotationCallout {
   points : Array[PdfPoint]
 } derive(Eq, @debug.Debug)
+pub fn PdfAnnotationCallout::is_kneed(Self) -> Bool
 
 pub(all) struct PdfAnnotationCommon {
   subtype : PdfAnnotationSubtype
@@ -278,6 +287,7 @@ pub(all) struct PdfAnnotationCommon {
   language : Bytes?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfAnnotationCommon::has_accessibility_text(Self) -> Bool
 
 pub(all) struct PdfAnnotationFlags {
   bits : Int
@@ -298,6 +308,7 @@ pub fn PdfAnnotationFlags::toggle_no_view(Self) -> Bool
 pub(all) struct PdfAnnotationPath {
   points : Array[PdfPoint]
 } derive(Eq, @debug.Debug)
+pub fn PdfAnnotationPath::has_usable_geometry(Self) -> Bool
 
 pub(all) enum PdfAnnotationSpecific {
   Text(PdfTextAnnotation)
@@ -325,6 +336,7 @@ pub(all) enum PdfAnnotationSpecific {
   RichMediaRaw(PdfRawAnnotation)
   UnknownRaw(PdfRawAnnotation)
 } derive(Eq, @debug.Debug)
+pub fn PdfAnnotationSpecific::requires_external_payload(Self) -> Bool
 
 pub(all) enum PdfAnnotationState {
   Marked
@@ -374,6 +386,7 @@ pub(all) enum PdfAnnotationSubtype {
   RichMedia
   Unknown(@objects.PdfName)
 } derive(Eq, @debug.Debug)
+pub fn PdfAnnotationSubtype::is_markup_family(Self) -> Bool
 
 pub(all) enum PdfAnnotationTabOrder {
   Row
@@ -463,6 +476,7 @@ pub(all) struct PdfCatalogAdditionalActions {
   after_print : PdfAction?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfCatalogAdditionalActions::event_count(Self) -> Int
 
 pub(all) enum PdfCatalogOpenAction {
   Destination(PdfDestination)
@@ -495,6 +509,7 @@ pub(all) struct PdfCollection {
   navigator : PdfNavigator?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfCollection::has_navigation_payload(Self) -> Bool
 
 pub(all) struct PdfCollectionFile {
   name : Bytes
@@ -569,6 +584,7 @@ pub(all) enum PdfDestinationTarget {
   RemotePageIndex(Int)
   RemoteStructureId(Bytes)
 } derive(Eq, @debug.Debug)
+pub fn PdfDestinationTarget::is_remote(Self) -> Bool
 
 pub(all) enum PdfDestinationView {
   XYZ(Double?, Double?, Double?)
@@ -590,6 +606,7 @@ pub(all) struct PdfDeveloperExtension {
   extension_revision : Bytes?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfDeveloperExtension::targets_pdf2_or_later(Self) -> Bool
 
 pub struct PdfDocument {
   // private fields
@@ -648,6 +665,7 @@ pub(all) struct PdfDocumentSecurityStore {
   crls : Array[@objects.PdfObject]
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfDocumentSecurityStore::evidence_object_count(Self) -> Int
 
 pub(all) enum PdfDuplex {
   Simplex
@@ -690,6 +708,7 @@ pub(all) struct PdfEmbeddedFileParams {
   checksum : Bytes?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfEmbeddedFileParams::has_integrity_metadata(Self) -> Bool
 
 pub(all) struct PdfEmbeddedGoToAction {
   file_specification : @objects.PdfObject?
@@ -710,11 +729,13 @@ pub(all) struct PdfExtensionPrefixEntry {
   developers : Array[PdfDeveloperExtension]
   raw_value : @objects.PdfObject
 } derive(Eq, @debug.Debug)
+pub fn PdfExtensionPrefixEntry::has_valid_developer_set(Self) -> Bool
 
 pub(all) struct PdfExtensions {
   prefixes : Array[PdfExtensionPrefixEntry]
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfExtensions::developer_count(Self) -> Int
 
 pub(all) struct PdfFDFCatalog {
   version : @objects.PdfName?
@@ -822,6 +843,7 @@ pub(all) struct PdfFileSpecPath {
   absolute : Bool
   components : Array[Bytes]
 } derive(Eq, @debug.Debug)
+pub fn PdfFileSpecPath::is_normalized_relative(Self) -> Bool
 
 pub(all) struct PdfFileSpecStream {
   source_object_id : @objects.ObjectId?
@@ -833,6 +855,7 @@ pub(all) enum PdfFileSpecification {
   Simple(PdfSimpleFileSpecification)
   Full(PdfFileSpecificationDictionary)
 } derive(Eq, @debug.Debug)
+pub fn PdfFileSpecification::has_embedded_payload(Self) -> Bool
 
 pub(all) struct PdfFileSpecificationDictionary {
   source_object_id : @objects.ObjectId?
@@ -856,6 +879,7 @@ pub(all) struct PdfFileSpecificationDictionary {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
   raw_object : @objects.PdfObject
 } derive(Eq, @debug.Debug)
+pub fn PdfFileSpecificationDictionary::attachment_count(Self) -> Int
 
 pub(all) struct PdfFixedPrint {
   matrix : Array[Double]
@@ -890,6 +914,11 @@ pub(all) struct PdfFormField {
   variable_text : PdfVariableTextDescriptor?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfFormField::has_action_hooks(Self) -> Bool
+pub fn PdfFormField::is_terminal(Self) -> Bool
+pub fn PdfFormField::requires_appearance_generation(Self) -> Bool
+pub fn PdfFormField::total_selection_count(Self) -> Int
+pub fn PdfFormField::widgets_have_valid_pages(Self) -> Bool
 
 pub(all) struct PdfFormFieldAdditionalActions {
   keystroke : PdfAction?
@@ -902,6 +931,7 @@ pub(all) struct PdfFormFieldAdditionalActions {
 pub(all) struct PdfFormFieldFlags {
   bits : Int
 } derive(Eq, @debug.Debug)
+pub fn PdfFormFieldFlags::choice_behavior_count(Self) -> Int
 pub fn PdfFormFieldFlags::comb(Self) -> Bool
 pub fn PdfFormFieldFlags::combo(Self) -> Bool
 pub fn PdfFormFieldFlags::commit_on_sel_change(Self) -> Bool
@@ -909,6 +939,7 @@ pub fn PdfFormFieldFlags::do_not_scroll(Self) -> Bool
 pub fn PdfFormFieldFlags::do_not_spell_check(Self) -> Bool
 pub fn PdfFormFieldFlags::edit(Self) -> Bool
 pub fn PdfFormFieldFlags::file_select(Self) -> Bool
+pub fn PdfFormFieldFlags::has_conflicting_button_flags(Self) -> Bool
 pub fn PdfFormFieldFlags::multi_select(Self) -> Bool
 pub fn PdfFormFieldFlags::multiline(Self) -> Bool
 pub fn PdfFormFieldFlags::no_export(Self) -> Bool
@@ -930,6 +961,8 @@ pub(all) enum PdfFormFieldType {
   Unknown(@objects.PdfName)
   Absent
 } derive(Eq, @debug.Debug)
+pub fn PdfFormFieldType::allows_kids(Self) -> Bool
+pub fn PdfFormFieldType::allows_value(Self) -> Bool
 
 pub(all) enum PdfFormFieldValue {
   Name(@objects.PdfName)
@@ -938,6 +971,8 @@ pub(all) enum PdfFormFieldValue {
   Raw(@objects.PdfObject)
   Absent
 } derive(Eq, @debug.Debug)
+pub fn PdfFormFieldValue::is_exportable(Self) -> Bool
+pub fn PdfFormFieldValue::selection_count(Self) -> Int
 
 pub(all) struct PdfFormWidgetRef {
   object_id : @objects.ObjectId?
@@ -946,6 +981,7 @@ pub(all) struct PdfFormWidgetRef {
   raw_annotation : PdfAnnotation?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfFormWidgetRef::is_page_bound(Self) -> Bool
 
 pub(all) struct PdfFreeTextAnnotation {
   default_appearance : Bytes
@@ -991,6 +1027,7 @@ pub(all) struct PdfHeader {
   base_offset : Int64
   has_binary_indicator : Bool
 } derive(Eq, @debug.Debug)
+pub fn PdfHeader::has_valid_preamble(Self) -> Bool
 
 pub(all) struct PdfHideAction {
   target : PdfHideTarget
@@ -1050,6 +1087,7 @@ pub(all) struct PdfLegalAttestation {
   attestation : Bytes?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfLegalAttestation::declares_action_risk(Self) -> Bool
 
 pub(all) struct PdfLineAnnotation {
   coordinates : PdfLineCoordinates
@@ -1063,11 +1101,13 @@ pub(all) struct PdfLineAnnotation {
   measure : @objects.PdfObject?
   caption_offset : PdfPoint?
 } derive(Eq, @debug.Debug)
+pub fn PdfLineAnnotation::has_extended_layout(Self) -> Bool
 
 pub(all) struct PdfLineCoordinates {
   start : PdfPoint
   end : PdfPoint
 } derive(Eq, @debug.Debug)
+pub fn PdfLineCoordinates::has_extent(Self) -> Bool
 
 pub(all) enum PdfLineEndingStyle {
   Square
@@ -1090,6 +1130,7 @@ pub(all) struct PdfLinkAnnotation {
   highlight_mode : PdfHighlightMode
   quad_points : Array[PdfQuadPoints]
 } derive(Eq, @debug.Debug)
+pub fn PdfLinkAnnotation::has_activation_target(Self) -> Bool
 
 pub(all) struct PdfMarkInfo {
   marked : Bool
@@ -1125,6 +1166,7 @@ pub(all) struct PdfMarkupAnnotation {
   state : PdfAnnotationState?
   state_model : PdfAnnotationStateModel?
 } derive(Eq, @debug.Debug)
+pub fn PdfMarkupAnnotation::is_threaded_reply(Self) -> Bool
 
 pub(all) struct PdfMarkupExternalData {
   subtype : @objects.PdfName?
@@ -1509,6 +1551,7 @@ pub(all) struct PdfPageLabelRange {
   start_number : Int
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfPageLabelRange::covers_page_index(Self, Int) -> Bool
 
 pub(all) enum PdfPageLabelStyle {
   Decimal
@@ -1539,6 +1582,7 @@ pub(all) struct PdfPermissionsDictionary {
   ur3 : @objects.PdfObject?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfPermissionsDictionary::has_permission_handlers(Self) -> Bool
 
 pub(all) struct PdfPoint {
   x : Double
@@ -1627,6 +1671,7 @@ pub(all) struct PdfRectangle {
   right : Double
   top : Double
 } derive(Eq, @debug.Debug)
+pub fn PdfRectangle::normalized_area(Self) -> Double
 
 pub(all) struct PdfRedactionAnnotation {
   quad_points : Array[PdfQuadPoints]
@@ -1637,6 +1682,7 @@ pub(all) struct PdfRedactionAnnotation {
   default_appearance : Bytes?
   justification : PdfJustification
 } derive(Eq, @debug.Debug)
+pub fn PdfRedactionAnnotation::has_overlay_instruction(Self) -> Bool
 
 pub(all) struct PdfRelatedFile {
   name : Bytes
@@ -1651,6 +1697,7 @@ pub(all) struct PdfRemoteGoToAction {
   new_window : Bool?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfRemoteGoToAction::requests_new_window(Self, Bool) -> Bool
 
 pub(all) enum PdfRendition {
   Media(PdfMediaRendition)
@@ -1848,6 +1895,7 @@ pub(all) struct PdfSetOCGStateAction {
   preserve_rb : Bool
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfSetOCGStateAction::state_group_count(Self) -> Int
 
 pub(all) struct PdfShapeAnnotation {
   kind : PdfShapeKind
@@ -1865,6 +1913,7 @@ pub(all) struct PdfSignatureByteRange {
   offset : Int64
   length : Int64
 } derive(Eq, @debug.Debug)
+pub fn PdfSignatureByteRange::is_well_ordered(Self) -> Bool
 
 pub(all) struct PdfSignatureDictionary {
   object_id : @objects.ObjectId?
@@ -1882,6 +1931,8 @@ pub(all) struct PdfSignatureDictionary {
   changes : Array[Int]
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfSignatureDictionary::declares_etsi_profile(Self) -> Bool
+pub fn PdfSignatureDictionary::has_digest_material(Self) -> Bool
 
 pub(all) struct PdfSignatureField {
   field : PdfFormField
@@ -1890,6 +1941,7 @@ pub(all) struct PdfSignatureField {
   seed_value : @objects.PdfObject?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfSignatureField::has_signing_policy(Self) -> Bool
 
 pub(all) struct PdfSignatureReference {
   transform_method : @objects.PdfName?
@@ -1897,6 +1949,7 @@ pub(all) struct PdfSignatureReference {
   transform_params : @objects.PdfObject?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfSignatureReference::has_constraints(Self) -> Bool
 
 pub(all) enum PdfSignatureSubFilter {
   AdbeX509RsaSha1
@@ -1907,6 +1960,7 @@ pub(all) enum PdfSignatureSubFilter {
   Unknown(@objects.PdfName)
   Absent
 } derive(Eq, @debug.Debug)
+pub fn PdfSignatureSubFilter::uses_cms_container(Self) -> Bool
 
 pub(all) struct PdfSignatureValidationPlan {
   signature : PdfSignatureDictionary
@@ -1915,6 +1969,7 @@ pub(all) struct PdfSignatureValidationPlan {
   transform_constraints : Array[PdfSignatureReference]
   evidence_sources : Array[@objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfSignatureValidationPlan::has_complete_evidence_route(Self) -> Bool
 
 pub(all) struct PdfSimpleFileSpecification {
   raw_string : Bytes
@@ -2172,6 +2227,7 @@ pub(all) struct PdfTargetDictionary {
   target : PdfTargetDictionary?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfTargetDictionary::exceeds_depth(Self, Int) -> Bool
 
 pub(all) enum PdfTempFilePermission {
   Always
@@ -2397,6 +2453,7 @@ pub(all) struct PdfValidationRelatedInformation {
   timestamp : @objects.PdfObject?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfValidationRelatedInformation::has_timestamp_evidence(Self) -> Bool
 
 pub(all) struct PdfVariableTextDescriptor {
   default_appearance : Bytes?
@@ -2406,11 +2463,13 @@ pub(all) struct PdfVariableTextDescriptor {
   default_resources : @objects.PdfObject?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfVariableTextDescriptor::has_styled_payload(Self) -> Bool
 
 pub(all) struct PdfVersion {
   major : Int
   minor : Int
 } derive(Eq, @debug.Debug)
+pub fn PdfVersion::is_pdf2_or_later(Self) -> Bool
 
 pub(all) struct PdfVersionArray {
   components : Array[Int]
@@ -2464,6 +2523,7 @@ pub(all) struct PdfViewerPreferences {
   enforce : Array[PdfViewerPreferenceEnforceName]
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfViewerPreferences::has_print_policy(Self) -> Bool
 
 pub(all) struct PdfViewport {
   bbox : PdfRectangle?
@@ -2527,12 +2587,14 @@ pub(all) struct TrailerInfo {
   xref_stm : Int64?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn TrailerInfo::has_incremental_update(Self) -> Bool
 
 pub(all) enum XrefEntry {
   Free(Int, Int)
   InUse(Int64, Int)
   Compressed(Int, Int)
 } derive(Eq, @debug.Debug)
+pub fn XrefEntry::is_live_object(Self) -> Bool
 
 pub(all) struct XrefSection {
   provenance : XrefSectionProvenance

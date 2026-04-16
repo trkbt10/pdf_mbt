@@ -140,3 +140,62 @@ pub(all) struct PdfEmbeddedFileEntry {
   file_specification : PdfFileSpecification
   raw_value : @objects.PdfObject
 } derive(Eq, Debug)
+
+///|
+/// True when a file specification carries embedded-file or related-file data.
+pub fn PdfFileSpecification::has_embedded_payload(
+  self : PdfFileSpecification,
+) -> Bool {
+  match self {
+    Simple(simple) => simple.indirect && simple.path.components.length() > 0
+    Full(full) =>
+      full.embedded_files.length() > 0 ||
+      full.related_files.length() > 0 ||
+      full.encrypted_payload is Some(_)
+  }
+}
+
+///|
+/// True when path components are normalized enough for deterministic joining.
+pub fn PdfFileSpecPath::is_normalized_relative(self : PdfFileSpecPath) -> Bool {
+  if self.absolute || self.raw.length() == 0 {
+    false
+  } else {
+    for component in self.components {
+      if component.length() == 0 || component == b"." || component == b".." {
+        return false
+      }
+    }
+    true
+  }
+}
+
+///|
+/// Counts embedded, related, thumbnail, and encrypted payload attachments.
+pub fn PdfFileSpecificationDictionary::attachment_count(
+  self : PdfFileSpecificationDictionary,
+) -> Int {
+  let mut count = self.embedded_files.length()
+  self.related_files.each((_, files) => count += files.length())
+  if self.thumbnail is Some(_) {
+    count += 1
+  }
+  if self.encrypted_payload is Some(_) {
+    count += 1
+  }
+  count
+}
+
+///|
+/// True when embedded-file parameters include size and integrity metadata.
+pub fn PdfEmbeddedFileParams::has_integrity_metadata(
+  self : PdfEmbeddedFileParams,
+) -> Bool {
+  if self.size is Some(size) && size < 0L {
+    false
+  } else if self.checksum is Some(bytes) && bytes.length() > 0 {
+    true
+  } else {
+    self.creation_date is Some(_) || self.modification_date is Some(_)
+  }
+}

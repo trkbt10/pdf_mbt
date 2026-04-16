@@ -220,3 +220,202 @@ pub(all) struct PdfAcroForm {
   xfa : @objects.PdfObject?
   raw_dict : @objects.PdfDictionary
 } derive(Eq, Debug)
+
+///|
+/// True when the field type can carry a terminal V or DV value.
+pub fn PdfFormFieldType::allows_value(self : PdfFormFieldType) -> Bool {
+  match self {
+    Button | Text | Choice | Signature => true
+    Unknown(name) => name.to_text().length() > 0
+    Absent => false
+  }
+}
+
+///|
+/// True when the field type may legally own child field dictionaries.
+pub fn PdfFormFieldType::allows_kids(self : PdfFormFieldType) -> Bool {
+  match self {
+    Absent => true
+    Unknown(_) => true
+    Button | Text | Choice | Signature => false
+  }
+}
+
+///|
+/// Counts choice-field behavior flags that affect option selection semantics.
+pub fn PdfFormFieldFlags::choice_behavior_count(
+  self : PdfFormFieldFlags,
+) -> Int {
+  let mut count = 0
+  if self.combo() {
+    count += 1
+  }
+  if self.edit() {
+    count += 1
+  }
+  if self.multi_select() {
+    count += 1
+  }
+  if self.commit_on_sel_change() {
+    count += 1
+  }
+  count
+}
+
+///|
+/// True when button-specific flags describe incompatible button modes.
+pub fn PdfFormFieldFlags::has_conflicting_button_flags(
+  self : PdfFormFieldFlags,
+) -> Bool {
+  if self.push_button() && self.radio() {
+    true
+  } else if self.push_button() && self.no_toggle_to_off() {
+    true
+  } else {
+    self.push_button() && self.radios_in_unison()
+  }
+}
+
+///|
+/// True when a field value contains exportable user-facing data.
+pub fn PdfFormFieldValue::is_exportable(self : PdfFormFieldValue) -> Bool {
+  match self {
+    Name(name) => name.to_text().length() > 0
+    String(bytes) => bytes.length() > 0
+    Array(values) => values.length() > 0
+    Raw(@objects.PdfObject::Null) | Absent => false
+    Raw(_) => true
+  }
+}
+
+///|
+/// Counts selected values represented by name, string, array, or raw object.
+pub fn PdfFormFieldValue::selection_count(self : PdfFormFieldValue) -> Int {
+  match self {
+    Name(name) => if name.to_text().length() > 0 { 1 } else { 0 }
+    String(bytes) => if bytes.length() > 0 { 1 } else { 0 }
+    Array(values) => values.length()
+    Raw(@objects.PdfObject::Null) | Absent => 0
+    Raw(_) => 1
+  }
+}
+
+///|
+/// True when variable text entries include styling or rich-text inputs.
+pub fn PdfVariableTextDescriptor::has_styled_payload(
+  self : PdfVariableTextDescriptor,
+) -> Bool {
+  if self.default_style is Some(bytes) && bytes.length() > 0 {
+    true
+  } else if self.rich_text is Some(_) {
+    true
+  } else {
+    self.default_resources is Some(_) || self.quadding is Some(_)
+  }
+}
+
+///|
+/// True when the widget can be associated with a page or parsed annotation.
+pub fn PdfFormWidgetRef::is_page_bound(self : PdfFormWidgetRef) -> Bool {
+  if self.page_index is Some(index) && index >= 0 {
+    true
+  } else if self.raw_annotation is Some(_) {
+    true
+  } else {
+    self.object_id is Some(_) && self.merged_field_dictionary
+  }
+}
+
+///|
+/// True when a field is terminal by value, widget, or explicit field type.
+pub fn PdfFormField::is_terminal(self : PdfFormField) -> Bool {
+  if self.widgets.length() > 0 {
+    true
+  } else if self.value.is_exportable() || self.default_value.is_exportable() {
+    true
+  } else {
+    self.field_type.allows_value() && self.kids.length() == 0
+  }
+}
+
+///|
+/// True when field data suggests appearance streams may need regeneration.
+pub fn PdfFormField::requires_appearance_generation(
+  self : PdfFormField,
+) -> Bool {
+  if self.variable_text is Some(text) && text.has_styled_payload() {
+    true
+  } else if self.flags.rich_text() || self.flags.comb() {
+    true
+  } else {
+    self.widgets.length() > 0 && self.value.is_exportable()
+  }
+}
+
+///|
+/// True when a field or its widgets carry additional-action dictionaries.
+pub fn PdfFormField::has_action_hooks(self : PdfFormField) -> Bool {
+  if self.raw_dict.contains(@objects.PdfName::new(b"AA")) {
+    true
+  } else {
+    for widget in self.widgets {
+      if widget.raw_dict.contains(@objects.PdfName::new(b"AA")) {
+        return true
+      }
+    }
+    false
+  }
+}
+
+///|
+/// Counts selected values from the current and default values.
+pub fn PdfFormField::total_selection_count(self : PdfFormField) -> Int {
+  let current = self.value.selection_count()
+  let fallback = self.default_value.selection_count()
+  if current > 0 {
+    current
+  } else {
+    fallback
+  }
+}
+
+///|
+/// True when all page-indexed widgets refer to valid non-negative pages.
+pub fn PdfFormField::widgets_have_valid_pages(self : PdfFormField) -> Bool {
+  if self.widgets.length() == 0 {
+    return false
+  }
+  for widget in self.widgets {
+    if widget.page_index is Some(index) && index < 0 {
+      return false
+    }
+  }
+  true
+}
+
+///|
+/// True when AcroForm data contains signature fields or signature flags.
+pub fn PdfAcroForm::has_signature_workflow(self : PdfAcroForm) -> Bool {
+  if self.signature_flags is Some(flags) && flags != 0 {
+    true
+  } else {
+    for field in self.root_fields {
+      if field.field_type == PdfFormFieldType::Signature {
+        return true
+      }
+    }
+    false
+  }
+}
+
+///|
+/// True when AcroForm entries require calculation-order handling.
+pub fn PdfAcroForm::has_calculation_workflow(self : PdfAcroForm) -> Bool {
+  if self.calculation_order.length() > 0 {
+    true
+  } else if self.need_appearances == Some(true) {
+    true
+  } else {
+    self.default_appearance is Some(bytes) && bytes.length() > 0
+  }
+}

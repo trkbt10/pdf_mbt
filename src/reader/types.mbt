@@ -110,3 +110,58 @@ pub struct PdfFile {
   cache : Map[@objects.ObjectId, @objects.PdfObject]
   object_stream_tables : Map[@objects.ObjectId, ObjectStreamTableCache]
 } derive(Eq, Debug)
+
+///|
+/// True when the header version is PDF 2.0 or a later major version.
+pub fn PdfVersion::is_pdf2_or_later(self : PdfVersion) -> Bool {
+  if self.major > 2 {
+    true
+  } else if self.major == 2 {
+    self.minor >= 0
+  } else {
+    false
+  }
+}
+
+///|
+/// True when the parsed header has a valid offset and binary indicator state.
+pub fn PdfHeader::has_valid_preamble(self : PdfHeader) -> Bool {
+  if self.base_offset < 0L {
+    false
+  } else if self.version.major < 1 {
+    false
+  } else {
+    self.has_binary_indicator || self.base_offset >= 0L
+  }
+}
+
+///|
+/// True when trailer entries indicate an incremental or hybrid xref update.
+pub fn TrailerInfo::has_incremental_update(self : TrailerInfo) -> Bool {
+  if self.prev is Some(offset) && offset >= 0L {
+    true
+  } else if self.xref_stm is Some(offset) && offset >= 0L {
+    true
+  } else {
+    self.raw_dict.contains(@objects.PdfName::new(b"Prev"))
+  }
+}
+
+///|
+/// True when a cross-reference entry can resolve to an object value.
+pub fn XrefEntry::is_live_object(self : XrefEntry) -> Bool {
+  match self {
+    InUse(offset, generation) => offset >= 0L && generation >= 0
+    Compressed(object_stream, index) => object_stream > 0 && index >= 0
+    Free(_, _) => false
+  }
+}
+
+///|
+/// True when an object location requires object-stream table lookup.
+pub fn ObjectLocation::requires_object_stream(self : ObjectLocation) -> Bool {
+  match self {
+    Compressed(object_stream, index) => object_stream > 0 && index >= 0
+    Uncompressed(offset, generation) => offset < 0L || generation < 0
+  }
+}

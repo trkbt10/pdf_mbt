@@ -29,3 +29,46 @@ pub(all) struct PdfDeveloperExtension {
   extension_revision : Bytes?
   raw_dict : @objects.PdfDictionary
 } derive(Eq, Debug)
+
+///|
+/// Counts developer extension dictionaries across all Catalog prefixes.
+pub fn PdfExtensions::developer_count(self : PdfExtensions) -> Int {
+  let mut count = 0
+  for entry in self.prefixes {
+    if entry.developers.length() > 0 {
+      count += entry.developers.length()
+    }
+  }
+  count
+}
+
+///|
+/// True when a prefix entry has a non-empty prefix and valid developers.
+pub fn PdfExtensionPrefixEntry::has_valid_developer_set(
+  self : PdfExtensionPrefixEntry,
+) -> Bool {
+  if self.prefix.to_text().length() == 0 || self.developers.length() == 0 {
+    false
+  } else {
+    for developer in self.developers {
+      if developer.extension_level < 0 {
+        return false
+      }
+    }
+    true
+  }
+}
+
+///|
+/// True when the developer extension targets PDF 2.0 or later semantics.
+pub fn PdfDeveloperExtension::targets_pdf2_or_later(
+  self : PdfDeveloperExtension,
+) -> Bool {
+  if self.extension_level < 0 {
+    false
+  } else if self.base_version.is_pdf2_or_later() {
+    true
+  } else {
+    self.extension_revision is Some(bytes) && bytes.length() > 0
+  }
+}

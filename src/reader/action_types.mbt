@@ -422,3 +422,118 @@ pub(all) struct PdfActionTriggerOrdering {
   page_open_order : Array[PdfActionTrigger]
   page_close_order : Array[PdfActionTrigger]
 } derive(Eq, Debug)
+
+///|
+/// True when the source is tied to page-local event or annotation context.
+pub fn PdfActionSource::requires_page_context(self : PdfActionSource) -> Bool {
+  match self {
+    Page(_) => true
+    Annotation(_) => true
+    Presentation(_) => true
+    Catalog(_) | Outline | FormField(_) | RawObject(_) => false
+  }
+}
+
+///|
+/// True for actions whose structural payload may identify data outside the
+/// current PDF file or viewer sandbox.
+pub fn PdfActionKind::is_external_boundary(self : PdfActionKind) -> Bool {
+  match self {
+    GoToR(_) | GoToE(_) | Launch(_) | URI(_) => true
+    SubmitForm(_) | ImportData(_) | RichMediaExecute(_) => true
+    GoTo(_) | GoToDp(_) | Thread(_) | Sound(_) | Movie(_) => false
+    Hide(_) | Named(_) | ResetForm(_) | SetOCGState(_) => false
+    Rendition(_) | Trans(_) | GoTo3DView(_) | JavaScript(_) => false
+    Unknown(_, _) => true
+  }
+}
+
+///|
+/// True when the parsed action has a non-empty Next chain or a raw dictionary
+/// entry that may have been intentionally retained for deferred inspection.
+pub fn PdfAction::has_follow_up_actions(self : PdfAction) -> Bool {
+  if self.next.length() > 0 {
+    true
+  } else if self.raw_dict.contains(@objects.PdfName::new(b"Next")) {
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// Resolves the optional NewWindow flag with a caller-supplied viewer default
+/// while treating malformed absent file specifications conservatively.
+pub fn PdfRemoteGoToAction::requests_new_window(
+  self : PdfRemoteGoToAction,
+  default_value : Bool,
+) -> Bool {
+  let chosen = match self.new_window {
+    Some(value) => value
+    None => default_value
+  }
+  match self.file_specification {
+    @objects.PdfObject::Null => false
+    _ => chosen
+  }
+}
+
+///|
+/// Checks the recursive embedded target path against a caller-supplied depth.
+pub fn PdfTargetDictionary::exceeds_depth(
+  self : PdfTargetDictionary,
+  max_depth : Int,
+) -> Bool {
+  if max_depth < 0 {
+    true
+  } else {
+    let mut depth = 1
+    let mut current = self.target
+    while current is Some(target) {
+      depth += 1
+      if depth > max_depth {
+        return true
+      }
+      current = target.target
+    }
+    false
+  }
+}
+
+///|
+/// Counts the optional-content group operands carried by all State operators.
+pub fn PdfSetOCGStateAction::state_group_count(
+  self : PdfSetOCGStateAction,
+) -> Int {
+  let mut count = 0
+  for operation in self.operations {
+    if operation.groups.length() > 0 {
+      count += operation.groups.length()
+    }
+  }
+  count
+}
+
+///|
+/// Counts Catalog additional-action trigger entries that contain an action.
+pub fn PdfCatalogAdditionalActions::event_count(
+  self : PdfCatalogAdditionalActions,
+) -> Int {
+  let mut count = 0
+  if self.before_close is Some(_) {
+    count += 1
+  }
+  if self.before_save is Some(_) {
+    count += 1
+  }
+  if self.after_save is Some(_) {
+    count += 1
+  }
+  if self.before_print is Some(_) {
+    count += 1
+  }
+  if self.after_print is Some(_) {
+    count += 1
+  }
+  count
+}
