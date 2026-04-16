@@ -20,6 +20,13 @@ pub fn PdfFile::document(self : PdfFile) -> PdfDocument raise PdfDocumentError {
 }
 
 ///|
+/// Exposes the underlying parsed file for bridge layers that need to copy
+/// indirect objects into another document model.
+pub fn PdfDocument::file(self : PdfDocument) -> PdfFile {
+  self.file
+}
+
+///|
 /// Returns the validated Catalog dictionary facade, including Type Catalog and
 /// the required Pages reference to the root page tree node.
 pub fn PdfDocument::catalog(self : PdfDocument) -> PdfCatalog {
