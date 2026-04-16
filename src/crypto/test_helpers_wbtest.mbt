@@ -1,15 +1,6 @@
 ///|
-let hex_digits = b"0123456789abcdef"
-
-///|
-fn hex(data : Bytes) -> Bytes {
-  let out : Array[Byte] = []
-  for byte in data {
-    let value = byte.to_int()
-    out.push(hex_digits[value / 16])
-    out.push(hex_digits[value % 16])
-  }
-  Bytes::from_array(out)
+fn hex(data : Bytes) -> String {
+  @x_crypto.bytes_to_hex_string(data)
 }
 
 ///|
