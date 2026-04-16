@@ -1,13 +1,11 @@
 ///|
-let default_font_size_estimate : Double = 12.0
-
-///|
-let default_character_width_factor : Double = 0.5
-
-///|
 let column_alignment_threshold : Double = 2.0
 
 ///|
+/// Requirement 1 package separation: this layout estimation engine lives in
+/// the separate `src/layout/` package, depends on `src/text/` TextSpan types,
+/// and does not modify the core text interpreter migrated from
+/// `src/text/layout.mbt`.
 /// Controls the layout estimation thresholds. Values are expressed relative to
 /// estimated text size so callers can tune reconstruction without changing the
 /// text interpreter.
@@ -18,8 +16,12 @@ pub(all) struct LayoutConfig {
 } derive(Eq, Debug)
 
 ///|
-/// A reconstructed word or word-like run with positional metadata and the
-/// source text spans that contributed to it.
+/// Requirement 2 kerning collapse: the engine SHALL merge adjacent glyphs into
+/// words by collapsing small TJ positioning adjustments (kerning). Adjacent
+/// glyph spans whose absolute TJ-positioning-equivalent gap is below
+/// `kerning_threshold_em * 1000` in text-space intent, estimated as
+/// `kerning_threshold_em * font_size` in positioned output, are concatenated
+/// without inserting spaces.
 pub(all) struct LayoutWord {
   text : String
   x : Double
@@ -31,7 +33,10 @@ pub(all) struct LayoutWord {
 } derive(Eq, Debug)
 
 ///|
-/// A logical text line reconstructed from positioned spans.
+/// Requirement 4 line detection: the engine SHALL group words into lines based
+/// on vertical position. Words whose Y-coordinates fall within
+/// `line_tolerance_factor` of the dominant font size are clustered into the
+/// same logical line, then sorted top-to-bottom and left-to-right.
 pub(all) struct LayoutLine {
   y : Double
   dominant_font_size : Double
@@ -40,13 +45,18 @@ pub(all) struct LayoutLine {
 } derive(Eq, Debug)
 
 ///|
-/// Full layout reconstruction result.
+/// Full layout reconstruction result returned by the separate `src/layout/`
+/// package. It contains lines of words with positional metadata and keeps this
+/// estimation layer separate from the `src/text/` interpreter.
 pub(all) struct LayoutResult {
   lines : Array[LayoutLine]
   config : LayoutConfig
 } derive(Eq, Debug)
 
 ///|
+/// Requirement 4 line detection support: group words into lines based on
+/// vertical position by keeping the original `@text.TextSpan` and comparing
+/// X/Y coordinates for top-to-bottom and left-to-right reading order.
 priv struct PositionedSpan {
   span : @text.TextSpan
   x : Double
@@ -55,12 +65,19 @@ priv struct PositionedSpan {
 }
 
 ///|
+/// Requirement 5 paragraph detection: the engine SHALL optionally detect
+/// paragraph boundaries by identifying vertical gaps between lines that exceed
+/// the normal line spacing. RawLayoutLine preserves Y positions so
+/// `paragraph_gap_factor` can insert a blank line separator.
 priv struct RawLayoutLine {
   y : Double
   spans : Array[PositionedSpan]
 }
 
 ///|
+/// Mutable reconstruction state for word detection and kerning collapse.
+/// Explicit space spans and gaps above the kerning threshold produce a word
+/// separator; smaller gaps append the next glyph span to the current word.
 priv struct WordBuilder {
   text : String
   x : Double
@@ -72,6 +89,9 @@ priv struct WordBuilder {
 }
 
 ///|
+/// Requirement 6 configuration defaults: `kerning_threshold_em` defaults to
+/// 0.25, `line_tolerance_factor` defaults to 0.5, and
+/// `paragraph_gap_factor` defaults to 1.5.
 pub fn LayoutConfig::default() -> LayoutConfig {
   LayoutConfig::{
     kerning_threshold_em: 0.25,
@@ -96,7 +116,9 @@ pub fn estimate_layout(
 
 ///|
 /// Formats an estimated layout as plain text with spaces, newlines, tabs for
-/// repeated aligned columns, and blank lines for paragraph breaks.
+/// repeated aligned columns, and blank lines for paragraph detection. A blank
+/// line is emitted when vertical gaps exceed `paragraph_gap_factor` times the
+/// normal line spacing.
 pub fn layout_to_text(result : LayoutResult) -> String {
   let out = StringBuilder::new()
   for line_index in 0..<result.lines.length() {
@@ -331,7 +353,7 @@ fn is_explicit_space_span(span : @text.TextSpan) -> Bool {
 
 ///|
 fn dominant_font_size(positioned : Array[PositionedSpan]) -> Double {
-  let mut value = default_font_size_estimate
+  let mut value = 12.0
   for item in positioned {
     let candidate = matrix_font_size(item.span.text_matrix)
     if candidate > 1.0 {
@@ -344,7 +366,7 @@ fn dominant_font_size(positioned : Array[PositionedSpan]) -> Double {
 
 ///|
 fn line_font_size(line : RawLayoutLine) -> Double {
-  let mut value = default_font_size_estimate
+  let mut value = 12.0
   for item in line.spans {
     let candidate = matrix_font_size(item.span.text_matrix)
     if candidate > 1.0 {
@@ -365,7 +387,7 @@ fn line_average_character_width(
   line : RawLayoutLine,
   font_size : Double,
 ) -> Double {
-  let fallback = font_size * default_character_width_factor
+  let fallback = font_size * 0.5
   let samples : Array[Double] = []
   for index in 1..<line.spans.length() {
     let previous = line.spans[index - 1]
@@ -398,7 +420,7 @@ fn dominant_line_spacing(lines : Array[RawLayoutLine]) -> Double {
     }
   }
   if samples.length() == 0 {
-    default_font_size_estimate
+    12.0
   } else {
     samples.sort()
     samples[0]
