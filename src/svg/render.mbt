@@ -336,6 +336,7 @@ fn page_render_texts_svg(
   match result {
     Ok(program) => {
       let matrices = text_program_span_rendering_matrices(program)
+      let font_families = page_svg_font_families(page)
       for index in 0..<program.spans.length() {
         let span = program.spans[index]
         if span.text.length() > 0 {
@@ -343,6 +344,7 @@ fn page_render_texts_svg(
             builder,
             span,
             span_svg_matrix(matrices, index),
+            span_svg_font_family(font_families, span),
             page_height,
           )
         }
@@ -357,15 +359,125 @@ fn page_render_text_svg(
   builder : StringBuilder,
   span : @text.TextSpan,
   matrix : @text.TextMatrix,
+  font_family : String,
   page_height : Double,
 ) -> Unit {
   builder.write_string("<text transform=\"matrix(")
   write_svg_text_matrix(builder, matrix, page_height)
-  builder.write_string(
-    ")\" font-size=\"1\" font-family=\"sans-serif\" fill=\"#111111\">",
-  )
+  builder.write_string(")\" font-size=\"1\" font-family=\"")
+  write_xml_escaped(builder, font_family)
+  builder.write_string("\" fill=\"#111111\">")
   write_xml_escaped(builder, span.text)
   builder.write_string("</text>")
+}
+
+///|
+fn page_svg_font_families(
+  page : @reader.PdfPage,
+) -> Map[@objects.PdfName, String] {
+  let families : Map[@objects.PdfName, String] = Map::new()
+  let result : Result[@text.TextResources, @reader.PdfDocumentError] = try? page.text_resources()
+  match result {
+    Ok(resources) =>
+      for name, summary in resources.fonts {
+        match font_object_base_font(summary.font_object) {
+          Some(base_font) =>
+            families[name] = svg_font_family_for_base_font(base_font)
+          None => ()
+        }
+      }
+    Err(_) => ()
+  }
+  families
+}
+
+///|
+fn font_object_base_font(object : @objects.PdfObject) -> @objects.PdfName? {
+  match object {
+    @objects.PdfObject::Dictionary(dict) => font_dict_base_font(dict)
+    _ => None
+  }
+}
+
+///|
+fn font_dict_base_font(dict : @objects.PdfDictionary) -> @objects.PdfName? {
+  match dict.get(@objects.PdfName::new(b"BaseFont")) {
+    Some(@objects.PdfObject::Name(name)) => Some(name)
+    _ =>
+      match dict.get(@objects.PdfName::new(b"DescendantFonts")) {
+        Some(@objects.PdfObject::Array(fonts)) =>
+          if fonts.length() > 0 {
+            font_object_base_font(fonts[0])
+          } else {
+            None
+          }
+        _ => None
+      }
+  }
+}
+
+///|
+fn span_svg_font_family(
+  font_families : Map[@objects.PdfName, String],
+  span : @text.TextSpan,
+) -> String {
+  match span.font_name {
+    Some(name) =>
+      match font_families.get(name) {
+        Some(family) => family
+        None => "sans-serif"
+      }
+    None => "sans-serif"
+  }
+}
+
+///|
+fn svg_font_family_for_base_font(base_font : @objects.PdfName) -> String {
+  let normalized = strip_subset_font_tag(base_font)
+  if normalized == @objects.PdfName::new(b"Times-Roman") ||
+    normalized == @objects.PdfName::new(b"Times-Bold") ||
+    normalized == @objects.PdfName::new(b"Times-Italic") ||
+    normalized == @objects.PdfName::new(b"Times-BoldItalic") {
+    "Times New Roman, serif"
+  } else if normalized == @objects.PdfName::new(b"Courier") ||
+    normalized == @objects.PdfName::new(b"Courier-Bold") ||
+    normalized == @objects.PdfName::new(b"Courier-Oblique") ||
+    normalized == @objects.PdfName::new(b"Courier-BoldOblique") {
+    "Courier New, monospace"
+  } else if normalized == @objects.PdfName::new(b"Helvetica") ||
+    normalized == @objects.PdfName::new(b"Helvetica-Bold") ||
+    normalized == @objects.PdfName::new(b"Helvetica-Oblique") ||
+    normalized == @objects.PdfName::new(b"Helvetica-BoldOblique") {
+    "Helvetica, Arial, sans-serif"
+  } else {
+    normalized.to_text() + ", sans-serif"
+  }
+}
+
+///|
+fn strip_subset_font_tag(name : @objects.PdfName) -> @objects.PdfName {
+  let bytes = name.bytes
+  if bytes.length() > 7 && bytes[6] == b'+' && is_subset_font_tag_prefix(bytes) {
+    let out : Array[Byte] = []
+    for index in 7..<bytes.length() {
+      out.push(bytes[index])
+    }
+    @objects.PdfName::new(Bytes::from_array(out))
+  } else {
+    name
+  }
+}
+
+///|
+fn is_subset_font_tag_prefix(bytes : Bytes) -> Bool {
+  let mut ok = true
+  for index in 0..<6 {
+    let byte = bytes[index]
+    if byte < b'A' || byte > b'Z' {
+      ok = false
+    }
+  }
+  ok
 }
 
 ///|
