@@ -1,7 +1,7 @@
 ///|
 /// Defines the `pdf text [options] <input.pdf> [output.txt]` subcommand,
 /// including global page range options `-f` / `--first-page`, `-l` /
-/// `--last-page`, `--password`, and the reserved `--layout` flag.
+/// `--last-page`, `--password`, and the `--layout` flag.
 pub fn text_command() -> @argparse.Command {
   @argparse.Command(
     "text",
@@ -10,7 +10,7 @@ pub fn text_command() -> @argparse.Command {
       @argparse.FlagArg(
         "layout",
         long="layout",
-        about="Reserved for future layout-preserving extraction.",
+        about="Preserve simple text layout with spaces and newlines.",
       ),
     ],
     options=[
@@ -27,14 +27,18 @@ pub fn text_command() -> @argparse.Command {
 
 ///|
 /// Implements the pdftotext-equivalent text subcommand. It extracts Unicode
-/// text with `PdfPage::extracted_text`, applies 1-based clamped page ranges,
-/// separates pages with form-feed characters (`\f`), and writes to stdout or
-/// an optional output text file.
+/// text, optionally reconstructs simple spatial layout, applies 1-based
+/// clamped page ranges, separates pages with form-feed characters (`\f`), and
+/// writes to stdout or an optional output text file.
 pub fn run_text(matches : @argparse.Matches) -> Unit raise {
   let input = required_value(matches, "input")
   let document = open_document(input)
   let range = page_range(matches, document.page_count())
-  let output = extract_document_text(document, range)
+  let output = extract_document_text(
+    document,
+    range,
+    layout=flag_is_set(matches, "layout"),
+  )
   match optional_value(matches, "output") {
     Some(path) => @fs.write_string_to_file(path, output)
     None => println(output)
@@ -45,6 +49,7 @@ pub fn run_text(matches : @argparse.Matches) -> Unit raise {
 fn extract_document_text(
   document : @reader.PdfDocument,
   range : (Int, Int),
+  layout? : Bool = false,
 ) -> String raise {
   let out = StringBuilder::new()
   let (first, last) = range
@@ -54,9 +59,14 @@ fn extract_document_text(
         out.write_string("\f")
       }
       let page = document.page(page_index)
-      let extracted = page.extracted_text(@reader.TextPageOptions::default())
-      for span in extracted.spans {
-        out.write_string(span.text)
+      if layout {
+        let extracted = page.extracted_text(@reader.TextPageOptions::default())
+        out.write_string(extracted.layout_text())
+      } else {
+        let extracted = page.extracted_text(@reader.TextPageOptions::default())
+        for span in extracted.spans {
+          out.write_string(span.text)
+        }
       }
     }
   }

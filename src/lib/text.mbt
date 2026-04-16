@@ -6,6 +6,14 @@ pub fn extract_page_text(page : PdfPage) -> String {
 }
 
 ///|
+/// Extracts text with simple spatial reconstruction: spans are grouped into
+/// lines by Y position, ordered top-to-bottom, and separated by spaces or tabs
+/// when horizontal gaps indicate words or aligned columns.
+pub fn extract_page_text_layout(page : PdfPage) -> String {
+  page.inner.extract_text_layout()
+}
+
+///|
 /// Returns text spans with positional metadata, including text matrix and font
 /// name, for layout-aware consumers.
 /// The function-style alias is `text_spans(page : PdfPage) -> Array[TextSpan]`.
@@ -38,6 +46,12 @@ pub fn extract_all_text(document : PdfDocument) -> String {
 /// Page-level primary entry point for concatenated Unicode text extraction.
 pub fn PdfPage::extract_text(self : PdfPage) -> String {
   extract_page_text(self)
+}
+
+///|
+/// Page-level layout-preserving text extraction entry point.
+pub fn PdfPage::extract_text_layout(self : PdfPage) -> String {
+  extract_page_text_layout(self)
 }
 
 ///|

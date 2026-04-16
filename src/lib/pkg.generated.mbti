@@ -22,6 +22,8 @@ pub fn extract_all_text(PdfDocument) -> String
 
 pub fn extract_page_text(PdfPage) -> String
 
+pub fn extract_page_text_layout(PdfPage) -> String
+
 pub fn open(Bytes) -> PdfDocument raise @reader.PdfDocumentError
 
 pub fn page_height(PdfPage) -> Double
@@ -90,6 +92,7 @@ pub(all) struct PdfPage {
   inner : @reader.PdfPage
 }
 pub fn PdfPage::extract_text(Self) -> String
+pub fn PdfPage::extract_text_layout(Self) -> String
 pub fn PdfPage::extract_text_with_warnings(Self) -> (String, Array[PdfWarning])
 pub fn PdfPage::from_reader(@reader.PdfPage) -> Self
 pub fn PdfPage::height(Self) -> Double

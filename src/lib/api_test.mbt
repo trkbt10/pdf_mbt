@@ -10,6 +10,8 @@ test "lib extract_page_text returns Simple PDF text" {
   let page = document.page(0)
   assert_eq(extract_page_text(page), "HelloWorld")
   assert_eq(page.extract_text(), "HelloWorld")
+  assert_eq(extract_page_text_layout(page), "HelloWorld")
+  assert_eq(page.extract_text_layout(), "HelloWorld")
 }
 
 ///|
