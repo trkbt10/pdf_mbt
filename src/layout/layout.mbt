@@ -62,6 +62,8 @@ priv struct PositionedSpan {
   x : Double
   y : Double
   index : Int
+  end_index : Int
+  source_spans : Array[@text.TextSpan]
 }
 
 ///|
@@ -83,6 +85,7 @@ priv struct WordBuilder {
   x : Double
   y : Double
   end_x : Double
+  end_index : Int
   font_name : @objects.PdfName?
   source_spans : Array[@text.TextSpan]
   separator_before : String
@@ -90,11 +93,11 @@ priv struct WordBuilder {
 
 ///|
 /// Requirement 6 configuration defaults: `kerning_threshold_em` defaults to
-/// 0.25, `line_tolerance_factor` defaults to 0.5, and
+/// 0.30, `line_tolerance_factor` defaults to 0.5, and
 /// `paragraph_gap_factor` defaults to 1.5.
 pub fn LayoutConfig::default() -> LayoutConfig {
   LayoutConfig::{
-    kerning_threshold_em: 0.25,
+    kerning_threshold_em: 0.30,
     line_tolerance_factor: 0.5,
     paragraph_gap_factor: 1.5,
   }
@@ -155,9 +158,12 @@ fn group_text_spans_into_lines(
         x: span.text_matrix.e,
         y: span.text_matrix.f,
         index,
+        end_index: index,
+        source_spans: [span],
       })
     }
   }
+  let positioned = collapse_source_string_runs(positioned)
   positioned.sort_by(compare_positioned_top_to_bottom)
   let y_tolerance = dominant_font_size(positioned) *
     config.line_tolerance_factor
@@ -212,7 +218,7 @@ fn build_layout_words(
 ) -> Array[LayoutWord] {
   let line = raw_lines[line_index]
   let character_width = line_average_character_width(line, font_size)
-  let word_threshold = word_gap_threshold(config, font_size)
+  let kerning_threshold = kerning_gap_threshold(config, font_size)
   let words : Array[LayoutWord] = []
   let mut current : WordBuilder? = None
   let mut pending_separator = ""
@@ -237,14 +243,22 @@ fn build_layout_words(
         }
         Some(builder) => {
           let gap = item.x - builder.end_x
-          let separator = separator_for_gap(
-            raw_lines,
-            line_index,
-            item.x,
-            gap,
-            word_threshold,
-            character_width,
-          )
+          let separator = if has_trailing_space(builder.text) {
+            ""
+          } else if should_merge_source_adjacent(
+              builder, item, gap, font_size, kerning_threshold,
+            ) {
+            ""
+          } else {
+            separator_for_gap(
+              raw_lines,
+              line_index,
+              item.x,
+              gap,
+              kerning_threshold,
+              character_width,
+            )
+          }
           if separator.length() > 0 {
             words.push(builder.finish())
             current = Some(WordBuilder::start(item, character_width, separator))
@@ -273,8 +287,9 @@ fn WordBuilder::start(
     x: item.x,
     y: item.y,
     end_x: span_end_x(item, character_width),
+    end_index: item.end_index,
     font_name: item.span.font_name,
-    source_spans: [item.span],
+    source_spans: item.source_spans.copy(),
     separator_before,
   }
 }
@@ -286,12 +301,15 @@ fn WordBuilder::append(
   character_width : Double,
 ) -> WordBuilder {
   let spans = self.source_spans.copy()
-  spans.push(item.span)
+  for span in item.source_spans {
+    spans.push(span)
+  }
   WordBuilder::{
     text: self.text + item.span.text,
     x: self.x,
     y: self.y,
     end_x: span_end_x(item, character_width),
+    end_index: item.end_index,
     font_name: self.font_name,
     source_spans: spans,
     separator_before: self.separator_before,
@@ -317,13 +335,15 @@ fn separator_for_gap(
   current_line_index : Int,
   x : Double,
   gap : Double,
-  word_threshold : Double,
+  kerning_threshold : Double,
   character_width : Double,
 ) -> String {
-  if gap > character_width * 4.0 &&
+  if gap <= kerning_threshold {
+    ""
+  } else if gap > character_width * 4.0 &&
     detect_table_like_structure(raw_lines, current_line_index, x) {
     "\t"
-  } else if gap > word_threshold {
+  } else if gap > kerning_threshold {
     " "
   } else {
     ""
@@ -347,8 +367,160 @@ fn span_end_x(item : PositionedSpan, character_width : Double) -> Double {
 }
 
 ///|
+fn collapse_source_string_runs(
+  positioned : Array[PositionedSpan],
+) -> Array[PositionedSpan] {
+  let collapsed : Array[PositionedSpan] = []
+  for item in positioned {
+    if collapsed.length() == 0 {
+      collapsed.push(item)
+    } else {
+      let last_index = collapsed.length() - 1
+      let last = collapsed[last_index]
+      if should_collapse_source_run(last, item) {
+        collapsed[last_index] = last.append_source_run(item)
+      } else {
+        collapsed.push(item)
+      }
+    }
+  }
+  collapsed
+}
+
+///|
+fn should_collapse_source_run(
+  left : PositionedSpan,
+  right : PositionedSpan,
+) -> Bool {
+  left.span.offset == right.span.offset &&
+  left.span.source_bytes.length() > 0 &&
+  right.span.source_bytes.length() > 0 &&
+  (left.y - right.y).abs() <= 0.001 &&
+  left.span.font_name == right.span.font_name
+}
+
+///|
+fn PositionedSpan::append_source_run(
+  self : PositionedSpan,
+  item : PositionedSpan,
+) -> PositionedSpan {
+  let mappings = self.span.mappings.copy()
+  for mapping in item.span.mappings {
+    mappings.push(mapping)
+  }
+  let source_spans = self.source_spans.copy()
+  for span in item.source_spans {
+    source_spans.push(span)
+  }
+  PositionedSpan::{
+    span: @text.TextSpan::{
+      offset: self.span.offset,
+      font_name: self.span.font_name,
+      text: self.span.text + item.span.text,
+      mappings,
+      source_bytes: self.span.source_bytes + item.span.source_bytes,
+      text_matrix: self.span.text_matrix,
+    },
+    x: self.x,
+    y: self.y,
+    index: self.index,
+    end_index: item.end_index,
+    source_spans,
+  }
+}
+
+///|
+fn should_merge_source_adjacent(
+  builder : WordBuilder,
+  item : PositionedSpan,
+  gap : Double,
+  font_size : Double,
+  kerning_threshold : Double,
+) -> Bool {
+  item.index == builder.end_index + 1 &&
+  gap <= source_adjacent_word_threshold(font_size, kerning_threshold) &&
+  builder_last_source_has_bytes(builder) &&
+  item.span.source_bytes.length() > 0 &&
+  is_word_continuation(builder.text, item.span.text)
+}
+
+///|
+fn source_adjacent_word_threshold(
+  font_size : Double,
+  kerning_threshold : Double,
+) -> Double {
+  font_size.max(kerning_threshold)
+}
+
+///|
+fn builder_last_source_has_bytes(builder : WordBuilder) -> Bool {
+  if builder.source_spans.length() == 0 {
+    false
+  } else {
+    builder.source_spans[builder.source_spans.length() - 1].source_bytes.length() >
+    0
+  }
+}
+
+///|
+fn is_word_continuation(left : String, right : String) -> Bool {
+  let left_text = left.trim_end().to_string()
+  let right_text = right.trim_start().to_string()
+  if left_text.length() == 0 || right_text.length() == 0 {
+    false
+  } else {
+    let left_chars = left_text.to_array()
+    let right_chars = right_text.to_array()
+    let left_char = left_chars[left_chars.length() - 1]
+    let right_char = right_chars[0]
+    if char_is_hyphen(right_char) {
+      char_is_ascii_alnum(left_char)
+    } else if char_is_ascii_alpha(left_char) && char_is_ascii_alpha(right_char) {
+      char_is_ascii_lower(left_char) ||
+      char_is_ascii_lower(right_char) ||
+      left_chars.length() > 1 ||
+      right_chars.length() > 1
+    } else {
+      false
+    }
+  }
+}
+
+///|
+fn char_is_hyphen(char : Char) -> Bool {
+  char.to_int() == b'-'.to_int()
+}
+
+///|
+fn char_is_ascii_alnum(char : Char) -> Bool {
+  char_is_ascii_alpha(char) || char.is_ascii_digit()
+}
+
+///|
+fn char_is_ascii_alpha(char : Char) -> Bool {
+  char_is_ascii_lower(char) || char_is_ascii_upper(char)
+}
+
+///|
+fn char_is_ascii_lower(char : Char) -> Bool {
+  let value = char.to_int()
+  value >= b'a'.to_int() && value <= b'z'.to_int()
+}
+
+///|
+fn char_is_ascii_upper(char : Char) -> Bool {
+  let value = char.to_int()
+  value >= b'A'.to_int() && value <= b'Z'.to_int()
+}
+
+///|
 fn is_explicit_space_span(span : @text.TextSpan) -> Bool {
   span.text.trim().length() == 0
+}
+
+///|
+fn has_trailing_space(text : String) -> Bool {
+  text.trim_end().length() < text.length()
 }
 
 ///|
@@ -406,7 +578,7 @@ fn line_average_character_width(
 }
 
 ///|
-fn word_gap_threshold(config : LayoutConfig, font_size : Double) -> Double {
+fn kerning_gap_threshold(config : LayoutConfig, font_size : Double) -> Double {
   (font_size * config.kerning_threshold_em).max(1.0)
 }
 

@@ -45,6 +45,70 @@ test "layout text spans collapses kerning-sized glyph gaps" {
 }
 
 ///|
+test "layout text spans collapses dense TJ kerning near character width" {
+  let spans = [
+    layout_span("n", 10.0, 100.0),
+    layout_span("o", 13.0, 100.0),
+    layout_span("n", 16.0, 100.0),
+    layout_span("l", 19.0, 100.0),
+    layout_span("i", 22.0, 100.0),
+    layout_span("n", 25.0, 100.0),
+    layout_span("e", 31.2, 100.0),
+    layout_span("a", 34.2, 100.0),
+    layout_span("r", 37.2, 100.0),
+  ]
+  assert_eq(layout_text_spans(spans), "nonlinear")
+}
+
+///|
+test "layout text spans keeps one TJ source run together before x sorting" {
+  let spans = [
+    layout_pdf_span("com", 10.0, 100.0, 7L),
+    layout_pdf_span("po", 34.0, 100.0, 7L),
+    layout_pdf_span("nents ", 58.0, 100.0, 7L),
+    layout_pdf_span("and", 36.0, 100.0, 9L),
+  ]
+  assert_eq(layout_text_spans(spans), "components and")
+}
+
+///|
+test "layout text spans does not duplicate separator after trailing space" {
+  let spans = [
+    layout_pdf_span("foo ", 10.0, 100.0, 7L),
+    layout_pdf_span("bar", 100.0, 100.0, 9L),
+    layout_pdf_span("baz", 100.0, 80.0, 11L),
+  ]
+  assert_eq(layout_text_spans(spans), "foo bar\nbaz")
+}
+
+///|
+test "layout text spans merges source-adjacent word continuations" {
+  let spans = [
+    layout_pdf_span("com", 10.0, 100.0, 7L),
+    layout_pdf_span("bined", 35.0, 100.0, 9L),
+  ]
+  assert_eq(layout_text_spans(spans), "combined")
+}
+
+///|
+test "layout text spans keeps single-letter absolute placements separated" {
+  let spans = [
+    layout_pdf_span("A", 10.0, 100.0, 7L),
+    layout_pdf_span("B", 22.0, 100.0, 9L),
+  ]
+  assert_eq(layout_text_spans(spans), "A B")
+}
+
+///|
+test "layout text spans keeps larger source-adjacent word gaps separated" {
+  let spans = [
+    layout_pdf_span("foo", 10.0, 100.0, 7L),
+    layout_pdf_span("bar", 44.0, 100.0, 9L),
+  ]
+  assert_eq(layout_text_spans(spans), "foo bar")
+}
+
+///|
 test "layout result exposes reconstructed words" {
   let result = estimate_layout([
     layout_span("ISO", 10.0, 100.0),
@@ -74,6 +138,23 @@ fn layout_span(text : String, x : Double, y : Double) -> @text.TextSpan {
     text,
     mappings: [],
     source_bytes: b"",
+    text_matrix: @text.TextMatrix::translation(x, y),
+  }
+}
+
+///|
+fn layout_pdf_span(
+  text : String,
+  x : Double,
+  y : Double,
+  offset : Int64,
+) -> @text.TextSpan {
+  @text.TextSpan::{
+    offset,
+    font_name: None,
+    text,
+    mappings: [],
+    source_bytes: b"x",
     text_matrix: @text.TextMatrix::translation(x, y),
   }
 }
