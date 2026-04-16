@@ -8,6 +8,17 @@ pub(all) enum FunctionType {
 } derive(Eq, Debug)
 
 ///|
+/// Returns the PDF FunctionType integer for dictionary round-tripping.
+pub fn FunctionType::pdf_code(self : FunctionType) -> Int {
+  match self {
+    Sampled => 0
+    Exponential => 2
+    Stitching => 3
+    Calculator => 4
+  }
+}
+
+///|
 /// Closed numeric interval used by Domain, Range, Encode, and Decode arrays.
 pub(all) struct FunctionInterval {
   min : Double
@@ -30,6 +41,15 @@ pub(all) enum FunctionSource {
 } derive(Eq, Debug)
 
 ///|
+/// Reports whether the source already carries a direct function value.
+pub fn FunctionSource::is_direct(self : FunctionSource) -> Bool {
+  match self {
+    DirectFunction(_) => true
+    IndirectFunction(_) => false
+  }
+}
+
+///|
 /// Typed direct PDF function variants.
 pub(all) enum PdfFunction {
   SampledFunction(SampledFunction)
@@ -49,6 +69,16 @@ pub(all) struct SampleTable {
   values : Array[Double]
   output_count : Int
 } derive(Eq, Debug)
+
+///|
+/// Returns how many complete output samples the table contains.
+pub fn SampleTable::sample_count(self : SampleTable) -> Int {
+  if self.output_count <= 0 {
+    0
+  } else {
+    self.values.length() / self.output_count
+  }
+}
 
 ///|
 pub(all) struct SampledFunction {

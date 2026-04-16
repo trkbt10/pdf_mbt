@@ -30,12 +30,33 @@ pub(all) enum EncryptionStatus {
 } derive(Eq, Debug)
 
 ///|
+/// Reports whether document objects may be decrypted with an available key.
+pub fn EncryptionStatus::is_authorized(self : EncryptionStatus) -> Bool {
+  match self {
+    EncryptedAuthorized => true
+    Unencrypted => false
+    EncryptedUnsupported(_) => false
+  }
+}
+
+///|
 /// Successful Standard security handler authentication mode: user password
 /// access or owner password access.
 pub(all) enum EncryptionAccessMode {
   UserAccess
   OwnerAccess
 } derive(Eq, Debug)
+
+///|
+/// Reports whether authentication succeeded through the owner password path.
+pub fn EncryptionAccessMode::is_owner_access(
+  self : EncryptionAccessMode,
+) -> Bool {
+  match self {
+    OwnerAccess => true
+    UserAccess => false
+  }
+}
 
 ///|
 /// PDF encryption algorithm version from the Encrypt dictionary V entry.
@@ -48,6 +69,16 @@ pub(all) enum CipherVersion {
 } derive(Eq, Debug)
 
 ///|
+/// Returns the default encryption key length in bits for this V value.
+pub fn CipherVersion::default_key_bits(self : CipherVersion) -> Int {
+  match self {
+    V1 => 40
+    V2 | V3 | V4 => 128
+    V5 => 256
+  }
+}
+
+///|
 /// Crypt filter method used to decrypt encrypted strings, encrypted streams,
 /// and embedded-file streams.
 pub(all) enum CryptFilterMethod {
@@ -58,6 +89,15 @@ pub(all) enum CryptFilterMethod {
   AESV3
   Unsupported(Bytes)
 } derive(Eq, Debug)
+
+///|
+/// Reports whether the crypt filter method requires a per-object key.
+pub fn CryptFilterMethod::uses_object_key(self : CryptFilterMethod) -> Bool {
+  match self {
+    V2 | AESV2 => true
+    Identity | None | AESV3 | Unsupported(_) => false
+  }
+}
 
 ///|
 /// Crypt filter authentication event from the CF dictionary.
@@ -89,6 +129,17 @@ pub(all) enum StreamDecryptPurpose {
   EmbeddedFileStream
   ExternalFileStream
 } derive(Eq, Debug)
+
+///|
+/// Reports whether this stream purpose is governed by EncryptMetadata.
+pub fn StreamDecryptPurpose::uses_metadata_policy(
+  self : StreamDecryptPurpose,
+) -> Bool {
+  match self {
+    MetadataStream => true
+    _ => false
+  }
+}
 
 ///|
 /// Parsed /P permission flags exposed after authentication so callers can

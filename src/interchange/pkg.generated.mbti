@@ -66,6 +66,7 @@ pub(all) struct MarkedContentReport {
   points : Array[MarkedContentScope]
   sequences : Array[MarkedContentScope]
 } derive(Eq, @debug.Debug)
+pub fn MarkedContentReport::is_empty(Self) -> Bool
 
 pub(all) struct MarkedContentScope {
   tag : @objects.PdfName
@@ -89,6 +90,7 @@ pub(all) struct PdfDocumentInfo {
   trapped : PdfTrappedStatus
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfDocumentInfo::has_descriptive_entries(Self) -> Bool
 
 pub(all) struct PdfDocumentMetadataSources {
   metadata_stream : PdfMetadataStream?
@@ -117,6 +119,7 @@ pub(all) struct PdfMetadataSourceDiagnostics {
   creation_date : PdfMetadataDateComparison
   mod_date : PdfMetadataDateComparison
 } derive(Eq, @debug.Debug)
+pub fn PdfMetadataSourceDiagnostics::has_any_source(Self) -> Bool
 
 pub(all) struct PdfMetadataStream {
   object_id : @objects.ObjectId?

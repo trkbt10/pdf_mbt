@@ -863,11 +863,13 @@ pub(all) enum PatternDefinition {
   Tiling(TilingPattern)
   Shading(ShadingPattern)
 } derive(Eq, @debug.Debug)
+pub fn PatternDefinition::is_shading(Self) -> Bool
 
 pub(all) enum PatternPaintType {
   Coloured
   Uncoloured
 } derive(Eq, @debug.Debug)
+pub fn PatternPaintType::is_coloured(Self) -> Bool
 
 pub(all) struct PatternParams {
   underlying : ColourSpace?
@@ -998,12 +1000,14 @@ pub(all) struct TilingPattern {
   matrix : GraphicsMatrix
   stream : @objects.PdfStream
 } derive(Eq, @debug.Debug)
+pub fn TilingPattern::requires_underlying_colour(Self) -> Bool
 
 pub(all) enum TilingType {
   ConstantSpacing
   NoDistortion
   ConstantSpacingFast
 } derive(Eq, @debug.Debug)
+pub fn TilingType::allows_distortion(Self) -> Bool
 
 pub(all) struct TransparencyGroup {
   blending_colour_space : ColourSpace?

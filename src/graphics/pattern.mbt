@@ -9,6 +9,15 @@ pub(all) enum PatternPaintType {
 } derive(Eq, Debug)
 
 ///|
+/// Reports whether the pattern cell supplies its own colour values.
+pub fn PatternPaintType::is_coloured(self : PatternPaintType) -> Bool {
+  match self {
+    Coloured => true
+    Uncoloured => false
+  }
+}
+
+///|
 /// Pattern TilingType values controlling spacing relative to the device pixel
 /// grid for a Type 1 tiling pattern dictionary.
 pub(all) enum TilingType {
@@ -16,6 +25,15 @@ pub(all) enum TilingType {
   NoDistortion
   ConstantSpacingFast
 } derive(Eq, Debug)
+
+///|
+/// Reports whether the tiling mode permits device-space distortion.
+pub fn TilingType::allows_distortion(self : TilingType) -> Bool {
+  match self {
+    NoDistortion => false
+    ConstantSpacing | ConstantSpacingFast => true
+  }
+}
 
 ///|
 /// ISO 32000-2 8.7.1 and 8.7.2 Type 1 tiling pattern object.
@@ -34,6 +52,15 @@ pub(all) struct TilingPattern {
 } derive(Eq, Debug)
 
 ///|
+/// Reports whether this tiling pattern requires an underlying colour space.
+pub fn TilingPattern::requires_underlying_colour(self : TilingPattern) -> Bool {
+  match self.paint_type {
+    Uncoloured => true
+    Coloured => false
+  }
+}
+
+///|
 /// Pattern dictionary varieties from ISO 32000-2 8.7.1 General:
 /// Type 1 tiling patterns replicate a pattern cell, while Type 2 shading
 /// patterns define a smooth gradient fill as a Pattern colour value.
@@ -44,6 +71,15 @@ pub(all) enum PatternDefinition {
   Tiling(TilingPattern)
   Shading(ShadingPattern)
 } derive(Eq, Debug)
+
+///|
+/// Reports whether the pattern definition wraps a shading dictionary.
+pub fn PatternDefinition::is_shading(self : PatternDefinition) -> Bool {
+  match self {
+    Shading(_) => true
+    Tiling(_) => false
+  }
+}
 
 ///|
 /// Named Pattern resource entry used by CS/cs and SCN/scn colour operators.

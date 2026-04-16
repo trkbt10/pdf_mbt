@@ -57,6 +57,16 @@ pub(all) struct PdfRectangle {
 } derive(Eq, Debug)
 
 ///|
+/// Returns a rectangle whose lower-left and upper-right coordinates are sorted.
+pub fn PdfRectangle::normalized(self : PdfRectangle) -> PdfRectangle {
+  let left = if self.left <= self.right { self.left } else { self.right }
+  let right = if self.left <= self.right { self.right } else { self.left }
+  let bottom = if self.bottom <= self.top { self.bottom } else { self.top }
+  let top = if self.bottom <= self.top { self.top } else { self.bottom }
+  PdfRectangle::{ left, bottom, right, top }
+}
+
+///|
 pub(all) struct PdfNameTreeEntry {
   key : Bytes
   value : @objects.PdfObject
@@ -67,3 +77,18 @@ pub(all) struct PdfNumberTreeEntry {
   key : Int
   value : @objects.PdfObject
 } derive(Eq, Debug)
+
+///|
+/// Compares this entry key with a caller-supplied number tree key.
+pub fn PdfNumberTreeEntry::compare_key(
+  self : PdfNumberTreeEntry,
+  key : Int,
+) -> Int {
+  if self.key < key {
+    -1
+  } else if self.key > key {
+    1
+  } else {
+    0
+  }
+}

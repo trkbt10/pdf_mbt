@@ -33,6 +33,20 @@ pub(all) struct PdfDocumentInfo {
 } derive(Eq, Debug)
 
 ///|
+/// Reports whether at least one descriptive document-info text field is set.
+pub fn PdfDocumentInfo::has_descriptive_entries(self : PdfDocumentInfo) -> Bool {
+  if self.title is Some(_) {
+    true
+  } else if self.author is Some(_) {
+    true
+  } else if self.subject is Some(_) {
+    true
+  } else {
+    self.keywords is Some(_)
+  }
+}
+
+///|
 /// Read-side comparison state for document information dates and metadata
 /// stream dates. XMP extraction is intentionally unsupported in this feature.
 pub(all) enum PdfMetadataDateComparison {
@@ -51,6 +65,18 @@ pub(all) struct PdfMetadataSourceDiagnostics {
   creation_date : PdfMetadataDateComparison
   mod_date : PdfMetadataDateComparison
 } derive(Eq, Debug)
+
+///|
+/// Reports whether either metadata source was present on the inspected object.
+pub fn PdfMetadataSourceDiagnostics::has_any_source(
+  self : PdfMetadataSourceDiagnostics,
+) -> Bool {
+  if self.has_metadata_stream {
+    true
+  } else {
+    self.has_document_info
+  }
+}
 
 ///|
 /// Aggregate metadata source summary for callers that want Catalog Metadata,
@@ -125,3 +151,13 @@ pub(all) struct MarkedContentReport {
   points : Array[MarkedContentScope]
   sequences : Array[MarkedContentScope]
 } derive(Eq, Debug)
+
+///|
+/// Reports whether analysis found no marked-content points or sequences.
+pub fn MarkedContentReport::is_empty(self : MarkedContentReport) -> Bool {
+  if self.points.length() > 0 {
+    false
+  } else {
+    self.sequences.length() == 0
+  }
+}

@@ -50,7 +50,14 @@ pub(all) enum FilterName {
   JPXDecode
   Unsupported(String)
 }
+pub fn FilterName::is_image_filter(Self) -> Bool
 pub fn FilterName::is_jpx(Self) -> Bool
+pub fn FilterName::is_supported(Self) -> Bool
+pub fn FilterName::to_text(Self) -> String
+
+type FilterSpec
+pub fn FilterSpec::decode_params(Self) -> DecodeParams
+pub fn FilterSpec::filter_name(Self) -> FilterName
 
 pub(all) struct JpxImageData {
   width : Int

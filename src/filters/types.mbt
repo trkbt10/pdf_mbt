@@ -12,7 +12,7 @@ pub(all) enum FilterName {
 }
 
 ///|
-fn FilterName::to_text(self : FilterName) -> String {
+pub fn FilterName::to_text(self : FilterName) -> String {
   match self {
     ASCIIHexDecode => "ASCIIHexDecode"
     ASCII85Decode => "ASCII85Decode"
@@ -27,6 +27,15 @@ fn FilterName::to_text(self : FilterName) -> String {
 }
 
 ///|
+/// Reports whether this filter is one of the supported ISO stream filters.
+pub fn FilterName::is_supported(self : FilterName) -> Bool {
+  match self {
+    Unsupported(_) => false
+    _ => true
+  }
+}
+
+///|
 /// Reports whether this normalized filter name is JPXDecode.
 ///
 /// JPXDecode JPEG 2000 filter integration decoded sample coverage uses this
@@ -36,6 +45,15 @@ fn FilterName::to_text(self : FilterName) -> String {
 pub fn FilterName::is_jpx(self : FilterName) -> Bool {
   match self {
     JPXDecode => true
+    _ => false
+  }
+}
+
+///|
+/// Reports whether this filter normally decodes image sample streams.
+pub fn FilterName::is_image_filter(self : FilterName) -> Bool {
+  match self {
+    DCTDecode | CCITTFaxDecode | JPXDecode => true
     _ => false
   }
 }
@@ -68,7 +86,7 @@ pub fn DecodeParams::columns(
 }
 
 ///|
-priv struct FilterSpec {
+struct FilterSpec {
   name : FilterName
   params : DecodeParams
 }
@@ -79,4 +97,20 @@ fn FilterSpec::new(
   raw : @objects.PdfDictionary?,
 ) -> FilterSpec {
   FilterSpec::{ name, params: DecodeParams::{ raw, } }
+}
+
+///|
+/// Returns the normalized filter name carried by a parsed filter spec.
+pub fn FilterSpec::filter_name(self : FilterSpec) -> FilterName {
+  match self.name {
+    Unsupported(name) => FilterName::Unsupported(name)
+    name => name
+  }
+}
+
+///|
+/// Returns the DecodeParms wrapper carried by a parsed filter spec.
+pub fn FilterSpec::decode_params(self : FilterSpec) -> DecodeParams {
+  let params = self.params
+  DecodeParams::{ raw: params.raw }
 }
