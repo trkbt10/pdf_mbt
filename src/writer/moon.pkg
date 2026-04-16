@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/core/encoding/utf8",
+  "trkbt10/pdf/src/objects",
+  "trkbt10/pdf/src/reader",
+}
+
+import {
+  "trkbt10/pdf/src/parser",
+} for "test"

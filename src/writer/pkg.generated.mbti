@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/writer"
+
+import {
+  "trkbt10/pdf/src/objects",
+  "trkbt10/pdf/src/reader",
+}
+
+// Values
+pub fn append_incremental_update(Bytes, Array[@objects.IndirectObject]) -> Bytes raise @reader.PdfReaderError
+
+pub fn create_compressed_pdf(Bytes) -> Bytes
+
+pub fn create_pdf(Bytes) -> Bytes
+
+pub fn page_content_writing_basic_graphics_path_colour_operators() -> Bytes
+
+pub fn serialize_indirect_object(@objects.IndirectObject) -> Bytes
+
+pub fn serialize_object(@objects.PdfObject) -> Bytes
+
+pub fn text_content(Bytes) -> Bytes
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+
