@@ -8,7 +8,18 @@ test "render_page_svg positions Simple PDF text without page group flip" {
   assert_eq(svg.contains("<text"), true)
   assert_eq(svg.contains("HelloWorld"), true)
   assert_eq(svg.contains("<g transform=\"matrix(1 0 0 -1"), false)
-  assert_eq(svg.contains("<text transform=\"matrix(24 0 0 -24 100 296)"), true)
+  assert_eq(svg.contains("<text transform=\"matrix(24 0 0 24 100 296)"), true)
+}
+
+///|
+test "write_svg_text_matrix flips coordinates without flipping glyphs" {
+  let builder = StringBuilder::new()
+  write_svg_text_matrix(
+    builder,
+    @text.TextMatrix::from_six(2.0, 3.0, 4.0, 5.0, 10.0, 20.0),
+    100.0,
+  )
+  assert_eq(builder.to_string(), "2 -3 -4 5 10 80")
 }
 
 ///|
