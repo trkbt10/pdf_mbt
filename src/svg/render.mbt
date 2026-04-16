@@ -637,7 +637,11 @@ fn page_render_text_svg(
   match positioned {
     Some(text) => {
       builder.write_string(">")
-      write_svg_positioned_tspans(builder, text)
+      write_svg_positioned_tspans(
+        builder,
+        text,
+        svg_use_position_list_tspan(matrix, page_height, font_size, text),
+      )
     }
     None => {
       builder.write_string(">")
@@ -804,10 +808,71 @@ fn string_char_count(value : String) -> Int {
 fn write_svg_positioned_tspans(
   builder : StringBuilder,
   text : SvgPositionedText,
+  use_position_list : Bool,
 ) -> Unit {
   if text.x_values.length() == 0 || text.y_values.length() == 0 {
     return
   }
+  if use_position_list {
+    write_svg_position_list_tspan(builder, text)
+  } else {
+    write_svg_single_position_tspans(builder, text)
+  }
+}
+
+///|
+fn svg_use_position_list_tspan(
+  matrix : @text.TextMatrix,
+  page_height : Double,
+  font_size : Double,
+  text : SvgPositionedText,
+) -> Bool {
+  string_char_count(text.text) > 10 &&
+  svg_text_translation_is_fractional(matrix, page_height, font_size)
+}
+
+///|
+fn svg_text_translation_is_fractional(
+  matrix : @text.TextMatrix,
+  page_height : Double,
+  font_size : Double,
+) -> Bool {
+  let svg_matrix = svg_text_matrix_normalized(matrix, page_height, font_size)
+  svg_number_is_fractional(svg_matrix.e) ||
+  svg_number_is_fractional(svg_matrix.f)
+}
+
+///|
+fn svg_number_is_fractional(value : Double) -> Bool {
+  let rounded = @math.floor(value + 0.5)
+  abs_double(value - rounded) >= 0.001
+}
+
+///|
+fn write_svg_single_position_tspans(
+  builder : StringBuilder,
+  text : SvgPositionedText,
+) -> Unit {
+  let mut index = 0
+  for char in text.text {
+    if index < text.x_values.length() && index < text.y_values.length() {
+      builder.write_string("<tspan x=\"")
+      builder.write_string(format_svg_number(text.x_values[index]))
+      builder.write_string("\" y=\"")
+      builder.write_string(format_svg_number(text.y_values[index]))
+      builder.write_string("\">")
+      write_xml_escaped_char(builder, char)
+      builder.write_string("</tspan>")
+    }
+    index += 1
+  }
+}
+
+///|
+fn write_svg_position_list_tspan(
+  builder : StringBuilder,
+  text : SvgPositionedText,
+) -> Unit {
   builder.write_string("<tspan x=\"")
   write_svg_number_list(builder, text.x_values)
   builder.write_string("\" y=\"")

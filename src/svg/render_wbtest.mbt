@@ -6,13 +6,9 @@ test "render_page_svg positions Simple PDF text without page group flip" {
   let svg = render_page_svg(document.page(0))
   assert_eq(svg.has_prefix("<svg"), true)
   assert_eq(svg.contains("<text"), true)
-  assert_eq(
-    svg.contains(
-      "<tspan x=\"0 17.328 30.672 36 41.328 54.672 77.328 90.672 98.664 103.992\"",
-    ),
-    true,
-  )
-  assert_eq(svg.contains("xml:space=\"preserve\">HelloWorld</tspan>"), true)
+  assert_eq(svg.contains("<tspan x=\"0\" y=\"0\">H</tspan>"), true)
+  assert_eq(svg.contains("<tspan x=\"103.992\" y=\"0\">d</tspan>"), true)
+  assert_eq(svg.contains("xml:space=\"preserve\">HelloWorld</tspan>"), false)
   assert_eq(svg.contains("<g transform=\"matrix(1 0 0 -1"), false)
   assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 100 296)"), true)
   assert_eq(svg.contains("font-size=\"24\""), true)
@@ -38,6 +34,7 @@ test "render_page_svg positions UTF-8 text with text matrix path" {
   let svg = render_page_svg(document.page(0))
   assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 72 99.26)"), true)
   assert_eq(svg.contains("text-rendering=\"geometricPrecision\""), true)
+  assert_eq(svg.contains("<tspan x=\"0 10.672 22.224 32 36.448"), true)
 }
 
 ///|
@@ -81,6 +78,7 @@ test "render_page_svg starts wrapped CalRGB continuation text at line origin" {
   )
   let svg = render_page_svg(document.page(0))
   assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 36 110)"), true)
+  assert_eq(svg.contains("<tspan x=\"0\" y=\"0\">T</tspan>"), true)
   assert_eq(
     svg.contains("<text transform=\"matrix(1 0 0 1 170.028 110)"),
     false,
