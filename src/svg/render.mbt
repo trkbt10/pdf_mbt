@@ -29,9 +29,9 @@ pub fn render_page_svg(page : @reader.PdfPage) -> String {
   builder.write_string(format_svg_number(height))
   builder.write_string("\">")
   builder.write_string("<rect x=\"0\" y=\"0\" width=\"")
-  builder.write_string(format_svg_number(width))
+  builder.write_string(format_svg_number(width + 1.0))
   builder.write_string("\" height=\"")
-  builder.write_string(format_svg_number(height))
+  builder.write_string(format_svg_number(height + 1.0))
   builder.write_string("\" fill=\"#ffffff\"/>")
   page_render_graphics_svg(builder, page, height)
   page_render_texts_svg(builder, page, height)
@@ -805,18 +805,28 @@ fn write_svg_positioned_tspans(
   builder : StringBuilder,
   text : SvgPositionedText,
 ) -> Unit {
-  let mut index = 0
-  for char in text.text {
-    if index < text.x_values.length() && index < text.y_values.length() {
-      builder.write_string("<tspan x=\"")
-      builder.write_string(format_svg_number(text.x_values[index]))
-      builder.write_string("\" y=\"")
-      builder.write_string(format_svg_number(text.y_values[index]))
-      builder.write_string("\">")
-      write_xml_escaped_char(builder, char)
-      builder.write_string("</tspan>")
+  if text.x_values.length() == 0 || text.y_values.length() == 0 {
+    return
+  }
+  builder.write_string("<tspan x=\"")
+  write_svg_number_list(builder, text.x_values)
+  builder.write_string("\" y=\"")
+  write_svg_number_list(builder, text.y_values)
+  builder.write_string("\" xml:space=\"preserve\">")
+  write_xml_escaped(builder, text.text)
+  builder.write_string("</tspan>")
+}
+
+///|
+fn write_svg_number_list(
+  builder : StringBuilder,
+  values : Array[Double],
+) -> Unit {
+  for index in 0..<values.length() {
+    if index > 0 {
+      builder.write_string(" ")
     }
-    index += 1
+    builder.write_string(format_svg_number(values[index]))
   }
 }
 
