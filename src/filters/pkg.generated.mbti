@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn apply_predictor(String, Bytes, DecodeParams) -> Bytes raise PdfFilterError
+
 pub fn decode_ascii85(Bytes) -> Bytes raise PdfFilterError
 
 pub fn decode_ccitt_fax(Bytes, DecodeParams) -> Bytes raise PdfFilterError

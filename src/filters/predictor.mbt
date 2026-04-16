@@ -20,7 +20,9 @@ fn DecodeParams::predictor_context(
 }
 
 ///|
-fn apply_predictor(
+/// Applies FlateDecode predictor PNG Sub Up Average Paeth TIFF
+/// reconstruction rules to already-decoded filter bytes.
+pub fn apply_predictor(
   filter_name : String,
   data : Bytes,
   params : DecodeParams,
