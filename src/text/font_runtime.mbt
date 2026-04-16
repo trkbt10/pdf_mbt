@@ -91,6 +91,21 @@ fn parse_runtime_font_dictionary(
   dict : @objects.PdfDictionary,
   offset : Int64,
   limits : TextInterpretationLimits,
+) -> RuntimeFont {
+  let parsed : Result[RuntimeFont, PdfTextError] = try? parse_runtime_font_dictionary_strict(
+    dict, offset, limits,
+  )
+  match parsed {
+    Ok(font) => font
+    Err(_) => fallback_runtime_font(dict, offset)
+  }
+}
+
+///|
+fn parse_runtime_font_dictionary_strict(
+  dict : @objects.PdfDictionary,
+  offset : Int64,
+  limits : TextInterpretationLimits,
 ) -> RuntimeFont raise PdfTextError {
   let subtype = optional_name_entry(dict, b"Subtype")
   let to_unicode = parse_optional_to_unicode(dict, offset, limits)
@@ -122,6 +137,51 @@ fn parse_runtime_font_dictionary(
         default_width_source: GlyphWidthSource::FontDescriptorMissingWidth,
       }
     }
+  }
+}
+
+///|
+fn fallback_runtime_font(
+  dict : @objects.PdfDictionary,
+  offset : Int64,
+) -> RuntimeFont {
+  let encoding = SimpleEncoding::standard()
+  let widths = fallback_widths(dict, offset)
+  RuntimeFont::{
+    kind: Simple(encoding),
+    to_unicode: None,
+    widths,
+    standard_widths: standard14_simple_widths(dict, encoding, widths),
+    default_width: fallback_missing_width(dict, offset),
+    default_width_source: GlyphWidthSource::FontDescriptorMissingWidth,
+  }
+}
+
+///|
+fn fallback_widths(
+  dict : @objects.PdfDictionary,
+  offset : Int64,
+) -> Map[Int, Double] {
+  let parsed : Result[Map[Int, Double], PdfTextError] = try? parse_widths(
+    dict, offset,
+  )
+  match parsed {
+    Ok(widths) => widths
+    Err(_) => Map::new()
+  }
+}
+
+///|
+fn fallback_missing_width(
+  dict : @objects.PdfDictionary,
+  offset : Int64,
+) -> Double? {
+  let parsed : Result[Double?, PdfTextError] = try? font_descriptor_missing_width(
+    dict, offset,
+  )
+  match parsed {
+    Ok(width) => width
+    Err(_) => Some(500.0)
   }
 }
 
