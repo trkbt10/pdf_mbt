@@ -6,7 +6,8 @@ test "render_page_svg positions Simple PDF text without page group flip" {
   let svg = render_page_svg(document.page(0))
   assert_eq(svg.has_prefix("<svg"), true)
   assert_eq(svg.contains("<text"), true)
-  assert_eq(svg.contains("HelloWorld"), true)
+  assert_eq(svg.contains("<tspan x=\"0\" y=\"0\">H</tspan>"), true)
+  assert_eq(svg.contains("<tspan x=\"103.992\" y=\"0\">d</tspan>"), true)
   assert_eq(svg.contains("<g transform=\"matrix(1 0 0 -1"), false)
   assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 100 296)"), true)
   assert_eq(svg.contains("font-size=\"24\""), true)
@@ -29,7 +30,7 @@ test "render_page_svg writes transformed path coordinates in SVG space" {
   let document = @reader.PdfDocument::open(build_svg_path_fixture())
   let svg = render_page_svg(document.page(0))
   assert_eq(svg.contains("<path"), true)
-  assert_eq(svg.contains("d=\"M 12.000 76.000 L 16.000 72.000 "), true)
+  assert_eq(svg.contains("d=\"M 12 76 L 16 72 "), true)
   assert_eq(svg.contains("fill=\"none\" stroke=\"#000000\""), true)
 }
 

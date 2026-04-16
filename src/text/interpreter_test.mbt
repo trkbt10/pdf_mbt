@@ -68,6 +68,47 @@ test "interpret TJ applies numeric adjustment between source strings" {
 }
 
 ///|
+test "interpret text uses Standard 14 Helvetica widths when Widths is absent" {
+  let font : @objects.PdfDictionary = Map::new()
+  font[@objects.PdfName::new(b"Subtype")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"Type1"),
+  )
+  font[@objects.PdfName::new(b"BaseFont")] = @objects.PdfObject::Name(
+    @objects.PdfName::new(b"Helvetica"),
+  )
+  let font_resources : @objects.PdfDictionary = Map::new()
+  font_resources[@objects.PdfName::new(b"F1")] = @objects.PdfObject::Dictionary(
+    font,
+  )
+  let resources_dict : @objects.PdfDictionary = Map::new()
+  resources_dict[@objects.PdfName::new(b"Font")] = @objects.PdfObject::Dictionary(
+    font_resources,
+  )
+  let resources = TextResources::from_content_resources(
+    @content.ContentResources::from_dictionary(resources_dict),
+    0L,
+  )
+  let content = @content.parse_decoded_content(
+    b"BT /F1 10 Tf 10 20 Td (AV) Tj ET",
+    resources.content_resources,
+  )
+
+  let program = interpret_text(content, resources, TextInitialState::default())
+  match program.events[2] {
+    GlyphShown(event) =>
+      assert_eq(
+        event.glyph.metrics.width_source == GlyphWidthSource::Standard14Fallback,
+        true,
+      )
+    _ => fail("expected first glyph event")
+  }
+  match program.events[3] {
+    GlyphShown(event) => assert_eq(event.text_matrix.e, 16.67)
+    _ => fail("expected second glyph event")
+  }
+}
+
+///|
 test "interpret text rejects showing outside text object" {
   let resources = TextResources::empty()
   let content = @content.parse_decoded_content(

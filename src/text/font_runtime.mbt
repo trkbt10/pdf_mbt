@@ -9,6 +9,7 @@ priv struct RuntimeFont {
   kind : RuntimeFontKind
   to_unicode : ToUnicodeCMap?
   widths : Map[Int, Double]
+  standard_widths : Map[Int, Double]
   default_width : Double?
   default_width_source : GlyphWidthSource
 }
@@ -102,6 +103,7 @@ fn parse_runtime_font_dictionary(
         kind: Composite(cmap),
         to_unicode,
         widths,
+        standard_widths: Map::new(),
         default_width: Some(1000.0),
         default_width_source: GlyphWidthSource::CIDDefaultWidth,
       }
@@ -115,6 +117,7 @@ fn parse_runtime_font_dictionary(
         kind: Simple(encoding),
         to_unicode,
         widths,
+        standard_widths: standard14_simple_widths(dict, encoding, widths),
         default_width,
         default_width_source: GlyphWidthSource::FontDescriptorMissingWidth,
       }
@@ -260,12 +263,294 @@ fn decode_composite_font_string(
 
 ///|
 fn glyph_metrics_for_code(font : RuntimeFont, code : Int) -> GlyphMetrics {
-  GlyphMetrics::resolve_width(
-    code,
-    font.widths,
-    font.default_width,
-    font.default_width_source,
-  )
+  match font.widths.get(code) {
+    Some(width) =>
+      GlyphMetrics::from_horizontal_width(
+        width,
+        GlyphWidthSource::FontDictionary,
+      )
+    None =>
+      match font.standard_widths.get(code) {
+        Some(width) =>
+          GlyphMetrics::from_horizontal_width(
+            width,
+            GlyphWidthSource::Standard14Fallback,
+          )
+        None =>
+          match font.default_width {
+            Some(width) =>
+              GlyphMetrics::from_horizontal_width(
+                width,
+                font.default_width_source,
+              )
+            None => GlyphMetrics::unknown()
+          }
+      }
+  }
+}
+
+///|
+fn standard14_simple_widths(
+  dict : @objects.PdfDictionary,
+  encoding : SimpleEncoding,
+  explicit_widths : Map[Int, Double],
+) -> Map[Int, Double] {
+  let output : Map[Int, Double] = Map::new()
+  if explicit_widths.length() > 0 {
+    return output
+  }
+  match font_dict_base_font(dict) {
+    Some(base_font) =>
+      for code in 0..<256 {
+        let glyph_name = encoding.glyph_name_for_code(code)
+        match standard14_width(base_font, glyph_name) {
+          Some(width) => output[code] = width
+          None => ()
+        }
+      }
+    None => ()
+  }
+  output
+}
+
+///|
+fn font_dict_base_font(dict : @objects.PdfDictionary) -> @objects.PdfName? {
+  match dict.get(@objects.PdfName::new(b"BaseFont")) {
+    Some(@objects.PdfObject::Name(name)) => Some(strip_subset_font_tag(name))
+    _ => None
+  }
+}
+
+///|
+fn strip_subset_font_tag(name : @objects.PdfName) -> @objects.PdfName {
+  let bytes = name.bytes
+  if bytes.length() > 7 && bytes[6] == b'+' && is_subset_font_tag_prefix(bytes) {
+    let out : Array[Byte] = []
+    for index in 7..<bytes.length() {
+      out.push(bytes[index])
+    }
+    @objects.PdfName::new(Bytes::from_array(out))
+  } else {
+    name
+  }
+}
+
+///|
+fn is_subset_font_tag_prefix(bytes : Bytes) -> Bool {
+  let mut ok = true
+  for index in 0..<6 {
+    let byte = bytes[index]
+    if byte < b'A' || byte > b'Z' {
+      ok = false
+    }
+  }
+  ok
+}
+
+///|
+fn standard14_width(
+  base_font : @objects.PdfName,
+  glyph_name : @objects.PdfName,
+) -> Double? {
+  if is_standard14_courier(base_font) {
+    if glyph_name == @objects.PdfName::new(b".notdef") {
+      None
+    } else {
+      Some(600.0)
+    }
+  } else if is_standard14_helvetica(base_font) {
+    helvetica_glyph_width(glyph_name)
+  } else {
+    None
+  }
+}
+
+///|
+fn is_standard14_courier(name : @objects.PdfName) -> Bool {
+  name == @objects.PdfName::new(b"Courier") ||
+  name == @objects.PdfName::new(b"Courier-Bold") ||
+  name == @objects.PdfName::new(b"Courier-Oblique") ||
+  name == @objects.PdfName::new(b"Courier-BoldOblique")
+}
+
+///|
+fn is_standard14_helvetica(name : @objects.PdfName) -> Bool {
+  name == @objects.PdfName::new(b"Helvetica") ||
+  name == @objects.PdfName::new(b"Helvetica-Bold") ||
+  name == @objects.PdfName::new(b"Helvetica-Oblique") ||
+  name == @objects.PdfName::new(b"Helvetica-BoldOblique")
+}
+
+///|
+fn helvetica_glyph_width(name : @objects.PdfName) -> Double? {
+  if name == @objects.PdfName::new(b"space") {
+    Some(278.0)
+  } else if name == @objects.PdfName::new(b"exclam") {
+    Some(278.0)
+  } else if name == @objects.PdfName::new(b"quotedbl") {
+    Some(355.0)
+  } else if name == @objects.PdfName::new(b"numbersign") {
+    Some(556.0)
+  } else if name == @objects.PdfName::new(b"dollar") {
+    Some(556.0)
+  } else if name == @objects.PdfName::new(b"percent") {
+    Some(889.0)
+  } else if name == @objects.PdfName::new(b"ampersand") {
+    Some(667.0)
+  } else if name == @objects.PdfName::new(b"quotesingle") ||
+    name == @objects.PdfName::new(b"quoteright") ||
+    name == @objects.PdfName::new(b"quoteleft") ||
+    name == @objects.PdfName::new(b"grave") {
+    Some(222.0)
+  } else {
+    helvetica_glyph_width_ascii_tail(name)
+  }
+}
+
+///|
+fn helvetica_glyph_width_ascii_tail(name : @objects.PdfName) -> Double? {
+  if name == @objects.PdfName::new(b"parenleft") ||
+    name == @objects.PdfName::new(b"parenright") ||
+    name == @objects.PdfName::new(b"bracketleft") ||
+    name == @objects.PdfName::new(b"bracketright") ||
+    name == @objects.PdfName::new(b"hyphen") {
+    Some(333.0)
+  } else if name == @objects.PdfName::new(b"asterisk") {
+    Some(389.0)
+  } else if name == @objects.PdfName::new(b"plus") ||
+    name == @objects.PdfName::new(b"less") ||
+    name == @objects.PdfName::new(b"equal") ||
+    name == @objects.PdfName::new(b"greater") ||
+    name == @objects.PdfName::new(b"asciitilde") {
+    Some(584.0)
+  } else if name == @objects.PdfName::new(b"comma") ||
+    name == @objects.PdfName::new(b"period") ||
+    name == @objects.PdfName::new(b"slash") ||
+    name == @objects.PdfName::new(b"colon") ||
+    name == @objects.PdfName::new(b"semicolon") ||
+    name == @objects.PdfName::new(b"backslash") ||
+    name == @objects.PdfName::new(b"f") ||
+    name == @objects.PdfName::new(b"t") {
+    Some(278.0)
+  } else if helvetica_glyph_is_digit(name) {
+    Some(556.0)
+  } else if name == @objects.PdfName::new(b"question") {
+    Some(556.0)
+  } else {
+    helvetica_glyph_width_letters(name)
+  }
+}
+
+///|
+fn helvetica_glyph_is_digit(name : @objects.PdfName) -> Bool {
+  name == @objects.PdfName::new(b"zero") ||
+  name == @objects.PdfName::new(b"one") ||
+  name == @objects.PdfName::new(b"two") ||
+  name == @objects.PdfName::new(b"three") ||
+  name == @objects.PdfName::new(b"four") ||
+  name == @objects.PdfName::new(b"five") ||
+  name == @objects.PdfName::new(b"six") ||
+  name == @objects.PdfName::new(b"seven") ||
+  name == @objects.PdfName::new(b"eight") ||
+  name == @objects.PdfName::new(b"nine")
+}
+
+///|
+fn helvetica_glyph_width_letters(name : @objects.PdfName) -> Double? {
+  if name == @objects.PdfName::new(b"at") {
+    Some(1015.0)
+  } else if name == @objects.PdfName::new(b"A") ||
+    name == @objects.PdfName::new(b"B") ||
+    name == @objects.PdfName::new(b"V") ||
+    name == @objects.PdfName::new(b"X") {
+    Some(667.0)
+  } else if name == @objects.PdfName::new(b"C") ||
+    name == @objects.PdfName::new(b"D") ||
+    name == @objects.PdfName::new(b"H") ||
+    name == @objects.PdfName::new(b"N") ||
+    name == @objects.PdfName::new(b"R") ||
+    name == @objects.PdfName::new(b"U") {
+    Some(722.0)
+  } else if name == @objects.PdfName::new(b"E") ||
+    name == @objects.PdfName::new(b"K") ||
+    name == @objects.PdfName::new(b"P") ||
+    name == @objects.PdfName::new(b"Y") {
+    Some(667.0)
+  } else {
+    helvetica_glyph_width_letters_tail(name)
+  }
+}
+
+///|
+fn helvetica_glyph_width_letters_tail(name : @objects.PdfName) -> Double? {
+  if name == @objects.PdfName::new(b"F") ||
+    name == @objects.PdfName::new(b"T") ||
+    name == @objects.PdfName::new(b"Z") {
+    Some(611.0)
+  } else if name == @objects.PdfName::new(b"G") ||
+    name == @objects.PdfName::new(b"O") ||
+    name == @objects.PdfName::new(b"Q") {
+    Some(778.0)
+  } else if name == @objects.PdfName::new(b"I") {
+    Some(278.0)
+  } else if name == @objects.PdfName::new(b"J") {
+    Some(500.0)
+  } else if name == @objects.PdfName::new(b"L") {
+    Some(556.0)
+  } else if name == @objects.PdfName::new(b"M") ||
+    name == @objects.PdfName::new(b"m") {
+    Some(833.0)
+  } else if name == @objects.PdfName::new(b"S") {
+    Some(667.0)
+  } else if name == @objects.PdfName::new(b"W") {
+    Some(944.0)
+  } else {
+    helvetica_glyph_width_lowercase(name)
+  }
+}
+
+///|
+fn helvetica_glyph_width_lowercase(name : @objects.PdfName) -> Double? {
+  if name == @objects.PdfName::new(b"a") ||
+    name == @objects.PdfName::new(b"b") ||
+    name == @objects.PdfName::new(b"d") ||
+    name == @objects.PdfName::new(b"e") ||
+    name == @objects.PdfName::new(b"g") ||
+    name == @objects.PdfName::new(b"h") ||
+    name == @objects.PdfName::new(b"n") ||
+    name == @objects.PdfName::new(b"o") ||
+    name == @objects.PdfName::new(b"p") ||
+    name == @objects.PdfName::new(b"q") ||
+    name == @objects.PdfName::new(b"u") {
+    Some(556.0)
+  } else if name == @objects.PdfName::new(b"c") ||
+    name == @objects.PdfName::new(b"k") ||
+    name == @objects.PdfName::new(b"s") ||
+    name == @objects.PdfName::new(b"v") ||
+    name == @objects.PdfName::new(b"x") ||
+    name == @objects.PdfName::new(b"y") ||
+    name == @objects.PdfName::new(b"z") {
+    Some(500.0)
+  } else if name == @objects.PdfName::new(b"i") ||
+    name == @objects.PdfName::new(b"j") ||
+    name == @objects.PdfName::new(b"l") {
+    Some(222.0)
+  } else if name == @objects.PdfName::new(b"r") {
+    Some(333.0)
+  } else if name == @objects.PdfName::new(b"w") {
+    Some(722.0)
+  } else if name == @objects.PdfName::new(b"asciicircum") {
+    Some(469.0)
+  } else if name == @objects.PdfName::new(b"underscore") {
+    Some(556.0)
+  } else if name == @objects.PdfName::new(b"braceleft") ||
+    name == @objects.PdfName::new(b"braceright") {
+    Some(334.0)
+  } else if name == @objects.PdfName::new(b"bar") {
+    Some(260.0)
+  } else {
+    None
+  }
 }
 
 ///|

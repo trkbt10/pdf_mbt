@@ -20,18 +20,18 @@ pub fn render_page_svg(page : @reader.PdfPage) -> String {
   builder.write_string(
     "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ",
   )
-  builder.write_string(width.to_string())
+  builder.write_string(format_svg_number(width))
   builder.write_string(" ")
-  builder.write_string(height.to_string())
+  builder.write_string(format_svg_number(height))
   builder.write_string("\" width=\"")
-  builder.write_string(width.to_string())
+  builder.write_string(format_svg_number(width))
   builder.write_string("\" height=\"")
-  builder.write_string(height.to_string())
+  builder.write_string(format_svg_number(height))
   builder.write_string("\">")
   builder.write_string("<rect x=\"0\" y=\"0\" width=\"")
-  builder.write_string(width.to_string())
+  builder.write_string(format_svg_number(width))
   builder.write_string("\" height=\"")
-  builder.write_string(height.to_string())
+  builder.write_string(format_svg_number(height))
   builder.write_string("\" fill=\"#ffffff\"/>")
   page_render_graphics_svg(builder, page, height)
   page_render_texts_svg(builder, page, height)
@@ -103,8 +103,17 @@ fn abs_double(value : Double) -> Double {
 ///|
 fn format_svg_number(value : Double) -> String {
   let rounded = @math.floor(abs_double(value) * 1000.0 + 0.5).to_int()
+  if rounded == 0 {
+    return "0"
+  }
   let sign = if value < 0.0 && rounded != 0 { "-" } else { "" }
-  sign + (rounded / 1000).to_string() + "." + fixed3_fraction(rounded % 1000)
+  let whole = (rounded / 1000).to_string()
+  let fraction = rounded % 1000
+  if fraction == 0 {
+    sign + whole
+  } else {
+    sign + whole + "." + trimmed3_fraction(fraction)
+  }
 }
 
 ///|
@@ -117,6 +126,20 @@ fn fixed3_fraction(value : Int) -> String {
     (b'0'.to_int() + tens).unsafe_to_char(),
     (b'0'.to_int() + ones).unsafe_to_char(),
   ])
+}
+
+///|
+fn trimmed3_fraction(value : Int) -> String {
+  if value % 100 == 0 {
+    String::from_array([(b'0'.to_int() + value / 100).unsafe_to_char()])
+  } else if value % 10 == 0 {
+    String::from_array([
+      (b'0'.to_int() + value / 100).unsafe_to_char(),
+      (b'0'.to_int() + value / 10 % 10).unsafe_to_char(),
+    ])
+  } else {
+    fixed3_fraction(value)
+  }
 }
 
 ///|
@@ -306,7 +329,7 @@ fn write_svg_stroke_attributes(
   state : @graphics.GraphicsState,
 ) -> Unit {
   builder.write_string(" stroke-width=\"")
-  builder.write_string(svg_stroke_width(state).to_string())
+  builder.write_string(format_svg_number(svg_stroke_width(state)))
   builder.write_string("\" stroke-linecap=\"")
   builder.write_string(svg_line_cap(state.line_cap))
   builder.write_string("\" stroke-linejoin=\"")
@@ -318,10 +341,10 @@ fn write_svg_stroke_attributes(
       if index > 0 {
         builder.write_string(" ")
       }
-      builder.write_string(state.dash_pattern.array[index].to_string())
+      builder.write_string(format_svg_number(state.dash_pattern.array[index]))
     }
     builder.write_string("\" stroke-dashoffset=\"")
-    builder.write_string(state.dash_pattern.phase.to_string())
+    builder.write_string(format_svg_number(state.dash_pattern.phase))
     builder.write_string("\"")
   }
 }
@@ -419,13 +442,7 @@ fn page_render_image_svg(
         Some(entry) => {
           let href = page_image_data_url(entry, state)
           if href.length() > 0 {
-            builder.write_string(
-              "<image x=\"0\" y=\"0\" width=\"1\" height=\"1\" href=\"",
-            )
-            builder.write_string(href)
-            builder.write_string("\" transform=\"matrix(")
-            write_svg_image_matrix(builder, state.ctm, page_height)
-            builder.write_string(")\"/>")
+            write_svg_image(builder, href, state.ctm, page_height)
           }
         }
         None => ()
@@ -435,22 +452,69 @@ fn page_render_image_svg(
 }
 
 ///|
+fn write_svg_image(
+  builder : StringBuilder,
+  href : String,
+  matrix : @graphics.GraphicsMatrix,
+  page_height : Double,
+) -> Unit {
+  match svg_axis_aligned_image_rect(matrix, page_height) {
+    Some((x, y, width, height)) => {
+      builder.write_string("<image x=\"")
+      builder.write_string(format_svg_number(x))
+      builder.write_string("\" y=\"")
+      builder.write_string(format_svg_number(y))
+      builder.write_string("\" width=\"")
+      builder.write_string(format_svg_number(width))
+      builder.write_string("\" height=\"")
+      builder.write_string(format_svg_number(height))
+      builder.write_string("\" href=\"")
+      builder.write_string(href)
+      builder.write_string("\"/>")
+    }
+    None => {
+      builder.write_string(
+        "<image x=\"0\" y=\"0\" width=\"1\" height=\"1\" href=\"",
+      )
+      builder.write_string(href)
+      builder.write_string("\" transform=\"matrix(")
+      write_svg_image_matrix(builder, matrix, page_height)
+      builder.write_string(")\"/>")
+    }
+  }
+}
+
+///|
+fn svg_axis_aligned_image_rect(
+  matrix : @graphics.GraphicsMatrix,
+  page_height : Double,
+) -> (Double, Double, Double, Double)? {
+  if abs_double(matrix.b) > 0.001 || abs_double(matrix.c) > 0.001 {
+    return None
+  }
+  if matrix.a <= 0.0 || matrix.d <= 0.0 {
+    return None
+  }
+  Some((matrix.e, page_height - matrix.f - matrix.d, matrix.a, matrix.d))
+}
+
+///|
 fn write_svg_image_matrix(
   builder : StringBuilder,
   matrix : @graphics.GraphicsMatrix,
   page_height : Double,
 ) -> Unit {
-  builder.write_string(matrix.a.to_string())
+  builder.write_string(format_svg_number(matrix.a))
   builder.write_string(" ")
-  builder.write_string((0.0 - matrix.b).to_string())
+  builder.write_string(format_svg_number(0.0 - matrix.b))
   builder.write_string(" ")
-  builder.write_string((0.0 - matrix.c).to_string())
+  builder.write_string(format_svg_number(0.0 - matrix.c))
   builder.write_string(" ")
-  builder.write_string(matrix.d.to_string())
+  builder.write_string(format_svg_number(matrix.d))
   builder.write_string(" ")
-  builder.write_string((matrix.e + matrix.c).to_string())
+  builder.write_string(format_svg_number(matrix.e + matrix.c))
   builder.write_string(" ")
-  builder.write_string((page_height - matrix.f - matrix.d).to_string())
+  builder.write_string(format_svg_number(page_height - matrix.f - matrix.d))
 }
 
 ///|
@@ -501,18 +565,14 @@ fn page_render_text_svg(
   builder.write_string("<text transform=\"matrix(")
   write_svg_text_matrix_normalized(builder, matrix, page_height, font_size)
   builder.write_string(")\" font-size=\"")
-  builder.write_string(font_size.to_string())
+  builder.write_string(format_svg_number(font_size))
   builder.write_string("\" text-rendering=\"optimizeSpeed\" font-family=\"")
   write_xml_escaped(builder, font_family)
   builder.write_string("\" fill=\"#000000\"")
   match positioned {
     Some(text) => {
-      builder.write_string(" x=\"")
-      write_double_list(builder, text.x_values)
-      builder.write_string("\" y=\"")
-      write_double_list(builder, text.y_values)
-      builder.write_string("\">")
-      write_xml_escaped(builder, text.text)
+      builder.write_string(">")
+      write_svg_positioned_tspans(builder, text)
     }
     None => {
       builder.write_string(">")
@@ -587,17 +647,17 @@ fn write_svg_text_matrix_normalized(
   font_size : Double,
 ) -> Unit {
   let svg_matrix = svg_text_matrix_normalized(matrix, page_height, font_size)
-  builder.write_string(svg_matrix.a.to_string())
+  builder.write_string(format_svg_number(svg_matrix.a))
   builder.write_string(" ")
-  builder.write_string(svg_matrix.b.to_string())
+  builder.write_string(format_svg_number(svg_matrix.b))
   builder.write_string(" ")
-  builder.write_string(svg_matrix.c.to_string())
+  builder.write_string(format_svg_number(svg_matrix.c))
   builder.write_string(" ")
-  builder.write_string(svg_matrix.d.to_string())
+  builder.write_string(format_svg_number(svg_matrix.d))
   builder.write_string(" ")
-  builder.write_string(svg_matrix.e.to_string())
+  builder.write_string(format_svg_number(svg_matrix.e))
   builder.write_string(" ")
-  builder.write_string(svg_matrix.f.to_string())
+  builder.write_string(format_svg_number(svg_matrix.f))
 }
 
 ///|
@@ -676,12 +736,22 @@ fn string_char_count(value : String) -> Int {
 }
 
 ///|
-fn write_double_list(builder : StringBuilder, values : Array[Double]) -> Unit {
-  for index in 0..<values.length() {
-    if index > 0 {
-      builder.write_string(" ")
+fn write_svg_positioned_tspans(
+  builder : StringBuilder,
+  text : SvgPositionedText,
+) -> Unit {
+  let mut index = 0
+  for char in text.text {
+    if index < text.x_values.length() && index < text.y_values.length() {
+      builder.write_string("<tspan x=\"")
+      builder.write_string(format_svg_number(text.x_values[index]))
+      builder.write_string("\" y=\"")
+      builder.write_string(format_svg_number(text.y_values[index]))
+      builder.write_string("\">")
+      write_xml_escaped_char(builder, char)
+      builder.write_string("</tspan>")
     }
-    builder.write_string(values[index].to_string())
+    index += 1
   }
 }
 
@@ -1288,13 +1358,18 @@ fn base64_char(value : Int) -> Char {
 ///|
 fn write_xml_escaped(builder : StringBuilder, value : String) -> Unit {
   for char in value {
-    match char {
-      '&' => builder.write_string("&amp;")
-      '<' => builder.write_string("&lt;")
-      '>' => builder.write_string("&gt;")
-      '"' => builder.write_string("&quot;")
-      '\'' => builder.write_string("&apos;")
-      _ => builder.write_char(char)
-    }
+    write_xml_escaped_char(builder, char)
+  }
+}
+
+///|
+fn write_xml_escaped_char(builder : StringBuilder, char : Char) -> Unit {
+  match char {
+    '&' => builder.write_string("&amp;")
+    '<' => builder.write_string("&lt;")
+    '>' => builder.write_string("&gt;")
+    '"' => builder.write_string("&quot;")
+    '\'' => builder.write_string("&apos;")
+    _ => builder.write_char(char)
   }
 }
