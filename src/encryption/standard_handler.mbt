@@ -21,7 +21,8 @@ pub fn authenticate(
 }
 
 ///|
-priv struct StandardEncryptionDictionary {
+/// Parsed Standard security handler dictionary used by authentication helpers.
+struct StandardEncryptionDictionary {
   revision : Int
   cipher_version : CipherVersion
   key_length_bytes : Int
@@ -264,7 +265,12 @@ fn verify_legacy_user_entry(
 }
 
 ///|
-fn compute_legacy_user_entry(
+/// Computes the Standard security handler U entry for revision 2, 3, and 4.
+///
+/// This covers ISO 32000 Algorithm 4 for revision 2 and Algorithm 5 for
+/// revisions 3 and 4. Revision 3 and 4 values include the 16-byte padding
+/// tail required by the encryption dictionary entry shape.
+pub fn compute_legacy_user_entry(
   parsed : StandardEncryptionDictionary,
   file_key : Bytes,
   file_id : FileIdentifier,
@@ -307,8 +313,12 @@ fn recover_legacy_owner_user_password(
 }
 
 ///|
+/// Computes the Standard security handler O entry for revision 2, 3, and 4.
+///
+/// The owner password falls back to the user password when empty, then derives
+/// the RC4 wrapping key and encrypted padded user password for the O entry.
 #warnings("-unused_value")
-fn compute_legacy_owner_entry(
+pub fn compute_legacy_owner_entry(
   revision : Int,
   key_length_bytes : Int,
   user_password : Bytes,
@@ -338,7 +348,11 @@ fn compute_legacy_owner_entry(
 }
 
 ///|
-fn verify_aes256_user_password(
+/// Verifies a revision 5 or 6 user password and unwraps the file key.
+///
+/// This is the authentication-side counterpart of ISO 32000 Algorithm 8: it
+/// checks the user validation hash and decrypts UE with the user key salt.
+pub fn verify_aes256_user_password(
   parsed : StandardEncryptionDictionary,
   password : Bytes,
 ) -> Bytes? raise PdfEncryptionError {
@@ -358,7 +372,12 @@ fn verify_aes256_user_password(
 }
 
 ///|
-fn verify_aes256_owner_password(
+/// Verifies a revision 5 or 6 owner password and unwraps the file key.
+///
+/// This is the authentication-side counterpart of ISO 32000 Algorithm 9: it
+/// checks the owner validation hash using the U entry and decrypts OE with the
+/// owner key salt.
+pub fn verify_aes256_owner_password(
   parsed : StandardEncryptionDictionary,
   password : Bytes,
 ) -> Bytes? raise PdfEncryptionError {
@@ -389,7 +408,11 @@ fn verify_aes256_owner_password(
 }
 
 ///|
-fn aes256_hash(
+/// Computes the revision 5 or 6 Standard security handler password hash.
+///
+/// Revision 5 uses SHA-256 directly. Revision 6 uses the iterative AES-CBC
+/// hash from ISO 32000 Algorithm 2.B, shared by Algorithms 8 and 9.
+pub fn aes256_hash(
   revision : Int,
   password : Bytes,
   salt : Bytes,

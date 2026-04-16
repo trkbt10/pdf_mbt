@@ -9,13 +9,23 @@ import {
 }
 
 // Values
+pub fn aes256_hash(Int, Bytes, Bytes, Bytes?) -> Bytes raise PdfEncryptionError
+
 pub fn authenticate(Map[@objects.PdfName, @objects.PdfObject], Bytes, FileIdentifier) -> EncryptionContext? raise PdfEncryptionError
+
+pub fn compute_legacy_owner_entry(Int, Int, Bytes, Bytes) -> Bytes raise PdfEncryptionError
+
+pub fn compute_legacy_user_entry(StandardEncryptionDictionary, Bytes, FileIdentifier) -> Bytes raise PdfEncryptionError
 
 pub fn decrypt_embedded_file_stream(EncryptionContext, @objects.ObjectId, Bytes) -> Bytes raise PdfEncryptionError
 
 pub fn decrypt_stream(EncryptionContext, @objects.ObjectId, Bytes) -> Bytes raise PdfEncryptionError
 
 pub fn decrypt_string(EncryptionContext, @objects.ObjectId, Bytes) -> Bytes raise PdfEncryptionError
+
+pub fn verify_aes256_owner_password(StandardEncryptionDictionary, Bytes) -> Bytes? raise PdfEncryptionError
+
+pub fn verify_aes256_user_password(StandardEncryptionDictionary, Bytes) -> Bytes? raise PdfEncryptionError
 
 pub fn wrap_crypto_error(@crypto.PdfCryptoError) -> PdfEncryptionError
 
@@ -133,6 +143,8 @@ pub(all) struct FileIdentifier {
   second : Bytes?
 } derive(Eq, @debug.Debug)
 pub fn FileIdentifier::has_persistent_pair(Self) -> Bool
+
+type StandardEncryptionDictionary
 
 pub(all) enum StreamDecryptPurpose {
   RegularStream

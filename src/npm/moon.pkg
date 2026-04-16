@@ -1,6 +1,7 @@
 import {
   "moonbitlang/core/math",
   "moonbitlang/core/encoding/utf8",
+  "mizchi/image",
   "trkbt10/pdf/src/reader",
   "trkbt10/pdf/src/text",
   "trkbt10/pdf/src/layout",

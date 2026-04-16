@@ -73,12 +73,14 @@ export default function PdfViewer({
   const [pageImages, setPageImages] = useState<Record<number, PageImagesState>>(
     {}
   );
+  const imageLoadFailures = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setCurrentPageIndex(0);
     setPageSvgs({});
     setPageTexts({});
     setPageImages({});
+    imageLoadFailures.current.clear();
   }, [document]);
 
   const loadPageSvg = useCallback(
@@ -193,8 +195,12 @@ export default function PdfViewer({
       if (!document) {
         return;
       }
+      const loadKey = imageLoadKey(pageIndex, imageIndex);
+      if (imageLoadFailures.current.has(loadKey)) {
+        return;
+      }
       const image = pageImages[pageIndex]?.items[imageIndex];
-      if (!image || image.status !== "idle") {
+      if (!image || image.status !== "idle" || image.error) {
         return;
       }
       setPageImages((states) =>
@@ -220,6 +226,7 @@ export default function PdfViewer({
             })
           );
         } catch (error) {
+          imageLoadFailures.current.add(loadKey);
           setPageImages((states) =>
             updateImageState(states, pageIndex, imageIndex, {
               ...states[pageIndex].items[imageIndex],
@@ -750,10 +757,10 @@ function ImageTile({
   const isVisible = useElementInView(tileRef, "200px");
 
   useEffect(() => {
-    if (isVisible) {
+    if (isVisible && image.status === "idle" && !image.error) {
       loadImageRGBA(imageIndex);
     }
-  }, [imageIndex, isVisible, loadImageRGBA]);
+  }, [image.error, image.status, imageIndex, isVisible, loadImageRGBA]);
 
   const label = image.info
     ? `${image.info.width} x ${image.info.height} ${infoValue(image.info.colorSpace)}`
@@ -765,7 +772,7 @@ function ImageTile({
         <ImageCanvas image={image} />
       ) : image.status === "error" ? (
         <div className="imagePlaceholder" role="status">
-          RGBA unavailable
+          {image.error ?? "RGBA unavailable"}
         </div>
       ) : (
         <button
@@ -777,7 +784,6 @@ function ImageTile({
         </button>
       )}
       <figcaption>{label}</figcaption>
-      {image.status === "error" && <p className="imageError">{image.error}</p>}
     </figure>
   );
 }
@@ -852,6 +858,10 @@ function updateImageState(
     ...states,
     [pageIndex]: { ...page, items },
   };
+}
+
+function imageLoadKey(pageIndex: number, imageIndex: number): string {
+  return `${pageIndex}:${imageIndex}`;
 }
 
 function emptyPageText(status: PageTextState["status"]): PageTextState {

@@ -1,5 +1,10 @@
 ///|
-fn normalize_pipeline(
+/// Normalizes a stream dictionary's Filter and DecodeParms entries into the
+/// ordered filter dispatch plan used by `decode_stream_bytes`.
+///
+/// A missing Filter returns an empty pipeline, a single name returns one
+/// FilterSpec, and arrays require DecodeParms entries to align by index.
+pub fn normalize_pipeline(
   dict : @objects.PdfDictionary,
 ) -> Array[FilterSpec] raise PdfFilterError {
   let filter_key = @objects.PdfName::new(b"Filter")

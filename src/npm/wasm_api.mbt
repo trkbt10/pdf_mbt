@@ -368,12 +368,13 @@ fn page_to_svg(page : @pdfapi.PdfPage) -> String {
   builder.write_string("\" height=\"")
   builder.write_string(height.to_string())
   builder.write_string("\" fill=\"#ffffff\"/>")
-  builder.write_string("<g transform=\"scale(1,-1) translate(0,-")
+  builder.write_string("<g transform=\"matrix(1 0 0 -1 0 ")
   builder.write_string(height.to_string())
   builder.write_string(")\">")
   page_render_graphics_svg(builder, page)
-  page_render_texts_svg(builder, page)
-  builder.write_string("</g></svg>")
+  builder.write_string("</g>")
+  page_render_texts_svg(builder, page, height)
+  builder.write_string("</svg>")
   builder.to_string()
 }
 
@@ -567,7 +568,7 @@ fn page_render_image_svg(
             )
             builder.write_string(href)
             builder.write_string("\" transform=\"matrix(")
-            write_svg_matrix(builder, state.ctm)
+            write_svg_image_matrix(builder, state.ctm)
             builder.write_string(")\"/>")
           }
         }
@@ -578,7 +579,7 @@ fn page_render_image_svg(
 }
 
 ///|
-fn write_svg_matrix(
+fn write_svg_image_matrix(
   builder : StringBuilder,
   matrix : @graphics.GraphicsMatrix,
 ) -> Unit {
@@ -586,19 +587,20 @@ fn write_svg_matrix(
   builder.write_string(" ")
   builder.write_string(matrix.b.to_string())
   builder.write_string(" ")
-  builder.write_string(matrix.c.to_string())
+  builder.write_string((0.0 - matrix.c).to_string())
   builder.write_string(" ")
-  builder.write_string(matrix.d.to_string())
+  builder.write_string((0.0 - matrix.d).to_string())
   builder.write_string(" ")
-  builder.write_string(matrix.e.to_string())
+  builder.write_string((matrix.e + matrix.c).to_string())
   builder.write_string(" ")
-  builder.write_string(matrix.f.to_string())
+  builder.write_string((matrix.f + matrix.d).to_string())
 }
 
 ///|
 fn page_render_texts_svg(
   builder : StringBuilder,
   page : @pdfapi.PdfPage,
+  page_height : Double,
 ) -> Unit {
   let result : Result[@text.TextProgram, @reader.PdfDocumentError] = try? page
     .reader_page()
@@ -609,7 +611,12 @@ fn page_render_texts_svg(
       for index in 0..<program.spans.length() {
         let span = program.spans[index]
         if span.text.length() > 0 {
-          page_render_text_svg(builder, span, span_svg_matrix(matrices, index))
+          page_render_text_svg(
+            builder,
+            span,
+            span_svg_matrix(matrices, index),
+            page_height,
+          )
         }
       }
     }
@@ -622,9 +629,10 @@ fn page_render_text_svg(
   builder : StringBuilder,
   span : @text.TextSpan,
   matrix : @text.TextMatrix,
+  page_height : Double,
 ) -> Unit {
   builder.write_string("<text transform=\"matrix(")
-  write_svg_text_matrix(builder, matrix)
+  write_svg_text_matrix(builder, matrix, page_height)
   builder.write_string(
     ")\" font-size=\"1\" font-family=\"sans-serif\" fill=\"#111111\">",
   )
@@ -636,18 +644,19 @@ fn page_render_text_svg(
 fn write_svg_text_matrix(
   builder : StringBuilder,
   matrix : @text.TextMatrix,
+  page_height : Double,
 ) -> Unit {
   builder.write_string(matrix.a.to_string())
   builder.write_string(" ")
-  builder.write_string(matrix.b.to_string())
+  builder.write_string((0.0 - matrix.b).to_string())
   builder.write_string(" ")
   builder.write_string((0.0 - matrix.c).to_string())
   builder.write_string(" ")
-  builder.write_string((0.0 - matrix.d).to_string())
+  builder.write_string(matrix.d.to_string())
   builder.write_string(" ")
   builder.write_string(matrix.e.to_string())
   builder.write_string(" ")
-  builder.write_string(matrix.f.to_string())
+  builder.write_string((page_height - matrix.f).to_string())
 }
 
 ///|
@@ -1013,7 +1022,8 @@ fn page_image_data_url(
           let raster = @graphics.paint_stencil_mask_with_colour(mask, paint)
           png_data_url(raster.width, raster.height, raster.rgba)
         }
-        @graphics.ExtractedImageData::EncodedImageData(_, _) => ""
+        @graphics.ExtractedImageData::EncodedImageData(data, filters) =>
+          encoded_image_data_url(data, filters)
       }
     Err(_) => ""
   }
@@ -1084,7 +1094,11 @@ fn extracted_image_rgba(data : @graphics.ExtractedImageData) -> Bytes {
   match data {
     DeviceRgbRaster(raster) => raster.rgba
     StencilMaskRaster(mask) => stencil_mask_to_rgba(mask)
-    EncodedImageData(_, _) => b""
+    EncodedImageData(data, _) =>
+      match decode_external_image_bytes(data) {
+        Some(image) => image.data
+        None => b""
+      }
   }
 }
 
@@ -1102,134 +1116,127 @@ fn stencil_mask_to_rgba(mask : @graphics.ImageAlphaMaskRaster) -> Bytes {
 
 ///|
 fn png_data_url(width : Int, height : Int, rgba : Bytes) -> String {
-  if width <= 0 || height <= 0 || rgba.length() != width * height * 4 {
+  match image_data_from_rgba(width, height, rgba) {
+    Some(image) =>
+      match encode_png_bytes(image) {
+        Some(bytes) => "data:image/png;base64," + base64_encode(bytes)
+        None => ""
+      }
+    None => ""
+  }
+}
+
+///|
+fn encoded_image_data_url(
+  data : Bytes,
+  filters : Array[@objects.PdfName],
+) -> String {
+  match decode_external_image_bytes(data) {
+    Some(image) => bmp_data_url(image)
+    None => browser_encoded_image_data_url(data, filters)
+  }
+}
+
+///|
+fn bmp_data_url(image : @image.ImageData) -> String {
+  match encode_bmp_bytes(image) {
+    Some(bytes) => "data:image/bmp;base64," + base64_encode(bytes)
+    None => ""
+  }
+}
+
+///|
+fn browser_encoded_image_data_url(
+  data : Bytes,
+  filters : Array[@objects.PdfName],
+) -> String {
+  if filters.length() != 1 {
     return ""
   }
-  "data:image/png;base64," + base64_encode(rgba_png_bytes(width, height, rgba))
-}
-
-///|
-fn rgba_png_bytes(width : Int, height : Int, rgba : Bytes) -> Bytes {
-  let out : Array[Byte] = []
-  out.push(b'\x89')
-  out.append(b"PNG\r\n\x1a\n".to_array())
-  let ihdr : Array[Byte] = []
-  append_u32_be(ihdr, width.to_int64())
-  append_u32_be(ihdr, height.to_int64())
-  ihdr.push(b'\x08')
-  ihdr.push(b'\x06')
-  ihdr.push(b'\x00')
-  ihdr.push(b'\x00')
-  ihdr.push(b'\x00')
-  append_png_chunk(out, b"IHDR", Bytes::from_array(ihdr))
-  append_png_chunk(
-    out,
-    b"IDAT",
-    encode_zlib_stored(png_scanlines(width, height, rgba)),
-  )
-  append_png_chunk(out, b"IEND", b"")
-  Bytes::from_array(out)
-}
-
-///|
-fn png_scanlines(width : Int, height : Int, rgba : Bytes) -> Bytes {
-  let out : Array[Byte] = []
-  let stride = width * 4
-  for row in 0..<height {
-    out.push(b'\x00')
-    let start = row * stride
-    for index in start..<(start + stride) {
-      out.push(rgba[index])
-    }
-  }
-  Bytes::from_array(out)
-}
-
-///|
-fn append_png_chunk(
-  out : Array[Byte],
-  chunk_type : Bytes,
-  data : Bytes,
-) -> Unit {
-  append_u32_be(out, data.length().to_int64())
-  out.append(chunk_type.to_array())
-  out.append(data.to_array())
-  let crc_data : Array[Byte] = []
-  crc_data.append(chunk_type.to_array())
-  crc_data.append(data.to_array())
-  append_u32_be(out, crc32(Bytes::from_array(crc_data)))
-}
-
-///|
-fn encode_zlib_stored(data : Bytes) -> Bytes {
-  let out : Array[Byte] = []
-  out.push(b'\x78')
-  out.push(b'\x01')
-  append_stored_deflate_blocks(out, data)
-  append_u32_be(out, adler32(data))
-  Bytes::from_array(out)
-}
-
-///|
-fn append_stored_deflate_blocks(out : Array[Byte], data : Bytes) -> Unit {
-  let mut offset = 0
-  while offset < data.length() || offset == 0 {
-    let remaining = data.length() - offset
-    let length = if remaining > 65535 { 65535 } else { remaining }
-    let final_block = offset + length >= data.length()
-    out.push(if final_block { b'\x01' } else { b'\x00' })
-    append_u16_le(out, length)
-    append_u16_le(out, 0xffff ^ length)
-    for index in offset..<(offset + length) {
-      out.push(data[index])
-    }
-    offset = offset + length
-    if data.length() == 0 {
-      break
-    }
+  let filter = filters[0]
+  if filter == @objects.PdfName::new(b"DCTDecode") {
+    "data:image/jpeg;base64," + base64_encode(data)
+  } else if filter == @objects.PdfName::new(b"JPXDecode") {
+    "data:image/jp2;base64," + base64_encode(data)
+  } else {
+    ""
   }
 }
 
 ///|
-fn append_u16_le(out : Array[Byte], value : Int) -> Unit {
-  out.push((value & 0xff).to_byte())
-  out.push(((value >> 8) & 0xff).to_byte())
-}
-
-///|
-fn append_u32_be(out : Array[Byte], value : Int64) -> Unit {
-  out.push(((value >> 24) & 0xffL).to_byte())
-  out.push(((value >> 16) & 0xffL).to_byte())
-  out.push(((value >> 8) & 0xffL).to_byte())
-  out.push((value & 0xffL).to_byte())
-}
-
-///|
-fn adler32(data : Bytes) -> Int64 {
-  let modulus = 65521L
-  let mut s1 = 1L
-  let mut s2 = 0L
-  for byte in data {
-    s1 = (s1 + byte.to_int64()) % modulus
-    s2 = (s2 + s1) % modulus
+fn image_data_from_rgba(
+  width : Int,
+  height : Int,
+  rgba : Bytes,
+) -> @image.ImageData? {
+  if width <= 0 || height <= 0 || rgba.length() != width * height * 4 {
+    None
+  } else {
+    Some(@image.ImageData::{ width, height, data: rgba })
   }
-  (s2 << 16) | s1
 }
 
 ///|
-fn crc32(data : Bytes) -> Int64 {
-  let mut crc = 0xffffffffL
-  for byte in data {
-    crc = crc ^ byte.to_int64()
-    for _ in 0..<8 {
-      if (crc & 1L) == 1L {
-        crc = (crc >> 1) ^ 0xedb88320L
-      } else {
-        crc = crc >> 1
+fn decode_external_image_bytes(data : Bytes) -> @image.ImageData? {
+  match decode_png_image_bytes(data) {
+    Some(image) => Some(image)
+    None =>
+      match decode_bmp_image_bytes(data) {
+        Some(image) => Some(image)
+        None => decode_jpeg_image_bytes(data)
       }
-    }
   }
-  (crc ^ 0xffffffffL) & 0xffffffffL
+}
+
+///|
+fn decode_png_image_bytes(data : Bytes) -> @image.ImageData? {
+  let result : Result[@image.ImageData, @image.DecodeError] = try? @image.decode_png(
+    data,
+  )
+  match result {
+    Ok(image) => Some(image)
+    Err(_) => None
+  }
+}
+
+///|
+fn decode_bmp_image_bytes(data : Bytes) -> @image.ImageData? {
+  let result : Result[@image.ImageData, @image.DecodeError] = try? @image.decode_bmp(
+    data,
+  )
+  match result {
+    Ok(image) => Some(image)
+    Err(_) => None
+  }
+}
+
+///|
+fn decode_jpeg_image_bytes(data : Bytes) -> @image.ImageData? {
+  let result : Result[@image.ImageData, @image.DecodeError] = try? @image.decode_jpeg(
+    data,
+  )
+  match result {
+    Ok(image) => Some(image)
+    Err(_) => None
+  }
+}
+
+///|
+fn encode_png_bytes(image : @image.ImageData) -> Bytes? {
+  let result : Result[Bytes, @image.EncodeError] = try? @image.encode_png(image)
+  match result {
+    Ok(bytes) => Some(bytes)
+    Err(_) => None
+  }
+}
+
+///|
+fn encode_bmp_bytes(image : @image.ImageData) -> Bytes? {
+  let result : Result[Bytes, @image.EncodeError] = try? @image.encode_bmp(image)
+  match result {
+    Ok(bytes) => Some(bytes)
+    Err(_) => None
+  }
 }
 
 ///|

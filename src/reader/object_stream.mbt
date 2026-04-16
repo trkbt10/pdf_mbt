@@ -2,22 +2,28 @@
 priv struct ObjectStreamHeaderPair {
   object_number : Int
   relative_offset : Int
-} derive(Eq, Debug)
+}
 
 ///|
 priv struct ObjectStreamMember {
   object_number : Int
   object : @objects.PdfObject
-} derive(Eq, Debug)
+}
 
 ///|
-priv struct ObjectStreamTable {
+/// Parsed object stream member table indexed by compressed object entry.
+struct ObjectStreamTable {
   offset : Int64
   members : Array[ObjectStreamMember]
-} derive(Eq, Debug)
+}
 
 ///|
-fn parse_object_stream(
+/// Decodes and parses an `/ObjStm` stream into its indexed member table.
+///
+/// The stream is decoded through the structural stream boundary, its header
+/// object/offset pairs are validated, and each member is parsed as exactly one
+/// direct non-stream object.
+pub fn parse_object_stream(
   stream : @objects.PdfStream,
   offset~ : Int64,
 ) -> ObjectStreamTable raise PdfReaderError {

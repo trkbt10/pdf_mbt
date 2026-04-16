@@ -19,6 +19,8 @@ pub fn decode_stream_bytes(Map[@objects.PdfName, @objects.PdfObject], Bytes) -> 
 
 pub fn lookup_ccitt_huffman_code(Array[CcittCode], Int, Int) -> CcittCode?
 
+pub fn normalize_pipeline(Map[@objects.PdfName, @objects.PdfObject]) -> Array[FilterSpec] raise PdfFilterError
+
 // Errors
 pub(all) suberror PdfFilterError {
   InvalidFilterSpec(String)

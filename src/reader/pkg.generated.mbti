@@ -23,6 +23,8 @@ pub fn normalize_file_spec_path(PdfFileSpecPath) -> PdfFileSpecPath
 
 pub fn parse_file_spec_path(Bytes) -> PdfFileSpecPath
 
+pub fn parse_object_stream(@objects.PdfStream, offset~ : Int64) -> ObjectStreamTable raise PdfReaderError
+
 pub fn resolve_file_spec_path(PdfFileSpecPath, PdfFileSpecPath) -> PdfFileSpecPath raise PdfDocumentError
 
 pub fn resolve_file_spec_url_path(Bytes, PdfFileSpecPath) -> Bytes raise PdfDocumentError
@@ -106,6 +108,8 @@ pub(all) enum ObjectLocation {
   Compressed(Int, Int)
 } derive(Eq, @debug.Debug)
 pub fn ObjectLocation::requires_object_stream(Self) -> Bool
+
+type ObjectStreamTable
 
 pub struct ObjectStreamTableCache {
   offset : Int64

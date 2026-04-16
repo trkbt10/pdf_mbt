@@ -1,5 +1,6 @@
 import {
   "moonbitlang/core/math",
+  "mizchi/image",
   "trkbt10/pdf/src/objects",
   "trkbt10/pdf/src/common_data",
   "trkbt10/pdf/src/content",

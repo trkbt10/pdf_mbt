@@ -186,13 +186,79 @@ fn extract_image_data(
   match decoded_result {
     Ok(decoded) => decode_sample_bytes_to_rgb(descriptor, decoded, offset)
     Err(UnsupportedFilter(_)) =>
-      ExtractedImageData::EncodedImageData(data, descriptor.filters.copy())
+      match decode_external_image_bytes(data) {
+        Some(raster) => ExtractedImageData::DeviceRgbRaster(raster)
+        None =>
+          ExtractedImageData::EncodedImageData(data, descriptor.filters.copy())
+      }
     Err(error) =>
       raise PdfGraphicsError::InvalidImage(
         offset,
         "image stream filter decode failed: " + filter_error_label(error),
       )
   }
+}
+
+///|
+fn decode_external_image_bytes(data : Bytes) -> ImageDeviceRgbRaster? {
+  match decode_png_image_bytes(data) {
+    Some(raster) => Some(raster)
+    None =>
+      match decode_bmp_image_bytes(data) {
+        Some(raster) => Some(raster)
+        None => decode_jpeg_image_bytes(data)
+      }
+  }
+}
+
+///|
+fn decode_png_image_bytes(data : Bytes) -> ImageDeviceRgbRaster? {
+  let result : Result[@image.ImageData, @image.DecodeError] = try? @image.decode_png(
+    data,
+  )
+  match result {
+    Ok(image) => image_data_to_device_rgb_raster(image)
+    Err(_) => None
+  }
+}
+
+///|
+fn decode_bmp_image_bytes(data : Bytes) -> ImageDeviceRgbRaster? {
+  let result : Result[@image.ImageData, @image.DecodeError] = try? @image.decode_bmp(
+    data,
+  )
+  match result {
+    Ok(image) => image_data_to_device_rgb_raster(image)
+    Err(_) => None
+  }
+}
+
+///|
+fn decode_jpeg_image_bytes(data : Bytes) -> ImageDeviceRgbRaster? {
+  let result : Result[@image.ImageData, @image.DecodeError] = try? @image.decode_jpeg(
+    data,
+  )
+  match result {
+    Ok(image) => image_data_to_device_rgb_raster(image)
+    Err(_) => None
+  }
+}
+
+///|
+fn image_data_to_device_rgb_raster(
+  image : @image.ImageData,
+) -> ImageDeviceRgbRaster? {
+  if image.width <= 0 || image.height <= 0 {
+    return None
+  }
+  if image.data.length() != image.width * image.height * 4 {
+    return None
+  }
+  Some(ImageDeviceRgbRaster::{
+    width: image.width,
+    height: image.height,
+    rgba: image.data,
+  })
 }
 
 ///|
