@@ -1,5 +1,6 @@
 ///|
-fn decode_ascii85(data : Bytes) -> Bytes raise PdfFilterError {
+/// Decodes an ASCII85Decode stream, requiring the PDF `~>` end marker.
+pub fn decode_ascii85(data : Bytes) -> Bytes raise PdfFilterError {
   let output : Array[Byte] = []
   let mut index = 0
   let mut group_len = 0

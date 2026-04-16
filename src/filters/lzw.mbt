@@ -21,7 +21,8 @@ priv struct LzwDecoder {
 }
 
 ///|
-fn decode_lzw(
+/// Decodes an LZWDecode stream and applies optional DecodeParms predictors.
+pub fn decode_lzw(
   data : Bytes,
   params : DecodeParams,
 ) -> Bytes raise PdfFilterError {

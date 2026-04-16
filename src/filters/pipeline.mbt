@@ -38,7 +38,12 @@ pub fn decode_stream_bytes(
 }
 
 ///|
-fn execute_pipeline(
+/// Executes an already-normalized filter pipeline over encoded bytes.
+///
+/// This is useful when callers have already validated `Filter` and
+/// `DecodeParms` with `normalize_pipeline` and want to reuse that dispatch
+/// plan for one or more stream payloads.
+pub fn execute_pipeline(
   pipeline : Array[FilterSpec],
   data : Bytes,
 ) -> Bytes raise PdfFilterError {

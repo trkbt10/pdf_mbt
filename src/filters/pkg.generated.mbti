@@ -7,15 +7,23 @@ import {
 }
 
 // Values
+pub fn decode_ascii85(Bytes) -> Bytes raise PdfFilterError
+
 pub fn decode_ccitt_fax(Bytes, DecodeParams) -> Bytes raise PdfFilterError
 
 pub fn decode_dct(Bytes, DecodeParams) -> Bytes raise PdfFilterError
 
+pub fn decode_flate(Bytes, DecodeParams) -> Bytes raise PdfFilterError
+
 pub fn decode_jpx_image(Bytes) -> JpxImageData raise PdfFilterError
+
+pub fn decode_lzw(Bytes, DecodeParams) -> Bytes raise PdfFilterError
 
 pub fn decode_stream(@objects.PdfStream) -> Bytes raise PdfFilterError
 
 pub fn decode_stream_bytes(Map[@objects.PdfName, @objects.PdfObject], Bytes) -> Bytes raise PdfFilterError
+
+pub fn execute_pipeline(Array[FilterSpec], Bytes) -> Bytes raise PdfFilterError
 
 pub fn lookup_ccitt_huffman_code(Array[CcittCode], Int, Int) -> CcittCode?
 
