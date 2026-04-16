@@ -60,7 +60,7 @@ pub fn PdfContext::add_page(
   self : PdfContext,
   width : Double,
   height : Double,
-) -> @objects.ObjectId raise PdfContextError {
+) -> @objects.ObjectId {
   let page_ref = @objects.ObjectId::{
     object_number: self.next_object_number,
     generation_number: 0,
@@ -131,8 +131,17 @@ pub fn PdfContext::page_refs(
 fn append_page_to_root(
   context : PdfContext,
   page_ref : @objects.ObjectId,
-) -> Unit raise PdfContextError {
-  let pages = context.require_dictionary(context.pages_ref, "root pages")
+) -> Unit {
+  let pages = match context.objects.get(context.pages_ref.object_number) {
+    Some(@objects.PdfObject::Dictionary(dict)) => dict
+    _ => {
+      let created = empty_pages_dictionary()
+      context.objects[context.pages_ref.object_number] = @objects.PdfObject::Dictionary(
+        created,
+      )
+      created
+    }
+  }
   let kids_key = pdf_key(b"Kids")
   let kids = match pages.get(kids_key) {
     Some(@objects.PdfObject::Array(values)) => values

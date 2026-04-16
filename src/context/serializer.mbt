@@ -353,13 +353,13 @@ priv struct PdfContextTrailerSpec {
   prev : Int64?
   info : @objects.ObjectId?
   file_id : PdfContextFileId?
-} derive(Eq, Debug)
+}
 
 ///|
 priv struct PdfContextXrefEntry {
   id : @objects.ObjectId
   offset : Int64
-} derive(Eq, Debug)
+}
 
 ///|
 fn PdfContextXrefEntry::new(

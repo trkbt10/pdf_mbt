@@ -36,4 +36,4 @@ pub(all) suberror PdfContextError {
 priv struct ContextPageLocation {
   page_ref : @objects.ObjectId
   parent_ref : @objects.ObjectId
-} derive(Eq, Debug)
+}
