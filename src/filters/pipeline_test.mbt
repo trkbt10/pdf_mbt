@@ -93,6 +93,26 @@ test "decode_stream returns raw bytes unchanged when filter is absent" {
 }
 
 ///|
+test "public decode_flate decodes zlib wrapped stored bytes" {
+  let encoded = Bytes::from_array([
+    b'\x78', b'\x01', b'\x01', b'\x00', b'\x00', b'\xff', b'\xff', b'\x00', b'\x00',
+    b'\x00', b'\x01',
+  ])
+
+  let decoded = @filters.decode_flate(encoded)
+
+  assert_eq(decoded, b"")
+}
+
+///|
+test "public msb bit reader reads most-significant-bit-first values" {
+  let reader = @filters.MsbBitReader::new(Bytes::from_array([b'\xb2']))
+
+  assert_eq(reader.read_bits(4), 11)
+  assert_eq(reader.read_bits(4), 2)
+}
+
+///|
 test "decode_stream_bytes applies CCITTFaxDecode with DecodeParms" {
   let dict : @objects.PdfDictionary = Map::new()
   dict[@objects.PdfName::new(b"Filter")] = @objects.PdfObject::Name(

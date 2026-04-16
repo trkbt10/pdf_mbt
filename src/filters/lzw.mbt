@@ -134,7 +134,7 @@ fn LzwDecoder::reset_state(self : LzwDecoder) -> Unit {
 
 ///|
 fn LzwDecoder::read_code(self : LzwDecoder) -> Int? {
-  self.reader.read_bits(self.code_width)
+  self.reader.read_bits_optional(self.code_width)
 }
 
 ///|

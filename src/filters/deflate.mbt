@@ -33,7 +33,7 @@ fn decode_deflate(data : Bytes) -> Bytes raise PdfFilterError {
 
 ///|
 /// Decodes a FlateDecode zlib stream and applies optional DecodeParms predictors.
-pub fn decode_flate(
+pub fn decode_flate_with_params(
   data : Bytes,
   params : DecodeParams,
 ) -> Bytes raise PdfFilterError {

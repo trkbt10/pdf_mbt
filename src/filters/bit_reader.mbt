@@ -58,18 +58,41 @@ fn LsbBitReader::byte_position(self : LsbBitReader) -> Int {
 }
 
 ///|
-priv struct MsbBitReader {
+struct MsbBitReader {
   data : Bytes
   mut bit_position : Int
 }
 
 ///|
-fn MsbBitReader::new(data : Bytes) -> MsbBitReader {
-  MsbBitReader::{ data, bit_position: 0 }
+pub fn MsbBitReader::new(data : Bytes) -> MsbBitReader {
+  let initial_bit_position = 0
+  let reader = MsbBitReader::{ data, bit_position: initial_bit_position }
+  reader
 }
 
 ///|
-fn MsbBitReader::read_bits(self : MsbBitReader, bit_count : Int) -> Int? {
+pub fn MsbBitReader::read_bits(
+  self : MsbBitReader,
+  count : Int,
+) -> Int raise PdfFilterError {
+  if count < 0 {
+    raise PdfFilterError::DecodeError(
+      "LZWDecode", "bit count must be non-negative",
+    )
+  }
+
+  match self.read_bits_optional(count) {
+    Some(value) => value
+    None =>
+      raise PdfFilterError::DecodeError("LZWDecode", "truncated MSB bit stream")
+  }
+}
+
+///|
+fn MsbBitReader::read_bits_optional(
+  self : MsbBitReader,
+  bit_count : Int,
+) -> Int? {
   if bit_count < 0 {
     None
   } else {

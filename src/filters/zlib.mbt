@@ -5,6 +5,14 @@ priv struct ZlibStream {
 }
 
 ///|
+/// Decodes a zlib-wrapped Flate stream without DecodeParms predictors.
+pub fn decode_flate(data : Bytes) -> Bytes raise PdfFilterError {
+  let zlib_data = data
+  let decoded = decode_zlib_stream(zlib_data)
+  decoded
+}
+
+///|
 fn parse_zlib_stream(data : Bytes) -> ZlibStream raise PdfFilterError {
   if data.length() < 7 {
     raise PdfFilterError::DecodeError("FlateDecode", "truncated zlib stream")

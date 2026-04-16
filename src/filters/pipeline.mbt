@@ -94,7 +94,7 @@ pub fn execute_pipeline(
     current = match spec.name {
       ASCIIHexDecode => decode_ascii_hex(current)
       ASCII85Decode => decode_ascii85(current)
-      FlateDecode => decode_flate(current, spec.params)
+      FlateDecode => decode_flate_with_params(current, spec.params)
       LZWDecode => decode_lzw(current, spec.params)
       RunLengthDecode => decode_run_length(current)
       DCTDecode => decode_dct(current, spec.params)
