@@ -295,3 +295,56 @@ pub fn PdfSignatureValidationPlan::has_complete_evidence_route(
     self.evidence_sources.length() > 0 || self.signature.references.length() > 0
   }
 }
+
+///|
+/// True when the signature dictionary exposes signer-facing metadata.
+pub fn PdfSignatureDictionary::has_human_metadata(
+  self : PdfSignatureDictionary,
+) -> Bool {
+  if self.signer_name is Some(bytes) && bytes.length() > 0 {
+    true
+  } else if self.location is Some(bytes) && bytes.length() > 0 {
+    true
+  } else {
+    self.reason is Some(bytes) && bytes.length() > 0
+  }
+}
+
+///|
+/// Counts direct and signature-referenced evidence sources.
+pub fn PdfSignatureValidationPlan::evidence_source_count(
+  self : PdfSignatureValidationPlan,
+) -> Int {
+  let mut count = self.evidence_sources.length()
+  count += self.transform_constraints.length()
+  count += self.signature.references.length()
+  count
+}
+
+///|
+/// True when legal attestation reports rendering or optional-content risk.
+pub fn PdfLegalAttestation::has_rendering_risk(
+  self : PdfLegalAttestation,
+) -> Bool {
+  if self.optional_content == Some(true) {
+    true
+  } else if self.annotations is Some(count) && count > 0 {
+    true
+  } else {
+    self.attestation is Some(bytes) && bytes.length() > 0
+  }
+}
+
+///|
+/// True when permission entries name a signature-based policy handler.
+pub fn PdfPermissionsDictionary::requires_signature_policy(
+  self : PdfPermissionsDictionary,
+) -> Bool {
+  if self.doc_mdp is Some(_) {
+    true
+  } else if self.ur3 is Some(_) {
+    true
+  } else {
+    false
+  }
+}

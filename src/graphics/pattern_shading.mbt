@@ -131,6 +131,28 @@ pub(all) struct TensorPatchMeshShading {
 } derive(Eq, Debug)
 
 ///|
+/// Reports whether the shading pattern temporarily changes graphics state.
+pub fn ShadingPattern::uses_temporary_graphics_state(
+  self : ShadingPattern,
+) -> Bool {
+  if self.ext_gstate is Some(dict) && dict.length() > 0 {
+    true
+  } else {
+    self.matrix != GraphicsMatrix::identity()
+  }
+}
+
+///|
+/// Reports whether the shading kind is encoded as mesh or patch data.
+pub fn ShadingKind::is_mesh_based(self : ShadingKind) -> Bool {
+  match self {
+    FreeFormMesh(_) | LatticeMesh(_) => true
+    CoonsPatchMesh(_) | TensorPatchMesh(_) => true
+    FunctionBased(_) | Axial(_) | Radial(_) => false
+  }
+}
+
+///|
 /// Resolves a Shading resource by name from the Shading subdictionary.
 /// Direct dictionaries and streams are parsed as shading dictionaries; indirect
 /// references are preserved for the caller to resolve.

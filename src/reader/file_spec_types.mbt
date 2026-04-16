@@ -199,3 +199,15 @@ pub fn PdfEmbeddedFileParams::has_integrity_metadata(
     self.creation_date is Some(_) || self.modification_date is Some(_)
   }
 }
+
+///|
+/// True when the embedded file has a declared subtype or parameter payload.
+pub fn PdfEmbeddedFile::has_file_metadata(self : PdfEmbeddedFile) -> Bool {
+  if self.subtype is Some(_) {
+    true
+  } else if self.params is Some(params) {
+    params.has_integrity_metadata()
+  } else {
+    self.raw_dict.length() > 0
+  }
+}

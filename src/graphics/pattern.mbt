@@ -91,6 +91,19 @@ pub(all) enum PatternResource {
 } derive(Eq, Debug)
 
 ///|
+/// Reports whether the resource still needs reader-owned indirect resolution.
+pub fn PatternResource::requires_resolution(self : PatternResource) -> Bool {
+  match self {
+    IndirectPattern(_, _) => true
+    DirectPattern(_, definition) =>
+      match definition {
+        PatternDefinition::Tiling(_) => false
+        PatternDefinition::Shading(_) => false
+      }
+  }
+}
+
+///|
 /// Resolves a Pattern resource by name from the current resource dictionary.
 /// The resource may be a stream Type 1 tiling pattern, a dictionary Type 2
 /// shading pattern, or an indirect pattern object reference.

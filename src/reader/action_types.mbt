@@ -537,3 +537,17 @@ pub fn PdfCatalogAdditionalActions::event_count(
   }
   count
 }
+
+///|
+/// True when a rendition action carries any deferred media or script payload.
+pub fn PdfRenditionAction::has_deferred_payload(
+  self : PdfRenditionAction,
+) -> Bool {
+  if self.rendition is Some(_) {
+    true
+  } else if self.annotation is Some(_) {
+    true
+  } else {
+    self.script is Some(_) || self.operation is Some(_)
+  }
+}

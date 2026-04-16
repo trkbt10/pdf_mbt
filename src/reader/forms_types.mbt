@@ -419,3 +419,42 @@ pub fn PdfAcroForm::has_calculation_workflow(self : PdfAcroForm) -> Bool {
     self.default_appearance is Some(bytes) && bytes.length() > 0
   }
 }
+
+///|
+/// True when the field owns child field dictionaries or widget references.
+pub fn PdfFormField::has_child_or_widget_refs(self : PdfFormField) -> Bool {
+  if self.kids.length() > 0 {
+    true
+  } else if self.widgets.length() > 0 {
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// True when variable-text defaults include reusable appearance resources.
+pub fn PdfVariableTextDescriptor::has_resource_defaults(
+  self : PdfVariableTextDescriptor,
+) -> Bool {
+  if self.default_resources is Some(_) {
+    true
+  } else {
+    match self.default_appearance {
+      Some(bytes) => bytes.length() > 0
+      None => self.quadding is Some(_)
+    }
+  }
+}
+
+///|
+/// True when the AcroForm carries deprecated XFA or appearance-generation data.
+pub fn PdfAcroForm::has_legacy_payload(self : PdfAcroForm) -> Bool {
+  if self.xfa is Some(_) {
+    true
+  } else if self.need_appearances == Some(true) {
+    true
+  } else {
+    self.default_appearance is Some(bytes) && bytes.length() > 0
+  }
+}

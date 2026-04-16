@@ -756,3 +756,16 @@ pub(all) enum PdfMultimediaObject {
   RawDictionary(PdfRawDictionaryPayload)
   RawStream(PdfRawStreamPayload)
 } derive(Eq, Debug)
+
+///|
+/// True when the payload preserves opaque stream or dictionary data.
+pub fn PdfMultimediaPayload::is_opaque_payload(
+  self : PdfMultimediaPayload,
+) -> Bool {
+  match self {
+    Dictionary(_) | Stream(_) => true
+    Object(object) => object != @objects.PdfObject::Null
+    ByteString(bytes) => bytes.bytes.length() > 0
+    Reference(_) => true
+  }
+}

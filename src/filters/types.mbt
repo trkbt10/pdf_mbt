@@ -114,3 +114,45 @@ pub fn FilterSpec::decode_params(self : FilterSpec) -> DecodeParams {
   let params = self.params
   DecodeParams::{ raw: params.raw }
 }
+
+///|
+/// Reports whether this filter is one of the two ASCII armoring filters.
+pub fn FilterName::is_ascii_filter(self : FilterName) -> Bool {
+  match self {
+    ASCIIHexDecode | ASCII85Decode => true
+    FlateDecode | LZWDecode | RunLengthDecode => false
+    DCTDecode | CCITTFaxDecode | JPXDecode => false
+    Unsupported(_) => false
+  }
+}
+
+///|
+/// Reports whether DecodeParms can affect row predictor handling.
+pub fn FilterName::uses_predictor_params(self : FilterName) -> Bool {
+  match self {
+    FlateDecode | LZWDecode => true
+    ASCIIHexDecode | ASCII85Decode | RunLengthDecode => false
+    DCTDecode | CCITTFaxDecode | JPXDecode => false
+    Unsupported(_) => false
+  }
+}
+
+///|
+/// Reports whether raw DecodeParms were supplied for the filter.
+pub fn DecodeParams::has_raw_dictionary(self : DecodeParams) -> Bool {
+  match self.raw {
+    Some(dict) => dict.length() > 0
+    None => false
+  }
+}
+
+///|
+/// Reports whether the parsed filter spec has non-empty DecodeParms.
+pub fn FilterSpec::has_decode_params(self : FilterSpec) -> Bool {
+  let params = self.decode_params()
+  if params.has_raw_dictionary() {
+    true
+  } else {
+    false
+  }
+}

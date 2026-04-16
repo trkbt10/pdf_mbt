@@ -286,3 +286,64 @@ pub fn CryptFilter::decrypts_payload(self : CryptFilter) -> Bool {
     Unsupported(_) => true
   }
 }
+
+///|
+/// True when the context uses the AES-256 file-key path from PDF 2.0.
+pub fn EncryptionContext::uses_aes256_file_key(
+  self : EncryptionContext,
+) -> Bool {
+  match self.cipher_version {
+    V5 => self.file_key.length() == 32
+    V1 | V2 | V3 | V4 => false
+  }
+}
+
+///|
+/// True when any document-changing permission bit is available to callers.
+pub fn DocumentPermissions::allows_document_changes(
+  self : DocumentPermissions,
+) -> Bool {
+  if self.modify || self.annotate {
+    true
+  } else if self.fill_forms || self.assemble {
+    true
+  } else {
+    false
+  }
+}
+
+///|
+/// True when both trailer file identifiers are present and non-empty.
+pub fn FileIdentifier::has_persistent_pair(self : FileIdentifier) -> Bool {
+  if self.first.length() == 0 {
+    false
+  } else {
+    match self.second {
+      Some(value) => value.length() > 0
+      None => false
+    }
+  }
+}
+
+///|
+/// True when encrypted payload metadata names a versioned payload subtype.
+pub fn EncryptedPayloadInfo::has_version_marker(
+  self : EncryptedPayloadInfo,
+) -> Bool {
+  match self.version {
+    Some(bytes) => bytes.length() > 0
+    None => false
+  }
+}
+
+///|
+/// True when the crypt filter is selected by an embedded-file open event.
+pub fn CryptFilterAuthEvent::requires_embedded_file_open(
+  self : CryptFilterAuthEvent,
+) -> Bool {
+  match self {
+    EFOpen => true
+    DocOpen => false
+    Unsupported(_) => false
+  }
+}

@@ -141,6 +141,7 @@ pub(all) struct PdfAcroForm {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 pub fn PdfAcroForm::has_calculation_workflow(Self) -> Bool
+pub fn PdfAcroForm::has_legacy_payload(Self) -> Bool
 pub fn PdfAcroForm::has_signature_workflow(Self) -> Bool
 
 pub(all) struct PdfAction {
@@ -693,6 +694,7 @@ pub(all) struct PdfEmbeddedFile {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
   raw_object : @objects.PdfObject
 } derive(Eq, @debug.Debug)
+pub fn PdfEmbeddedFile::has_file_metadata(Self) -> Bool
 
 pub(all) struct PdfEmbeddedFileEntry {
   name : Bytes
@@ -742,6 +744,7 @@ pub(all) struct PdfFDFCatalog {
   fdf : PdfFDFDictionary?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfFDFCatalog::has_fdf_payload(Self) -> Bool
 
 pub(all) struct PdfFDFDictionary {
   file : PdfFDFFileSpecification?
@@ -756,12 +759,14 @@ pub(all) struct PdfFDFDictionary {
   javascript : @objects.PdfObject?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfFDFDictionary::has_document_payload(Self) -> Bool
 
 pub(all) struct PdfFDFDocument {
   catalog : PdfFDFCatalog
   objects : Array[PdfFDFObjectRecord]
   trailer : Map[@objects.PdfName, @objects.PdfObject]?
 } derive(Eq, @debug.Debug)
+pub fn PdfFDFDocument::object_count(Self) -> Int
 
 pub(all) struct PdfFDFField {
   partial_name : Bytes?
@@ -776,6 +781,7 @@ pub(all) struct PdfFDFField {
   clear_widget_flags : Int?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfFDFField::has_import_payload(Self) -> Bool
 
 pub(all) struct PdfFDFFileSpecification {
   file : @objects.PdfObject?
@@ -783,11 +789,13 @@ pub(all) struct PdfFDFFileSpecification {
   target : @objects.PdfObject?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]?
 } derive(Eq, @debug.Debug)
+pub fn PdfFDFFileSpecification::has_locator(Self) -> Bool
 
 pub(all) struct PdfFDFObjectRecord {
   object_id : @objects.ObjectId
   value : @objects.PdfObject
 } derive(Eq, @debug.Debug)
+pub fn PdfFDFObjectRecord::is_catalog_candidate(Self) -> Bool
 
 pub struct PdfFile {
   bytes : Bytes
@@ -915,6 +923,7 @@ pub(all) struct PdfFormField {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 pub fn PdfFormField::has_action_hooks(Self) -> Bool
+pub fn PdfFormField::has_child_or_widget_refs(Self) -> Bool
 pub fn PdfFormField::is_terminal(Self) -> Bool
 pub fn PdfFormField::requires_appearance_generation(Self) -> Bool
 pub fn PdfFormField::total_selection_count(Self) -> Int
@@ -1004,6 +1013,7 @@ pub(all) struct PdfGeospatialMeasure {
   pcsm : @objects.PdfObject?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfGeospatialMeasure::has_coordinate_registration(Self) -> Bool
 
 pub(all) struct PdfGoTo3DViewAction {
   target_annotation : @objects.PdfObject
@@ -1088,6 +1098,7 @@ pub(all) struct PdfLegalAttestation {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 pub fn PdfLegalAttestation::declares_action_risk(Self) -> Bool
+pub fn PdfLegalAttestation::has_rendering_risk(Self) -> Bool
 
 pub(all) struct PdfLineAnnotation {
   coordinates : PdfLineCoordinates
@@ -1180,6 +1191,7 @@ pub(all) struct PdfMeasure {
   number_formats : Array[PdfNumberFormatDescriptor]
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfMeasure::has_measurement_payload(Self) -> Bool
 
 pub(all) enum PdfMeasureKind {
   Rectilinear
@@ -1389,6 +1401,7 @@ pub(all) enum PdfMultimediaPayload {
   Dictionary(PdfRawDictionaryPayload)
   Stream(PdfRawStreamPayload)
 } derive(Eq, @debug.Debug)
+pub fn PdfMultimediaPayload::is_opaque_payload(Self) -> Bool
 
 pub(all) struct PdfMultimediaUnknownName {
   name : @objects.PdfName
@@ -1583,6 +1596,7 @@ pub(all) struct PdfPermissionsDictionary {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 pub fn PdfPermissionsDictionary::has_permission_handlers(Self) -> Bool
+pub fn PdfPermissionsDictionary::requires_signature_policy(Self) -> Bool
 
 pub(all) struct PdfPoint {
   x : Double
@@ -1712,6 +1726,7 @@ pub(all) struct PdfRenditionAction {
   script : @objects.PdfObject?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfRenditionAction::has_deferred_payload(Self) -> Bool
 
 pub(all) struct PdfRenditionCommon {
   object_id : @objects.ObjectId?
@@ -1933,6 +1948,7 @@ pub(all) struct PdfSignatureDictionary {
 } derive(Eq, @debug.Debug)
 pub fn PdfSignatureDictionary::declares_etsi_profile(Self) -> Bool
 pub fn PdfSignatureDictionary::has_digest_material(Self) -> Bool
+pub fn PdfSignatureDictionary::has_human_metadata(Self) -> Bool
 
 pub(all) struct PdfSignatureField {
   field : PdfFormField
@@ -1969,6 +1985,7 @@ pub(all) struct PdfSignatureValidationPlan {
   transform_constraints : Array[PdfSignatureReference]
   evidence_sources : Array[@objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfSignatureValidationPlan::evidence_source_count(Self) -> Int
 pub fn PdfSignatureValidationPlan::has_complete_evidence_route(Self) -> Bool
 
 pub(all) struct PdfSimpleFileSpecification {
@@ -2463,6 +2480,7 @@ pub(all) struct PdfVariableTextDescriptor {
   default_resources : @objects.PdfObject?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfVariableTextDescriptor::has_resource_defaults(Self) -> Bool
 pub fn PdfVariableTextDescriptor::has_styled_payload(Self) -> Bool
 
 pub(all) struct PdfVersion {

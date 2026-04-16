@@ -62,3 +62,17 @@ pub(all) struct PdfPointData {
   tuples : Array[Array[Double]]
   raw_dict : @objects.PdfDictionary
 } derive(Eq, Debug)
+
+///|
+/// True when geospatial registration has both PDF and earth coordinate data.
+pub fn PdfGeospatialMeasure::has_coordinate_registration(
+  self : PdfGeospatialMeasure,
+) -> Bool {
+  if self.gpts.length() == 0 || self.lpts.length() == 0 {
+    false
+  } else if self.geographic_coordinate_system is Some(_) {
+    true
+  } else {
+    self.display_coordinate_system is Some(_)
+  }
+}

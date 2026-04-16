@@ -54,6 +54,16 @@ pub fn XObjectType::is_form(self : XObjectType) -> Bool {
 }
 
 ///|
+/// Reports whether the resource still needs reader-owned object loading.
+pub fn XObjectResource::requires_resolution(self : XObjectResource) -> Bool {
+  match self {
+    UnresolvedXObject(_, _) => true
+    ImageResource(_) => false
+    FormResource(_) => false
+  }
+}
+
+///|
 /// Resolves the named XObject resource used by the `Do` operator from content
 /// streams. Missing resources, null values, non-stream direct objects, and
 /// unsupported XObject Subtype names are reported as InvalidXObject errors.

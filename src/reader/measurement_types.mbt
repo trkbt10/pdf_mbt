@@ -49,3 +49,15 @@ pub(all) struct PdfViewport {
   point_data : @objects.PdfObject?
   raw_dict : @objects.PdfDictionary
 } derive(Eq, Debug)
+
+///|
+/// True when the measure carries data beyond a bare subtype marker.
+pub fn PdfMeasure::has_measurement_payload(self : PdfMeasure) -> Bool {
+  if self.scale_ratio is Some(bytes) && bytes.length() > 0 {
+    true
+  } else if self.number_formats.length() > 0 {
+    true
+  } else {
+    self.raw_dict.length() > 0 && self.subtype is Some(_)
+  }
+}

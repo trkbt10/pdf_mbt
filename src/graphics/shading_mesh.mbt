@@ -16,6 +16,18 @@ pub(all) struct PatchMeshSummary {
 } derive(Eq, Debug)
 
 ///|
+/// Reports whether decoded mesh data contains at least one triangle.
+pub fn MeshSummary::has_renderable_triangles(self : MeshSummary) -> Bool {
+  if self.vertex_count < 3 {
+    false
+  } else if self.triangle_count <= 0 {
+    false
+  } else {
+    self.decoded_length > 0
+  }
+}
+
+///|
 struct MsbBitReader {
   data : Bytes
   mut bit_position : Int

@@ -81,3 +81,75 @@ pub(all) struct PdfFDFDocument {
   objects : Array[PdfFDFObjectRecord]
   trailer : @objects.PdfDictionary?
 } derive(Eq, Debug)
+
+///|
+/// True when the record can serve as an FDF catalog object candidate.
+pub fn PdfFDFObjectRecord::is_catalog_candidate(
+  self : PdfFDFObjectRecord,
+) -> Bool {
+  match self.value {
+    @objects.PdfObject::Dictionary(dict) =>
+      dict.contains(@objects.PdfName::new(b"FDF"))
+    _ => false
+  }
+}
+
+///|
+/// True when the FDF file spec carries any source or target locator.
+pub fn PdfFDFFileSpecification::has_locator(
+  self : PdfFDFFileSpecification,
+) -> Bool {
+  if self.file is Some(_) || self.identifier is Some(_) {
+    true
+  } else {
+    self.target is Some(_) || self.raw_dict is Some(_)
+  }
+}
+
+///|
+/// True when the FDF field has value, child, or flag update data.
+pub fn PdfFDFField::has_import_payload(self : PdfFDFField) -> Bool {
+  if self.value is Some(_) || self.default_value is Some(_) {
+    true
+  } else if self.kids.length() > 0 {
+    true
+  } else {
+    self.flags is Some(_) ||
+    self.set_flags is Some(_) ||
+    self.clear_flags is Some(_)
+  }
+}
+
+///|
+/// True when the FDF dictionary carries field, annotation, or update data.
+pub fn PdfFDFDictionary::has_document_payload(self : PdfFDFDictionary) -> Bool {
+  if self.fields.length() > 0 || self.annotations.length() > 0 {
+    true
+  } else if self.pages.length() > 0 || self.differences is Some(_) {
+    true
+  } else {
+    self.embedded_fdf is Some(_) || self.javascript is Some(_)
+  }
+}
+
+///|
+/// True when the catalog points at an FDF dictionary or keeps raw entries.
+pub fn PdfFDFCatalog::has_fdf_payload(self : PdfFDFCatalog) -> Bool {
+  if self.fdf is Some(fdf) {
+    fdf.has_document_payload()
+  } else if self.version is Some(_) {
+    true
+  } else {
+    self.raw_dict.length() > 0
+  }
+}
+
+///|
+/// Counts indirect body records preserved by this FDF document.
+pub fn PdfFDFDocument::object_count(self : PdfFDFDocument) -> Int {
+  let mut count = self.objects.length()
+  if self.trailer is Some(_) {
+    count += 1
+  }
+  count
+}

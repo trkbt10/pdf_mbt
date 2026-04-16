@@ -56,6 +56,7 @@ pub(all) enum CryptFilterAuthEvent {
   EFOpen
   Unsupported(Bytes)
 } derive(Eq, @debug.Debug)
+pub fn CryptFilterAuthEvent::requires_embedded_file_open(Self) -> Bool
 
 pub(all) enum CryptFilterMethod {
   Identity
@@ -78,6 +79,7 @@ pub(all) struct DocumentPermissions {
   assemble : Bool
   high_quality_print : Bool
 } derive(Eq, @debug.Debug)
+pub fn DocumentPermissions::allows_document_changes(Self) -> Bool
 pub fn DocumentPermissions::from_raw(Int64) -> Self
 pub fn DocumentPermissions::unrestricted() -> Self
 
@@ -85,6 +87,7 @@ pub(all) struct EncryptedPayloadInfo {
   subtype : @objects.PdfName
   version : Bytes?
 } derive(Eq, @debug.Debug)
+pub fn EncryptedPayloadInfo::has_version_marker(Self) -> Bool
 
 pub(all) enum EncryptionAccessMode {
   UserAccess
@@ -106,6 +109,7 @@ pub(all) struct EncryptionContext {
 } derive(Eq, @debug.Debug)
 pub fn EncryptionContext::can_decrypt_objects(Self) -> Bool
 pub fn EncryptionContext::crypt_filter_for_stream(Self, StreamDecryptPurpose) -> CryptFilter
+pub fn EncryptionContext::uses_aes256_file_key(Self) -> Bool
 
 pub(all) struct EncryptionCredentials {
   password : Bytes
@@ -124,6 +128,7 @@ pub(all) struct FileIdentifier {
   first : Bytes
   second : Bytes?
 } derive(Eq, @debug.Debug)
+pub fn FileIdentifier::has_persistent_pair(Self) -> Bool
 
 pub(all) enum StreamDecryptPurpose {
   RegularStream

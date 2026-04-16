@@ -793,6 +793,7 @@ pub(all) struct MeshSummary {
   triangle_count : Int
   decoded_length : Int
 } derive(Eq, @debug.Debug)
+pub fn MeshSummary::has_renderable_triangles(Self) -> Bool
 
 type MsbBitReader derive(Eq, @debug.Debug)
 
@@ -879,6 +880,7 @@ pub(all) enum PatternResource {
   DirectPattern(@objects.PdfName, PatternDefinition)
   IndirectPattern(@objects.PdfName, @objects.ObjectId)
 } derive(Eq, @debug.Debug)
+pub fn PatternResource::requires_resolution(Self) -> Bool
 
 pub(all) struct RadialShading {
   coords : Array[Double]
@@ -929,12 +931,14 @@ pub(all) enum ShadingKind {
   CoonsPatchMesh(CoonsPatchMeshShading)
   TensorPatchMesh(TensorPatchMeshShading)
 } derive(Eq, @debug.Debug)
+pub fn ShadingKind::is_mesh_based(Self) -> Bool
 
 pub(all) struct ShadingPattern {
   shading : ShadingResource
   matrix : GraphicsMatrix
   ext_gstate : Map[@objects.PdfName, @objects.PdfObject]?
 } derive(Eq, @debug.Debug)
+pub fn ShadingPattern::uses_temporary_graphics_state(Self) -> Bool
 
 pub(all) enum ShadingResource {
   DirectShading(@objects.PdfName?, Shading)
@@ -1028,6 +1032,7 @@ pub(all) enum XObjectResource {
   FormResource(FormXObject)
   UnresolvedXObject(@objects.PdfName, @objects.ObjectId)
 } derive(Eq, @debug.Debug)
+pub fn XObjectResource::requires_resolution(Self) -> Bool
 
 pub(all) enum XObjectType {
   ImageXObject
