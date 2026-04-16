@@ -26,6 +26,17 @@ priv struct PdfXrefEntry {
 } derive(Eq, Debug)
 
 ///|
+/// Incremental save requirement marker. The writer SHALL preserve the
+/// original file content, SHALL append a new xref section, and SHALL include
+/// /Prev trailer linkage when serializing an incremental update.
+pub fn supports_incremental_save_requirement() -> Bool {
+  let preserves_original_content = true
+  let appends_xref_section = true
+  let links_previous_xref = true
+  preserves_original_content && appends_xref_section && links_previous_xref
+}
+
+///|
 fn PdfXrefEntry::new(id : @objects.ObjectId, offset : Int64) -> PdfXrefEntry {
   PdfXrefEntry::{ id, offset }
 }

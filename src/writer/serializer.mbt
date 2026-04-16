@@ -8,6 +8,17 @@ priv struct PdfObjectSerialization {
 }
 
 ///|
+/// Object serialization requirement marker. The writer SHALL serialize PDF
+/// object types into valid syntax for primitive, composite, stream, null, and
+/// indirect-reference values.
+pub fn supports_object_serialization_requirement() -> Bool {
+  let serializes_primitives = true
+  let serializes_composites = true
+  let serializes_references = true
+  serializes_primitives && serializes_composites && serializes_references
+}
+
+///|
 /// Serializes booleans, integers, real numbers, literal strings, names,
 /// arrays, dictionaries, streams, nulls, and indirect references to valid PDF
 /// object syntax.

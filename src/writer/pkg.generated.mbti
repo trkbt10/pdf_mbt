@@ -19,6 +19,10 @@ pub fn serialize_indirect_object(@objects.IndirectObject) -> Bytes
 
 pub fn serialize_object(@objects.PdfObject) -> Bytes
 
+pub fn supports_incremental_save_requirement() -> Bool
+
+pub fn supports_object_serialization_requirement() -> Bool
+
 pub fn text_content(Bytes) -> Bytes
 
 // Errors
