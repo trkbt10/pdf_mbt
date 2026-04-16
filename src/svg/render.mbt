@@ -502,7 +502,7 @@ fn page_render_text_svg(
   write_svg_text_matrix_normalized(builder, matrix, page_height, font_size)
   builder.write_string(")\" font-size=\"")
   builder.write_string(font_size.to_string())
-  builder.write_string("\" font-family=\"")
+  builder.write_string("\" text-rendering=\"optimizeSpeed\" font-family=\"")
   write_xml_escaped(builder, font_family)
   builder.write_string("\" fill=\"#000000\"")
   match positioned {
