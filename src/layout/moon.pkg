@@ -1,0 +1,4 @@
+import {
+  "trkbt10/pdf/src/text",
+  "trkbt10/pdf/src/objects",
+}
