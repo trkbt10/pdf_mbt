@@ -27,6 +27,34 @@ test "write_svg_text_matrix_scaled applies Tf font size to identity Tm" {
 }
 
 ///|
+test "rgb_hex_colour follows pdftoppm-style single precision rounding" {
+  assert_eq(
+    rgb_hex_colour(@graphics.DeviceRgbColour::{
+      red: 0.7,
+      green: 0.7,
+      blue: 0.7,
+    }),
+    "#B2B2B2",
+  )
+  assert_eq(
+    rgb_hex_colour(@graphics.DeviceRgbColour::{
+      red: 0.5,
+      green: 0.75,
+      blue: 1.0,
+    }),
+    "#80BFFF",
+  )
+  assert_eq(
+    rgb_hex_colour(@graphics.DeviceRgbColour::{
+      red: 0.5,
+      green: 0.1,
+      blue: 0.2,
+    }),
+    "#801933",
+  )
+}
+
+///|
 test "render_page_svg scales web PDF identity text matrix by Tf font size" {
   let document = @reader.PdfDocument::open(build_identity_tm_text_fixture())
   let svg = render_page_svg(document.page(0))

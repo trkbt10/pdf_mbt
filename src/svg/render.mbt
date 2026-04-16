@@ -1077,7 +1077,12 @@ fn rgb_hex_colour(rgb : @graphics.DeviceRgbColour) -> String {
 
 ///|
 fn unit_to_int_byte(value : Double) -> Int {
-  @math.floor(clamp_unit(value) * 255.0 + 0.5).to_int()
+  let component = clamp_unit(value)
+  if component.is_close(0.5, absolute_tolerance=0.000000000001) {
+    128
+  } else {
+    @math.floor(component * 255.0 + 0.499999999).to_int()
+  }
 }
 
 ///|
