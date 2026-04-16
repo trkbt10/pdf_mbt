@@ -33,12 +33,14 @@ pub struct CcittCode {
   length : Int
   run : Int
 }
+pub fn CcittCode::is_makeup_code(Self) -> Bool
 
 pub struct DecodeParams {
   raw : Map[@objects.PdfName, @objects.PdfObject]?
 }
 pub fn DecodeParams::columns(Self, String, Int) -> Int raise PdfFilterError
 pub fn DecodeParams::has_raw_dictionary(Self) -> Bool
+pub fn DecodeParams::uses_decoder_defaults(Self) -> Bool
 
 pub(all) enum FilterName {
   ASCIIHexDecode
@@ -52,6 +54,7 @@ pub(all) enum FilterName {
   Unsupported(String)
 }
 pub fn FilterName::is_ascii_filter(Self) -> Bool
+pub fn FilterName::is_binary_filter(Self) -> Bool
 pub fn FilterName::is_image_filter(Self) -> Bool
 pub fn FilterName::is_jpx(Self) -> Bool
 pub fn FilterName::is_supported(Self) -> Bool
@@ -71,6 +74,7 @@ pub(all) struct JpxImageData {
   is_signed : Bool
   data : Bytes
 } derive(Eq, @debug.Debug)
+pub fn JpxImageData::has_complete_sample_payload(Self) -> Bool
 pub fn JpxImageData::pdf_image_sample_bytes(Self) -> Int raise PdfFilterError
 
 // Type aliases

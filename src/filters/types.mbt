@@ -59,6 +59,18 @@ pub fn FilterName::is_image_filter(self : FilterName) -> Bool {
 }
 
 ///|
+/// Reports whether this filter emits binary image or compressed byte data
+/// rather than ASCII-armored stream bytes.
+pub fn FilterName::is_binary_filter(self : FilterName) -> Bool {
+  match self {
+    ASCIIHexDecode | ASCII85Decode => false
+    FlateDecode | LZWDecode | RunLengthDecode => true
+    DCTDecode | CCITTFaxDecode | JPXDecode => true
+    Unsupported(_) => false
+  }
+}
+
+///|
 pub struct DecodeParams {
   raw : @objects.PdfDictionary?
 }
@@ -143,6 +155,16 @@ pub fn DecodeParams::has_raw_dictionary(self : DecodeParams) -> Bool {
   match self.raw {
     Some(dict) => dict.length() > 0
     None => false
+  }
+}
+
+///|
+/// Reports whether this DecodeParms wrapper carries no parameter dictionary
+/// entries and therefore leaves decoder defaults in effect.
+pub fn DecodeParams::uses_decoder_defaults(self : DecodeParams) -> Bool {
+  match self.raw {
+    Some(dict) => dict.length() == 0
+    None => true
   }
 }
 

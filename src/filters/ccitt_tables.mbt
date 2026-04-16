@@ -14,6 +14,17 @@ fn CcittCode::matches(self : CcittCode, bits : Int, length : Int) -> Bool {
 }
 
 ///|
+/// Reports whether this CCITT Huffman table entry is a make-up run code
+/// rather than a terminating run-length code.
+pub fn CcittCode::is_makeup_code(self : CcittCode) -> Bool {
+  if self.run < 64 {
+    false
+  } else {
+    self.run % 64 == 0
+  }
+}
+
+///|
 /// CCITT Group 3 Group 4 Huffman code lookup white black run-length table
 /// helper. It matches an MSB-first Huffman bit pattern against the selected
 /// white or black run-length table and returns the decoded code entry.

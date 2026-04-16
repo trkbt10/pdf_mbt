@@ -41,6 +41,7 @@ pub(all) enum CipherVersion {
   V5
 } derive(Eq, @debug.Debug)
 pub fn CipherVersion::default_key_bits(Self) -> Int
+pub fn CipherVersion::supports_crypt_filters(Self) -> Bool
 
 pub(all) struct CryptFilter {
   name : @objects.PdfName
@@ -49,6 +50,7 @@ pub(all) struct CryptFilter {
   length_bits : Int?
 } derive(Eq, @debug.Debug)
 pub fn CryptFilter::decrypts_payload(Self) -> Bool
+pub fn CryptFilter::effective_key_bits(Self, Int) -> Int
 pub fn CryptFilter::identity() -> Self
 
 pub(all) enum CryptFilterAuthEvent {
@@ -66,6 +68,7 @@ pub(all) enum CryptFilterMethod {
   AESV3
   Unsupported(Bytes)
 } derive(Eq, @debug.Debug)
+pub fn CryptFilterMethod::is_aes_based(Self) -> Bool
 pub fn CryptFilterMethod::uses_object_key(Self) -> Bool
 
 pub(all) struct DocumentPermissions {
@@ -94,6 +97,7 @@ pub(all) enum EncryptionAccessMode {
   OwnerAccess
 } derive(Eq, @debug.Debug)
 pub fn EncryptionAccessMode::is_owner_access(Self) -> Bool
+pub fn EncryptionAccessMode::is_user_access(Self) -> Bool
 
 #alias(EncryptionKey)
 pub(all) struct EncryptionContext {
@@ -138,6 +142,7 @@ pub(all) enum StreamDecryptPurpose {
   EmbeddedFileStream
   ExternalFileStream
 } derive(Eq, @debug.Debug)
+pub fn StreamDecryptPurpose::uses_embedded_file_filter(Self) -> Bool
 pub fn StreamDecryptPurpose::uses_metadata_policy(Self) -> Bool
 
 // Type aliases

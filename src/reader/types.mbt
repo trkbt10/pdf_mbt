@@ -165,3 +165,14 @@ pub fn ObjectLocation::requires_object_stream(self : ObjectLocation) -> Bool {
     Uncompressed(offset, generation) => offset < 0L || generation < 0
   }
 }
+
+///|
+/// Returns the number of cross-reference sections retained for this opened
+/// file, including incremental-update and hybrid-reference sections.
+pub fn PdfFile::xref_section_count(self : PdfFile) -> Int {
+  if self.sections.length() == 0 {
+    0
+  } else {
+    self.sections.length()
+  }
+}

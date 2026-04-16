@@ -818,6 +818,7 @@ pub fn PdfFile::permissions(Self) -> @encryption.DocumentPermissions
 pub fn PdfFile::root_ref(Self) -> @objects.ObjectId
 pub fn PdfFile::trailer(Self) -> TrailerInfo
 pub fn PdfFile::version(Self) -> PdfVersion
+pub fn PdfFile::xref_section_count(Self) -> Int
 
 pub(all) struct PdfFileAttachmentAnnotation {
   file_specification : @objects.PdfObject

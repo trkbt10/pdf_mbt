@@ -59,6 +59,18 @@ pub fn EncryptionAccessMode::is_owner_access(
 }
 
 ///|
+/// Reports whether the authenticated file key came from a user-password
+/// validation path rather than the owner-password fallback.
+pub fn EncryptionAccessMode::is_user_access(
+  self : EncryptionAccessMode,
+) -> Bool {
+  match self {
+    UserAccess => true
+    OwnerAccess => false
+  }
+}
+
+///|
 /// PDF encryption algorithm version from the Encrypt dictionary V entry.
 pub(all) enum CipherVersion {
   V1
@@ -75,6 +87,16 @@ pub fn CipherVersion::default_key_bits(self : CipherVersion) -> Int {
     V1 => 40
     V2 | V3 | V4 => 128
     V5 => 256
+  }
+}
+
+///|
+/// Reports whether this encryption dictionary version supports named crypt
+/// filters through the CF, StmF, StrF, and EFF entries.
+pub fn CipherVersion::supports_crypt_filters(self : CipherVersion) -> Bool {
+  match self {
+    V4 | V5 => true
+    V1 | V2 | V3 => false
   }
 }
 
@@ -96,6 +118,16 @@ pub fn CryptFilterMethod::uses_object_key(self : CryptFilterMethod) -> Bool {
   match self {
     V2 | AESV2 => true
     Identity | None | AESV3 | Unsupported(_) => false
+  }
+}
+
+///|
+/// Reports whether this crypt filter method uses an AES-based byte
+/// transformation instead of RC4 or identity handling.
+pub fn CryptFilterMethod::is_aes_based(self : CryptFilterMethod) -> Bool {
+  match self {
+    AESV2 | AESV3 => true
+    Identity | None | V2 | Unsupported(_) => false
   }
 }
 
@@ -138,6 +170,19 @@ pub fn StreamDecryptPurpose::uses_metadata_policy(
   match self {
     MetadataStream => true
     _ => false
+  }
+}
+
+///|
+/// Reports whether stream decryption should prefer the embedded-file crypt
+/// filter selected by the EFF encryption dictionary entry.
+pub fn StreamDecryptPurpose::uses_embedded_file_filter(
+  self : StreamDecryptPurpose,
+) -> Bool {
+  match self {
+    EmbeddedFileStream => true
+    RegularStream | XrefStream | ObjectStream => false
+    MetadataStream | ExternalFileStream => false
   }
 }
 
@@ -284,6 +329,20 @@ pub fn CryptFilter::decrypts_payload(self : CryptFilter) -> Bool {
     Identity | None => false
     V2 | AESV2 | AESV3 => true
     Unsupported(_) => true
+  }
+}
+
+///|
+/// Returns the configured crypt filter key length in bits, falling back to
+/// the caller-supplied encryption dictionary default when it is absent.
+pub fn CryptFilter::effective_key_bits(
+  self : CryptFilter,
+  default_bits : Int,
+) -> Int {
+  match self.length_bits {
+    Some(bits) if bits > 0 => bits
+    Some(_) => default_bits
+    None => default_bits
   }
 }
 

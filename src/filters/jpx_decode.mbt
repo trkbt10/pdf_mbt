@@ -83,6 +83,18 @@ pub fn JpxImageData::pdf_image_sample_bytes(
 }
 
 ///|
+/// Reports whether the decoded JPEG 2000 payload contains at least the
+/// complete sample byte range implied by its dimensions and component layout.
+pub fn JpxImageData::has_complete_sample_payload(self : JpxImageData) -> Bool {
+  let expected = self.expected_sample_bytes()
+  if expected == 0 {
+    false
+  } else {
+    self.data.length() >= expected
+  }
+}
+
+///|
 fn JpxImageData::validate_jpx_decode_payload(
   self : JpxImageData,
 ) -> Unit raise PdfFilterError {
