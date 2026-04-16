@@ -11,29 +11,19 @@ pub fn PdfFile::load_object(
     Some(object) => object
     None => {
       let object = match self.xref_index.resolve(id) {
-        Some(location) => {
-          let raw_object = load_object_at_location(self, id, location)
-          decrypt_loaded_object(self, id, raw_object)
-        }
+        Some(ObjectLocation::Uncompressed(pdf_offset, _)) =>
+          decrypt_loaded_object(
+            self,
+            id,
+            load_uncompressed_object(self, id, pdf_offset),
+          )
+        Some(ObjectLocation::Compressed(object_stream_number, index)) =>
+          load_compressed_object(self, id, object_stream_number, index)
         None => @objects.PdfObject::Null
       }
       self.cache[id] = object
       object
     }
-  }
-}
-
-///|
-fn load_object_at_location(
-  file : PdfFile,
-  id : @objects.ObjectId,
-  location : ObjectLocation,
-) -> @objects.PdfObject raise PdfReaderError {
-  match location {
-    ObjectLocation::Uncompressed(pdf_offset, _) =>
-      load_uncompressed_object(file, id, pdf_offset)
-    ObjectLocation::Compressed(object_stream_number, index) =>
-      load_compressed_object(file, id, object_stream_number, index)
   }
 }
 

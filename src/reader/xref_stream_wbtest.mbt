@@ -31,23 +31,6 @@ fn expect_invalid_xref_stream_section(
 }
 
 ///|
-fn expect_unsupported_xref_stream_section(
-  input : Bytes,
-  version : PdfVersion,
-  reason_fragment : String,
-) -> Unit raise {
-  let source = ByteSource::new(input, 0L)
-  let result : Result[XrefSection, PdfReaderError] = try? parse_xref_stream_section(
-    source, 0L, version,
-  )
-  match result {
-    Err(UnsupportedFilter(_, reason)) =>
-      assert_eq(reason.contains(reason_fragment), true)
-    _ => fail("expected unsupported xref stream rejection")
-  }
-}
-
-///|
 fn find_xref_stream_entry(
   entries : Array[XrefSectionEntry],
   object_number : Int,
@@ -253,7 +236,7 @@ test "parse_xref_stream_section rejects missing W and non-XRef stream types" {
 }
 
 ///|
-test "parse_xref_stream_section skips unsupported entry types and rejects encrypted streams" {
+test "parse_xref_stream_section skips unsupported entry types and accepts Encrypt trailer entries" {
   let unsupported = b"1 0 obj\r\n" +
     b"<< /Type /XRef /Size 3 /W [1 1 1] /Index [0 3] /Root 1 0 R /Length 9 >>\r\n" +
     b"stream\r\n" +
@@ -297,10 +280,14 @@ test "parse_xref_stream_section skips unsupported entry types and rejects encryp
     b"stream\r\n" +
     b"\x01\x00\x05" +
     b"\r\nendstream endobj"
-  expect_unsupported_xref_stream_section(
-    encrypted,
-    PdfVersion::{ major: 1, minor: 7 },
-    "Encrypt",
+  let encrypted_section = expect_valid_xref_stream_section(encrypted, PdfVersion::{
+    major: 1,
+    minor: 7,
+  })
+  assert_eq(
+    encrypted_section.trailer.encrypt ==
+    Some(@objects.ObjectId::{ object_number: 9, generation_number: 0 }),
+    true,
   )
 }
 

@@ -159,6 +159,35 @@ fn make_encrypted_stream_file() -> PdfFile raise @encryption.PdfEncryptionError 
 }
 
 ///|
+fn make_encrypted_object_stream_file() -> PdfFile raise @encryption.PdfEncryptionError {
+  let object_stream_id = @objects.ObjectId::{
+    object_number: 6,
+    generation_number: 0,
+  }
+  let member_id = @objects.ObjectId::{ object_number: 7, generation_number: 0 }
+  let context = encrypted_loader_context()
+  let decoded_object_stream = b"7 0 (Secret member)"
+  let encrypted = @encryption.decrypt_stream(
+    context, object_stream_id, decoded_object_stream,
+  )
+  let xref_index : XrefIndex = Map::new()
+  xref_index[object_stream_id] = ObjectLocation::Uncompressed(0L, 0)
+  xref_index[member_id] = ObjectLocation::Compressed(6, 0)
+  let file = make_reader_file(
+    b"6 0 obj\r\n" +
+    b"<< /Type /ObjStm /N 1 /First 4 /Length " +
+    decimal_bytes(encrypted.length().to_int64()) +
+    b" >>\r\n" +
+    b"stream\r\n" +
+    encrypted +
+    b"\r\nendstream endobj",
+    xref_index,
+  )
+  file.encryption = Some(context)
+  file
+}
+
+///|
 test "load_object returns null for missing and generation-mismatched references" {
   let file = make_uncompressed_object_file()
   assert_eq(
@@ -197,6 +226,17 @@ test "load_object decrypts stream data before downstream filters" {
   match file.load_object(object_id) {
     @objects.PdfObject::Stream(stream) => assert_eq(stream.data, b"Hello")
     _ => fail("expected decrypted stream")
+  }
+}
+
+///|
+test "load_object does not double-decrypt members from encrypted object streams" {
+  let file = make_encrypted_object_stream_file()
+  let object_id = @objects.ObjectId::{ object_number: 7, generation_number: 0 }
+
+  match file.load_object(object_id) {
+    @objects.PdfObject::String(value) => assert_eq(value, b"Secret member")
+    _ => fail("expected object stream member string")
   }
 }
 

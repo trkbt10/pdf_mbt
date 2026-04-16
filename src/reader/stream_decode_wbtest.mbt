@@ -147,12 +147,12 @@ test "decode_structural_stream rejects crypt-filtered structural streams" {
 }
 
 ///|
-test "decode_structural_stream rejects encrypted xref streams without filters" {
+test "decode_structural_stream accepts xref streams with trailer Encrypt entries" {
   let stream = mark_structural_stream_encrypted(
     make_structural_stream(b"0 1 2", b"XRef", None),
   )
-  let reason = expect_unsupported_structural_stream(stream, XrefStream, 41L)
-  assert_eq(reason.contains("Encrypt"), true)
+  let decoded = expect_decoded_structural_stream(stream, XrefStream, 41L)
+  assert_eq(decoded, b"0 1 2")
 }
 
 ///|

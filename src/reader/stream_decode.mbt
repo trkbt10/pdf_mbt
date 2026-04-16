@@ -30,23 +30,18 @@ fn decode_structural_stream(
 
 ///|
 fn xref_stream_rejection_reason(dict : @objects.PdfDictionary) -> String? {
-  let encrypt_key = @objects.PdfName::new(b"Encrypt")
-  match dict.get(encrypt_key) {
-    Some(_) => Some("Encrypt")
-    None =>
-      match dict.get(@objects.PdfName::new(b"Filter")) {
-        Some(@objects.PdfObject::Name(name)) => {
-          let crypt_name = @objects.PdfName::new(b"Crypt")
-          if name == crypt_name {
-            Some("Crypt")
-          } else {
-            None
-          }
-        }
-        Some(@objects.PdfObject::Array(values)) =>
-          xref_stream_rejection_reason_from_array(values)
-        _ => None
+  match dict.get(@objects.PdfName::new(b"Filter")) {
+    Some(@objects.PdfObject::Name(name)) => {
+      let crypt_name = @objects.PdfName::new(b"Crypt")
+      if name == crypt_name {
+        Some("Crypt")
+      } else {
+        None
       }
+    }
+    Some(@objects.PdfObject::Array(values)) =>
+      xref_stream_rejection_reason_from_array(values)
+    _ => None
   }
 }
 
