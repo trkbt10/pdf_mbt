@@ -6,6 +6,13 @@ priv struct PageImageEntry {
 }
 
 ///|
+priv struct SvgPositionedText {
+  text : String
+  x_values : Array[Double]
+  y_values : Array[Double]
+}
+
+///|
 pub fn render_page_svg(page : @reader.PdfPage) -> String {
   let width = page_width(page)
   let height = page_height(page)
@@ -94,6 +101,25 @@ fn abs_double(value : Double) -> Double {
 }
 
 ///|
+fn format_svg_number(value : Double) -> String {
+  let rounded = @math.floor(abs_double(value) * 1000.0 + 0.5).to_int()
+  let sign = if value < 0.0 && rounded != 0 { "-" } else { "" }
+  sign + (rounded / 1000).to_string() + "." + fixed3_fraction(rounded % 1000)
+}
+
+///|
+fn fixed3_fraction(value : Int) -> String {
+  let hundreds = value / 100
+  let tens = value / 10 % 10
+  let ones = value % 10
+  String::from_array([
+    (b'0'.to_int() + hundreds).unsafe_to_char(),
+    (b'0'.to_int() + tens).unsafe_to_char(),
+    (b'0'.to_int() + ones).unsafe_to_char(),
+  ])
+}
+
+///|
 fn page_render_graphics_svg(
   builder : StringBuilder,
   page : @reader.PdfPage,
@@ -132,8 +158,111 @@ fn page_render_path_svg(
   builder.write_string("<path d=\"")
   builder.write_string(d)
   builder.write_string("\"")
+  write_svg_path_pixel_alignment(builder, operation, path, state)
   write_svg_paint_attributes(builder, operation, state)
   builder.write_string("/>")
+}
+
+///|
+fn write_svg_path_pixel_alignment(
+  builder : StringBuilder,
+  operation : @graphics.PathPaintOperation,
+  path : @graphics.GraphicsPath,
+  state : @graphics.GraphicsState,
+) -> Unit {
+  let (dx, dy) = svg_path_pixel_offset(operation, path, state)
+  if dx != 0.0 || dy != 0.0 {
+    builder.write_string(" transform=\"translate(")
+    builder.write_string(format_svg_number(dx))
+    builder.write_string(" ")
+    builder.write_string(format_svg_number(dy))
+    builder.write_string(")\"")
+  }
+}
+
+///|
+fn svg_path_pixel_offset(
+  operation : @graphics.PathPaintOperation,
+  path : @graphics.GraphicsPath,
+  state : @graphics.GraphicsState,
+) -> (Double, Double) {
+  if !svg_stroke_width_is_odd_pixel(state) {
+    return (0.0, 0.0)
+  }
+  match operation {
+    @graphics.PathPaintOperation::StrokePath
+    | @graphics.PathPaintOperation::CloseStrokePath =>
+      svg_axis_line_pixel_offset(path)
+    @graphics.PathPaintOperation::FillStrokePath(_)
+    | @graphics.PathPaintOperation::CloseFillStrokePath(_) =>
+      if svg_path_is_axis_aligned_rectangle(path) {
+        (0.5, 0.5)
+      } else {
+        (0.0, 0.0)
+      }
+    _ => (0.0, 0.0)
+  }
+}
+
+///|
+fn svg_stroke_width_is_odd_pixel(state : @graphics.GraphicsState) -> Bool {
+  let width = svg_stroke_width(state)
+  let rounded = @math.floor(width + 0.5).to_int()
+  rounded % 2 == 1 && abs_double(width - rounded.to_double()) < 0.001
+}
+
+///|
+fn svg_axis_line_pixel_offset(
+  path : @graphics.GraphicsPath,
+) -> (Double, Double) {
+  if path.subpaths.length() != 1 {
+    return (0.0, 0.0)
+  }
+  let subpath = path.subpaths[0]
+  if subpath.segments.length() != 1 {
+    return (0.0, 0.0)
+  }
+  match subpath.segments[0] {
+    @graphics.PathSegment::LineTo(point) =>
+      if abs_double(point.x - subpath.start.x) < 0.001 {
+        (0.5, 0.0)
+      } else if abs_double(point.y - subpath.start.y) < 0.001 {
+        (0.0, 0.5)
+      } else {
+        (0.0, 0.0)
+      }
+    _ => (0.0, 0.0)
+  }
+}
+
+///|
+fn svg_path_is_axis_aligned_rectangle(path : @graphics.GraphicsPath) -> Bool {
+  if path.subpaths.length() != 1 {
+    return false
+  }
+  let subpath = path.subpaths[0]
+  if subpath.segments.length() != 4 {
+    return false
+  }
+  match
+    (
+      subpath.segments[0],
+      subpath.segments[1],
+      subpath.segments[2],
+      subpath.segments[3],
+    ) {
+    (
+      @graphics.PathSegment::LineTo(p1),
+      @graphics.PathSegment::LineTo(p2),
+      @graphics.PathSegment::LineTo(p3),
+      @graphics.PathSegment::ClosePath,
+    ) =>
+      abs_double(subpath.start.y - p1.y) < 0.001 &&
+      abs_double(p1.x - p2.x) < 0.001 &&
+      abs_double(p2.y - p3.y) < 0.001 &&
+      abs_double(p3.x - subpath.start.x) < 0.001
+    _ => false
+  }
 }
 
 ///|
@@ -222,17 +351,17 @@ fn svg_path_data(
       page_height,
     )
     builder.write_string("M ")
-    builder.write_string(start.x.to_string())
+    builder.write_string(format_svg_number(start.x))
     builder.write_string(" ")
-    builder.write_string(start.y.to_string())
+    builder.write_string(format_svg_number(start.y))
     for segment in subpath.segments {
       match segment {
         @graphics.PathSegment::LineTo(point) => {
           let p = svg_graphics_point(ctm.transform_point(point), page_height)
           builder.write_string(" L ")
-          builder.write_string(p.x.to_string())
+          builder.write_string(format_svg_number(p.x))
           builder.write_string(" ")
-          builder.write_string(p.y.to_string())
+          builder.write_string(format_svg_number(p.y))
         }
         @graphics.PathSegment::CurveTo(control1, control2, end_point) => {
           let p1 = svg_graphics_point(
@@ -248,17 +377,17 @@ fn svg_path_data(
             page_height,
           )
           builder.write_string(" C ")
-          builder.write_string(p1.x.to_string())
+          builder.write_string(format_svg_number(p1.x))
           builder.write_string(" ")
-          builder.write_string(p1.y.to_string())
+          builder.write_string(format_svg_number(p1.y))
           builder.write_string(" ")
-          builder.write_string(p2.x.to_string())
+          builder.write_string(format_svg_number(p2.x))
           builder.write_string(" ")
-          builder.write_string(p2.y.to_string())
+          builder.write_string(format_svg_number(p2.y))
           builder.write_string(" ")
-          builder.write_string(p3.x.to_string())
+          builder.write_string(format_svg_number(p3.x))
           builder.write_string(" ")
-          builder.write_string(p3.y.to_string())
+          builder.write_string(format_svg_number(p3.y))
         }
         @graphics.PathSegment::ClosePath => builder.write_string(" Z")
       }
@@ -336,6 +465,7 @@ fn page_render_texts_svg(
   match result {
     Ok(program) => {
       let matrices = text_program_span_rendering_matrices(program)
+      let glyph_groups = text_program_span_glyphs(program)
       let font_families = page_svg_font_families(page)
       for index in 0..<program.spans.length() {
         let span = program.spans[index]
@@ -344,6 +474,7 @@ fn page_render_texts_svg(
             builder,
             span,
             span_svg_matrix(matrices, index),
+            span_glyphs(glyph_groups, index),
             span_svg_font_family(font_families, span),
             page_height,
           )
@@ -359,16 +490,199 @@ fn page_render_text_svg(
   builder : StringBuilder,
   span : @text.TextSpan,
   matrix : @text.TextMatrix,
+  glyphs : Array[@text.TextGlyphEvent],
   font_family : String,
   page_height : Double,
 ) -> Unit {
+  let font_size = svg_text_font_size(matrix)
+  let positioned = svg_positioned_text(
+    span, matrix, glyphs, font_size, page_height,
+  )
   builder.write_string("<text transform=\"matrix(")
-  write_svg_text_matrix(builder, matrix, page_height)
-  builder.write_string(")\" font-size=\"1\" font-family=\"")
+  write_svg_text_matrix_normalized(builder, matrix, page_height, font_size)
+  builder.write_string(")\" font-size=\"")
+  builder.write_string(font_size.to_string())
+  builder.write_string("\" font-family=\"")
   write_xml_escaped(builder, font_family)
-  builder.write_string("\" fill=\"#111111\">")
-  write_xml_escaped(builder, span.text)
+  builder.write_string("\" fill=\"#000000\"")
+  match positioned {
+    Some(text) => {
+      builder.write_string(" x=\"")
+      write_double_list(builder, text.x_values)
+      builder.write_string("\" y=\"")
+      write_double_list(builder, text.y_values)
+      builder.write_string("\">")
+      write_xml_escaped(builder, text.text)
+    }
+    None => {
+      builder.write_string(">")
+      write_xml_escaped(builder, span.text)
+    }
+  }
   builder.write_string("</text>")
+}
+
+///|
+fn svg_positioned_text(
+  span : @text.TextSpan,
+  matrix : @text.TextMatrix,
+  glyphs : Array[@text.TextGlyphEvent],
+  font_size : Double,
+  page_height : Double,
+) -> SvgPositionedText? {
+  if glyphs.length() == 0 {
+    return None
+  }
+  let parent = svg_text_matrix_normalized(matrix, page_height, font_size)
+  if !svg_matrix_is_invertible(parent) {
+    return None
+  }
+  let x_values : Array[Double] = []
+  let y_values : Array[Double] = []
+  let mut text = ""
+  for glyph in glyphs {
+    match svg_glyph_text(glyph) {
+      Some(value) => {
+        if string_char_count(value) != 1 {
+          return None
+        }
+        let glyph_matrix = svg_text_matrix(
+          glyph.rendering_matrix.matrix,
+          page_height,
+        )
+        let (x, y) = svg_matrix_local_point(
+          parent,
+          glyph_matrix.e,
+          glyph_matrix.f,
+        )
+        x_values.push(x)
+        y_values.push(y)
+        text = text + value
+      }
+      None => ()
+    }
+  }
+  if text.length() == 0 || text != span.text {
+    None
+  } else {
+    Some(SvgPositionedText::{ text, x_values, y_values })
+  }
+}
+
+///|
+fn svg_text_font_size(matrix : @text.TextMatrix) -> Double {
+  let size = (matrix.a * matrix.a + matrix.b * matrix.b).sqrt()
+  if size > 0.0 {
+    size
+  } else {
+    1.0
+  }
+}
+
+///|
+fn write_svg_text_matrix_normalized(
+  builder : StringBuilder,
+  matrix : @text.TextMatrix,
+  page_height : Double,
+  font_size : Double,
+) -> Unit {
+  let svg_matrix = svg_text_matrix_normalized(matrix, page_height, font_size)
+  builder.write_string(svg_matrix.a.to_string())
+  builder.write_string(" ")
+  builder.write_string(svg_matrix.b.to_string())
+  builder.write_string(" ")
+  builder.write_string(svg_matrix.c.to_string())
+  builder.write_string(" ")
+  builder.write_string(svg_matrix.d.to_string())
+  builder.write_string(" ")
+  builder.write_string(svg_matrix.e.to_string())
+  builder.write_string(" ")
+  builder.write_string(svg_matrix.f.to_string())
+}
+
+///|
+fn svg_text_matrix_normalized(
+  matrix : @text.TextMatrix,
+  page_height : Double,
+  font_size : Double,
+) -> @text.TextMatrix {
+  let svg_matrix = svg_text_matrix(matrix, page_height)
+  @text.TextMatrix::from_six(
+    svg_matrix.a / font_size,
+    svg_matrix.b / font_size,
+    svg_matrix.c / font_size,
+    svg_matrix.d / font_size,
+    svg_matrix.e,
+    svg_matrix.f,
+  )
+}
+
+///|
+fn svg_text_matrix(
+  matrix : @text.TextMatrix,
+  page_height : Double,
+) -> @text.TextMatrix {
+  @text.TextMatrix::from_six(
+    matrix.a,
+    0.0 - matrix.b,
+    0.0 - matrix.c,
+    matrix.d,
+    matrix.e,
+    page_height - matrix.f,
+  )
+}
+
+///|
+fn svg_matrix_is_invertible(matrix : @text.TextMatrix) -> Bool {
+  let det = matrix.a * matrix.d - matrix.b * matrix.c
+  det != 0.0
+}
+
+///|
+fn svg_matrix_local_point(
+  matrix : @text.TextMatrix,
+  x : Double,
+  y : Double,
+) -> (Double, Double) {
+  let det = matrix.a * matrix.d - matrix.b * matrix.c
+  let dx = x - matrix.e
+  let dy = y - matrix.f
+  ((matrix.d * dx - matrix.c * dy) / det, (matrix.a * dy - matrix.b * dx) / det)
+}
+
+///|
+fn svg_glyph_text(glyph : @text.TextGlyphEvent) -> String? {
+  match glyph.unicode {
+    @text.UnicodeMapping::Unicode(value) =>
+      if value == " " &&
+        glyph.glyph.metrics.horizontal_displacement == 0.0 &&
+        glyph.glyph.metrics.width_source ==
+        @text.GlyphWidthSource::FontDescriptorMissingWidth {
+        None
+      } else {
+        Some(value)
+      }
+    @text.UnicodeMapping::Unknown(_, _, _) => None
+  }
+}
+
+///|
+fn string_char_count(value : String) -> Int {
+  let mut count = 0
+  for _char in value {
+    count += 1
+  }
+  count
+}
+
+///|
+fn write_double_list(builder : StringBuilder, values : Array[Double]) -> Unit {
+  for index in 0..<values.length() {
+    if index > 0 {
+      builder.write_string(" ")
+    }
+    builder.write_string(values[index].to_string())
+  }
 }
 
 ///|
@@ -481,25 +795,6 @@ fn is_subset_font_tag_prefix(bytes : Bytes) -> Bool {
 }
 
 ///|
-fn write_svg_text_matrix(
-  builder : StringBuilder,
-  matrix : @text.TextMatrix,
-  page_height : Double,
-) -> Unit {
-  builder.write_string(matrix.a.to_string())
-  builder.write_string(" ")
-  builder.write_string((0.0 - matrix.b).to_string())
-  builder.write_string(" ")
-  builder.write_string((0.0 - matrix.c).to_string())
-  builder.write_string(" ")
-  builder.write_string(matrix.d.to_string())
-  builder.write_string(" ")
-  builder.write_string(matrix.e.to_string())
-  builder.write_string(" ")
-  builder.write_string((page_height - matrix.f).to_string())
-}
-
-///|
 fn text_program_span_rendering_matrices(
   program : @text.TextProgram,
 ) -> Array[@text.TextMatrix] {
@@ -520,6 +815,39 @@ fn text_program_span_rendering_matrices(
 }
 
 ///|
+fn text_program_span_glyphs(
+  program : @text.TextProgram,
+) -> Array[Array[@text.TextGlyphEvent]] {
+  let groups : Array[Array[@text.TextGlyphEvent]] = []
+  let mut current : Array[@text.TextGlyphEvent] = []
+  let mut collecting = false
+  for event in program.events {
+    match event {
+      @text.TextEvent::SourceString(_) => {
+        if collecting && current.length() > 0 {
+          groups.push(current)
+        }
+        current = []
+        collecting = true
+      }
+      @text.TextEvent::GlyphShown(glyph) =>
+        if collecting {
+          current.push(glyph)
+        }
+      @text.TextEvent::EmptyString(_) => {
+        current = []
+        collecting = false
+      }
+      _ => ()
+    }
+  }
+  if collecting && current.length() > 0 {
+    groups.push(current)
+  }
+  groups
+}
+
+///|
 fn span_svg_matrix(
   matrices : Array[@text.TextMatrix],
   index : Int,
@@ -528,6 +856,18 @@ fn span_svg_matrix(
     matrices[index]
   } else {
     @text.TextMatrix::identity()
+  }
+}
+
+///|
+fn span_glyphs(
+  glyph_groups : Array[Array[@text.TextGlyphEvent]],
+  index : Int,
+) -> Array[@text.TextGlyphEvent] {
+  if index >= 0 && index < glyph_groups.length() {
+    glyph_groups[index]
+  } else {
+    []
   }
 }
 

@@ -8,18 +8,20 @@ test "render_page_svg positions Simple PDF text without page group flip" {
   assert_eq(svg.contains("<text"), true)
   assert_eq(svg.contains("HelloWorld"), true)
   assert_eq(svg.contains("<g transform=\"matrix(1 0 0 -1"), false)
-  assert_eq(svg.contains("<text transform=\"matrix(24 0 0 24 100 296)"), true)
+  assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 100 296)"), true)
+  assert_eq(svg.contains("font-size=\"24\""), true)
 }
 
 ///|
-test "write_svg_text_matrix flips coordinates without flipping glyphs" {
+test "write_svg_text_matrix_normalized preserves translation and removes font scale" {
   let builder = StringBuilder::new()
-  write_svg_text_matrix(
+  write_svg_text_matrix_normalized(
     builder,
-    @text.TextMatrix::from_six(2.0, 3.0, 4.0, 5.0, 10.0, 20.0),
-    100.0,
+    @text.TextMatrix::from_six(24.0, 0.0, 0.0, 24.0, 100.0, 100.0),
+    396.0,
+    24.0,
   )
-  assert_eq(builder.to_string(), "2 -3 -4 5 10 80")
+  assert_eq(builder.to_string(), "1 0 0 1 100 296")
 }
 
 ///|
@@ -27,7 +29,7 @@ test "render_page_svg writes transformed path coordinates in SVG space" {
   let document = @reader.PdfDocument::open(build_svg_path_fixture())
   let svg = render_page_svg(document.page(0))
   assert_eq(svg.contains("<path"), true)
-  assert_eq(svg.contains("d=\"M 12 76 L 16 72 "), true)
+  assert_eq(svg.contains("d=\"M 12.000 76.000 L 16.000 72.000 "), true)
   assert_eq(svg.contains("fill=\"none\" stroke=\"#000000\""), true)
 }
 
