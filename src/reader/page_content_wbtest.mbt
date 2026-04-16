@@ -40,6 +40,24 @@ test "page content stream parses a single stream through page workflow" {
 }
 
 ///|
+test "page content stream resolves indirect Length before reading stream bytes" {
+  let document = PdfDocument::open(
+    build_page_content_indirect_length_stream_fixture(),
+  )
+  let page = document.page(0)
+  let content = page.content_stream()
+  assert_eq(content.instructions.length(), 2)
+  match content.instructions[0] {
+    @content.ContentInstruction::Operation(operation) =>
+      assert_eq(
+        operation.operator == @content.StandardContentOperator::BeginText,
+        true,
+      )
+    _ => fail("expected BeginText instruction")
+  }
+}
+
+///|
 test "page content stream concatenates array streams with LF separation" {
   let document = PdfDocument::open(build_page_content_array_stream_fixture())
   let page = document.page(0)
@@ -98,6 +116,34 @@ fn build_page_content_single_stream_fixture() -> Bytes {
 
   finish_page_content_fixture(bytes, header_base, [
     catalog_offset, pages_offset, page_offset, content_offset, font_offset,
+  ])
+}
+
+///|
+fn build_page_content_indirect_length_stream_fixture() -> Bytes {
+  let (bytes, header_base) = build_document_structure_fixture_prefix()
+
+  let (bytes, catalog_offset) = append_indirect_object(
+    bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R >>",
+  )
+  let (bytes, pages_offset) = append_indirect_object(
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+  )
+  let (bytes, page_offset) = append_indirect_object(
+    bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
+  )
+  let content_stream = build_stream_object_body(
+    b"<< /Length 5 0 R >>", b"BT ET",
+  )
+  let (bytes, content_offset) = append_indirect_object(
+    bytes, header_base, 4, 0, content_stream,
+  )
+  let (bytes, length_offset) = append_indirect_object(
+    bytes, header_base, 5, 0, b"5",
+  )
+
+  finish_page_content_fixture(bytes, header_base, [
+    catalog_offset, pages_offset, page_offset, content_offset, length_offset,
   ])
 }
 

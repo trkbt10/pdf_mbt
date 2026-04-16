@@ -48,6 +48,7 @@ fn ObjectParser::read_stream_length(
         self.cursor.offset(),
         "Length must be non-negative",
       )
+    Some(Ref(id)) => self.resolve_indirect_stream_length(id)
     Some(_) =>
       raise @objects.PdfParseError::InvalidStream(
         self.cursor.offset(),
@@ -57,6 +58,30 @@ fn ObjectParser::read_stream_length(
       raise @objects.PdfParseError::InvalidStream(
         self.cursor.offset(),
         "Length entry is required",
+      )
+  }
+}
+
+///|
+fn ObjectParser::resolve_indirect_stream_length(
+  self : ObjectParser,
+  id : @objects.ObjectId,
+) -> Int64 raise @objects.PdfParseError {
+  match self.stream_length_resolver {
+    Some(resolve) => {
+      let length = resolve(id)
+      if length < 0L {
+        raise @objects.PdfParseError::InvalidStream(
+          self.cursor.offset(),
+          "Length must be non-negative",
+        )
+      }
+      length
+    }
+    None =>
+      raise @objects.PdfParseError::InvalidStream(
+        self.cursor.offset(),
+        "Length must be an integer",
       )
   }
 }

@@ -44,6 +44,16 @@ pub fn parse_indirect_object(
 }
 
 ///|
+/// Parses a single ISO 32000-2 section 7.3.10 indirect object from bytes,
+/// resolving indirect stream Length references through the supplied resolver.
+pub fn parse_indirect_object_with_stream_length_resolver(
+  input : Bytes,
+  resolver : (@objects.ObjectId) -> Int64 raise @objects.PdfParseError,
+) -> @objects.IndirectObject raise @objects.PdfParseError {
+  ObjectParser::with_stream_length_resolver(input, resolver).parse_indirect_object()
+}
+
+///|
 /// Reads and validates the positive object number in an indirect object.
 fn ObjectParser::read_indirect_object_number(
   self : ObjectParser,

@@ -35,8 +35,9 @@ fn load_uncompressed_object(
 ) -> @objects.PdfObject raise PdfReaderError {
   let source = ByteSource::new(file.bytes, file.header.base_offset)
   let bytes = source.slice_from_pdf_offset(pdf_offset)
-  let parsed_result : Result[@objects.IndirectObject, @objects.PdfParseError] = try? @parser.parse_indirect_object(
+  let parsed_result : Result[@objects.IndirectObject, @objects.PdfParseError] = try? @parser.parse_indirect_object_with_stream_length_resolver(
     bytes,
+    length_id => resolve_indirect_stream_length(file, length_id),
   )
   let parsed = match parsed_result {
     Ok(value) => value
@@ -50,6 +51,33 @@ fn load_uncompressed_object(
   }
 
   parsed.value
+}
+
+///|
+fn resolve_indirect_stream_length(
+  file : PdfFile,
+  id : @objects.ObjectId,
+) -> Int64 raise @objects.PdfParseError {
+  let object = try file.load_object(id) catch {
+    error =>
+      raise @objects.PdfParseError::InvalidStream(
+        0L,
+        "failed to resolve indirect Length: " + @debug.to_string(error),
+      )
+  } noraise {
+    value => value
+  }
+  match object {
+    @objects.PdfObject::Integer(length) if length >= 0L => length
+    @objects.PdfObject::Integer(_) =>
+      raise @objects.PdfParseError::InvalidStream(
+        0L, "Length must be non-negative",
+      )
+    _ =>
+      raise @objects.PdfParseError::InvalidStream(
+        0L, "Length indirect object must be an integer",
+      )
+  }
 }
 
 ///|

@@ -10,6 +10,8 @@ pub fn parse_all_objects(Bytes) -> Array[@objects.PdfObject] raise @objects.PdfP
 
 pub fn parse_indirect_object(Bytes) -> @objects.IndirectObject raise @objects.PdfParseError
 
+pub fn parse_indirect_object_with_stream_length_resolver(Bytes, (@objects.ObjectId) -> Int64 raise @objects.PdfParseError) -> @objects.IndirectObject raise @objects.PdfParseError
+
 pub fn parse_object(Bytes) -> @objects.PdfObject raise @objects.PdfParseError
 
 // Errors

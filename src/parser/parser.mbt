@@ -3,13 +3,33 @@
 struct ObjectParser {
   cursor : @lexer.ByteCursor
   lexer : @lexer.Lexer
+  stream_length_resolver : ((@objects.ObjectId) -> Int64 raise @objects.PdfParseError)?
 }
 
 ///|
 /// Creates an object parser over PDF bytes.
 pub fn ObjectParser::new(input : Bytes) -> ObjectParser {
   let cursor = @lexer.ByteCursor::new(input)
-  ObjectParser::{ cursor, lexer: @lexer.Lexer::new(cursor) }
+  ObjectParser::{
+    cursor,
+    lexer: @lexer.Lexer::new(cursor),
+    stream_length_resolver: None,
+  }
+}
+
+///|
+/// Creates an object parser over PDF bytes with a resolver for indirect stream
+/// Length references.
+fn ObjectParser::with_stream_length_resolver(
+  input : Bytes,
+  resolver : (@objects.ObjectId) -> Int64 raise @objects.PdfParseError,
+) -> ObjectParser {
+  let cursor = @lexer.ByteCursor::new(input)
+  ObjectParser::{
+    cursor,
+    lexer: @lexer.Lexer::new(cursor),
+    stream_length_resolver: Some(resolver),
+  }
 }
 
 ///|

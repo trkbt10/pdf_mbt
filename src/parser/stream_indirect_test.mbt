@@ -77,6 +77,36 @@ test "parser reads indirect stream objects with exact length and metadata" {
 }
 
 ///|
+test "parser resolves indirect stream Length through supplied resolver" {
+  let indirect = @parser.parse_indirect_object_with_stream_length_resolver(
+    b"12 0 obj << /Length 99 0 R >> stream\nabc\r\nendstream endobj",
+    id => {
+      if id == @objects.ObjectId::{ object_number: 99, generation_number: 0 } {
+        3L
+      } else {
+        raise @objects.PdfParseError::InvalidStream(
+          0L, "unexpected Length reference",
+        )
+      }
+    },
+  )
+  match indirect.value {
+    Stream(stream) => {
+      assert_eq(stream.data, b"abc")
+      assert_eq(
+        stream_entry(stream.dict, b"Length") ==
+        @objects.PdfObject::Ref(@objects.ObjectId::{
+          object_number: 99,
+          generation_number: 0,
+        }),
+        true,
+      )
+    }
+    _ => fail("expected stream object")
+  }
+}
+
+///|
 test "parser rejects extra non-white-space before endobj in indirect streams" {
   let result : Result[@objects.IndirectObject, @objects.PdfParseError] = try? @parser.parse_indirect_object(
     b"1 0 obj << /Length 1 >> stream\nX\nendstream Y endobj",
