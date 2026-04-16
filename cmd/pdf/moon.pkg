@@ -2,6 +2,8 @@ import {
   "trkbt10/pdf/cmd/pdf/lib" @pdf_cli,
 }
 
+supported_targets = "native"
+
 options(
   "is-main": true,
   "native-stub": [ "stdio_native.c" ],

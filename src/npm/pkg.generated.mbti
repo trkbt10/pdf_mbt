@@ -1,0 +1,47 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/npm"
+
+// Values
+pub fn ctx_add_page(Int, Double, Double) -> Int
+
+pub fn ctx_close(Int) -> Unit
+
+pub fn ctx_from_document(Int) -> Int
+
+pub fn ctx_new() -> Int
+
+pub fn ctx_set_title(Int, String) -> Unit
+
+pub fn ctx_to_bytes(Int) -> JSUint8Array
+
+pub fn pdf_check_json(Int) -> String
+
+pub fn pdf_close(Int) -> Unit
+
+pub fn pdf_extract_text(Int, Int) -> String
+
+pub fn pdf_extract_text_layout(Int, Int) -> String
+
+pub fn pdf_image_height(Int, Int, Int) -> Int
+
+pub fn pdf_image_rgba(Int, Int, Int) -> JSUint8Array
+
+pub fn pdf_image_width(Int, Int, Int) -> Int
+
+pub fn pdf_info_json(Int) -> String
+
+pub fn pdf_open(JSUint8Array) -> Int
+
+pub fn pdf_page_count(Int) -> Int
+
+pub fn pdf_page_images_count(Int, Int) -> Int
+
+// Errors
+
+// Types and methods
+type JSUint8Array
+
+// Type aliases
+
+// Traits
+

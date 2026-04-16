@@ -1,0 +1,38 @@
+{
+  "name": "@trkbt10/pdf-wasm",
+  "version": "0.1.0",
+  "description": "MoonBit PDF reader and context builder compiled to wasm-gc",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/trkbt10/pdf"
+  },
+  "keywords": ["pdf", "moonbit", "wasm", "wasm-gc"],
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./index.cjs",
+  "module": "./index.mjs",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.mjs",
+      "require": "./index.cjs"
+    },
+    "./pdf.wasm": "./dist/pdf.wasm"
+  },
+  "files": [
+    "dist",
+    "index.mjs",
+    "index.cjs",
+    "index.d.ts",
+    "README.md",
+    "package.json"
+  ],
+  "scripts": {
+    "build": "scripts/build.sh",
+    "prepack": "scripts/build.sh"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

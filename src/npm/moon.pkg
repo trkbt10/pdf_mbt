@@ -1,0 +1,41 @@
+import {
+  "moonbitlang/core/encoding/utf8",
+  "trkbt10/pdf/src/reader",
+  "trkbt10/pdf/src/text",
+  "trkbt10/pdf/src/layout",
+  "trkbt10/pdf/src/lib" @pdfapi,
+  "trkbt10/pdf/src/context",
+  "trkbt10/pdf/src/objects",
+  "trkbt10/pdf/src/graphics",
+}
+
+supported_targets = "wasm-gc"
+
+options(
+  "is-main": true,
+  link: {
+    "wasm-gc": {
+      "exports": [
+        "pdf_open",
+        "pdf_page_count",
+        "pdf_extract_text",
+        "pdf_extract_text_layout",
+        "pdf_page_images_count",
+        "pdf_image_rgba",
+        "pdf_image_width",
+        "pdf_image_height",
+        "pdf_info_json",
+        "pdf_check_json",
+        "pdf_close",
+        "ctx_new",
+        "ctx_from_document",
+        "ctx_add_page",
+        "ctx_set_title",
+        "ctx_to_bytes",
+        "ctx_close",
+      ],
+      "imported-string-constants": "_",
+      "use-js-builtin-string": true,
+    },
+  },
+)
