@@ -3,3 +3,7 @@ import {
   "trkbt10/pdf/src/objects",
   "trkbt10/pdf/src/reader",
 }
+
+import {
+  "moonbitlang/x/fs",
+} for "test"

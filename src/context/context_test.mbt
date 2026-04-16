@@ -85,6 +85,56 @@ test "PdfContext from_document roundtrips and supports incremental edits" {
 }
 
 ///|
+test "PdfContext text extraction survives write read roundtrip" {
+  let context = @context.PdfContext::new()
+  let page_ref = context.add_page(612.0, 792.0)
+  context.add_font(page_ref, @objects.PdfName::new(b"F1"), helvetica_font())
+  |> ignore
+  context.set_page_content(page_ref, sample_text_content(b"RoundtripText"))
+  |> ignore
+  let document = @reader.PdfDocument::open(context.to_bytes())
+  let text = extracted_page_text(document.page(0))
+  assert_eq(text, "RoundtripText")
+}
+
+///|
+test "PdfContext preserves existing PDF text through full roundtrip" {
+  let original = simple_pdf20_file_bytes()
+  let parsed = @reader.PdfDocument::open(original)
+  let context = @context.PdfContext::from_document(parsed)
+  let document = @reader.PdfDocument::open(context.to_bytes())
+  let text = extracted_page_text(document.page(0))
+  assert_eq(text, "HelloWorld")
+}
+
+///|
+test "PdfContext metadata edits persist through parse edit roundtrip" {
+  let context = @context.PdfContext::new()
+  context.set_title(b"Original")
+  let parsed = @reader.PdfDocument::open(context.to_bytes())
+  let edited = @context.PdfContext::from_document(parsed)
+  edited.set_title(b"Modified")
+  assert_pdf_title(edited.to_bytes(), b"Modified")
+}
+
+///|
+test "PdfContext add_page persists new readable page through roundtrip" {
+  let original = simple_pdf20_file_bytes()
+  let parsed = @reader.PdfDocument::open(original)
+  let original_count = parsed.page_count()
+  let context = @context.PdfContext::from_document(parsed)
+  let page_ref = context.add_page(612.0, 792.0)
+  context.add_font(page_ref, @objects.PdfName::new(b"F1"), helvetica_font())
+  |> ignore
+  context.set_page_content(page_ref, sample_text_content(b"AddedPage"))
+  |> ignore
+  let document = @reader.PdfDocument::open(context.to_bytes())
+  assert_eq(document.page_count(), original_count + 1)
+  let text = extracted_page_text(document.page(original_count))
+  assert_eq(text, "AddedPage")
+}
+
+///|
 fn helvetica_font() -> @objects.PdfObject {
   let dict : @objects.PdfDictionary = Map::new()
   dict[@objects.PdfName::new(b"Type")] = @objects.PdfObject::Name(
@@ -104,4 +154,37 @@ fn sample_text_content(text : Bytes) -> Bytes {
   b"BT\n/F1 12 Tf\n72 720 Td\n" +
   @context.serialize_object(@objects.PdfObject::String(text)) +
   b" Tj\nET\n"
+}
+
+///|
+fn simple_pdf20_file_bytes() -> Bytes raise {
+  @fs.read_file_to_bytes("spec/pdf20examples/Simple PDF 2.0 file.pdf")
+}
+
+///|
+fn extracted_page_text(page : @reader.PdfPage) -> String raise {
+  let extracted = page.extracted_text(@reader.TextPageOptions::default())
+  let buf = StringBuilder::new()
+  for span in extracted.spans {
+    buf.write_string(span.text)
+  }
+  buf.to_string()
+}
+
+///|
+fn assert_pdf_title(bytes : Bytes, expected : Bytes) -> Unit raise {
+  let file = @reader.PdfFile::open(bytes)
+  match file.trailer().info {
+    Some(info_ref) =>
+      match file.load_object(info_ref) {
+        @objects.PdfObject::Dictionary(info) =>
+          assert_eq(
+            info.get(@objects.PdfName::new(b"Title")) ==
+            Some(@objects.PdfObject::String(expected)),
+            true,
+          )
+        _ => fail("expected Info dictionary")
+      }
+    None => fail("expected Info reference")
+  }
 }

@@ -17,6 +17,31 @@ pub struct PdfContext {
 }
 
 ///|
+/// PdfContext as mutable document model: reports how many indirect objects are
+/// currently held in the mutable object store.
+pub fn PdfContext::object_count(self : PdfContext) -> Int {
+  let mut count = 0
+  for entry in self.objects.to_array() {
+    entry |> ignore
+    count += 1
+  }
+  count
+}
+
+///|
+/// Page manipulation: reports the number of leaf Page objects addressable
+/// through the mutable context page tree.
+pub fn PdfContext::page_count(self : PdfContext) -> Int raise PdfContextError {
+  let refs = self.page_refs()
+  let mut count = 0
+  for page_ref in refs {
+    page_ref |> ignore
+    count += 1
+  }
+  count
+}
+
+///|
 pub(all) struct PdfContextFileId {
   first : Bytes
   second : Bytes

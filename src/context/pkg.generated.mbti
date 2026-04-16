@@ -43,6 +43,8 @@ pub fn PdfContext::from_document(@reader.PdfDocument) -> Self raise PdfContextEr
 pub fn PdfContext::from_file(@reader.PdfFile) -> Self raise PdfContextError
 pub fn PdfContext::new() -> Self
 pub fn PdfContext::object(Self, @objects.ObjectId) -> @objects.PdfObject?
+pub fn PdfContext::object_count(Self) -> Int
+pub fn PdfContext::page_count(Self) -> Int raise PdfContextError
 pub fn PdfContext::page_refs(Self) -> Array[@objects.ObjectId] raise PdfContextError
 pub fn PdfContext::remove_page(Self, Int) -> Unit raise PdfContextError
 pub fn PdfContext::set_author(Self, Bytes) -> Unit
