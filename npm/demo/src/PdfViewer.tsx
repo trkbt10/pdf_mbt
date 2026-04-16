@@ -1,28 +1,20 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
+import type { RefObject } from "react";
 import type {
   PdfCapabilityReport,
+  PdfDocument,
+  PdfImageInfo,
   PdfInfo,
-  PdfPageRenderData,
-  PdfRenderImage,
+  PdfPageGeometry,
+  PdfRenderText,
 } from "@trkbt10/pdf-wasm";
 
-export type LayoutMode = "raw" | "layout";
 export type ZoomValue = "fit" | "0.5" | "0.75" | "1" | "1.25" | "1.5" | "2";
-
-export interface ExtractedImage {
-  id: string;
-  width: number;
-  height: number;
-  rgba: Uint8Array;
-}
 
 export interface ViewerPage {
   index: number;
-  rawText: string;
-  layoutText: string;
-  images: ExtractedImage[];
-  renderData: PdfPageRenderData;
+  geometry: PdfPageGeometry;
 }
 
 export interface ViewerDocument {
@@ -31,6 +23,27 @@ export interface ViewerDocument {
   info: PdfInfo;
   featureReport: PdfCapabilityReport;
   pages: ViewerPage[];
+  source: PdfDocument;
+}
+
+interface PageTextState {
+  status: "idle" | "loading" | "ready" | "error";
+  texts: PdfRenderText[];
+  error?: string;
+}
+
+interface PageImagesState {
+  status: "idle" | "loading" | "ready" | "error";
+  count: number;
+  items: ImageState[];
+  error?: string;
+}
+
+interface ImageState {
+  info: PdfImageInfo | null;
+  rgba: Uint8Array | null;
+  status: "idle" | "loading" | "ready" | "error";
+  error?: string;
 }
 
 interface PdfViewerProps {
@@ -46,14 +59,136 @@ export default function PdfViewer({
   onCreatePdf,
   onFile,
 }: PdfViewerProps) {
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>("raw");
   const [zoomValue, setZoomValue] = useState<ZoomValue>("fit");
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [dragActive, setDragActive] = useState(false);
+  const [pageTexts, setPageTexts] = useState<Record<number, PageTextState>>({});
+  const [pageImages, setPageImages] = useState<Record<number, PageImagesState>>(
+    {}
+  );
 
   useEffect(() => {
     setCurrentPageIndex(0);
+    setPageTexts({});
+    setPageImages({});
   }, [document]);
+
+  const loadPageText = useCallback(
+    (pageIndex: number) => {
+      if (!document) {
+        return;
+      }
+      const current = pageTexts[pageIndex];
+      if (current && current.status !== "idle") {
+        return;
+      }
+      setPageTexts((states) => ({
+        ...states,
+        [pageIndex]: { status: "loading", texts: [] },
+      }));
+      window.setTimeout(() => {
+        try {
+          const texts = document.source.pageTextPositions(pageIndex);
+          setPageTexts((states) => ({
+            ...states,
+            [pageIndex]: { status: "ready", texts },
+          }));
+        } catch (error) {
+          setPageTexts((states) => ({
+            ...states,
+            [pageIndex]: {
+              error: errorMessage(error),
+              status: "error",
+              texts: [],
+            },
+          }));
+        }
+      }, 0);
+    },
+    [document, pageTexts]
+  );
+
+  const loadPageImages = useCallback(
+    (pageIndex: number) => {
+      if (!document) {
+        return;
+      }
+      const current = pageImages[pageIndex];
+      if (current && current.status !== "idle") {
+        return;
+      }
+      setPageImages((states) => ({
+        ...states,
+        [pageIndex]: emptyPageImages("loading"),
+      }));
+      window.setTimeout(() => {
+        try {
+          const count = document.source.pageImageCount(pageIndex);
+          const items = Array.from({ length: count }, (_, imageIndex) =>
+            readImageInfo(document.source, pageIndex, imageIndex)
+          );
+          setPageImages((states) => ({
+            ...states,
+            [pageIndex]: { count, items, status: "ready" },
+          }));
+        } catch (error) {
+          setPageImages((states) => ({
+            ...states,
+            [pageIndex]: {
+              ...emptyPageImages("error"),
+              error: errorMessage(error),
+            },
+          }));
+        }
+      }, 0);
+    },
+    [document, pageImages]
+  );
+
+  const loadImageRGBA = useCallback(
+    (pageIndex: number, imageIndex: number) => {
+      if (!document) {
+        return;
+      }
+      const image = pageImages[pageIndex]?.items[imageIndex];
+      if (!image || image.status === "loading" || image.status === "ready") {
+        return;
+      }
+      setPageImages((states) =>
+        updateImageState(states, pageIndex, imageIndex, {
+          ...image,
+          status: "loading",
+        })
+      );
+      window.setTimeout(() => {
+        try {
+          const rgba = document.source.pageImageRGBA(pageIndex, imageIndex);
+          if (
+            image.info &&
+            rgba.length !== image.info.width * image.info.height * 4
+          ) {
+            throw new Error("Image RGBA data is unavailable");
+          }
+          setPageImages((states) =>
+            updateImageState(states, pageIndex, imageIndex, {
+              ...states[pageIndex].items[imageIndex],
+              rgba,
+              status: "ready",
+            })
+          );
+        } catch (error) {
+          setPageImages((states) =>
+            updateImageState(states, pageIndex, imageIndex, {
+              ...states[pageIndex].items[imageIndex],
+              error: errorMessage(error),
+              status: "error",
+            })
+          );
+        }
+      }, 0);
+    },
+    [document, pageImages]
+  );
 
   async function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
@@ -124,48 +259,34 @@ export default function PdfViewer({
               <h2>Pages</h2>
               <p>{pageSummary(document, currentPageIndex)}</p>
             </div>
-            <div className="viewerControls">
-              <div className="toggleGroup" aria-label="Text layout mode">
-                <button
-                  aria-pressed={layoutMode === "raw"}
-                  onClick={() => setLayoutMode("raw")}
-                  type="button"
-                >
-                  Raw text
-                </button>
-                <button
-                  aria-pressed={layoutMode === "layout"}
-                  onClick={() => setLayoutMode("layout")}
-                  type="button"
-                >
-                  Layout reconstruction
-                </button>
-              </div>
-              <label className="zoomControl">
-                <span>Zoom</span>
-                <select
-                  onChange={(event) =>
-                    setZoomValue(event.currentTarget.value as ZoomValue)
-                  }
-                  value={zoomValue}
-                >
-                  <option value="fit">Fit width</option>
-                  <option value="0.5">50%</option>
-                  <option value="0.75">75%</option>
-                  <option value="1">100%</option>
-                  <option value="1.25">125%</option>
-                  <option value="1.5">150%</option>
-                  <option value="2">200%</option>
-                </select>
-              </label>
-            </div>
+            <label className="zoomControl">
+              <span>Zoom</span>
+              <select
+                onChange={(event) =>
+                  setZoomValue(event.currentTarget.value as ZoomValue)
+                }
+                value={zoomValue}
+              >
+                <option value="fit">Fit width</option>
+                <option value="0.5">50%</option>
+                <option value="0.75">75%</option>
+                <option value="1">100%</option>
+                <option value="1.25">125%</option>
+                <option value="1.5">150%</option>
+                <option value="2">200%</option>
+              </select>
+            </label>
           </div>
 
           <PageList
             currentPageIndex={currentPageIndex}
             document={document}
-            layoutMode={layoutMode}
+            loadImageRGBA={loadImageRGBA}
+            loadPageImages={loadPageImages}
+            loadPageText={loadPageText}
             onSelectPage={setCurrentPageIndex}
+            pageImages={pageImages}
+            pageTexts={pageTexts}
             zoomValue={zoomValue}
           />
         </section>
@@ -245,14 +366,22 @@ function FeatureReport({ report }: { report: PdfCapabilityReport | null }) {
 function PageList({
   currentPageIndex,
   document,
-  layoutMode,
+  loadImageRGBA,
+  loadPageImages,
+  loadPageText,
   onSelectPage,
+  pageImages,
+  pageTexts,
   zoomValue,
 }: {
   currentPageIndex: number;
   document: ViewerDocument | null;
-  layoutMode: LayoutMode;
+  loadImageRGBA: (pageIndex: number, imageIndex: number) => void;
+  loadPageImages: (pageIndex: number) => void;
+  loadPageText: (pageIndex: number) => void;
   onSelectPage: (index: number) => void;
+  pageImages: Record<number, PageImagesState>;
+  pageTexts: Record<number, PageTextState>;
   zoomValue: ZoomValue;
 }) {
   if (!document) {
@@ -262,40 +391,118 @@ function PageList({
   return (
     <ol className="pageList">
       {document.pages.map((page) => (
-        <li className={pageItemClassName(page.index, currentPageIndex)} key={page.index}>
-          <header>
-            <h3>Page {page.index + 1}</h3>
-            <div className="pageMeta">
-              <span>{pageSizeSummary(page.renderData)}</span>
-              <span>{imageSummary(page.images)}</span>
-              <button onClick={() => onSelectPage(page.index)} type="button">
-                Select page
-              </button>
-            </div>
-          </header>
-          <RenderedPageCanvas page={page} zoomValue={zoomValue} />
-          <details className="pageDebug">
-            <summary>Extracted content</summary>
-            <pre>{pageText(page, layoutMode)}</pre>
-            <ImageList images={page.images} />
-          </details>
-        </li>
+        <PageItem
+          currentPageIndex={currentPageIndex}
+          imageState={pageImages[page.index] ?? emptyPageImages("idle")}
+          key={page.index}
+          loadImageRGBA={loadImageRGBA}
+          loadPageImages={loadPageImages}
+          loadPageText={loadPageText}
+          onSelectPage={onSelectPage}
+          page={page}
+          textState={pageTexts[page.index] ?? emptyPageText("idle")}
+          zoomValue={zoomValue}
+        />
       ))}
     </ol>
   );
 }
 
-function RenderedPageCanvas({
+function PageItem({
+  currentPageIndex,
+  imageState,
+  loadImageRGBA,
+  loadPageImages,
+  loadPageText,
+  onSelectPage,
   page,
+  textState,
   zoomValue,
 }: {
+  currentPageIndex: number;
+  imageState: PageImagesState;
+  loadImageRGBA: (pageIndex: number, imageIndex: number) => void;
+  loadPageImages: (pageIndex: number) => void;
+  loadPageText: (pageIndex: number) => void;
+  onSelectPage: (index: number) => void;
   page: ViewerPage;
+  textState: PageTextState;
+  zoomValue: ZoomValue;
+}) {
+  const itemRef = useRef<HTMLLIElement | null>(null);
+  const isVisible = useElementInView(itemRef, "0px");
+  const isNearViewport = useElementInView(itemRef, "900px");
+
+  useEffect(() => {
+    if (!isVisible) {
+      return;
+    }
+    onSelectPage(page.index);
+    loadPageText(page.index);
+    loadPageImages(page.index);
+  }, [isVisible, loadPageImages, loadPageText, onSelectPage, page.index]);
+
+  return (
+    <li
+      className={pageItemClassName(page.index, currentPageIndex)}
+      ref={itemRef}
+    >
+      <header>
+        <h3>Page {page.index + 1}</h3>
+        <div className="pageMeta">
+          <span>{pageSizeSummary(page.geometry)}</span>
+          <span>{imageSummary(imageState)}</span>
+          <button
+            onClick={() => {
+              onSelectPage(page.index);
+              loadPageText(page.index);
+              loadPageImages(page.index);
+            }}
+            type="button"
+          >
+            Select page
+          </button>
+        </div>
+      </header>
+      <RenderedPageCanvas
+        geometry={page.geometry}
+        isNearViewport={isNearViewport}
+        pageIndex={page.index}
+        textState={textState}
+        zoomValue={zoomValue}
+      />
+      <details className="pageDebug">
+        <summary>Lazy content</summary>
+        <TextStatus textState={textState} />
+        <ImageList
+          imageState={imageState}
+          loadImageRGBA={(imageIndex) => loadImageRGBA(page.index, imageIndex)}
+          pageIndex={page.index}
+        />
+      </details>
+    </li>
+  );
+}
+
+function RenderedPageCanvas({
+  geometry,
+  isNearViewport,
+  pageIndex,
+  textState,
+  zoomValue,
+}: {
+  geometry: PdfPageGeometry;
+  isNearViewport: boolean;
+  pageIndex: number;
+  textState: PageTextState;
   zoomValue: ZoomValue;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [fitWidth, setFitWidth] = useState(0);
-  const scale = pageScale(page.renderData, zoomValue, fitWidth);
+  const scale = pageScale(geometry, zoomValue, fitWidth);
+  const pageWidth = geometry.width * scale;
+  const pageHeight = geometry.height * scale;
 
   useEffect(() => {
     const frame = frameRef.current;
@@ -310,24 +517,40 @@ function RenderedPageCanvas({
   }, []);
 
   useEffect(() => {
+    if (!isNearViewport) {
+      return;
+    }
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context) {
       return;
     }
-    drawPage(canvas, context, page.renderData, scale);
-  }, [page.renderData, scale]);
+    drawPage(canvas, context, geometry, textState.texts, scale);
+  }, [geometry, isNearViewport, scale, textState.texts]);
 
   return (
     <div className="pageCanvasViewport" ref={frameRef}>
-      <canvas
-        aria-label={`Rendered PDF page ${page.index + 1}`}
-        ref={canvasRef}
-        style={{
-          height: `${page.renderData.height * scale}px`,
-          width: `${page.renderData.width * scale}px`,
-        }}
-      />
+      {isNearViewport ? (
+        <canvas
+          aria-label={`Rendered PDF page ${pageIndex + 1}`}
+          ref={canvasRef}
+          style={{
+            height: `${pageHeight}px`,
+            width: `${pageWidth}px`,
+          }}
+        />
+      ) : (
+        <div
+          aria-label={`PDF page ${pageIndex + 1} placeholder`}
+          className="pagePlaceholder"
+          style={{ height: `${pageHeight}px`, width: `${pageWidth}px` }}
+        >
+          <span>Page {pageIndex + 1}</span>
+        </div>
+      )}
+      {textState.status === "loading" && (
+        <p className="pageLoading">Loading text positions...</p>
+      )}
     </div>
   );
 }
@@ -335,88 +558,222 @@ function RenderedPageCanvas({
 function drawPage(
   canvas: HTMLCanvasElement,
   context: CanvasRenderingContext2D,
-  renderData: PdfPageRenderData,
+  geometry: PdfPageGeometry,
+  texts: PdfRenderText[],
   scale: number
 ) {
   const pixelRatio = window.devicePixelRatio || 1;
   const canvasWidth = Math.max(
     1,
-    Math.round(renderData.width * scale * pixelRatio)
+    Math.round(geometry.width * scale * pixelRatio)
   );
   const canvasHeight = Math.max(
     1,
-    Math.round(renderData.height * scale * pixelRatio)
+    Math.round(geometry.height * scale * pixelRatio)
   );
   canvas.width = canvasWidth;
   canvas.height = canvasHeight;
   context.setTransform(scale * pixelRatio, 0, 0, scale * pixelRatio, 0, 0);
   context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, renderData.width, renderData.height);
-  for (const image of renderData.images) {
-    drawRenderImage(context, renderData, image);
-  }
+  context.fillRect(0, 0, geometry.width, geometry.height);
   context.fillStyle = "#111111";
   context.textBaseline = "alphabetic";
-  for (const text of renderData.texts) {
+  for (const text of texts) {
     context.font = `${safeFontSize(text.fontSize)}px sans-serif`;
-    context.fillText(text.text, text.x, renderData.height - text.y);
+    context.fillText(text.text, text.x, geometry.height - text.y);
   }
 }
 
-function drawRenderImage(
-  context: CanvasRenderingContext2D,
-  renderData: PdfPageRenderData,
-  image: PdfRenderImage
-) {
-  const pixelWidth = image.pixelWidth ?? Math.round(image.width);
-  const pixelHeight = image.pixelHeight ?? Math.round(image.height);
-  if (pixelWidth <= 0 || pixelHeight <= 0) {
-    return;
+function TextStatus({ textState }: { textState: PageTextState }) {
+  if (textState.status === "error") {
+    return <p className="imageError">{textState.error}</p>;
   }
-  const rgba = rgbaFromBase64(image.rgbaBase64);
-  if (rgba.length !== pixelWidth * pixelHeight * 4) {
-    return;
+  if (textState.status !== "ready") {
+    return <p className="mutedText">Text positions load when the page is visible.</p>;
   }
-  const imageData = new ImageData(rgba, pixelWidth, pixelHeight);
-  const source = document.createElement("canvas");
-  source.width = pixelWidth;
-  source.height = pixelHeight;
-  const sourceContext = source.getContext("2d");
-  if (!sourceContext) {
-    return;
+  if (textState.texts.length === 0) {
+    return <p className="mutedText">No positioned text on this page.</p>;
   }
-  sourceContext.putImageData(imageData, 0, 0);
-  context.drawImage(
-    source,
-    image.x,
-    renderData.height - image.y - image.height,
-    image.width,
-    image.height
+  return <pre>{textState.texts.map((text) => text.text).join("\n")}</pre>;
+}
+
+function ImageList({
+  imageState,
+  loadImageRGBA,
+  pageIndex,
+}: {
+  imageState: PageImagesState;
+  loadImageRGBA: (imageIndex: number) => void;
+  pageIndex: number;
+}) {
+  if (imageState.status === "error") {
+    return <p className="imageError">{imageState.error}</p>;
+  }
+  if (imageState.status !== "ready") {
+    return <p className="mutedText">Image placeholders load when the page is visible.</p>;
+  }
+  if (imageState.count === 0) {
+    return <p className="mutedText">No images on this page.</p>;
+  }
+
+  return (
+    <div className="imageGrid">
+      {imageState.items.map((image, index) => (
+        <ImageTile
+          image={image}
+          imageIndex={index}
+          key={`${pageIndex}-${index}`}
+          loadImageRGBA={loadImageRGBA}
+        />
+      ))}
+    </div>
   );
 }
 
-function rgbaFromBase64(value: string): Uint8ClampedArray<ArrayBuffer> {
-  const binary = atob(value);
-  const buffer = new ArrayBuffer(binary.length);
-  const bytes = new Uint8ClampedArray(buffer);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
+function ImageTile({
+  image,
+  imageIndex,
+  loadImageRGBA,
+}: {
+  image: ImageState;
+  imageIndex: number;
+  loadImageRGBA: (imageIndex: number) => void;
+}) {
+  const tileRef = useRef<HTMLElement | null>(null);
+  const isVisible = useElementInView(tileRef, "200px");
+
+  useEffect(() => {
+    if (isVisible) {
+      loadImageRGBA(imageIndex);
+    }
+  }, [imageIndex, isVisible, loadImageRGBA]);
+
+  const label = image.info
+    ? `${image.info.width} x ${image.info.height} ${infoValue(image.info.colorSpace)}`
+    : "Image metadata unavailable";
+
+  return (
+    <figure ref={tileRef}>
+      {image.info && image.rgba ? (
+        <ImageCanvas image={image} />
+      ) : (
+        <button
+          className="imagePlaceholder"
+          onClick={() => loadImageRGBA(imageIndex)}
+          type="button"
+        >
+          {image.status === "loading" ? "Loading RGBA" : "Load RGBA"}
+        </button>
+      )}
+      <figcaption>{label}</figcaption>
+      {image.status === "error" && <p className="imageError">{image.error}</p>}
+    </figure>
+  );
+}
+
+function ImageCanvas({ image }: { image: ImageState }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const info = image.info;
+  const rgba = image.rgba;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !context || !info || !rgba) {
+      return;
+    }
+    const imageData = new ImageData(
+      new Uint8ClampedArray(rgba),
+      info.width,
+      info.height
+    );
+    context.putImageData(imageData, 0, 0);
+  }, [info, rgba]);
+
+  if (!info) {
+    return null;
   }
-  return bytes;
+
+  return (
+    <canvas
+      aria-label={`Extracted image ${info.width} by ${info.height}`}
+      height={info.height}
+      ref={canvasRef}
+      width={info.width}
+    />
+  );
+}
+
+function readImageInfo(
+  document: PdfDocument,
+  pageIndex: number,
+  imageIndex: number
+): ImageState {
+  try {
+    return {
+      info: document.pageImageInfo(pageIndex, imageIndex),
+      rgba: null,
+      status: "idle",
+    };
+  } catch (error) {
+    return {
+      error: errorMessage(error),
+      info: null,
+      rgba: null,
+      status: "error",
+    };
+  }
+}
+
+function updateImageState(
+  states: Record<number, PageImagesState>,
+  pageIndex: number,
+  imageIndex: number,
+  image: ImageState
+): Record<number, PageImagesState> {
+  const page = states[pageIndex];
+  if (!page) {
+    return states;
+  }
+  const items = page.items.slice();
+  items[imageIndex] = image;
+  return {
+    ...states,
+    [pageIndex]: { ...page, items },
+  };
+}
+
+function emptyPageText(status: PageTextState["status"]): PageTextState {
+  return { status, texts: [] };
+}
+
+function emptyPageImages(status: PageImagesState["status"]): PageImagesState {
+  return { count: 0, items: [], status };
+}
+
+function firstPdfFile(files: FileList): File | null {
+  const allFiles = Array.from(files);
+  const pdfFile = allFiles.find((file) => {
+    if (file.type === "application/pdf") {
+      return true;
+    }
+    return file.name.toLowerCase().endsWith(".pdf");
+  });
+  return pdfFile ?? null;
 }
 
 function pageScale(
-  renderData: PdfPageRenderData,
+  geometry: PdfPageGeometry,
   zoomValue: ZoomValue,
   fitWidth: number
 ): number {
   if (zoomValue !== "fit") {
     return Number(zoomValue);
   }
-  if (fitWidth <= 0 || renderData.width <= 0) {
+  if (fitWidth <= 0 || geometry.width <= 0) {
     return 1;
   }
-  return clampScale((fitWidth - 2) / renderData.width);
+  return clampScale((fitWidth - 2) / geometry.width);
 }
 
 function clampScale(scale: number): number {
@@ -436,79 +793,21 @@ function safeFontSize(value: number): number {
   return 12;
 }
 
-function ImageList({ images }: { images: ExtractedImage[] }) {
-  if (images.length === 0) {
-    return <p className="mutedText">No decoded images on this page.</p>;
+function imageSummary(imageState: PageImagesState): string {
+  if (imageState.status === "idle") {
+    return "Images pending";
   }
-
-  return (
-    <div className="imageGrid">
-      {images.map((image) => (
-        <figure key={image.id}>
-          <ImageCanvas image={image} />
-          <figcaption>
-            {image.width} x {image.height} RGBA
-          </figcaption>
-        </figure>
-      ))}
-    </div>
-  );
-}
-
-function ImageCanvas({ image }: { image: ExtractedImage }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    if (!canvas || !context) {
-      return;
-    }
-    const imageData = new ImageData(
-      new Uint8ClampedArray(image.rgba),
-      image.width,
-      image.height
-    );
-    context.putImageData(imageData, 0, 0);
-  }, [image]);
-
-  return (
-    <canvas
-      aria-label={`Extracted image ${image.width} by ${image.height}`}
-      height={image.height}
-      ref={canvasRef}
-      width={image.width}
-    />
-  );
-}
-
-function firstPdfFile(files: FileList): File | null {
-  const allFiles = Array.from(files);
-  const pdfFile = allFiles.find((file) => {
-    if (file.type === "application/pdf") {
-      return true;
-    }
-    return file.name.toLowerCase().endsWith(".pdf");
-  });
-  return pdfFile ?? null;
-}
-
-function pageText(page: ViewerPage, layoutMode: LayoutMode): string {
-  if (layoutMode === "layout") {
-    return page.layoutText;
+  if (imageState.status === "loading") {
+    return "Loading images";
   }
-  return page.rawText;
-}
-
-function imageSummary(images: ExtractedImage[]): string {
-  if (images.length === 1) {
+  if (imageState.count === 1) {
     return "1 image";
   }
-  return `${images.length} images`;
+  return `${imageState.count} images`;
 }
 
-function pageSizeSummary(renderData: PdfPageRenderData): string {
-  return `${Math.round(renderData.width)} x ${Math.round(renderData.height)} pt`;
+function pageSizeSummary(geometry: PdfPageGeometry): string {
+  return `${Math.round(geometry.width)} x ${Math.round(geometry.height)} pt`;
 }
 
 function pageSummary(
@@ -544,4 +843,37 @@ function pageItemClassName(pageIndex: number, currentPageIndex: number): string 
     return "pageItem pageItemActive";
   }
   return "pageItem";
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
+function useElementInView<T extends Element>(
+  ref: RefObject<T | null>,
+  rootMargin: string
+): boolean {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) {
+      return;
+    }
+    if (typeof IntersectionObserver === "undefined") {
+      setIsVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { rootMargin }
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref, rootMargin]);
+
+  return isVisible;
 }

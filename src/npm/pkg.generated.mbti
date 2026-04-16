@@ -22,21 +22,21 @@ pub fn pdf_extract_text(Int, Int) -> String
 
 pub fn pdf_extract_text_layout(Int, Int) -> String
 
-pub fn pdf_image_height(Int, Int, Int) -> Int
-
-pub fn pdf_image_rgba(Int, Int, Int) -> JSUint8Array
-
-pub fn pdf_image_width(Int, Int, Int) -> Int
-
 pub fn pdf_info_json(Int) -> String
 
 pub fn pdf_open(JSUint8Array) -> Int
 
 pub fn pdf_page_count(Int) -> Int
 
-pub fn pdf_page_images_count(Int, Int) -> Int
+pub fn pdf_page_geometry_json(Int, Int) -> String
 
-pub fn pdf_page_render_json(Int, Int) -> String
+pub fn pdf_page_image_count(Int, Int) -> Int
+
+pub fn pdf_page_image_info_json(Int, Int, Int) -> String
+
+pub fn pdf_page_image_rgba(Int, Int, Int) -> JSUint8Array
+
+pub fn pdf_page_text_positions_json(Int, Int) -> String
 
 // Errors
 

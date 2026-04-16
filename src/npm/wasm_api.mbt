@@ -32,7 +32,8 @@ let document_counter : HandleCounter = { value: 1 }
 let context_counter : HandleCounter = { value: 1 }
 
 ///|
-priv struct RenderImageResource {
+priv struct PageImageEntry {
+  name : @objects.PdfName?
   stream : @objects.PdfStream
   resources : @objects.PdfDictionary?
 }
@@ -84,42 +85,50 @@ pub fn pdf_extract_text_layout(handle : Int, page : Int) -> String {
 }
 
 ///|
-pub fn pdf_page_render_json(handle : Int, page : Int) -> String {
+pub fn pdf_page_geometry_json(handle : Int, page : Int) -> String {
   match get_page(handle, page) {
-    Some(pdf_page) => page_render_json(pdf_page)
+    Some(pdf_page) => page_geometry_json(pdf_page)
     None => "{\"error\":\"invalid page handle\"}"
   }
 }
 
 ///|
-pub fn pdf_page_images_count(handle : Int, page : Int) -> Int {
+pub fn pdf_page_text_positions_json(handle : Int, page : Int) -> String {
   match get_page(handle, page) {
-    Some(pdf_page) => pdf_page.images().length()
+    Some(pdf_page) => page_text_positions_json(pdf_page)
+    None => "{\"error\":\"invalid page handle\"}"
+  }
+}
+
+///|
+pub fn pdf_page_image_count(handle : Int, page : Int) -> Int {
+  match get_page(handle, page) {
+    Some(pdf_page) => page_image_entries(pdf_page).length()
     None => -1
   }
 }
 
 ///|
-pub fn pdf_image_rgba(handle : Int, page : Int, index : Int) -> JSUint8Array {
-  match get_image(handle, page, index) {
-    Some(image) => bytes_to_uint8array(image.to_rgba())
+pub fn pdf_page_image_info_json(
+  handle : Int,
+  page : Int,
+  index : Int,
+) -> String {
+  match get_page_image_entry(handle, page, index) {
+    Some(entry) => page_image_info_json(entry)
+    None => "{\"error\":\"invalid image handle\"}"
+  }
+}
+
+///|
+pub fn pdf_page_image_rgba(
+  handle : Int,
+  page : Int,
+  index : Int,
+) -> JSUint8Array {
+  match get_page_image_entry(handle, page, index) {
+    Some(entry) => bytes_to_uint8array(page_image_rgba(entry))
     None => bytes_to_uint8array(b"")
-  }
-}
-
-///|
-pub fn pdf_image_width(handle : Int, page : Int, index : Int) -> Int {
-  match get_image(handle, page, index) {
-    Some(image) => image.width()
-    None => -1
-  }
-}
-
-///|
-pub fn pdf_image_height(handle : Int, page : Int, index : Int) -> Int {
-  match get_image(handle, page, index) {
-    Some(image) => image.height()
-    None => -1
   }
 }
 
@@ -252,12 +261,16 @@ fn get_page(handle : Int, page : Int) -> @pdfapi.PdfPage? {
 }
 
 ///|
-fn get_image(handle : Int, page : Int, index : Int) -> @pdfapi.PdfImage? {
+fn get_page_image_entry(
+  handle : Int,
+  page : Int,
+  index : Int,
+) -> PageImageEntry? {
   match get_page(handle, page) {
     Some(pdf_page) => {
-      let images = pdf_page.images()
-      if index >= 0 && index < images.length() {
-        Some(images[index])
+      let entries = page_image_entries(pdf_page)
+      if index >= 0 && index < entries.length() {
+        Some(entries[index])
       } else {
         None
       }
@@ -294,18 +307,46 @@ fn pdf_page_count_for_json(document : @pdfapi.PdfDocument) -> Int {
 }
 
 ///|
-fn page_render_json(page : @pdfapi.PdfPage) -> String {
+fn page_geometry_json(page : @pdfapi.PdfPage) -> String {
   let builder = StringBuilder::new()
   builder.write_string("{\"width\":")
   builder.write_string(page.width().to_string())
   builder.write_string(",\"height\":")
   builder.write_string(page.height().to_string())
-  builder.write_string(",\"texts\":[")
+  builder.write_string(",\"rotation\":")
+  builder.write_string(page_rotation(page).to_string())
+  builder.write_string("}")
+  builder.to_string()
+}
+
+///|
+fn page_rotation(page : @pdfapi.PdfPage) -> Int {
+  let result : Result[Int?, @reader.PdfDocumentError] = try? page
+    .reader_page()
+    .rotate()
+  match result {
+    Ok(Some(value)) => positive_mod(value, 360)
+    _ => 0
+  }
+}
+
+///|
+fn page_text_positions_json(page : @pdfapi.PdfPage) -> String {
+  let builder = StringBuilder::new()
+  builder.write_string("{\"texts\":[")
   page_render_texts_json(builder, page)
-  builder.write_string("],\"images\":[")
-  page_render_images_json(builder, page)
   builder.write_string("]}")
   builder.to_string()
+}
+
+///|
+fn positive_mod(value : Int, base : Int) -> Int {
+  let result = value % base
+  if result < 0 {
+    result + base
+  } else {
+    result
+  }
 }
 
 ///|
@@ -398,198 +439,138 @@ fn span_font_size(font_sizes : Array[Double], index : Int) -> Double {
 }
 
 ///|
-fn page_render_images_json(
-  builder : StringBuilder,
-  page : @pdfapi.PdfPage,
-) -> Unit {
+fn page_image_entries(page : @pdfapi.PdfPage) -> Array[PageImageEntry] {
   let resources_result : Result[
     @content.ContentResources,
     @reader.PdfDocumentError,
   ] = try? page.reader_page().materialized_content_resources()
-  let events_result : Result[
-    Array[@graphics.GraphicsEvent],
-    @reader.PdfDocumentError,
-  ] = try? page
-    .reader_page()
-    .graphics_events(
-      @reader.GraphicsPageOptions::with_materialized_xobjects(None),
-    )
-  match (resources_result, events_result) {
-    (Ok(resources), Ok(events)) => {
-      let mut written = 0
-      for event in events {
-        match event {
-          ImagePainted(offset, descriptor, state) => {
-            let image = render_image_data(resources, offset, descriptor, state)
-            match image {
-              Some(json) => {
-                if written > 0 {
-                  builder.write_string(",")
-                }
-                builder.write_string(json)
-                written += 1
-              }
-              None => ()
-            }
-          }
-          _ => ()
-        }
-      }
-    }
+  match resources_result {
+    Ok(resources) => page_image_entries_from_resources(resources)
+    Err(_) => []
+  }
+}
+
+///|
+fn page_image_entries_from_resources(
+  resources : @content.ContentResources,
+) -> Array[PageImageEntry] {
+  let entries : Array[PageImageEntry] = []
+  let result : Result[@objects.PdfObject?, @content.PdfContentError] = try? resources.category_object(
+    @content.ResourceCategory::XObject,
+  )
+  match result {
+    Ok(Some(@objects.PdfObject::Dictionary(xobjects))) =>
+      collect_xobject_image_entries(xobjects, resources.dictionary, entries)
     _ => ()
   }
+  entries
 }
 
 ///|
-fn render_image_data(
-  resources : @content.ContentResources,
-  offset : Int64,
-  descriptor : @graphics.ImageDescriptor,
-  state : @graphics.GraphicsState,
-) -> String? {
-  match image_resource_for_descriptor(resources, descriptor) {
-    Some(resource) => {
-      let stream = prepare_render_image_stream(
-        resource.stream,
-        resource.resources,
-      )
-      let extracted_result : Result[
-        @graphics.ExtractedImage,
-        @graphics.PdfGraphicsError,
-      ] = try? @graphics.extract_image_xobject(
-        image_descriptor_name(descriptor),
-        stream,
-        offset,
-      )
-      match extracted_result {
-        Ok(extracted) => {
-          let rgba = extracted_image_rgba(extracted.data)
-          if rgba.length() > 0 {
-            Some(render_image_json(descriptor, state, rgba))
-          } else {
-            None
-          }
-        }
-        Err(_) => None
-      }
+fn collect_xobject_image_entries(
+  xobjects : @objects.PdfDictionary,
+  resources : @objects.PdfDictionary?,
+  entries : Array[PageImageEntry],
+) -> Unit {
+  for name, object in xobjects {
+    match object {
+      @objects.PdfObject::Stream(stream) if stream_subtype_is(stream, b"Image") =>
+        entries.push(PageImageEntry::{ name: Some(name), stream, resources })
+      @objects.PdfObject::Stream(stream) if stream_subtype_is(stream, b"Form") =>
+        collect_form_image_entries(stream, resources, entries)
+      _ => ()
     }
-    None => None
   }
 }
 
 ///|
-fn render_image_json(
-  descriptor : @graphics.ImageDescriptor,
-  state : @graphics.GraphicsState,
-  rgba : Bytes,
-) -> String {
-  let bounds = @graphics.GraphicsRect::new(0.0, 0.0, 1.0, 1.0).transform_bounds(
-    state.ctm,
-  )
+fn collect_form_image_entries(
+  stream : @objects.PdfStream,
+  parent_resources : @objects.PdfDictionary?,
+  entries : Array[PageImageEntry],
+) -> Unit {
+  let resources = match stream.dict.get(@objects.PdfName::new(b"Resources")) {
+    Some(@objects.PdfObject::Dictionary(form_resources)) => Some(form_resources)
+    _ => parent_resources
+  }
+  match resources {
+    Some(resource_dict) =>
+      match resource_dict.get(@objects.PdfName::new(b"XObject")) {
+        Some(@objects.PdfObject::Dictionary(xobjects)) =>
+          collect_xobject_image_entries(xobjects, resources, entries)
+        _ => ()
+      }
+    None => ()
+  }
+}
+
+///|
+fn page_image_info_json(entry : PageImageEntry) -> String {
+  match page_image_descriptor(entry) {
+    Some(descriptor) => image_descriptor_json(descriptor)
+    None => "{\"error\":\"failed to read image metadata\"}"
+  }
+}
+
+///|
+fn image_descriptor_json(descriptor : @graphics.ImageDescriptor) -> String {
   let builder = StringBuilder::new()
-  builder.write_string("{\"x\":")
-  builder.write_string(bounds.left.to_string())
-  builder.write_string(",\"y\":")
-  builder.write_string(bounds.bottom.to_string())
-  builder.write_string(",\"width\":")
-  builder.write_string((bounds.right - bounds.left).abs().to_string())
-  builder.write_string(",\"height\":")
-  builder.write_string((bounds.top - bounds.bottom).abs().to_string())
-  builder.write_string(",\"pixelWidth\":")
+  builder.write_string("{\"width\":")
   builder.write_string(descriptor.width.to_string())
-  builder.write_string(",\"pixelHeight\":")
+  builder.write_string(",\"height\":")
   builder.write_string(descriptor.height.to_string())
-  builder.write_string(",\"rgbaBase64\":")
-  builder.write_string(json_string(base64_encode(rgba)))
+  builder.write_string(",\"colorSpace\":")
+  builder.write_string(
+    json_string_option(descriptor.color_space.map(colour_space_label)),
+  )
   builder.write_string("}")
   builder.to_string()
 }
 
 ///|
-fn image_resource_for_descriptor(
-  resources : @content.ContentResources,
-  descriptor : @graphics.ImageDescriptor,
-) -> RenderImageResource? {
-  match image_descriptor_name(descriptor) {
-    Some(name) => find_image_resource(resources.dictionary, name)
-    None => None
+fn page_image_descriptor(entry : PageImageEntry) -> @graphics.ImageDescriptor? {
+  let result : Result[@graphics.ImageDescriptor, @graphics.PdfGraphicsError] = try? @graphics.validate_image_stream(
+    entry.name,
+    prepare_render_image_stream(entry.stream, entry.resources),
+    0L,
+  )
+  match result {
+    Ok(descriptor) => Some(descriptor)
+    Err(_) => None
   }
 }
 
 ///|
-fn image_descriptor_name(
-  descriptor : @graphics.ImageDescriptor,
-) -> @objects.PdfName? {
-  match descriptor.source {
-    XObjectImage(name) => name
-    InlineImageSource => None
+fn page_image_rgba(entry : PageImageEntry) -> Bytes {
+  let result : Result[@graphics.ExtractedImage, @graphics.PdfGraphicsError] = try? @graphics.extract_image_xobject(
+    entry.name,
+    prepare_render_image_stream(entry.stream, entry.resources),
+    0L,
+  )
+  match result {
+    Ok(extracted) => extracted_image_rgba(extracted.data)
+    Err(_) => b""
   }
 }
 
 ///|
-fn find_image_resource(
-  resources : @objects.PdfDictionary?,
-  name : @objects.PdfName,
-) -> RenderImageResource? {
-  match resources {
-    Some(dictionary) => find_image_resource_in_dictionary(dictionary, name)
-    None => None
-  }
-}
-
-///|
-fn find_image_resource_in_dictionary(
-  resources : @objects.PdfDictionary,
-  name : @objects.PdfName,
-) -> RenderImageResource? {
-  match resources.get(@objects.PdfName::new(b"XObject")) {
-    Some(@objects.PdfObject::Dictionary(xobjects)) =>
-      match find_named_image_resource(xobjects, resources, name) {
-        Some(resource) => Some(resource)
-        None => find_nested_image_resource(xobjects, resources, name)
+fn colour_space_label(space : @graphics.ColourSpace) -> String {
+  match space {
+    Device(device) =>
+      match device {
+        DeviceGray => "DeviceGray"
+        DeviceRGB => "DeviceRGB"
+        DeviceCMYK => "DeviceCMYK"
       }
-    _ => None
+    CalGray(_) => "CalGray"
+    CalRGB(_) => "CalRGB"
+    Lab(_) => "Lab"
+    ICCBased(_) => "ICCBased"
+    Pattern(_) => "Pattern"
+    Indexed(_) => "Indexed"
+    Separation(_) => "Separation"
+    DeviceN(_) => "DeviceN"
   }
-}
-
-///|
-fn find_named_image_resource(
-  xobjects : @objects.PdfDictionary,
-  resources : @objects.PdfDictionary,
-  name : @objects.PdfName,
-) -> RenderImageResource? {
-  match xobjects.get(name) {
-    Some(@objects.PdfObject::Stream(stream)) if stream_subtype_is(
-        stream, b"Image",
-      ) => Some(RenderImageResource::{ stream, resources: Some(resources) })
-    _ => None
-  }
-}
-
-///|
-fn find_nested_image_resource(
-  xobjects : @objects.PdfDictionary,
-  resources : @objects.PdfDictionary,
-  name : @objects.PdfName,
-) -> RenderImageResource? {
-  for _, object in xobjects {
-    match object {
-      @objects.PdfObject::Stream(stream) if stream_subtype_is(stream, b"Form") => {
-        let nested = match
-          stream.dict.get(@objects.PdfName::new(b"Resources")) {
-          Some(@objects.PdfObject::Dictionary(form_resources)) =>
-            find_image_resource_in_dictionary(form_resources, name)
-          _ => find_image_resource_in_dictionary(resources, name)
-        }
-        match nested {
-          Some(resource) => return Some(resource)
-          None => ()
-        }
-      }
-      _ => ()
-    }
-  }
-  None
 }
 
 ///|
@@ -651,48 +632,6 @@ fn stencil_mask_to_rgba(mask : @graphics.ImageAlphaMaskRaster) -> Bytes {
     rgba.push(alpha)
   }
   Bytes::from_array(rgba)
-}
-
-///|
-fn base64_encode(bytes : Bytes) -> String {
-  let builder = StringBuilder::new()
-  let mut index = 0
-  while index < bytes.length() {
-    let byte0 = bytes[index].to_int()
-    let has_byte1 = index + 1 < bytes.length()
-    let has_byte2 = index + 2 < bytes.length()
-    let byte1 = if has_byte1 { bytes[index + 1].to_int() } else { 0 }
-    let byte2 = if has_byte2 { bytes[index + 2].to_int() } else { 0 }
-    builder.write_char(base64_char(byte0 / 4))
-    builder.write_char(base64_char(byte0 % 4 * 16 + byte1 / 16))
-    if has_byte1 {
-      builder.write_char(base64_char(byte1 % 16 * 4 + byte2 / 64))
-    } else {
-      builder.write_char('=')
-    }
-    if has_byte2 {
-      builder.write_char(base64_char(byte2 % 64))
-    } else {
-      builder.write_char('=')
-    }
-    index += 3
-  }
-  builder.to_string()
-}
-
-///|
-fn base64_char(index : Int) -> Char {
-  if index < 26 {
-    (65 + index).to_byte().to_char()
-  } else if index < 52 {
-    (97 + index - 26).to_byte().to_char()
-  } else if index < 62 {
-    (48 + index - 52).to_byte().to_char()
-  } else if index == 62 {
-    '+'
-  } else {
-    '/'
-  }
 }
 
 ///|

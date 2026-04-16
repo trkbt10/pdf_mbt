@@ -28,8 +28,15 @@ console.log(doc.extractText(0));
 console.log(doc.extractText());
 console.log(doc.info());
 
-for (const image of doc.images(0)) {
-  console.log(image.width(), image.height(), image.toRGBA().length);
+const geometry = doc.pageGeometry(0);
+const texts = doc.pageTextPositions(0);
+console.log(geometry, texts.length);
+
+const imageCount = doc.pageImageCount(0);
+for (let imageIndex = 0; imageIndex < imageCount; imageIndex += 1) {
+  const info = doc.pageImageInfo(0, imageIndex);
+  const rgba = doc.pageImageRGBA(0, imageIndex);
+  console.log(info.width, info.height, rgba.length);
 }
 
 doc.close();

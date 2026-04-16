@@ -4,16 +4,10 @@ import {
   PdfContext,
   PdfDocument,
   type PdfCapabilityReport,
-  type PdfImage,
-  type PdfInfo,
-  type PdfPageRenderData,
+  type PdfPageGeometry,
 } from "@trkbt10/pdf-wasm";
 import wasmUrl from "@trkbt10/pdf-wasm/pdf.wasm?url";
-import PdfViewer, {
-  type ExtractedImage,
-  type ViewerDocument,
-  type ViewerPage,
-} from "./PdfViewer";
+import PdfViewer, { type ViewerDocument, type ViewerPage } from "./PdfViewer";
 
 type WasmStatus = "loading" | "ready" | "error";
 
@@ -115,97 +109,46 @@ function readViewerDocument(
   name: string,
   bytes: Uint8Array
 ): ViewerDocument {
-  const info = readInfo(document);
   const pageCount = document.pageCount();
   const pages = Array.from({ length: pageCount }, (_, index) =>
     readViewerPage(document, index)
   );
 
   return {
-    featureReport: readFeatureReport(document),
-    info,
+    featureReport: emptyReport,
+    info: {
+      author: null,
+      creator: null,
+      pageCount,
+      subject: null,
+      title: null,
+    },
     name,
     pages,
+    source: document,
     version: pdfVersion(bytes),
   };
 }
 
 function readViewerPage(document: PdfDocument, index: number): ViewerPage {
   return {
-    images: readImages(document, index),
+    geometry: readPageGeometry(document, index),
     index,
-    layoutText: readText(() => document.extractTextLayout(index)),
-    rawText: readText(() => document.extractText(index)),
-    renderData: readRenderData(document, index),
   };
 }
 
-function readRenderData(
+function readPageGeometry(
   document: PdfDocument,
   pageIndex: number
-): PdfPageRenderData {
+): PdfPageGeometry {
   try {
-    return document.renderData(pageIndex);
+    return document.pageGeometry(pageIndex);
   } catch {
     return {
       height: 792,
-      images: [],
-      texts: [],
+      rotation: 0,
       width: 612,
     };
-  }
-}
-
-function readImages(document: PdfDocument, pageIndex: number): ExtractedImage[] {
-  try {
-    return document.images(pageIndex).map((image, imageIndex) =>
-      readImage(image, pageIndex, imageIndex)
-    );
-  } catch {
-    return [];
-  }
-}
-
-function readImage(
-  image: PdfImage,
-  pageIndex: number,
-  imageIndex: number
-): ExtractedImage {
-  return {
-    height: image.height(),
-    id: `${pageIndex}-${imageIndex}`,
-    rgba: image.toRGBA(),
-    width: image.width(),
-  };
-}
-
-function readInfo(document: PdfDocument): PdfInfo {
-  try {
-    return document.info();
-  } catch {
-    return {
-      author: null,
-      creator: null,
-      pageCount: document.pageCount(),
-      subject: null,
-      title: null,
-    };
-  }
-}
-
-function readFeatureReport(document: PdfDocument): PdfCapabilityReport {
-  try {
-    return document.check();
-  } catch {
-    return emptyReport;
-  }
-}
-
-function readText(read: () => string): string {
-  try {
-    return read();
-  } catch (error) {
-    return errorMessage(error);
   }
 }
 

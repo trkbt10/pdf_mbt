@@ -77,22 +77,56 @@ class PdfDocument {
     return this.wasm.pdf_extract_text_layout(this.handle, page);
   }
 
-  renderData(pageIndex) {
+  pageGeometry(pageIndex) {
     this.assertOpen();
-    return parseJsonResult(this.wasm.pdf_page_render_json(this.handle, pageIndex));
+    return parseJsonResult(this.wasm.pdf_page_geometry_json(this.handle, pageIndex));
   }
 
-  pageImagesCount(page) {
+  pageTextPositions(pageIndex) {
     this.assertOpen();
-    const count = this.wasm.pdf_page_images_count(this.handle, page);
+    return parseJsonResult(
+      this.wasm.pdf_page_text_positions_json(this.handle, pageIndex)
+    ).texts;
+  }
+
+  pageImageCount(page) {
+    this.assertOpen();
+    const count = this.wasm.pdf_page_image_count(this.handle, page);
     if (count < 0) {
       throw new Error("Failed to enumerate page images");
     }
     return count;
   }
 
+  pageImageInfo(page, imageIndex) {
+    this.assertOpen();
+    return parseJsonResult(
+      this.wasm.pdf_page_image_info_json(this.handle, page, imageIndex)
+    );
+  }
+
+  pageImageRGBA(page, imageIndex) {
+    this.assertOpen();
+    return this.wasm.pdf_page_image_rgba(this.handle, page, imageIndex);
+  }
+
+  renderData(pageIndex) {
+    const geometry = this.pageGeometry(pageIndex);
+    return {
+      height: geometry.height,
+      images: [],
+      rotation: geometry.rotation,
+      texts: this.pageTextPositions(pageIndex),
+      width: geometry.width,
+    };
+  }
+
+  pageImagesCount(page) {
+    return this.pageImageCount(page);
+  }
+
   images(page) {
-    const count = this.pageImagesCount(page);
+    const count = this.pageImageCount(page);
     return Array.from({ length: count }, (_, index) => new PdfImage(this, page, index));
   }
 
@@ -138,12 +172,20 @@ class PdfPage {
     return this.document.renderData(this.index);
   }
 
+  geometry() {
+    return this.document.pageGeometry(this.index);
+  }
+
+  textPositions() {
+    return this.document.pageTextPositions(this.index);
+  }
+
   images() {
     return this.document.images(this.index);
   }
 
   imageCount() {
-    return this.document.pageImagesCount(this.index);
+    return this.document.pageImageCount(this.index);
   }
 }
 
@@ -155,35 +197,23 @@ class PdfImage {
   }
 
   width() {
-    const width = this.document.wasm.pdf_image_width(
-      this.document.handle,
-      this.page,
-      this.index
-    );
-    if (width < 0) {
-      throw new Error("Invalid PDF image handle");
-    }
-    return width;
+    return this.info().width;
   }
 
   height() {
-    const height = this.document.wasm.pdf_image_height(
-      this.document.handle,
-      this.page,
-      this.index
-    );
-    if (height < 0) {
-      throw new Error("Invalid PDF image handle");
-    }
-    return height;
+    return this.info().height;
+  }
+
+  colorSpace() {
+    return this.info().colorSpace;
+  }
+
+  info() {
+    return this.document.pageImageInfo(this.page, this.index);
   }
 
   toRGBA() {
-    return this.document.wasm.pdf_image_rgba(
-      this.document.handle,
-      this.page,
-      this.index
-    );
+    return this.document.pageImageRGBA(this.page, this.index);
   }
 }
 

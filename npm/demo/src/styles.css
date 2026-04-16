@@ -418,6 +418,24 @@ pre {
   margin: 0 auto;
 }
 
+.pagePlaceholder {
+  align-items: center;
+  background: #ffffff;
+  box-shadow: 0 2px 12px rgb(17 17 17 / 18%);
+  color: #6b7373;
+  display: flex;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.pageLoading {
+  color: #4b5353;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 0.75rem 0 0;
+  text-align: center;
+}
+
 .pageDebug {
   border-top: 1px solid #eceeee;
   padding-top: 0.75rem;
@@ -454,6 +472,21 @@ pre {
   color: #5d6464;
   font-size: 0.85rem;
   margin-top: 0.4rem;
+  overflow-wrap: anywhere;
+}
+
+button.imagePlaceholder {
+  background: #ffffff;
+  border: 1px dashed #9ca3a3;
+  color: #1f2328;
+  min-height: 9rem;
+  width: 100%;
+}
+
+.imageError {
+  color: #8f1d1d;
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0;
   overflow-wrap: anywhere;
 }
 

@@ -25,21 +25,24 @@ export interface PdfRenderText {
   fontName: string | null;
 }
 
-export interface PdfRenderImage {
-  x: number;
-  y: number;
+export interface PdfPageGeometry {
   width: number;
   height: number;
-  pixelWidth?: number;
-  pixelHeight?: number;
-  rgbaBase64: string;
+  rotation: number;
+}
+
+export interface PdfImageInfo {
+  width: number;
+  height: number;
+  colorSpace: string | null;
 }
 
 export interface PdfPageRenderData {
   width: number;
   height: number;
+  rotation: number;
   texts: PdfRenderText[];
-  images: PdfRenderImage[];
+  images: [];
 }
 
 export function wasmPath(): string;
@@ -75,6 +78,11 @@ export class PdfDocument {
   page(index: number): PdfPage;
   extractText(page?: number): string;
   extractTextLayout(page: number): string;
+  pageGeometry(pageIndex: number): PdfPageGeometry;
+  pageTextPositions(pageIndex: number): PdfRenderText[];
+  pageImageCount(page: number): number;
+  pageImageInfo(page: number, imageIndex: number): PdfImageInfo;
+  pageImageRGBA(page: number, imageIndex: number): Uint8Array;
   renderData(pageIndex: number): PdfPageRenderData;
   pageImagesCount(page: number): number;
   images(page: number): PdfImage[];
@@ -89,6 +97,8 @@ export class PdfPage {
   readonly index: number;
   extractText(): string;
   extractTextLayout(): string;
+  geometry(): PdfPageGeometry;
+  textPositions(): PdfRenderText[];
   renderData(): PdfPageRenderData;
   images(): PdfImage[];
   imageCount(): number;
@@ -101,6 +111,8 @@ export class PdfImage {
   readonly index: number;
   width(): number;
   height(): number;
+  colorSpace(): string | null;
+  info(): PdfImageInfo;
   toRGBA(): Uint8Array;
 }
 

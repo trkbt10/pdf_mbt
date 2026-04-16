@@ -29,16 +29,18 @@ const text = doc.extractText(0);
 assert.ok(text.includes("HelloWorld"), "expected HelloWorld, got: " + text);
 console.log("✓ Simple PDF text extraction");
 
-// Test 2: Page render data
-const renderData = doc.renderData(0);
-assert.ok(renderData.width > 0, "expected positive page render width");
-assert.ok(renderData.height > 0, "expected positive page render height");
-assert.ok(renderData.texts.length > 0, "expected positioned render text");
+// Test 2: Lazy page geometry and text positions
+const geometry = doc.pageGeometry(0);
+assert.ok(geometry.width > 0, "expected positive page width");
+assert.ok(geometry.height > 0, "expected positive page height");
+assert.equal(geometry.rotation, 0, "expected default page rotation");
+const texts = doc.pageTextPositions(0);
+assert.ok(texts.length > 0, "expected positioned render text");
 assert.ok(
-  renderData.texts.some((item) => item.text.includes("HelloWorld")),
+  texts.some((item) => item.text.includes("HelloWorld")),
   "expected HelloWorld in render text"
 );
-console.log("✓ Page render data");
+console.log("✓ Lazy page geometry and text positions");
 
 // Test 3: Document info
 const info = doc.info();
