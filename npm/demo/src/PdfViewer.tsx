@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
-import type { PdfCapabilityReport, PdfInfo } from "@trkbt10/pdf-wasm";
+import type {
+  PdfCapabilityReport,
+  PdfInfo,
+  PdfPageRenderData,
+  PdfRenderImage,
+} from "@trkbt10/pdf-wasm";
 
 export type LayoutMode = "raw" | "layout";
+export type ZoomValue = "fit" | "0.5" | "0.75" | "1" | "1.25" | "1.5" | "2";
 
 export interface ExtractedImage {
   id: string;
@@ -16,6 +22,7 @@ export interface ViewerPage {
   rawText: string;
   layoutText: string;
   images: ExtractedImage[];
+  renderData: PdfPageRenderData;
 }
 
 export interface ViewerDocument {
@@ -40,6 +47,7 @@ export default function PdfViewer({
   onFile,
 }: PdfViewerProps) {
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("raw");
+  const [zoomValue, setZoomValue] = useState<ZoomValue>("fit");
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [dragActive, setDragActive] = useState(false);
 
@@ -116,21 +124,40 @@ export default function PdfViewer({
               <h2>Pages</h2>
               <p>{pageSummary(document, currentPageIndex)}</p>
             </div>
-            <div className="toggleGroup" aria-label="Text layout mode">
-              <button
-                aria-pressed={layoutMode === "raw"}
-                onClick={() => setLayoutMode("raw")}
-                type="button"
-              >
-                Raw text
-              </button>
-              <button
-                aria-pressed={layoutMode === "layout"}
-                onClick={() => setLayoutMode("layout")}
-                type="button"
-              >
-                Layout reconstruction
-              </button>
+            <div className="viewerControls">
+              <div className="toggleGroup" aria-label="Text layout mode">
+                <button
+                  aria-pressed={layoutMode === "raw"}
+                  onClick={() => setLayoutMode("raw")}
+                  type="button"
+                >
+                  Raw text
+                </button>
+                <button
+                  aria-pressed={layoutMode === "layout"}
+                  onClick={() => setLayoutMode("layout")}
+                  type="button"
+                >
+                  Layout reconstruction
+                </button>
+              </div>
+              <label className="zoomControl">
+                <span>Zoom</span>
+                <select
+                  onChange={(event) =>
+                    setZoomValue(event.currentTarget.value as ZoomValue)
+                  }
+                  value={zoomValue}
+                >
+                  <option value="fit">Fit width</option>
+                  <option value="0.5">50%</option>
+                  <option value="0.75">75%</option>
+                  <option value="1">100%</option>
+                  <option value="1.25">125%</option>
+                  <option value="1.5">150%</option>
+                  <option value="2">200%</option>
+                </select>
+              </label>
             </div>
           </div>
 
@@ -139,6 +166,7 @@ export default function PdfViewer({
             document={document}
             layoutMode={layoutMode}
             onSelectPage={setCurrentPageIndex}
+            zoomValue={zoomValue}
           />
         </section>
       </div>
@@ -219,11 +247,13 @@ function PageList({
   document,
   layoutMode,
   onSelectPage,
+  zoomValue,
 }: {
   currentPageIndex: number;
   document: ViewerDocument | null;
   layoutMode: LayoutMode;
   onSelectPage: (index: number) => void;
+  zoomValue: ZoomValue;
 }) {
   if (!document) {
     return <p className="emptyState">Open or create a PDF to inspect pages.</p>;
@@ -236,18 +266,174 @@ function PageList({
           <header>
             <h3>Page {page.index + 1}</h3>
             <div className="pageMeta">
+              <span>{pageSizeSummary(page.renderData)}</span>
               <span>{imageSummary(page.images)}</span>
               <button onClick={() => onSelectPage(page.index)} type="button">
                 Select page
               </button>
             </div>
           </header>
-          <pre>{pageText(page, layoutMode)}</pre>
-          <ImageList images={page.images} />
+          <RenderedPageCanvas page={page} zoomValue={zoomValue} />
+          <details className="pageDebug">
+            <summary>Extracted content</summary>
+            <pre>{pageText(page, layoutMode)}</pre>
+            <ImageList images={page.images} />
+          </details>
         </li>
       ))}
     </ol>
   );
+}
+
+function RenderedPageCanvas({
+  page,
+  zoomValue,
+}: {
+  page: ViewerPage;
+  zoomValue: ZoomValue;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const [fitWidth, setFitWidth] = useState(0);
+  const scale = pageScale(page.renderData, zoomValue, fitWidth);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) {
+      return;
+    }
+    const updateWidth = () => setFitWidth(frame.clientWidth);
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (!canvas || !context) {
+      return;
+    }
+    drawPage(canvas, context, page.renderData, scale);
+  }, [page.renderData, scale]);
+
+  return (
+    <div className="pageCanvasViewport" ref={frameRef}>
+      <canvas
+        aria-label={`Rendered PDF page ${page.index + 1}`}
+        ref={canvasRef}
+        style={{
+          height: `${page.renderData.height * scale}px`,
+          width: `${page.renderData.width * scale}px`,
+        }}
+      />
+    </div>
+  );
+}
+
+function drawPage(
+  canvas: HTMLCanvasElement,
+  context: CanvasRenderingContext2D,
+  renderData: PdfPageRenderData,
+  scale: number
+) {
+  const pixelRatio = window.devicePixelRatio || 1;
+  const canvasWidth = Math.max(
+    1,
+    Math.round(renderData.width * scale * pixelRatio)
+  );
+  const canvasHeight = Math.max(
+    1,
+    Math.round(renderData.height * scale * pixelRatio)
+  );
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  context.setTransform(scale * pixelRatio, 0, 0, scale * pixelRatio, 0, 0);
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, renderData.width, renderData.height);
+  for (const image of renderData.images) {
+    drawRenderImage(context, renderData, image);
+  }
+  context.fillStyle = "#111111";
+  context.textBaseline = "alphabetic";
+  for (const text of renderData.texts) {
+    context.font = `${safeFontSize(text.fontSize)}px sans-serif`;
+    context.fillText(text.text, text.x, renderData.height - text.y);
+  }
+}
+
+function drawRenderImage(
+  context: CanvasRenderingContext2D,
+  renderData: PdfPageRenderData,
+  image: PdfRenderImage
+) {
+  const pixelWidth = image.pixelWidth ?? Math.round(image.width);
+  const pixelHeight = image.pixelHeight ?? Math.round(image.height);
+  if (pixelWidth <= 0 || pixelHeight <= 0) {
+    return;
+  }
+  const rgba = rgbaFromBase64(image.rgbaBase64);
+  if (rgba.length !== pixelWidth * pixelHeight * 4) {
+    return;
+  }
+  const imageData = new ImageData(rgba, pixelWidth, pixelHeight);
+  const source = document.createElement("canvas");
+  source.width = pixelWidth;
+  source.height = pixelHeight;
+  const sourceContext = source.getContext("2d");
+  if (!sourceContext) {
+    return;
+  }
+  sourceContext.putImageData(imageData, 0, 0);
+  context.drawImage(
+    source,
+    image.x,
+    renderData.height - image.y - image.height,
+    image.width,
+    image.height
+  );
+}
+
+function rgbaFromBase64(value: string): Uint8ClampedArray<ArrayBuffer> {
+  const binary = atob(value);
+  const buffer = new ArrayBuffer(binary.length);
+  const bytes = new Uint8ClampedArray(buffer);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+function pageScale(
+  renderData: PdfPageRenderData,
+  zoomValue: ZoomValue,
+  fitWidth: number
+): number {
+  if (zoomValue !== "fit") {
+    return Number(zoomValue);
+  }
+  if (fitWidth <= 0 || renderData.width <= 0) {
+    return 1;
+  }
+  return clampScale((fitWidth - 2) / renderData.width);
+}
+
+function clampScale(scale: number): number {
+  if (scale < 0.1) {
+    return 0.1;
+  }
+  if (scale > 4) {
+    return 4;
+  }
+  return scale;
+}
+
+function safeFontSize(value: number): number {
+  if (Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  return 12;
 }
 
 function ImageList({ images }: { images: ExtractedImage[] }) {
@@ -319,6 +505,10 @@ function imageSummary(images: ExtractedImage[]): string {
     return "1 image";
   }
   return `${images.length} images`;
+}
+
+function pageSizeSummary(renderData: PdfPageRenderData): string {
+  return `${Math.round(renderData.width)} x ${Math.round(renderData.height)} pt`;
 }
 
 function pageSummary(

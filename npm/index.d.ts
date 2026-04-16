@@ -17,6 +17,31 @@ export interface PdfCapabilityReport {
   entries: PdfCapabilityEntry[];
 }
 
+export interface PdfRenderText {
+  text: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  fontName: string | null;
+}
+
+export interface PdfRenderImage {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  pixelWidth?: number;
+  pixelHeight?: number;
+  rgbaBase64: string;
+}
+
+export interface PdfPageRenderData {
+  width: number;
+  height: number;
+  texts: PdfRenderText[];
+  images: PdfRenderImage[];
+}
+
 export function wasmPath(): string;
 
 export function wasmBytes(): Promise<Uint8Array>;
@@ -50,6 +75,7 @@ export class PdfDocument {
   page(index: number): PdfPage;
   extractText(page?: number): string;
   extractTextLayout(page: number): string;
+  renderData(pageIndex: number): PdfPageRenderData;
   pageImagesCount(page: number): number;
   images(page: number): PdfImage[];
   info(): PdfInfo;
@@ -63,6 +89,7 @@ export class PdfPage {
   readonly index: number;
   extractText(): string;
   extractTextLayout(): string;
+  renderData(): PdfPageRenderData;
   images(): PdfImage[];
   imageCount(): number;
 }

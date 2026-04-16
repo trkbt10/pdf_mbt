@@ -32,6 +32,12 @@ let document_counter : HandleCounter = { value: 1 }
 let context_counter : HandleCounter = { value: 1 }
 
 ///|
+priv struct RenderImageResource {
+  stream : @objects.PdfStream
+  resources : @objects.PdfDictionary?
+}
+
+///|
 pub fn pdf_open(data : JSUint8Array) -> Int {
   let bytes = uint8array_to_bytes(data)
   let result : Result[@pdfapi.PdfDocument, @reader.PdfDocumentError] = try? @pdfapi.open(
@@ -74,6 +80,14 @@ pub fn pdf_extract_text_layout(handle : Int, page : Int) -> String {
   match get_page(handle, page) {
     Some(pdf_page) => pdf_page.extract_text_layout()
     None => ""
+  }
+}
+
+///|
+pub fn pdf_page_render_json(handle : Int, page : Int) -> String {
+  match get_page(handle, page) {
+    Some(pdf_page) => page_render_json(pdf_page)
+    None => "{\"error\":\"invalid page handle\"}"
   }
 }
 
@@ -276,6 +290,408 @@ fn pdf_page_count_for_json(document : @pdfapi.PdfDocument) -> Int {
   match result {
     Ok(count) => count
     Err(_) => -1
+  }
+}
+
+///|
+fn page_render_json(page : @pdfapi.PdfPage) -> String {
+  let builder = StringBuilder::new()
+  builder.write_string("{\"width\":")
+  builder.write_string(page.width().to_string())
+  builder.write_string(",\"height\":")
+  builder.write_string(page.height().to_string())
+  builder.write_string(",\"texts\":[")
+  page_render_texts_json(builder, page)
+  builder.write_string("],\"images\":[")
+  page_render_images_json(builder, page)
+  builder.write_string("]}")
+  builder.to_string()
+}
+
+///|
+fn page_render_texts_json(
+  builder : StringBuilder,
+  page : @pdfapi.PdfPage,
+) -> Unit {
+  let result : Result[@text.TextProgram, @reader.PdfDocumentError] = try? page
+    .reader_page()
+    .text_program(@reader.TextPageOptions::default())
+  match result {
+    Ok(program) => {
+      let font_sizes = text_program_font_sizes(program)
+      let mut written = 0
+      for index in 0..<program.spans.length() {
+        let span = program.spans[index]
+        if span.text.length() > 0 {
+          if written > 0 {
+            builder.write_string(",")
+          }
+          page_render_text_json(
+            builder,
+            span,
+            span_font_size(font_sizes, index),
+          )
+          written += 1
+        }
+      }
+    }
+    Err(_) => ()
+  }
+}
+
+///|
+fn page_render_text_json(
+  builder : StringBuilder,
+  span : @text.TextSpan,
+  font_size : Double,
+) -> Unit {
+  builder.write_string("{\"text\":")
+  builder.write_string(json_string(span.text))
+  builder.write_string(",\"x\":")
+  builder.write_string(span.text_matrix.e.to_string())
+  builder.write_string(",\"y\":")
+  builder.write_string(span.text_matrix.f.to_string())
+  builder.write_string(",\"fontSize\":")
+  builder.write_string(font_size.to_string())
+  builder.write_string(",\"fontName\":")
+  builder.write_string(
+    json_string_option(span.font_name.map(fn(name) { name.to_text() })),
+  )
+  builder.write_string("}")
+}
+
+///|
+fn text_program_font_sizes(program : @text.TextProgram) -> Array[Double] {
+  let sizes : Array[Double] = []
+  let mut saw_glyph = false
+  for event in program.events {
+    match event {
+      SourceString(_) => saw_glyph = false
+      GlyphShown(glyph) =>
+        if !saw_glyph {
+          sizes.push(text_rendering_font_size(glyph.rendering_matrix.matrix))
+          saw_glyph = true
+        }
+      _ => ()
+    }
+  }
+  sizes
+}
+
+///|
+fn text_rendering_font_size(matrix : @text.TextMatrix) -> Double {
+  let size = matrix.a.abs().max(matrix.d.abs())
+  if size > 0.0 {
+    size
+  } else {
+    12.0
+  }
+}
+
+///|
+fn span_font_size(font_sizes : Array[Double], index : Int) -> Double {
+  if index >= 0 && index < font_sizes.length() {
+    font_sizes[index]
+  } else {
+    12.0
+  }
+}
+
+///|
+fn page_render_images_json(
+  builder : StringBuilder,
+  page : @pdfapi.PdfPage,
+) -> Unit {
+  let resources_result : Result[
+    @content.ContentResources,
+    @reader.PdfDocumentError,
+  ] = try? page.reader_page().materialized_content_resources()
+  let events_result : Result[
+    Array[@graphics.GraphicsEvent],
+    @reader.PdfDocumentError,
+  ] = try? page
+    .reader_page()
+    .graphics_events(
+      @reader.GraphicsPageOptions::with_materialized_xobjects(None),
+    )
+  match (resources_result, events_result) {
+    (Ok(resources), Ok(events)) => {
+      let mut written = 0
+      for event in events {
+        match event {
+          ImagePainted(offset, descriptor, state) => {
+            let image = render_image_data(resources, offset, descriptor, state)
+            match image {
+              Some(json) => {
+                if written > 0 {
+                  builder.write_string(",")
+                }
+                builder.write_string(json)
+                written += 1
+              }
+              None => ()
+            }
+          }
+          _ => ()
+        }
+      }
+    }
+    _ => ()
+  }
+}
+
+///|
+fn render_image_data(
+  resources : @content.ContentResources,
+  offset : Int64,
+  descriptor : @graphics.ImageDescriptor,
+  state : @graphics.GraphicsState,
+) -> String? {
+  match image_resource_for_descriptor(resources, descriptor) {
+    Some(resource) => {
+      let stream = prepare_render_image_stream(
+        resource.stream,
+        resource.resources,
+      )
+      let extracted_result : Result[
+        @graphics.ExtractedImage,
+        @graphics.PdfGraphicsError,
+      ] = try? @graphics.extract_image_xobject(
+        image_descriptor_name(descriptor),
+        stream,
+        offset,
+      )
+      match extracted_result {
+        Ok(extracted) => {
+          let rgba = extracted_image_rgba(extracted.data)
+          if rgba.length() > 0 {
+            Some(render_image_json(descriptor, state, rgba))
+          } else {
+            None
+          }
+        }
+        Err(_) => None
+      }
+    }
+    None => None
+  }
+}
+
+///|
+fn render_image_json(
+  descriptor : @graphics.ImageDescriptor,
+  state : @graphics.GraphicsState,
+  rgba : Bytes,
+) -> String {
+  let bounds = @graphics.GraphicsRect::new(0.0, 0.0, 1.0, 1.0).transform_bounds(
+    state.ctm,
+  )
+  let builder = StringBuilder::new()
+  builder.write_string("{\"x\":")
+  builder.write_string(bounds.left.to_string())
+  builder.write_string(",\"y\":")
+  builder.write_string(bounds.bottom.to_string())
+  builder.write_string(",\"width\":")
+  builder.write_string((bounds.right - bounds.left).abs().to_string())
+  builder.write_string(",\"height\":")
+  builder.write_string((bounds.top - bounds.bottom).abs().to_string())
+  builder.write_string(",\"pixelWidth\":")
+  builder.write_string(descriptor.width.to_string())
+  builder.write_string(",\"pixelHeight\":")
+  builder.write_string(descriptor.height.to_string())
+  builder.write_string(",\"rgbaBase64\":")
+  builder.write_string(json_string(base64_encode(rgba)))
+  builder.write_string("}")
+  builder.to_string()
+}
+
+///|
+fn image_resource_for_descriptor(
+  resources : @content.ContentResources,
+  descriptor : @graphics.ImageDescriptor,
+) -> RenderImageResource? {
+  match image_descriptor_name(descriptor) {
+    Some(name) => find_image_resource(resources.dictionary, name)
+    None => None
+  }
+}
+
+///|
+fn image_descriptor_name(
+  descriptor : @graphics.ImageDescriptor,
+) -> @objects.PdfName? {
+  match descriptor.source {
+    XObjectImage(name) => name
+    InlineImageSource => None
+  }
+}
+
+///|
+fn find_image_resource(
+  resources : @objects.PdfDictionary?,
+  name : @objects.PdfName,
+) -> RenderImageResource? {
+  match resources {
+    Some(dictionary) => find_image_resource_in_dictionary(dictionary, name)
+    None => None
+  }
+}
+
+///|
+fn find_image_resource_in_dictionary(
+  resources : @objects.PdfDictionary,
+  name : @objects.PdfName,
+) -> RenderImageResource? {
+  match resources.get(@objects.PdfName::new(b"XObject")) {
+    Some(@objects.PdfObject::Dictionary(xobjects)) =>
+      match find_named_image_resource(xobjects, resources, name) {
+        Some(resource) => Some(resource)
+        None => find_nested_image_resource(xobjects, resources, name)
+      }
+    _ => None
+  }
+}
+
+///|
+fn find_named_image_resource(
+  xobjects : @objects.PdfDictionary,
+  resources : @objects.PdfDictionary,
+  name : @objects.PdfName,
+) -> RenderImageResource? {
+  match xobjects.get(name) {
+    Some(@objects.PdfObject::Stream(stream)) if stream_subtype_is(
+        stream, b"Image",
+      ) => Some(RenderImageResource::{ stream, resources: Some(resources) })
+    _ => None
+  }
+}
+
+///|
+fn find_nested_image_resource(
+  xobjects : @objects.PdfDictionary,
+  resources : @objects.PdfDictionary,
+  name : @objects.PdfName,
+) -> RenderImageResource? {
+  for _, object in xobjects {
+    match object {
+      @objects.PdfObject::Stream(stream) if stream_subtype_is(stream, b"Form") => {
+        let nested = match
+          stream.dict.get(@objects.PdfName::new(b"Resources")) {
+          Some(@objects.PdfObject::Dictionary(form_resources)) =>
+            find_image_resource_in_dictionary(form_resources, name)
+          _ => find_image_resource_in_dictionary(resources, name)
+        }
+        match nested {
+          Some(resource) => return Some(resource)
+          None => ()
+        }
+      }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn prepare_render_image_stream(
+  stream : @objects.PdfStream,
+  resources : @objects.PdfDictionary?,
+) -> @objects.PdfStream {
+  let dict = stream.dict.copy()
+  materialize_render_resource_entry(dict, resources, b"ColorSpace")
+  @objects.PdfStream::{ dict, data: stream.data }
+}
+
+///|
+fn materialize_render_resource_entry(
+  dict : @objects.PdfDictionary,
+  resources : @objects.PdfDictionary?,
+  key_bytes : Bytes,
+) -> Unit {
+  let key = @objects.PdfName::new(key_bytes)
+  match (dict.get(key), resources) {
+    (Some(@objects.PdfObject::Name(name)), Some(resource_dict)) =>
+      match resource_dict.get(key) {
+        Some(@objects.PdfObject::Dictionary(named_resources)) =>
+          match named_resources.get(name) {
+            Some(value) => dict[key] = value
+            None => ()
+          }
+        _ => ()
+      }
+    _ => ()
+  }
+}
+
+///|
+fn stream_subtype_is(stream : @objects.PdfStream, expected : Bytes) -> Bool {
+  match stream.dict.get(@objects.PdfName::new(b"Subtype")) {
+    Some(@objects.PdfObject::Name(name)) =>
+      name == @objects.PdfName::new(expected)
+    _ => false
+  }
+}
+
+///|
+fn extracted_image_rgba(data : @graphics.ExtractedImageData) -> Bytes {
+  match data {
+    DeviceRgbRaster(raster) => raster.rgba
+    StencilMaskRaster(mask) => stencil_mask_to_rgba(mask)
+    EncodedImageData(_, _) => b""
+  }
+}
+
+///|
+fn stencil_mask_to_rgba(mask : @graphics.ImageAlphaMaskRaster) -> Bytes {
+  let rgba : Array[Byte] = []
+  for alpha in mask.alpha {
+    rgba.push(0x00)
+    rgba.push(0x00)
+    rgba.push(0x00)
+    rgba.push(alpha)
+  }
+  Bytes::from_array(rgba)
+}
+
+///|
+fn base64_encode(bytes : Bytes) -> String {
+  let builder = StringBuilder::new()
+  let mut index = 0
+  while index < bytes.length() {
+    let byte0 = bytes[index].to_int()
+    let has_byte1 = index + 1 < bytes.length()
+    let has_byte2 = index + 2 < bytes.length()
+    let byte1 = if has_byte1 { bytes[index + 1].to_int() } else { 0 }
+    let byte2 = if has_byte2 { bytes[index + 2].to_int() } else { 0 }
+    builder.write_char(base64_char(byte0 / 4))
+    builder.write_char(base64_char(byte0 % 4 * 16 + byte1 / 16))
+    if has_byte1 {
+      builder.write_char(base64_char(byte1 % 16 * 4 + byte2 / 64))
+    } else {
+      builder.write_char('=')
+    }
+    if has_byte2 {
+      builder.write_char(base64_char(byte2 % 64))
+    } else {
+      builder.write_char('=')
+    }
+    index += 3
+  }
+  builder.to_string()
+}
+
+///|
+fn base64_char(index : Int) -> Char {
+  if index < 26 {
+    (65 + index).to_byte().to_char()
+  } else if index < 52 {
+    (97 + index - 26).to_byte().to_char()
+  } else if index < 62 {
+    (48 + index - 52).to_byte().to_char()
+  } else if index == 62 {
+    '+'
+  } else {
+    '/'
   }
 }
 

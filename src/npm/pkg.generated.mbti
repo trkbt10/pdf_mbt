@@ -36,6 +36,8 @@ pub fn pdf_page_count(Int) -> Int
 
 pub fn pdf_page_images_count(Int, Int) -> Int
 
+pub fn pdf_page_render_json(Int, Int) -> String
+
 // Errors
 
 // Types and methods

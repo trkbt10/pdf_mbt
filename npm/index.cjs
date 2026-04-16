@@ -77,6 +77,11 @@ class PdfDocument {
     return this.wasm.pdf_extract_text_layout(this.handle, page);
   }
 
+  renderData(pageIndex) {
+    this.assertOpen();
+    return parseJsonResult(this.wasm.pdf_page_render_json(this.handle, pageIndex));
+  }
+
   pageImagesCount(page) {
     this.assertOpen();
     const count = this.wasm.pdf_page_images_count(this.handle, page);
@@ -127,6 +132,10 @@ class PdfPage {
 
   extractTextLayout() {
     return this.document.extractTextLayout(this.index);
+  }
+
+  renderData() {
+    return this.document.renderData(this.index);
   }
 
   images() {

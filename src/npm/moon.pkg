@@ -7,6 +7,7 @@ import {
   "trkbt10/pdf/src/context",
   "trkbt10/pdf/src/objects",
   "trkbt10/pdf/src/graphics",
+  "trkbt10/pdf/src/content",
 }
 
 supported_targets = "wasm-gc"
@@ -20,6 +21,7 @@ options(
         "pdf_page_count",
         "pdf_extract_text",
         "pdf_extract_text_layout",
+        "pdf_page_render_json",
         "pdf_page_images_count",
         "pdf_image_rgba",
         "pdf_image_width",

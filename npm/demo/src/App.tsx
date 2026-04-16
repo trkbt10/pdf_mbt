@@ -6,6 +6,7 @@ import {
   type PdfCapabilityReport,
   type PdfImage,
   type PdfInfo,
+  type PdfPageRenderData,
 } from "@trkbt10/pdf-wasm";
 import wasmUrl from "@trkbt10/pdf-wasm/pdf.wasm?url";
 import PdfViewer, {
@@ -135,7 +136,24 @@ function readViewerPage(document: PdfDocument, index: number): ViewerPage {
     index,
     layoutText: readText(() => document.extractTextLayout(index)),
     rawText: readText(() => document.extractText(index)),
+    renderData: readRenderData(document, index),
   };
+}
+
+function readRenderData(
+  document: PdfDocument,
+  pageIndex: number
+): PdfPageRenderData {
+  try {
+    return document.renderData(pageIndex);
+  } catch {
+    return {
+      height: 792,
+      images: [],
+      texts: [],
+      width: 612,
+    };
+  }
 }
 
 function readImages(document: PdfDocument, pageIndex: number): ExtractedImage[] {

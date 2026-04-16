@@ -309,6 +309,14 @@ pre {
   gap: 0.5rem;
 }
 
+.viewerControls {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
 .toggleGroup button {
   background: #ffffff;
   border-color: #b9bcbc;
@@ -319,6 +327,25 @@ pre {
   background: #111111;
   border-color: #111111;
   color: #ffffff;
+}
+
+.zoomControl {
+  align-items: center;
+  color: #4b5353;
+  display: flex;
+  font-size: 0.9rem;
+  font-weight: 700;
+  gap: 0.5rem;
+}
+
+.zoomControl select {
+  background: #ffffff;
+  border: 1px solid #b9bcbc;
+  border-radius: 8px;
+  color: #1f2328;
+  font: inherit;
+  min-height: 38px;
+  padding: 0.45rem 0.65rem;
 }
 
 .pageList {
@@ -374,6 +401,35 @@ pre {
   padding: 0.45rem 0.7rem;
 }
 
+.pageCanvasViewport {
+  background: #c9cdcd;
+  border: 1px solid #b9bcbc;
+  border-radius: 8px;
+  min-height: 12rem;
+  overflow: auto;
+  padding: 1rem;
+  width: 100%;
+}
+
+.pageCanvasViewport canvas {
+  background: #ffffff;
+  box-shadow: 0 2px 12px rgb(17 17 17 / 18%);
+  display: block;
+  margin: 0 auto;
+}
+
+.pageDebug {
+  border-top: 1px solid #eceeee;
+  padding-top: 0.75rem;
+}
+
+.pageDebug summary {
+  color: #4b5353;
+  cursor: pointer;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+
 .imageGrid {
   display: grid;
   gap: 1rem;
@@ -414,7 +470,8 @@ pre {
   }
 
   .actions,
-  .toggleGroup {
+  .toggleGroup,
+  .viewerControls {
     width: 100%;
   }
 
