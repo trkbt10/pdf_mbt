@@ -178,13 +178,21 @@ fn assert_pdf_title(bytes : Bytes, expected : Bytes) -> Unit raise {
     Some(info_ref) =>
       match file.load_object(info_ref) {
         @objects.PdfObject::Dictionary(info) =>
-          assert_eq(
-            info.get(@objects.PdfName::new(b"Title")) ==
-            Some(@objects.PdfObject::String(expected)),
-            true,
-          )
+          match info.get(@objects.PdfName::new(b"Title")) {
+            Some(@objects.PdfObject::String(title)) =>
+              assert_bytes_equal(title, expected)
+            _ => fail("expected Title string")
+          }
         _ => fail("expected Info dictionary")
       }
     None => fail("expected Info reference")
+  }
+}
+
+///|
+fn assert_bytes_equal(actual : Bytes, expected : Bytes) -> Unit raise {
+  assert_eq(actual.length(), expected.length())
+  for index in 0..<actual.length() {
+    assert_eq(actual[index], expected[index])
   }
 }
