@@ -69,6 +69,17 @@ pub fn PdfPage::extracted_text(
 }
 
 ///|
+pub fn PdfPage::extract_text_layout(self : PdfPage) -> String {
+  let result : Result[@text.ExtractedText, PdfDocumentError] = try? self.extracted_text(
+    TextPageOptions::default(),
+  )
+  match result {
+    Ok(extracted) => @layout.layout_text_spans(extracted.spans)
+    Err(_) => ""
+  }
+}
+
+///|
 fn PdfPage::materialized_text_content_resources(
   self : PdfPage,
 ) -> @content.ContentResources raise PdfDocumentError {

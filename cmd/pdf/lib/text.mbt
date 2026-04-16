@@ -61,7 +61,7 @@ fn extract_document_text(
       let page = document.page(page_index)
       if layout {
         let extracted = page.extracted_text(@reader.TextPageOptions::default())
-        out.write_string(extracted.layout_text())
+        out.write_string(@layout.layout_text_spans(extracted.spans))
       } else {
         let extracted = page.extracted_text(@reader.TextPageOptions::default())
         for span in extracted.spans {

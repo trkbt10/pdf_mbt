@@ -2,6 +2,7 @@ import {
   "moonbitlang/core/argparse",
   "trkbt10/pdf/src/reader",
   "trkbt10/pdf/src/text",
+  "trkbt10/pdf/src/layout",
   "moonbitlang/x/fs",
 }
 

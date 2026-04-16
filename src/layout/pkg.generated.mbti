@@ -1,0 +1,52 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/pdf/src/layout"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/pdf/src/objects",
+  "trkbt10/pdf/src/text",
+}
+
+// Values
+pub fn estimate_layout(Array[@text.TextSpan], config? : LayoutConfig) -> LayoutResult
+
+pub fn layout_text_spans(Array[@text.TextSpan], config? : LayoutConfig) -> String
+
+pub fn layout_to_text(LayoutResult) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct LayoutConfig {
+  kerning_threshold_em : Double
+  line_tolerance_factor : Double
+  paragraph_gap_factor : Double
+} derive(Eq, @debug.Debug)
+pub fn LayoutConfig::default() -> Self
+
+pub(all) struct LayoutLine {
+  y : Double
+  dominant_font_size : Double
+  words : Array[LayoutWord]
+  paragraph_break_before : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct LayoutResult {
+  lines : Array[LayoutLine]
+  config : LayoutConfig
+} derive(Eq, @debug.Debug)
+
+pub(all) struct LayoutWord {
+  text : String
+  x : Double
+  y : Double
+  end_x : Double
+  font_name : @objects.PdfName?
+  source_spans : Array[@text.TextSpan]
+  separator_before : String
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

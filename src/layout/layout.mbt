@@ -379,7 +379,7 @@ fn line_average_character_width(
     fallback
   } else {
     samples.sort()
-    samples[0].max(1.0).min(fallback)
+    samples[samples.length() / 2].max(1.0).min(fallback)
   }
 }
 

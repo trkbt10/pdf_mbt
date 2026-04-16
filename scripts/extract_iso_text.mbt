@@ -122,7 +122,7 @@ fn extract_pages(
 
 ///|
 fn collect_layout_text(extracted : @text.ExtractedText) -> String {
-  extracted.layout_text()
+  @layout.layout_text_spans(extracted.spans)
 }
 
 ///|

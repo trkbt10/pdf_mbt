@@ -10,7 +10,13 @@ pub fn extract_page_text(page : PdfPage) -> String {
 /// lines by Y position, ordered top-to-bottom, and separated by spaces or tabs
 /// when horizontal gaps indicate words or aligned columns.
 pub fn extract_page_text_layout(page : PdfPage) -> String {
-  page.inner.extract_text_layout()
+  let result : Result[@text.ExtractedText, @reader.PdfDocumentError] = try? page.inner.extracted_text(
+    @reader.TextPageOptions::default(),
+  )
+  match result {
+    Ok(extracted) => @layout.layout_text_spans(extracted.spans)
+    Err(_) => ""
+  }
 }
 
 ///|

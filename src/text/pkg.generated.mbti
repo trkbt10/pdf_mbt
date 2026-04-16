@@ -15,8 +15,6 @@ pub fn glyph_name_to_unicode(@objects.PdfName) -> String?
 
 pub fn interpret_text(@content.ContentStream, TextResources, TextInitialState) -> TextProgram raise PdfTextError
 
-pub fn layout_text_spans(Array[TextSpan]) -> String
-
 pub fn map_glyph_name_to_unicode(Bytes, GlyphIdentifier, GlyphFallback) -> UnicodeMapping
 
 pub fn parse_cmap_stream(@objects.PdfStream, Int64, TextInterpretationLimits) -> CMap raise PdfTextError
@@ -100,7 +98,6 @@ pub(all) struct ExtractedText {
   spans : Array[TextSpan]
 } derive(Eq, @debug.Debug)
 pub fn ExtractedText::from_spans(Array[TextSpan]) -> Self
-pub fn ExtractedText::layout_text(Self) -> String
 
 pub(all) struct FontResourceSummary {
   resource_name : @objects.PdfName
