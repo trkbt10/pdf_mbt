@@ -40,7 +40,7 @@ pub fn run_cli() -> Unit {
 
 ///|
 /// Builds the root `pdf` argparse command with global `-v` / `--version` and
-/// subcommands `text`, `info`, `images`, `pages`, and `check`.
+/// subcommands `text`, `info`, `images`, `pages`, `svg`, and `check`.
 pub fn pdf_command() -> @argparse.Command {
   @argparse.Command(
     "pdf",
@@ -63,6 +63,7 @@ pub fn pdf_command() -> @argparse.Command {
       info_command(),
       images_command(),
       pages_command(),
+      svg_command(),
       check_command(),
     ],
   )
@@ -76,6 +77,7 @@ pub fn dispatch(matches : @argparse.Matches) -> Unit raise {
     Some(("info", subcommand)) => run_info(subcommand)
     Some(("images", subcommand)) => run_images(subcommand)
     Some(("pages", subcommand)) => run_pages(subcommand)
+    Some(("svg", subcommand)) => run_svg(subcommand)
     Some(("check", subcommand)) => run_check(subcommand)
     Some((name, _)) => raise CliError::Message("unknown subcommand " + name)
     None => raise CliError::Message("missing subcommand")

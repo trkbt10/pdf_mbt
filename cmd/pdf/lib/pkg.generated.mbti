@@ -28,7 +28,11 @@ pub fn run_info(@argparse.Matches) -> Unit raise
 
 pub fn run_pages(@argparse.Matches) -> Unit raise
 
+pub fn run_svg(@argparse.Matches) -> Unit raise
+
 pub fn run_text(@argparse.Matches) -> Unit raise
+
+pub fn svg_command() -> @argparse.Command
 
 pub fn text_command() -> @argparse.Command
 
