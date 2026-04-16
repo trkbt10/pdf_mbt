@@ -442,7 +442,18 @@ fn page_render_image_svg(
         Some(entry) => {
           let href = page_image_data_url(entry, state)
           if href.length() > 0 {
-            write_svg_image(builder, href, state.ctm, page_height)
+            let (expand_x, expand_y) = svg_image_pixel_expansion(
+              state.ctm,
+              descriptor,
+            )
+            write_svg_image(
+              builder,
+              href,
+              state.ctm,
+              expand_x,
+              expand_y,
+              page_height,
+            )
           }
         }
         None => ()
@@ -456,25 +467,61 @@ fn write_svg_image(
   builder : StringBuilder,
   href : String,
   matrix : @graphics.GraphicsMatrix,
+  expand_x : Bool,
+  expand_y : Bool,
   page_height : Double,
 ) -> Unit {
+  if !expand_x && !expand_y {
+    match svg_axis_aligned_image_rect(matrix, page_height) {
+      Some((x, y, width, height)) => {
+        builder.write_string("<image x=\"")
+        builder.write_string(format_svg_number(x))
+        builder.write_string("\" y=\"")
+        builder.write_string(format_svg_number(y))
+        builder.write_string("\" width=\"")
+        builder.write_string(format_svg_number(width))
+        builder.write_string("\" height=\"")
+        builder.write_string(format_svg_number(height))
+        builder.write_string("\" href=\"")
+        builder.write_string(href)
+        builder.write_string("\"/>")
+        return
+      }
+      None => ()
+    }
+  }
   builder.write_string(
     "<image x=\"0\" y=\"0\" width=\"1\" height=\"1\" href=\"",
   )
   builder.write_string(href)
   builder.write_string("\" transform=\"matrix(")
-  write_svg_image_matrix(builder, matrix, page_height)
+  write_svg_image_matrix(builder, matrix, expand_x, expand_y, page_height)
   builder.write_string(")\"/>")
+}
+
+///|
+fn svg_axis_aligned_image_rect(
+  matrix : @graphics.GraphicsMatrix,
+  page_height : Double,
+) -> (Double, Double, Double, Double)? {
+  if abs_double(matrix.b) > 0.001 || abs_double(matrix.c) > 0.001 {
+    return None
+  }
+  if matrix.a <= 0.0 || matrix.d <= 0.0 {
+    return None
+  }
+  Some((matrix.e, page_height - matrix.f - matrix.d, matrix.a, matrix.d))
 }
 
 ///|
 fn write_svg_image_matrix(
   builder : StringBuilder,
   matrix : @graphics.GraphicsMatrix,
+  expand_x : Bool,
+  expand_y : Bool,
   page_height : Double,
 ) -> Unit {
-  let x_scale = svg_image_axis_scale(matrix.a, matrix.b)
-  let y_scale = svg_image_axis_scale(matrix.c, matrix.d)
+  let (x_scale, y_scale) = svg_image_axis_scales(matrix, expand_x, expand_y)
   builder.write_string(format_svg_number(matrix.a * x_scale))
   builder.write_string(" ")
   builder.write_string(format_svg_number((0.0 - matrix.b) * x_scale))
@@ -489,13 +536,48 @@ fn write_svg_image_matrix(
 }
 
 ///|
+fn svg_image_pixel_expansion(
+  matrix : @graphics.GraphicsMatrix,
+  descriptor : @graphics.ImageDescriptor,
+) -> (Bool, Bool) {
+  (
+    svg_image_axis_length(matrix.a, matrix.b) > descriptor.width.to_double(),
+    svg_image_axis_length(matrix.c, matrix.d) > descriptor.height.to_double(),
+  )
+}
+
+///|
+fn svg_image_axis_scales(
+  matrix : @graphics.GraphicsMatrix,
+  expand_x : Bool,
+  expand_y : Bool,
+) -> (Double, Double) {
+  let x_scale = if expand_x {
+    svg_image_axis_scale(matrix.a, matrix.b)
+  } else {
+    1.0
+  }
+  let y_scale = if expand_y {
+    svg_image_axis_scale(matrix.c, matrix.d)
+  } else {
+    1.0
+  }
+  (x_scale, y_scale)
+}
+
+///|
 fn svg_image_axis_scale(x : Double, y : Double) -> Double {
-  let length = (x * x + y * y).sqrt()
+  let length = svg_image_axis_length(x, y)
   if length > 1.0 {
     (length + 0.5) / length
   } else {
     1.0
   }
+}
+
+///|
+fn svg_image_axis_length(x : Double, y : Double) -> Double {
+  (x * x + y * y).sqrt()
 }
 
 ///|

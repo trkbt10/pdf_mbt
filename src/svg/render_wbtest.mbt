@@ -26,17 +26,46 @@ test "write_svg_text_matrix_normalized preserves translation and removes font sc
 }
 
 ///|
+test "render_page_svg positions UTF-8 text with text matrix path" {
+  let document = @reader.PdfDocument::open(
+    @fs.read_file_to_bytes("spec/pdf20examples/pdf20-utf8-test.pdf"),
+  )
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 72 99.26)"), true)
+  assert_eq(svg.contains("text-rendering=\"geometricPrecision\""), true)
+}
+
+///|
 test "write_svg_image uses unit image with CTM transform" {
   let builder = StringBuilder::new()
   write_svg_image(
     builder,
     "data:image/png;base64,AA==",
     @graphics.GraphicsMatrix::from_six(100.0, 0.0, 0.0, 100.0, 72.0, 172.0),
+    true,
+    true,
     396.0,
   )
   assert_eq(
     builder.to_string(),
     "<image x=\"0\" y=\"0\" width=\"1\" height=\"1\" href=\"data:image/png;base64,AA==\" transform=\"matrix(100.5 0 0 100.5 72 124)\"/>",
+  )
+}
+
+///|
+test "write_svg_image does not expand multi-pixel image CTM" {
+  let builder = StringBuilder::new()
+  write_svg_image(
+    builder,
+    "data:image/png;base64,AA==",
+    @graphics.GraphicsMatrix::from_six(175.7, 0.0, 0.0, 87.85, 72.0, 590.0),
+    false,
+    false,
+    841.92,
+  )
+  assert_eq(
+    builder.to_string(),
+    "<image x=\"72\" y=\"164.07\" width=\"175.7\" height=\"87.85\" href=\"data:image/png;base64,AA==\"/>",
   )
 }
 
