@@ -28,20 +28,30 @@ test "lib page_images returns images from CalRGB PDF" {
   )
   let mut image_count = 0
   let mut rgba_count = 0
+  let mut cal_rgb_count = 0
+  let mut device_rgb_count = 0
   for page in document.pages() {
     for image in page.images() {
       image_count += 1
+      match image.color_space() {
+        "CalRGB" => cal_rgb_count += 1
+        "DeviceRGB" => device_rgb_count += 1
+        _ => ()
+      }
       let rgba = image.to_rgba()
       if rgba.length() == image.width() * image.height() * 4 {
         rgba_count += 1
       }
     }
   }
-  if image_count < 1 {
-    fail("expected at least one image, got " + image_count.to_string())
+  if image_count != 2 {
+    fail("expected two images, got " + image_count.to_string())
   }
-  if rgba_count < 1 {
-    fail("expected at least one RGBA image, got " + rgba_count.to_string())
+  if cal_rgb_count != 1 || device_rgb_count != 1 {
+    fail("expected one CalRGB and one DeviceRGB image")
+  }
+  if rgba_count != image_count {
+    fail("expected every image to expose RGBA, got " + rgba_count.to_string())
   }
 }
 

@@ -116,7 +116,7 @@ export class PdfDocument {
 
   pageImageRGBA(page, imageIndex) {
     this.assertOpen();
-    return this.wasm.pdf_page_image_rgba(this.handle, page, imageIndex);
+    return toUint8Array(this.wasm.pdf_page_image_rgba(this.handle, page, imageIndex));
   }
 
   renderData(pageIndex) {

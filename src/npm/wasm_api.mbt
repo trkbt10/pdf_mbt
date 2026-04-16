@@ -605,11 +605,11 @@ fn page_render_texts_svg(
     .text_program(@reader.TextPageOptions::default())
   match result {
     Ok(program) => {
-      let font_sizes = text_program_font_sizes(program)
+      let matrices = text_program_span_rendering_matrices(program)
       for index in 0..<program.spans.length() {
         let span = program.spans[index]
         if span.text.length() > 0 {
-          page_render_text_svg(builder, span, span_font_size(font_sizes, index))
+          page_render_text_svg(builder, span, span_svg_matrix(matrices, index))
         }
       }
     }
@@ -621,17 +621,65 @@ fn page_render_texts_svg(
 fn page_render_text_svg(
   builder : StringBuilder,
   span : @text.TextSpan,
-  font_size : Double,
+  matrix : @text.TextMatrix,
 ) -> Unit {
-  builder.write_string("<text x=\"")
-  builder.write_string(span.text_matrix.e.to_string())
-  builder.write_string("\" y=\"")
-  builder.write_string((0.0 - span.text_matrix.f).to_string())
-  builder.write_string("\" transform=\"scale(1,-1)\" font-size=\"")
-  builder.write_string(font_size.to_string())
-  builder.write_string("\" font-family=\"sans-serif\" fill=\"#111111\">")
+  builder.write_string("<text transform=\"matrix(")
+  write_svg_text_matrix(builder, matrix)
+  builder.write_string(
+    ")\" font-size=\"1\" font-family=\"sans-serif\" fill=\"#111111\">",
+  )
   write_xml_escaped(builder, span.text)
   builder.write_string("</text>")
+}
+
+///|
+fn write_svg_text_matrix(
+  builder : StringBuilder,
+  matrix : @text.TextMatrix,
+) -> Unit {
+  builder.write_string(matrix.a.to_string())
+  builder.write_string(" ")
+  builder.write_string(matrix.b.to_string())
+  builder.write_string(" ")
+  builder.write_string(matrix.c.to_string())
+  builder.write_string(" ")
+  builder.write_string(matrix.d.to_string())
+  builder.write_string(" ")
+  builder.write_string(matrix.e.to_string())
+  builder.write_string(" ")
+  builder.write_string(matrix.f.to_string())
+}
+
+///|
+fn text_program_span_rendering_matrices(
+  program : @text.TextProgram,
+) -> Array[@text.TextMatrix] {
+  let matrices : Array[@text.TextMatrix] = []
+  let mut saw_glyph = false
+  for event in program.events {
+    match event {
+      SourceString(_) => saw_glyph = false
+      GlyphShown(glyph) =>
+        if !saw_glyph {
+          matrices.push(glyph.rendering_matrix.matrix)
+          saw_glyph = true
+        }
+      _ => ()
+    }
+  }
+  matrices
+}
+
+///|
+fn span_svg_matrix(
+  matrices : Array[@text.TextMatrix],
+  index : Int,
+) -> @text.TextMatrix {
+  if index >= 0 && index < matrices.length() {
+    matrices[index]
+  } else {
+    @text.TextMatrix::identity()
+  }
 }
 
 ///|

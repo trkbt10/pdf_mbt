@@ -43,6 +43,7 @@ assert.ok(
 const svg = doc.pageToSvg(0);
 assert.ok(svg.startsWith("<svg"), "expected page SVG markup");
 assert.ok(svg.includes("<text"), "expected SVG text element");
+assert.ok(svg.includes("<text transform=\"matrix("), "expected matrix-positioned SVG text");
 assert.ok(svg.includes("HelloWorld"), "expected SVG text content");
 console.log("✓ Lazy page geometry and text positions");
 
@@ -75,9 +76,27 @@ const roundtrip = await PdfDocument.open(bytes);
 assert.equal(roundtrip.pageCount(), 1);
 console.log("✓ PdfContext roundtrip");
 
+// Test 7: Image metadata and RGBA extraction
+const imagePdf = await readFile("../spec/pdf20examples/PDF 2.0 image with BPC.pdf");
+const imageDoc = await PdfDocument.open(imagePdf);
+assert.equal(imageDoc.pageImageCount(0), 2, "expected CalRGB and DeviceRGB images");
+const imageInfos = [imageDoc.pageImageInfo(0, 0), imageDoc.pageImageInfo(0, 1)];
+assert.deepEqual(
+  imageInfos.map((info) => info.colorSpace).sort(),
+  ["CalRGB", "DeviceRGB"]
+);
+for (let index = 0; index < imageInfos.length; index += 1) {
+  const info = imageInfos[index];
+  const rgba = imageDoc.pageImageRGBA(0, index);
+  assert.ok(rgba instanceof Uint8Array, "expected RGBA as Uint8Array");
+  assert.equal(rgba.length, info.width * info.height * 4);
+}
+console.log("✓ Image metadata and RGBA extraction");
+
 doc.close();
 shapeDoc.close();
 doc2.close();
+imageDoc.close();
 roundtrip.close();
 ctx.close();
 console.log("All tests passed");
