@@ -56,6 +56,23 @@ test "page text program ignores broken embedded font program" {
 }
 
 ///|
+test "page text program keeps ToUnicode for TrueType fallback" {
+  let document = PdfDocument::open(build_page_text_truetype_fallback_fixture())
+  let page = document.page(0)
+  let instructions = page.content_instructions()
+  assert_eq(instructions.length() > 0, true)
+  let resources = page.text_resources()
+  assert_eq(resources.fonts.contains(@objects.PdfName::new(b"F1")), true)
+  let program = page.text_program(TextPageOptions::default())
+  assert_eq(collect_reader_spans_text(program.spans), "Z")
+  match program.events[2] {
+    @text.TextEvent::GlyphShown(event) =>
+      assert_eq(event.glyph.metrics.horizontal_displacement, 600.0)
+    _ => fail("expected glyph event")
+  }
+}
+
+///|
 test "page extracted text returns empty when content parsing fails" {
   let document = PdfDocument::open(build_page_text_bad_content_fixture())
   let page = document.page(0)
@@ -186,6 +203,54 @@ fn build_page_text_broken_font_program_fixture() -> Bytes {
 }
 
 ///|
+fn build_page_text_truetype_fallback_fixture() -> Bytes {
+  let (bytes, header_base) = build_document_structure_fixture_prefix()
+  let (bytes, catalog_offset) = append_indirect_object(
+    bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R >>",
+  )
+  let (bytes, pages_offset) = append_indirect_object(
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 /Resources << /Font << /F1 5 0 R >> >> >>",
+  )
+  let (bytes, page_offset) = append_indirect_object(
+    bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
+  )
+  let content_stream = build_stream_object_body(
+    b"<< /Length 22 >>", b"BT /F1 10 Tf (A) Tj ET",
+  )
+  let (bytes, content_offset) = append_indirect_object(
+    bytes, header_base, 4, 0, content_stream,
+  )
+  let (bytes, font_offset) = append_indirect_object(
+    bytes, header_base, 5, 0, b"<< /Type /Font /Subtype /TrueType /BaseFont /TestCmap12 /Encoding << /BaseEncoding /NonStandardEncoding >> /ToUnicode 6 0 R /FontDescriptor 7 0 R >>",
+  )
+  let to_unicode_bytes = b"1 begincodespacerange\n<00> <ff>\nendcodespacerange\n1 beginbfchar\n<41> <005A>\nendbfchar"
+  let to_unicode = build_stream_object_body(
+    b"<< /Length " +
+    decimal_bytes(to_unicode_bytes.length().to_int64()) +
+    b" >>",
+    to_unicode_bytes,
+  )
+  let (bytes, unicode_offset) = append_indirect_object(
+    bytes, header_base, 6, 0, to_unicode,
+  )
+  let (bytes, descriptor_offset) = append_indirect_object(
+    bytes, header_base, 7, 0, b"<< /Type /FontDescriptor /FontName /TestCmap12 /Flags 4 /FontBBox [0 0 600 700] /ItalicAngle 0 /Ascent 700 /Descent 0 /CapHeight 700 /StemV 80 /FontFile2 8 0 R >>",
+  )
+  let ttf = reader_synthetic_truetype_font()
+  let font_file = build_stream_object_body(
+    b"<< /Length " + decimal_bytes(ttf.length().to_int64()) + b" >>",
+    ttf,
+  )
+  let (bytes, font_file_offset) = append_indirect_object(
+    bytes, header_base, 8, 0, font_file,
+  )
+  finish_page_content_fixture(bytes, header_base, [
+    catalog_offset, pages_offset, page_offset, content_offset, font_offset, unicode_offset,
+    descriptor_offset, font_file_offset,
+  ])
+}
+
+///|
 fn build_page_text_bad_content_fixture() -> Bytes {
   let (bytes, header_base) = build_document_structure_fixture_prefix()
   let (bytes, catalog_offset) = append_indirect_object(
@@ -248,4 +313,11 @@ fn collect_reader_spans_text(spans : Array[@text.TextSpan]) -> String {
     builder.write_string(span.text)
   }
   builder.to_string()
+}
+
+///|
+fn reader_synthetic_truetype_font() -> Bytes {
+  try! @fs.read_file_to_bytes(
+    ".mooncakes/mizchi/font/fixtures/minimal-cmap12.ttf",
+  )
 }

@@ -8,6 +8,7 @@ priv enum RuntimeFontKind {
 priv struct RuntimeFont {
   kind : RuntimeFontKind
   to_unicode : ToUnicodeCMap?
+  ttf : @font.TTFont?
   widths : Map[Int, Double]
   standard_widths : Map[Int, Double]
   default_width : Double?
@@ -66,7 +67,7 @@ fn load_runtime_font(
   match summary.font_object {
     @objects.PdfObject::Dictionary(dict) =>
       parse_runtime_font_dictionary(dict, offset, limits)
-    _ => fallback_runtime_font(Map::new(), offset)
+    _ => fallback_runtime_font(Map::new(), offset, limits)
   }
 }
 
@@ -93,7 +94,7 @@ fn parse_runtime_font_dictionary(
   )
   match parsed {
     Ok(font) => font
-    Err(_) => fallback_runtime_font(dict, offset)
+    Err(_) => fallback_runtime_font(dict, offset, limits)
   }
 }
 
@@ -105,6 +106,7 @@ fn parse_runtime_font_dictionary_strict(
 ) -> RuntimeFont raise PdfTextError {
   let subtype = optional_name_entry(dict, b"Subtype")
   let to_unicode = parse_optional_to_unicode(dict, offset, limits)
+  let ttf = parse_embedded_truetype_font(dict)
   let widths = parse_widths(dict, offset)
   let default_width = font_descriptor_missing_width(dict, offset)
   match subtype {
@@ -113,6 +115,7 @@ fn parse_runtime_font_dictionary_strict(
       RuntimeFont::{
         kind: Composite(cmap),
         to_unicode,
+        ttf,
         widths,
         standard_widths: Map::new(),
         default_width: Some(1000.0),
@@ -127,6 +130,7 @@ fn parse_runtime_font_dictionary_strict(
       RuntimeFont::{
         kind: Simple(encoding),
         to_unicode,
+        ttf,
         widths,
         standard_widths: standard14_simple_widths(dict, encoding, widths),
         default_width,
@@ -140,16 +144,35 @@ fn parse_runtime_font_dictionary_strict(
 fn fallback_runtime_font(
   dict : @objects.PdfDictionary,
   offset : Int64,
+  limits : TextInterpretationLimits,
 ) -> RuntimeFont {
   let encoding = SimpleEncoding::standard()
+  let to_unicode = fallback_to_unicode(dict, offset, limits)
+  let ttf = parse_embedded_truetype_font(dict)
   let widths = fallback_widths(dict, offset)
   RuntimeFont::{
     kind: Simple(encoding),
-    to_unicode: None,
+    to_unicode,
+    ttf,
     widths,
     standard_widths: standard14_simple_widths(dict, encoding, widths),
     default_width: fallback_missing_width(dict, offset),
     default_width_source: GlyphWidthSource::FontDescriptorMissingWidth,
+  }
+}
+
+///|
+fn fallback_to_unicode(
+  dict : @objects.PdfDictionary,
+  offset : Int64,
+  limits : TextInterpretationLimits,
+) -> ToUnicodeCMap? {
+  let parsed : Result[ToUnicodeCMap?, PdfTextError] = try? parse_optional_to_unicode(
+    dict, offset, limits,
+  )
+  match parsed {
+    Ok(to_unicode) => to_unicode
+    Err(_) => None
   }
 }
 
@@ -268,11 +291,7 @@ fn decode_simple_font_string(
     let glyph = DecodedGlyph::{
       source_bytes: source,
       source_code: code,
-      glyph: if name == @objects.PdfName::new(b".notdef") {
-        GlyphIdentifier::Notdef
-      } else {
-        GlyphIdentifier::GlyphName(name)
-      },
+      glyph: simple_glyph_identifier(font, code, name),
       metrics: glyph_metrics_for_code(font, code),
       word_spacing_eligible: code == 32,
       fallback: if name == @objects.PdfName::new(b".notdef") {
@@ -333,15 +352,90 @@ fn glyph_metrics_for_code(font : RuntimeFont, code : Int) -> GlyphMetrics {
             GlyphWidthSource::Standard14Fallback,
           )
         None =>
-          match font.default_width {
+          match embedded_truetype_width_for_code(font, code) {
             Some(width) =>
               GlyphMetrics::from_horizontal_width(
                 width,
-                font.default_width_source,
+                GlyphWidthSource::FontDictionary,
               )
-            None => GlyphMetrics::unknown()
+            None =>
+              match font.default_width {
+                Some(width) =>
+                  GlyphMetrics::from_horizontal_width(
+                    width,
+                    font.default_width_source,
+                  )
+                None => GlyphMetrics::unknown()
+              }
           }
       }
+  }
+}
+
+///|
+fn simple_glyph_identifier(
+  font : RuntimeFont,
+  code : Int,
+  name : @objects.PdfName,
+) -> GlyphIdentifier {
+  if name != @objects.PdfName::new(b".notdef") {
+    GlyphIdentifier::GlyphName(name)
+  } else {
+    match embedded_truetype_glyph_id_for_code(font, code) {
+      Some(gid) if gid != 0 => GlyphIdentifier::CharacterCode(gid)
+      _ => GlyphIdentifier::Notdef
+    }
+  }
+}
+
+///|
+fn embedded_truetype_glyph_id_for_code(font : RuntimeFont, code : Int) -> Int? {
+  match font.ttf {
+    Some(ttf) => ttf.cmap.get(code)
+    None => None
+  }
+}
+
+///|
+fn embedded_truetype_width_for_code(font : RuntimeFont, code : Int) -> Double? {
+  match font.ttf {
+    Some(ttf) =>
+      match ttf.cmap.get(code) {
+        Some(gid) if gid != 0 => Some(embedded_truetype_width(ttf, gid))
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn embedded_truetype_width(ttf : @font.TTFont, gid : Int) -> Double {
+  let units_per_em = if ttf.units_per_em > 0 { ttf.units_per_em } else { 1000 }
+  let metrics = ttf.glyph_metrics(gid)
+  metrics.advance_width.to_double() * 1000.0 / units_per_em.to_double()
+}
+
+///|
+fn parse_embedded_truetype_font(dict : @objects.PdfDictionary) -> @font.TTFont? {
+  match dict.get(@objects.PdfName::new(b"FontDescriptor")) {
+    Some(@objects.PdfObject::Dictionary(descriptor)) =>
+      match descriptor.get(@objects.PdfName::new(b"FontFile2")) {
+        Some(@objects.PdfObject::Stream(stream)) =>
+          parse_font_file2_stream(stream)
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn parse_font_file2_stream(stream : @objects.PdfStream) -> @font.TTFont? {
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream(
+    stream,
+  )
+  match decoded {
+    Ok(bytes) => @font.parse_ttf(bytes)
+    Err(_) => None
   }
 }
 
