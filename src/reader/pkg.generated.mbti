@@ -606,6 +606,7 @@ pub fn PdfDocument::document_info(Self) -> @interchange.PdfDocumentInfo? raise P
 pub fn PdfDocument::document_language(Self) -> Bytes? raise PdfDocumentError
 pub fn PdfDocument::embedded_files(Self) -> Array[PdfEmbeddedFileEntry] raise PdfDocumentError
 pub fn PdfDocument::extensions(Self) -> PdfExtensions? raise PdfDocumentError
+pub fn PdfDocument::form_field_values(Self) -> Map[String, String] raise PdfDocumentError
 pub fn PdfDocument::is_encrypted(Self) -> Bool
 pub fn PdfDocument::lookup_name(Self, NameTreeCategory, Bytes) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfDocument::mark_info(Self) -> PdfMarkInfo raise PdfDocumentError
@@ -1450,6 +1451,7 @@ pub fn PdfPage::content_stream(Self) -> @content.ContentStream raise PdfDocument
 pub fn PdfPage::contents(Self) -> @objects.PdfObject?
 pub fn PdfPage::crop_box(Self) -> PdfRectangle? raise PdfDocumentError
 pub fn PdfPage::entry(Self, @objects.PdfName) -> @objects.PdfObject?
+pub fn PdfPage::extract_text_layout(Self) -> String
 pub fn PdfPage::extracted_text(Self, TextPageOptions) -> @text.ExtractedText raise PdfDocumentError
 pub fn PdfPage::graphics_events(Self, GraphicsPageOptions) -> Array[@graphics.GraphicsEvent] raise PdfDocumentError
 pub fn PdfPage::graphics_initial_state(Self, GraphicsPageOptions) -> @graphics.GraphicsInitialState raise PdfDocumentError
