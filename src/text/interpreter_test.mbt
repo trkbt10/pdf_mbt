@@ -40,6 +40,39 @@ test "interpret text applies simple font encoding ToUnicode and advances matrix"
 }
 
 ///|
+test "interpret text rendering matrix follows graphics CTM" {
+  let font = simple_font_with_to_unicode()
+  let font_resources : @objects.PdfDictionary = Map::new()
+  font_resources[@objects.PdfName::new(b"F1")] = @objects.PdfObject::Dictionary(
+    font,
+  )
+  let resources_dict : @objects.PdfDictionary = Map::new()
+  resources_dict[@objects.PdfName::new(b"Font")] = @objects.PdfObject::Dictionary(
+    font_resources,
+  )
+  let resources = TextResources::from_content_resources(
+    @content.ContentResources::from_dictionary(resources_dict),
+    0L,
+  )
+  let content = @content.parse_decoded_content(
+    b"2 0 0 2 10 20 cm BT /F1 10 Tf 1 0 0 1 5 6 Tm (A) Tj ET",
+    resources.content_resources,
+  )
+
+  let program = interpret_text(content, resources, TextInitialState::default())
+  match program.events[2] {
+    GlyphShown(event) => {
+      assert_eq(event.text_matrix.e, 5.0)
+      assert_eq(event.rendering_matrix.matrix.a, 20.0)
+      assert_eq(event.rendering_matrix.matrix.d, 20.0)
+      assert_eq(event.rendering_matrix.matrix.e, 20.0)
+      assert_eq(event.rendering_matrix.matrix.f, 32.0)
+    }
+    _ => fail("expected glyph event")
+  }
+}
+
+///|
 test "interpret text keeps line matrix stable across glyph advance" {
   let font = simple_font_with_to_unicode()
   let font_resources : @objects.PdfDictionary = Map::new()

@@ -16,11 +16,12 @@ pub fn interpret_text(
 ///|
 priv struct TextInterpreter {
   resources : TextResources
-  initial : TextInitialState
   limits : TextInterpretationLimits
   mut state : TextState
+  mut ctm : TextMatrix
   mut object_state : TextObjectState?
   stack : TextStateStack
+  ctm_stack : Array[TextMatrix]
   events : Array[TextEvent]
   spans : Array[TextSpan]
 }
@@ -32,11 +33,12 @@ fn TextInterpreter::new(
 ) -> TextInterpreter {
   TextInterpreter::{
     resources,
-    initial,
     limits: TextInterpretationLimits::default(),
     state: TextState::initial().with_text_knockout(initial.text_knockout),
+    ctm: initial.ctm,
     object_state: None,
     stack: TextStateStack::new(),
+    ctm_stack: [],
     events: [],
     spans: [],
   }
@@ -64,6 +66,7 @@ fn TextInterpreter::interpret_operation(
   match operation.operator {
     SaveGraphicsState => self.save_state(operation)
     RestoreGraphicsState => self.restore_state(operation)
+    ConcatMatrix => self.concat_matrix(operation)
     SetCharacterSpacing =>
       self.state = self.state.with_character_spacing(
         single_number_operand(operation, "character spacing"),
@@ -141,6 +144,7 @@ fn TextInterpreter::save_state(
 ) -> Unit raise PdfTextError {
   require_operand_count(operation, 0)
   self.stack.save(self.state, self.object_state)
+  self.ctm_stack.push(self.ctm)
 }
 
 ///|
@@ -156,8 +160,34 @@ fn TextInterpreter::restore_state(
     )
   }
   let snapshot = self.stack.restore(TextErrorContext::at(operation.offset))
+  let ctm = match self.ctm_stack.pop() {
+    Some(value) => value
+    None =>
+      raise PdfTextError::InvalidTextState(
+        TextErrorContext::at(operation.offset),
+        "graphics state stack underflow",
+      )
+  }
   self.state = snapshot.state
+  self.ctm = ctm
   self.object_state = snapshot.object_state
+}
+
+///|
+fn TextInterpreter::concat_matrix(
+  self : TextInterpreter,
+  operation : @content.ContentOperation,
+) -> Unit raise PdfTextError {
+  require_operand_count(operation, 6)
+  let matrix = TextMatrix::from_six(
+    number_operand_at(operation, 0, "cm a"),
+    number_operand_at(operation, 1, "cm b"),
+    number_operand_at(operation, 2, "cm c"),
+    number_operand_at(operation, 3, "cm d"),
+    number_operand_at(operation, 4, "cm e"),
+    number_operand_at(operation, 5, "cm f"),
+  )
+  self.ctm = TextMatrix::concat(matrix, self.ctm)
 }
 
 ///|
@@ -313,7 +343,7 @@ fn TextInterpreter::show_string(
       span_font_size,
       self.state.horizontal_scaling,
       self.state.text_rise,
-      self.initial.ctm,
+      self.ctm,
     )
     self.events.push(
       TextEvent::GlyphShown(TextGlyphEvent::{

@@ -15,14 +15,16 @@ test "render_page_svg positions Simple PDF text without page group flip" {
 }
 
 ///|
-test "write_svg_text_matrix_scaled applies Tf font size to identity Tm" {
+test "write_svg_text_matrix writes rendering matrix in SVG coordinates" {
   let builder = StringBuilder::new()
-  write_svg_text_matrix_scaled(
-    builder,
-    @text.TextMatrix::from_six(1.0, 0.0, 0.0, 1.0, 10.0, 20.0),
-    100.0,
-    12.0,
-  )
+  let matrix = @text.TextRenderingMatrix::from_text_state(
+      @text.TextMatrix::from_six(1.0, 0.0, 0.0, 1.0, 10.0, 20.0),
+      12.0,
+      1.0,
+      0.0,
+      @text.TextMatrix::identity(),
+    ).matrix
+  write_svg_text_matrix(builder, matrix, 100.0)
   assert_eq(builder.to_string(), "12 0 0 12 10 80")
 }
 
@@ -61,6 +63,15 @@ test "render_page_svg scales web PDF identity text matrix by Tf font size" {
   assert_eq(svg.contains("<text transform=\"matrix(12 0 0 12 10 80)"), true)
   assert_eq(svg.contains("font-size=\"1\""), true)
   assert_eq(svg.contains("<tspan x=\"0\" y=\"0\">A</tspan>"), true)
+}
+
+///|
+test "render_page_svg uses rendering matrix with graphics CTM for text" {
+  let document = @reader.PdfDocument::open(build_ctm_scaled_text_fixture())
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<text transform=\"matrix(20 0 0 20 20 68)"), true)
+  assert_eq(svg.contains("<text transform=\"matrix(10 0 0 10 5 94)"), false)
+  assert_eq(svg.contains("font-size=\"1\""), true)
 }
 
 ///|
@@ -164,6 +175,16 @@ fn build_encoded_image_fixture() -> Bytes {
 ///|
 fn build_identity_tm_text_fixture() -> Bytes {
   let content = b"BT /F1 12 Tf 1 0 0 1 10 20 Tm (A) Tj ET"
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /Contents 4 0 R >>",
+    content,
+    [],
+  )
+}
+
+///|
+fn build_ctm_scaled_text_fixture() -> Bytes {
+  let content = b"2 0 0 2 10 20 cm BT /F1 10 Tf 1 0 0 1 5 6 Tm (A) Tj ET"
   build_single_page_pdf(
     b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /Contents 4 0 R >>",
     content,
