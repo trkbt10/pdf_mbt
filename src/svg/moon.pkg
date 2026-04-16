@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/core/math",
+  "mizchi/image",
+  "trkbt10/pdf/src/content",
+  "trkbt10/pdf/src/graphics",
+  "trkbt10/pdf/src/objects",
+  "trkbt10/pdf/src/reader",
+  "trkbt10/pdf/src/text",
+}
+
+import {
+  "moonbitlang/x/fs",
+} for "wbtest"
