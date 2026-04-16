@@ -1,0 +1,10 @@
+import {
+  "moonbitlang/core/argparse",
+  "trkbt10/pdf/src/reader",
+  "trkbt10/pdf/src/text",
+  "moonbitlang/x/fs",
+}
+
+options(
+  "is-main": true,
+)
