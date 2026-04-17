@@ -354,7 +354,7 @@ fn page_render_graphics_svg(
       for event in events {
         match event {
           @graphics.GraphicsEvent::PathPainted(_, operation, path, state) =>
-            page_render_path_svg(builder, operation, path, state, page_height)
+            page_render_path_svg(builder, operation, path, state, page_height, 0)
           @graphics.GraphicsEvent::ImagePainted(_, descriptor, state) =>
             page_render_image_svg(
               builder, page, descriptor, state, page_height, 0, deferred_images,
@@ -373,6 +373,7 @@ fn page_render_path_svg(
   path : @graphics.GraphicsPath,
   state : @graphics.GraphicsState,
   page_height : Double,
+  clip_id : Int,
 ) -> Unit {
   let d = svg_path_data(path, state.ctm, page_height)
   if d.length() == 0 {
@@ -382,6 +383,7 @@ fn page_render_path_svg(
   builder.write_string(d)
   builder.write_string("\"")
   write_svg_path_pixel_alignment(builder, operation, path, state)
+  write_svg_clip_path_attribute(builder, clip_id)
   write_svg_paint_attributes(builder, operation, state)
   builder.write_string("/>")
 }
@@ -1024,7 +1026,13 @@ fn page_render_texts_svg(
             Some(ttf) => {
               let path_builder = StringBuilder::new()
               if page_render_text_span_as_paths(
-                  path_builder, span, glyphs, ttf, page_height, fill_colour,
+                  path_builder,
+                  span,
+                  glyphs,
+                  ttf,
+                  page_height,
+                  fill_colour,
+                  0,
                 ) {
                 builder.write_string(path_builder.to_string())
               } else if span.text.length() > 0 {
@@ -1035,6 +1043,7 @@ fn page_render_texts_svg(
                   span_svg_font_family(font_families, span),
                   page_height,
                   fill_colour,
+                  0,
                 )
               }
             }
@@ -1047,6 +1056,7 @@ fn page_render_texts_svg(
                   span_svg_font_family(font_families, span),
                   page_height,
                   fill_colour,
+                  0,
                 )
               }
           }
@@ -1173,6 +1183,7 @@ fn page_render_text_span_as_paths(
   ttf : @font.TTFont,
   page_height : Double,
   fill_colour : String,
+  clip_id : Int,
 ) -> Bool {
   if glyphs.length() == 0 {
     return span.text.length() == 0
@@ -1180,7 +1191,7 @@ fn page_render_text_span_as_paths(
   let units_per_em = svg_font_units_per_em(ttf)
   for glyph in glyphs {
     if !render_glyph_as_path(
-        builder, glyph, ttf, units_per_em, page_height, fill_colour,
+        builder, glyph, ttf, units_per_em, page_height, fill_colour, clip_id,
       ) {
       return false
     }
@@ -1199,6 +1210,7 @@ fn render_glyph_as_path(
   units_per_em : Int,
   page_height : Double,
   fill_colour : String,
+  clip_id : Int,
 ) -> Bool {
   if glyph.paint.invisible {
     return true
@@ -1232,7 +1244,9 @@ fn render_glyph_as_path(
   )
   builder.write_string(")\" fill=\"")
   builder.write_string(fill_colour)
-  builder.write_string("\"/>")
+  builder.write_string("\"")
+  write_svg_clip_path_attribute(builder, clip_id)
+  builder.write_string("/>")
   true
 }
 
@@ -1409,6 +1423,7 @@ fn page_render_text_svg(
   font_family : String,
   page_height : Double,
   fill_colour : String,
+  clip_id : Int,
 ) -> Unit {
   let matrix = span_rendering_matrix(span, glyphs)
   let font_size = svg_extract_font_size(matrix)
@@ -1427,6 +1442,7 @@ fn page_render_text_svg(
   builder.write_string("\" fill=\"")
   builder.write_string(fill_colour)
   builder.write_string("\"")
+  write_svg_clip_path_attribute(builder, clip_id)
   match positioned {
     Some(text) => {
       builder.write_string(">")
