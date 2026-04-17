@@ -1,0 +1,24 @@
+{
+  "_meta": {
+    "measured_on": "2026-04-17",
+    "pixelmatch": {
+      "threshold": 0.1,
+      "includeAA": true,
+      "alpha": 0.1,
+      "aaColor": [
+        255,
+        255,
+        0
+      ],
+      "diffColor": [
+        255,
+        0,
+        0
+      ]
+    }
+  },
+  "<local-fixture>": {
+    "page_6": 0.1612,
+    "page_7": 0.2145
+  }
+}
