@@ -1060,13 +1060,26 @@ fn page_svg_embedded_fonts(
   page : @reader.PdfPage,
 ) -> Map[@objects.PdfName, @font.TTFont] {
   let fonts : Map[@objects.PdfName, @font.TTFont] = Map::new()
+  let system_cache = new_system_font_cache()
   let result : Result[@text.TextResources, @reader.PdfDocumentError] = try? page.text_resources()
   match result {
     Ok(resources) =>
       for name, summary in resources.fonts {
         match font_object_embedded_truetype_font(summary.font_object) {
           Some(ttf) => fonts[name] = ttf
-          None => ()
+          None =>
+            match font_object_base_font(summary.font_object) {
+              Some(base_font) =>
+                match
+                  resolve_system_font(
+                    strip_subset_font_tag(base_font).to_text(),
+                    cache=system_cache,
+                  ) {
+                  Some(ttf) => fonts[name] = ttf
+                  None => ()
+                }
+              None => ()
+            }
         }
       }
     Err(_) => ()

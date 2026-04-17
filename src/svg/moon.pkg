@@ -1,5 +1,7 @@
 import {
+  "moonbitlang/core/env",
   "moonbitlang/core/math",
+  "moonbitlang/x/fs",
   "mizchi/font",
   "mizchi/image",
   "mizchi/svg" @svgpath,
@@ -10,7 +12,3 @@ import {
   "trkbt10/pdf/src/reader",
   "trkbt10/pdf/src/text",
 }
-
-import {
-  "moonbitlang/x/fs",
-} for "wbtest"
