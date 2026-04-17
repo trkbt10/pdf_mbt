@@ -289,8 +289,10 @@ fn decode_sample_bytes_to_rgb(
   let samples = decode_image_sample_values(decoded, descriptor.layout, offset~)
   let alpha = alpha_for_image_descriptor(descriptor, samples, offset)
   let bits_per_component = require_bits_per_component(descriptor, offset)
-  let rgba : Array[Byte] = []
-  for pixel in 0..<(descriptor.width * descriptor.height) {
+  let total = descriptor.width * descriptor.height
+  // Pre-allocated RGBA buffer for the image decode hot loop.
+  let rgba = FixedArray::make(total * 4, b'\x00')
+  for pixel in 0..<total {
     let (r, g, b) = pixel_to_device_rgb(
       space,
       descriptor.decode,
@@ -299,15 +301,16 @@ fn decode_sample_bytes_to_rgb(
       pixel,
       offset,
     )
-    rgba.push(unit_to_byte(r))
-    rgba.push(unit_to_byte(g))
-    rgba.push(unit_to_byte(b))
-    rgba.push(alpha_byte_at(alpha, pixel))
+    let rgba_index = pixel * 4
+    rgba[rgba_index] = unit_to_byte(r)
+    rgba[rgba_index + 1] = unit_to_byte(g)
+    rgba[rgba_index + 2] = unit_to_byte(b)
+    rgba[rgba_index + 3] = alpha_byte_at(alpha, pixel)
   }
   ExtractedImageData::DeviceRgbRaster(ImageDeviceRgbRaster::{
     width: descriptor.width,
     height: descriptor.height,
-    rgba: Bytes::from_array(rgba),
+    rgba: Bytes::makei(total * 4, fn(i) { rgba[i] }),
   })
 }
 
