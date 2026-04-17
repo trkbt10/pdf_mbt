@@ -276,6 +276,14 @@ pub fn parse_cff_charset(data : Bytes, num_glyphs : Int) -> Array[Int]? {
 }
 
 ///|
+/// Parses a CID-keyed CFF charset as glyph_id to CID values. The binary
+/// charset formats are identical to Type1C SID charsets, but CIDFontType0C
+/// semantics define each entry as a CID; glyph_id 0 is CID 0 (.notdef).
+pub fn parse_cff_cid_charset(data : Bytes, num_glyphs : Int) -> Array[Int]? {
+  parse_cff_charset(data, num_glyphs)
+}
+
+///|
 fn cff_top_dict_entry_bounds(data : Bytes) -> (Int, Int)? {
   if data.length() < 5 {
     return None
