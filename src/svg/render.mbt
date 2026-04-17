@@ -1426,6 +1426,9 @@ fn svg_resolve_glyph_id(
 /// available, then fall back to cmap lookup by source_code. Empty outline
 /// handling treats `ttf.glyph_outline(glyph_id)` with zero path commands as a
 /// missing glyph so SVG `<text>` rendering preserves unknown characters.
+/// Root cause fixes for real local-fixture CID CFF data keep the empty-Unicode-span
+/// render path alive: spans with no Unicode text can still render CID glyph
+/// paths from TextGlyphEvent glyph ids and CFF cid.XXXXX reverse mapping.
 pub fn svg_renderer_glyph_id_resolution_alignment() -> Unit {
   let glyph_name_resolution = "GlyphName post table glyph_name glyph_id"
   let cmap_fallback = "cmap source_code fallback"

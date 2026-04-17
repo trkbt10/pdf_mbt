@@ -19,6 +19,10 @@ pub fn cff_glyph_name_table(Bytes, Int) -> Array[String]?
 
 pub fn cff_string_index_entry(Bytes, Int) -> String?
 
+pub fn cid_realpath_root_cause_fixes_alignment() -> Unit
+
+pub fn diagnostic_instrumentation_real_local_fixture_cff_alignment() -> Unit
+
 pub fn fallback_for_non_embedded_fonts_alignment() -> Unit
 
 pub fn font_descriptor_lookup_order_alignment() -> Unit
@@ -42,6 +46,8 @@ pub fn glyph_positioning_and_scaling_alignment() -> Unit
 pub fn glyph_svg_output_format_alignment() -> Unit
 
 pub fn is_cid_keyed_cff(Bytes) -> Bool
+
+pub fn keep_diagnostic_tests_alignment() -> Unit
 
 pub fn parse_cff_charset(Bytes, Int) -> Array[Int]?
 

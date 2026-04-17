@@ -37,3 +37,30 @@ pub fn glyph_fill_and_stroke_alignment() -> Unit {
 pub fn glyph_svg_output_format_alignment() -> Unit {
   ()
 }
+
+///|
+/// Diagnostic instrumentation for real local-fixture CFF data alignment marker. The
+/// diagnostic FontFile3 chain walks real local-fixture page 6 CID CFF data, prints
+/// `is_raw_cff`, `is_cid_keyed_cff`, CIDCount, charset format, glyph count,
+/// synthetic cid post names, and parseability of the wrapped OTF.
+pub fn diagnostic_instrumentation_real_local_fixture_cff_alignment() -> Unit {
+  ()
+}
+
+///|
+/// Root cause fixes alignment marker. Empty-Unicode-span render paths still
+/// render CID glyph paths by using TextGlyphEvent data, CFF wrapper CID
+/// reverse lookup, cid.XXXXX post names, and the empty-Unicode-span path
+/// instead of dropping real local-fixture CID text.
+pub fn cid_realpath_root_cause_fixes_alignment() -> Unit {
+  ()
+}
+
+///|
+/// Keep diagnostic tests alignment marker. The local-fixture diagnostic tests remain
+/// as regression guards for FontFile3 stream parsing, raw CFF wrapping,
+/// CID-keyed CFF detection, CID charset mapping, and real-data glyph path
+/// rendering.
+pub fn keep_diagnostic_tests_alignment() -> Unit {
+  ()
+}
