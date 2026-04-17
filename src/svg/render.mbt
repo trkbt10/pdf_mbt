@@ -817,8 +817,8 @@ fn page_render_texts_svg(
       let embedded_fonts = page_svg_embedded_fonts(page)
       for index in 0..<program.spans.length() {
         let span = program.spans[index]
-        if span.text.length() > 0 {
-          let glyphs = span_glyphs(glyph_groups, index)
+        let glyphs = span_glyphs(glyph_groups, index)
+        if span.text.length() > 0 || glyphs.length() > 0 {
           let fill_colour = span_fill_colour(fill_colours, index)
           match span_svg_embedded_font(embedded_fonts, span) {
             Some(ttf) => {
@@ -827,7 +827,7 @@ fn page_render_texts_svg(
                   path_builder, span, glyphs, ttf, page_height, fill_colour,
                 ) {
                 builder.write_string(path_builder.to_string())
-              } else {
+              } else if span.text.length() > 0 {
                 page_render_text_svg(
                   builder,
                   span,
@@ -839,14 +839,16 @@ fn page_render_texts_svg(
               }
             }
             None =>
-              page_render_text_svg(
-                builder,
-                span,
-                glyphs,
-                span_svg_font_family(font_families, span),
-                page_height,
-                fill_colour,
-              )
+              if span.text.length() > 0 {
+                page_render_text_svg(
+                  builder,
+                  span,
+                  glyphs,
+                  span_svg_font_family(font_families, span),
+                  page_height,
+                  fill_colour,
+                )
+              }
           }
         }
       }
@@ -972,11 +974,8 @@ fn page_render_text_span_as_paths(
   page_height : Double,
   fill_colour : String,
 ) -> Bool {
-  if span.text.length() == 0 {
-    return true
-  }
   if glyphs.length() == 0 {
-    return false
+    return span.text.length() == 0
   }
   let units_per_em = svg_font_units_per_em(ttf)
   for glyph in glyphs {
@@ -1052,7 +1051,11 @@ fn svg_resolve_glyph_id(
   match glyph.glyph.glyph {
     @text.GlyphIdentifier::CID(cid) => {
       let mapped = svg_cid_glyph_id(ttf, cid)
-      if mapped >= 0 { mapped } else { cid }
+      if mapped >= 0 {
+        mapped
+      } else {
+        cid
+      }
     }
     @text.GlyphIdentifier::CharacterCode(code) =>
       match ttf.cmap.get(code) {

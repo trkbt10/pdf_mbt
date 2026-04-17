@@ -123,6 +123,22 @@ test "render_page_svg renders embedded TrueType glyphs as paths" {
 }
 
 ///|
+test "render_page_svg renders embedded CID glyph paths when text is unknown" {
+  let document = @reader.PdfDocument::open(
+    build_embedded_cid_unknown_text_fixture(),
+  )
+  let program = document
+    .page(0)
+    .text_program(@reader.TextPageOptions::default())
+  assert_eq(program.spans.length(), 1)
+  assert_eq(program.spans[0].text, "")
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<path d=\""), true)
+  assert_eq(svg.contains("<text"), false)
+  assert_eq(svg.contains("font-family=\""), false)
+}
+
+///|
 test "render_page_svg uses nonstroking colour for embedded glyph paths" {
   let document = @reader.PdfDocument::open(
     build_coloured_embedded_truetype_text_fixture(),
@@ -221,9 +237,13 @@ test "diagnostic local-fixture page 6 CID CFF chain" {
   match result {
     Ok(resources) => {
       let mut stream_count = 0
+      let mut parseable_count = 0
       for name, summary in resources.fonts {
         stream_count += diagnostic_fontfile3_chain(
           "font " + name.to_text(),
+          summary.font_object,
+        )
+        parseable_count += diagnostic_fontfile3_parseable_chain(
           summary.font_object,
         )
       }
@@ -232,6 +252,8 @@ test "diagnostic local-fixture page 6 CID CFF chain" {
       )
       diagnostic_page6_text_path_summary(document.page(5), b"C0_0")
       diagnostic_page6_text_path_summary(document.page(5), b"C0_1")
+      assert_eq(parseable_count, stream_count)
+      assert_true(stream_count > 0)
     }
     Err(_) => println("diagnostic local-fixture page 6 text_resources failed")
   }
@@ -792,6 +814,67 @@ fn diagnostic_fontfile3_stream(
 }
 
 ///|
+fn diagnostic_fontfile3_parseable_chain(object : @objects.PdfObject) -> Int {
+  match object {
+    @objects.PdfObject::Dictionary(dict) =>
+      diagnostic_fontfile3_parseable_dict(dict)
+    _ => 0
+  }
+}
+
+///|
+fn diagnostic_fontfile3_parseable_dict(dict : @objects.PdfDictionary) -> Int {
+  let mut count = 0
+  match dict.get(@objects.PdfName::new(b"FontDescriptor")) {
+    Some(@objects.PdfObject::Dictionary(descriptor)) =>
+      count += diagnostic_fontfile3_parseable_descriptor(descriptor)
+    _ => ()
+  }
+  match dict.get(@objects.PdfName::new(b"DescendantFonts")) {
+    Some(@objects.PdfObject::Array(fonts)) =>
+      for font in fonts {
+        count += diagnostic_fontfile3_parseable_chain(font)
+      }
+    _ => ()
+  }
+  count
+}
+
+///|
+fn diagnostic_fontfile3_parseable_descriptor(
+  descriptor : @objects.PdfDictionary,
+) -> Int {
+  match descriptor.get(@objects.PdfName::new(b"FontFile3")) {
+    Some(@objects.PdfObject::Stream(stream)) =>
+      if diagnostic_fontfile3_parseable_stream(stream) {
+        1
+      } else {
+        0
+      }
+    _ => 0
+  }
+}
+
+///|
+fn diagnostic_fontfile3_parseable_stream(stream : @objects.PdfStream) -> Bool {
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream(
+    stream,
+  )
+  match decoded {
+    Ok(bytes) =>
+      if is_raw_cff(bytes) {
+        match wrap_cff_in_otf(bytes) {
+          Some(wrapped) => @font.parse_font(wrapped) is Some(_)
+          None => false
+        }
+      } else {
+        @font.parse_font(bytes) is Some(_)
+      }
+    Err(_) => false
+  }
+}
+
+///|
 fn diagnostic_fontfile3_bytes(label : String, bytes : Bytes) -> Unit {
   println(label + ":")
   println("  FontFile3 stream decoded, len=" + bytes.length().to_string())
@@ -1085,6 +1168,26 @@ fn build_embedded_truetype_text_fixture() -> Bytes {
     [
       b"<< /Type /Font /Subtype /TrueType /BaseFont /MinimalKern /FirstChar 65 /LastChar 65 /Widths [600] /Encoding /WinAnsiEncoding /FontDescriptor 6 0 R >>",
       b"<< /Type /FontDescriptor /FontName /MinimalKern /Flags 4 /FontBBox [0 -200 1000 1000] /ItalicAngle 0 /Ascent 1000 /Descent -200 /CapHeight 700 /StemV 80 /FontFile2 7 0 R >>",
+      font_file,
+    ],
+  )
+}
+
+///|
+fn build_embedded_cid_unknown_text_fixture() -> Bytes {
+  let content = b"BT /F1 10 Tf 1 0 0 1 10 20 Tm <0001> Tj ET"
+  let font_file = build_stream_object_body(
+    try! @fs.read_file_to_bytes(
+      ".mooncakes/mizchi/font/fixtures/minimal-kern.ttf",
+    ),
+  )
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+    content,
+    [
+      b"<< /Type /Font /Subtype /Type0 /BaseFont /MinimalKern /Encoding /Identity-H /DescendantFonts [6 0 R] >>",
+      b"<< /Type /Font /Subtype /CIDFontType2 /BaseFont /MinimalKern /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /DW 600 /FontDescriptor 7 0 R >>",
+      b"<< /Type /FontDescriptor /FontName /MinimalKern /Flags 4 /FontBBox [0 -200 1000 1000] /ItalicAngle 0 /Ascent 1000 /Descent -200 /CapHeight 700 /StemV 80 /FontFile2 8 0 R >>",
       font_file,
     ],
   )
