@@ -145,6 +145,16 @@ test "render_page_svg uses nonstroking colour for text fallback" {
 }
 
 ///|
+test "render_page_svg keeps text colour when unresolved XObject graphics fail" {
+  let document = @reader.PdfDocument::open(
+    build_coloured_text_with_bad_xobject_fixture(),
+  )
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<text"), true)
+  assert_eq(svg.contains("fill=\"#FF0000\""), true)
+}
+
+///|
 test "render_page_svg renders FontFile3 OpenType glyphs as paths" {
   let document = @reader.PdfDocument::open(
     build_embedded_fontfile3_text_fixture(),
@@ -153,6 +163,16 @@ test "render_page_svg renders FontFile3 OpenType glyphs as paths" {
   assert_eq(svg.contains("<path d=\""), true)
   assert_eq(svg.contains("<text"), false)
   assert_eq(svg.contains("font-family=\""), false)
+}
+
+///|
+test "render_page_svg falls back for FontFile3 Type1C raw CFF" {
+  let document = @reader.PdfDocument::open(
+    build_raw_type1c_fontfile3_text_fixture(),
+  )
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<text"), true)
+  assert_eq(svg.contains("<path d=\""), false)
 }
 
 ///|
@@ -374,6 +394,19 @@ fn build_coloured_text_fallback_fixture() -> Bytes {
 }
 
 ///|
+fn build_coloured_text_with_bad_xobject_fixture() -> Bytes {
+  let content = b"1 0 0 rg BT /F1 12 Tf 1 0 0 1 10 20 Tm (A) Tj ET /Fm1 Do"
+  let bad_form = build_stream_object_body_with_entries(
+    b"/Type /XObject /Subtype /Form /BBox [0 0 10 10]", b"S",
+  )
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /ColourFallback /FirstChar 65 /LastChar 65 /Widths [600] /Encoding /WinAnsiEncoding >> >> /XObject << /Fm1 5 0 R >> >> /Contents 4 0 R >>",
+    content,
+    [bad_form],
+  )
+}
+
+///|
 fn build_embedded_fontfile3_text_fixture() -> Bytes {
   let content = b"BT /F1 10 Tf 1 0 0 1 10 20 Tm (A) Tj ET"
   let font_file = build_stream_object_body_with_entries(
@@ -394,6 +427,29 @@ fn build_embedded_fontfile3_text_fixture() -> Bytes {
 }
 
 ///|
+fn build_raw_type1c_fontfile3_text_fixture() -> Bytes {
+  let content = b"BT /F1 12 Tf 1 0 0 1 10 20 Tm (A) Tj ET"
+  let cff = extract_sfnt_table(
+    try! @fs.read_file_to_bytes(
+      ".mooncakes/mizchi/font/fixtures/cff-opcodes/cff.add.otf",
+    ),
+    b"CFF ",
+  )
+  let font_file = build_stream_object_body_with_entries(
+    b"/Subtype /Type1C", cff,
+  )
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+    content,
+    [
+      b"<< /Type /Font /Subtype /Type1 /BaseFont /RawCffFallback /FirstChar 65 /LastChar 65 /Widths [600] /Encoding /WinAnsiEncoding /FontDescriptor 6 0 R >>",
+      b"<< /Type /FontDescriptor /FontName /RawCffFallback /Flags 4 /FontBBox [0 -200 1000 1000] /ItalicAngle 0 /Ascent 1000 /Descent -200 /CapHeight 700 /StemV 80 /FontFile3 7 0 R >>",
+      font_file,
+    ],
+  )
+}
+
+///|
 fn build_ctm_scaled_text_fixture() -> Bytes {
   let content = b"2 0 0 2 10 20 cm BT /F1 10 Tf 1 0 0 1 5 6 Tm (A) Tj ET"
   build_single_page_pdf(
@@ -401,6 +457,46 @@ fn build_ctm_scaled_text_fixture() -> Bytes {
     content,
     [],
   )
+}
+
+///|
+fn extract_sfnt_table(data : Bytes, tag : Bytes) -> Bytes {
+  if data.length() < 12 || tag.length() != 4 {
+    return b""
+  }
+  let count = read_u16_be(data, 4)
+  for index in 0..<count {
+    let record = 12 + index * 16
+    if record + 16 <= data.length() && bytes_match4(data, record, tag) {
+      let offset = read_u32_be(data, record + 8)
+      let length = read_u32_be(data, record + 12)
+      if offset >= 0 && length >= 0 && offset + length <= data.length() {
+        return @font.bytes_slice(data, offset, length)
+      }
+    }
+  }
+  b""
+}
+
+///|
+fn bytes_match4(data : Bytes, offset : Int, tag : Bytes) -> Bool {
+  data[offset] == tag[0] &&
+  data[offset + 1] == tag[1] &&
+  data[offset + 2] == tag[2] &&
+  data[offset + 3] == tag[3]
+}
+
+///|
+fn read_u16_be(data : Bytes, offset : Int) -> Int {
+  (data[offset].to_int() << 8) | data[offset + 1].to_int()
+}
+
+///|
+fn read_u32_be(data : Bytes, offset : Int) -> Int {
+  (data[offset].to_int() << 24) |
+  (data[offset + 1].to_int() << 16) |
+  (data[offset + 2].to_int() << 8) |
+  data[offset + 3].to_int()
 }
 
 ///|

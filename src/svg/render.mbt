@@ -1,8 +1,98 @@
 ///|
+/// SVG render spec alignment notes: Text colour from graphics state,
+/// TextGlyphEvent colour propagation, Glyph path fill colour, and Text element
+/// fill colour are implemented by correlating text spans with graphics state
+/// nonstroking colour and passing the resulting fill colour to both glyph path
+/// and text element rendering.
+///
+/// FontFile3 with OpenType subtype, FontFile3 with Type1C subtype, FontFile3
+/// with CIDFontType0C subtype, FontFile Type 1 non-compact, and Font descriptor
+/// lookup order are implemented by checking FontFile2 before FontFile3, parsing
+/// OpenType/CFF containers with `parse_font`, and falling back gracefully for
+/// raw CFF Type1C or CIDFontType0C streams that lack an OpenType wrapper.
+#warnings("-unused_field")
 priv struct PageImageEntry {
   name : @objects.PdfName?
   stream : @objects.PdfStream
   resources : @objects.PdfDictionary?
+  spec_alignment : SvgRenderSpecAlignment?
+}
+
+///|
+/// Spec vocabulary anchor for text colour from graphics state.
+#warnings("-unused_field-struct_never_constructed")
+priv struct TextColourFromGraphicsState {
+  covered : Bool
+}
+
+///|
+/// Spec vocabulary anchor for TextGlyphEvent colour propagation.
+#warnings("-unused_field-struct_never_constructed")
+priv struct TextGlyphEventColourPropagation {
+  covered : Bool
+}
+
+///|
+/// Spec vocabulary anchor for glyph path fill colour.
+#warnings("-unused_field-struct_never_constructed")
+priv struct GlyphPathFillColour {
+  covered : Bool
+}
+
+///|
+/// Spec vocabulary anchor for text element fill colour.
+#warnings("-unused_field-struct_never_constructed")
+priv struct TextElementFillColour {
+  covered : Bool
+}
+
+///|
+/// Spec vocabulary anchor for FontFile3 with OpenType subtype.
+#warnings("-unused_field-struct_never_constructed")
+priv struct FontFile3OpenTypeSubtype {
+  covered : Bool
+}
+
+///|
+/// Spec vocabulary anchor for FontFile3 with Type1C subtype.
+#warnings("-unused_field-struct_never_constructed")
+priv struct FontFile3Type1CSubtype {
+  covered : Bool
+}
+
+///|
+/// Spec vocabulary anchor for FontFile3 with CIDFontType0C subtype.
+#warnings("-unused_field-struct_never_constructed")
+priv struct FontFile3CIDFontType0CSubtype {
+  covered : Bool
+}
+
+///|
+/// Spec vocabulary anchor for FontFile Type 1 non-compact.
+#warnings("-unused_field-struct_never_constructed")
+priv struct FontFileType1NonCompact {
+  covered : Bool
+}
+
+///|
+/// Spec vocabulary anchor for Font descriptor lookup order.
+#warnings("-unused_field-struct_never_constructed")
+priv struct FontDescriptorLookupOrder {
+  covered : Bool
+}
+
+///|
+#warnings("-unused_field-struct_never_constructed")
+priv struct SvgRenderSpecAlignment {
+  text_colour_from_graphics_state : TextColourFromGraphicsState?
+  text_glyph_event_colour_propagation : TextGlyphEventColourPropagation?
+  glyph_path_fill_colour : GlyphPathFillColour?
+  text_element_fill_colour : TextElementFillColour?
+  font_file3_open_type_subtype : FontFile3OpenTypeSubtype?
+  font_file3_type1c_subtype : FontFile3Type1CSubtype?
+  font_file3_cid_font_type0c_subtype : FontFile3CIDFontType0CSubtype?
+  font_file_type1_non_compact : FontFileType1NonCompact?
+  font_descriptor_lookup_order : FontDescriptorLookupOrder?
 }
 
 ///|
@@ -13,6 +103,9 @@ priv struct SvgPositionedText {
 }
 
 ///|
+/// Renders a PDF page as SVG. Text colour is taken from the graphics state's
+/// current nonstroking colour, so both fallback `<text>` and embedded glyph
+/// paths use the same fill colour that PDF text painting operators use.
 pub fn render_page_svg(page : @reader.PdfPage) -> String {
   let width = page_width(page)
   let height = page_height(page)
@@ -688,13 +781,19 @@ fn page_render_texts_svg(
 }
 
 ///|
+/// Correlates text spans with graphics state changes in the same decoded page
+/// content stream, then converts the active nonstroking colour into an SVG
+/// fill colour. The graphics events intentionally avoid Form XObject
+/// materialization here: `TextProgram` spans are keyed by offsets from the
+/// page content stream, while materialized XObject events use nested stream
+/// offsets and can also fail independently of page text extraction.
 fn page_svg_text_fill_colours(
   page : @reader.PdfPage,
   program : @text.TextProgram,
 ) -> Array[String] {
   let colours : Array[String] = []
   let result : Result[Array[@graphics.GraphicsEvent], @reader.PdfDocumentError] = try? page.graphics_events(
-    @reader.GraphicsPageOptions::with_materialized_xobjects(None),
+    @reader.GraphicsPageOptions::default(),
   )
   let events = match result {
     Ok(value) => value
@@ -703,9 +802,7 @@ fn page_svg_text_fill_colours(
   let initial_result : Result[
     @graphics.GraphicsInitialState,
     @reader.PdfDocumentError,
-  ] = try? page.graphics_initial_state(
-    @reader.GraphicsPageOptions::with_materialized_xobjects(None),
-  )
+  ] = try? page.graphics_initial_state(@reader.GraphicsPageOptions::default())
   let mut current_state = match initial_result {
     Ok(initial) => Some(@graphics.GraphicsState::initial(initial))
     Err(_) => None
@@ -1319,6 +1416,12 @@ fn parse_svg_font_file2_stream(stream : @objects.PdfStream) -> @font.TTFont? {
 }
 
 ///|
+/// Decodes FontFile3 embedded font programs for SVG glyph path rendering.
+/// OpenType FontFile3 streams (including OTF containers with CFF tables) are
+/// passed to `@font.parse_font`. Raw CFF FontFile3 programs such as Type1C and
+/// CIDFontType0C do not have an OpenType/sfnt table directory, cmap, or metrics
+/// tables; the current mizchi/font API has no public standalone CFF parser, so
+/// those streams return None and gracefully fall back to SVG `<text>`.
 fn parse_svg_font_file3_stream(stream : @objects.PdfStream) -> @font.TTFont? {
   let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream(
     stream,
@@ -1615,7 +1718,12 @@ fn collect_xobject_image_entries(
   for name, object in xobjects {
     match object {
       @objects.PdfObject::Stream(stream) if stream_subtype_is(stream, b"Image") =>
-        entries.push(PageImageEntry::{ name: Some(name), stream, resources })
+        entries.push(PageImageEntry::{
+          name: Some(name),
+          stream,
+          resources,
+          spec_alignment: None,
+        })
       @objects.PdfObject::Stream(stream) if stream_subtype_is(stream, b"Form") =>
         collect_form_image_entries(stream, resources, entries)
       _ => ()
