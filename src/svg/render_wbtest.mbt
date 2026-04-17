@@ -314,6 +314,19 @@ test "diagnostic local-fixture page 6 Handset header glyph trace" {
 }
 
 ///|
+test "diagnostic local-fixture pages 6 7 tofu glyphs" {
+  let path = "<local-fixture>"
+  if !@fs.path_exists(path) {
+    println("diagnostic skipped: " + path + " is not present")
+    return
+  }
+  let document = @reader.PdfDocument::open(@fs.read_file_to_bytes(path))
+  for page_index in [5, 6] {
+    diagnostic_local-fixture_page_tofu_glyphs(document.page(page_index), page_index)
+  }
+}
+
+///|
 test "render_page_svg renders FontFile3 OpenType glyphs as paths" {
   let document = @reader.PdfDocument::open(
     build_embedded_fontfile3_text_fixture(),
@@ -1276,6 +1289,115 @@ fn diagnostic_print_glyph_trace(
     " outline_first_point=" +
     diagnostic_outline_first_point(ttf, gid),
   )
+}
+
+///|
+fn diagnostic_local-fixture_page_tofu_glyphs(
+  page : @reader.PdfPage,
+  page_index : Int,
+) -> Unit {
+  let result : Result[@text.TextProgram, @reader.PdfDocumentError] = try? page.text_program(
+    @reader.TextPageOptions::default(),
+  )
+  match result {
+    Ok(program) => {
+      let glyph_groups = text_program_span_glyphs(program)
+      let embedded_fonts = page_svg_embedded_fonts(page)
+      let mut count = 0
+      for index in 0..<program.spans.length() {
+        let span = program.spans[index]
+        match span.font_name {
+          Some(font_name) =>
+            match embedded_fonts.get(font_name) {
+              Some(ttf) => {
+                let glyphs = span_glyphs(glyph_groups, index)
+                for glyph in glyphs {
+                  let gid = svg_resolve_glyph_id(ttf, glyph)
+                  if gid == 0 || gid < 0 {
+                    diagnostic_print_tofu_glyph(
+                      font_name.to_text(),
+                      ttf,
+                      glyph,
+                      gid,
+                    )
+                    count += 1
+                  }
+                }
+              }
+              None => ()
+            }
+          None => ()
+        }
+      }
+      println(
+        "diagnostic local-fixture page " +
+        (page_index + 1).to_string() +
+        " tofu glyph count=" +
+        count.to_string(),
+      )
+    }
+    Err(_) =>
+      println(
+        "diagnostic local-fixture page " +
+        (page_index + 1).to_string() +
+        " tofu glyph scan: text_program failed",
+      )
+  }
+}
+
+///|
+fn diagnostic_print_tofu_glyph(
+  font_name : String,
+  ttf : @font.TTFont,
+  glyph : @text.TextGlyphEvent,
+  gid : Int,
+) -> Unit {
+  println(
+    "tofu " +
+    font_name +
+    " code=0x" +
+    diagnostic_hex(glyph.glyph.source_code) +
+    " gid=" +
+    gid.to_string() +
+    " unicode=\"" +
+    diagnostic_unicode_text(glyph.unicode) +
+    "\" path_count=" +
+    diagnostic_outline_path_count(ttf, gid).to_string(),
+  )
+}
+
+///|
+fn diagnostic_outline_path_count(ttf : @font.TTFont, gid : Int) -> Int {
+  if gid < 0 || gid >= ttf.num_glyphs {
+    0
+  } else {
+    ttf.glyph_outline(gid).length()
+  }
+}
+
+///|
+fn diagnostic_unicode_text(mapping : @text.UnicodeMapping) -> String {
+  match mapping {
+    @text.UnicodeMapping::Unicode(value) => value
+    @text.UnicodeMapping::Unknown(_, _, _) => ""
+  }
+}
+
+///|
+fn diagnostic_hex(value : Int) -> String {
+  if value == 0 {
+    return "0"
+  }
+  if value < 0 {
+    return "-" + diagnostic_hex(0 - value)
+  }
+  let mut remaining = value
+  let mut output = ""
+  while remaining > 0 {
+    output = diagnostic_hex_digit(remaining & 0xF) + output
+    remaining = remaining >> 4
+  }
+  output
 }
 
 ///|
