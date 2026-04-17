@@ -208,6 +208,34 @@ test "diagnostic local-fixture page 4 colour conversion state changes" {
 }
 
 ///|
+test "diagnostic local-fixture page 6 CID CFF chain" {
+  let path = "<local-fixture>"
+  if !@fs.path_exists(path) {
+    println("diagnostic skipped: " + path + " is not present")
+    return
+  }
+  let document = @reader.PdfDocument::open(@fs.read_file_to_bytes(path))
+  let result : Result[@text.TextResources, @reader.PdfDocumentError] = try? document
+    .page(5)
+    .text_resources()
+  match result {
+    Ok(resources) => {
+      let mut stream_count = 0
+      for name, summary in resources.fonts {
+        stream_count += diagnostic_fontfile3_chain(
+          "font " + name.to_text(),
+          summary.font_object,
+        )
+      }
+      println(
+        "diagnostic local-fixture page 6 FontFile3 streams=" + stream_count.to_string(),
+      )
+    }
+    Err(_) => println("diagnostic local-fixture page 6 text_resources failed")
+  }
+}
+
+///|
 test "render_page_svg renders FontFile3 OpenType glyphs as paths" {
   let document = @reader.PdfDocument::open(
     build_embedded_fontfile3_text_fixture(),
@@ -694,6 +722,277 @@ fn diagnostic_graphics_error_message(
       "InvalidOptionalContent(" + offset.to_string() + "): " + message
     @graphics.PdfGraphicsError::InterchangeFailure(_) => "InterchangeFailure"
     @graphics.PdfGraphicsError::ContentFailure(_) => "ContentFailure"
+  }
+}
+
+///|
+fn diagnostic_fontfile3_chain(
+  label : String,
+  object : @objects.PdfObject,
+) -> Int {
+  match object {
+    @objects.PdfObject::Dictionary(dict) =>
+      diagnostic_fontfile3_dict(label, dict)
+    _ => 0
+  }
+}
+
+///|
+fn diagnostic_fontfile3_dict(
+  label : String,
+  dict : @objects.PdfDictionary,
+) -> Int {
+  let mut count = 0
+  match dict.get(@objects.PdfName::new(b"FontDescriptor")) {
+    Some(@objects.PdfObject::Dictionary(descriptor)) =>
+      count += diagnostic_fontfile3_descriptor(label, descriptor)
+    _ => ()
+  }
+  match dict.get(@objects.PdfName::new(b"DescendantFonts")) {
+    Some(@objects.PdfObject::Array(fonts)) =>
+      for index in 0..<fonts.length() {
+        count += diagnostic_fontfile3_chain(
+          label + ".DescendantFonts[" + index.to_string() + "]",
+          fonts[index],
+        )
+      }
+    _ => ()
+  }
+  count
+}
+
+///|
+fn diagnostic_fontfile3_descriptor(
+  label : String,
+  descriptor : @objects.PdfDictionary,
+) -> Int {
+  match descriptor.get(@objects.PdfName::new(b"FontFile3")) {
+    Some(@objects.PdfObject::Stream(stream)) => {
+      diagnostic_fontfile3_stream(label, stream)
+      1
+    }
+    _ => 0
+  }
+}
+
+///|
+fn diagnostic_fontfile3_stream(
+  label : String,
+  stream : @objects.PdfStream,
+) -> Unit {
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream(
+    stream,
+  )
+  match decoded {
+    Ok(bytes) => diagnostic_fontfile3_bytes(label, bytes)
+    Err(_) => println(label + ": FontFile3 decode failed")
+  }
+}
+
+///|
+fn diagnostic_fontfile3_bytes(label : String, bytes : Bytes) -> Unit {
+  println(label + ":")
+  println("  FontFile3 stream decoded, len=" + bytes.length().to_string())
+  let raw_cff = is_raw_cff(bytes)
+  println("  is_raw_cff=" + diagnostic_bool(raw_cff))
+  if raw_cff {
+    diagnostic_raw_cff_chain(bytes)
+  } else {
+    match @font.parse_font(bytes) {
+      Some(ttf) => {
+        println(
+          "  parse_font full sfnt ok, num_glyphs=" + ttf.num_glyphs.to_string(),
+        )
+        diagnostic_print_post_names("  post.glyph_names[0..4]=", ttf)
+      }
+      None => println("  parse_font full sfnt failed")
+    }
+  }
+}
+
+///|
+fn diagnostic_raw_cff_chain(bytes : Bytes) -> Unit {
+  let num_glyphs = cff_charstrings_count(bytes)
+  let cid_keyed = is_cid_keyed_cff(bytes)
+  println("  is_cid_keyed_cff=" + diagnostic_bool(cid_keyed))
+  println("  CIDCount=" + cff_cid_count(bytes).to_string())
+  println("  CharStrings count=" + num_glyphs.to_string())
+  if cid_keyed {
+    diagnostic_print_cid_charset(bytes, num_glyphs)
+  }
+  match wrap_cff_in_otf(bytes) {
+    Some(wrapped) => {
+      println("  wrapped OTF len=" + wrapped.length().to_string())
+      match @font.parse_font(wrapped) {
+        Some(ttf) => {
+          println(
+            "  parse_font wrapped ok, num_glyphs=" + ttf.num_glyphs.to_string(),
+          )
+          diagnostic_print_post_names("  post.glyph_names[0..4]=", ttf)
+          if cid_keyed {
+            diagnostic_print_cid_lookup(bytes, num_glyphs, ttf)
+          }
+        }
+        None => println("  parse_font wrapped failed")
+      }
+    }
+    None => println("  wrap_cff_in_otf failed")
+  }
+}
+
+///|
+fn diagnostic_print_cid_charset(bytes : Bytes, num_glyphs : Int) -> Unit {
+  let format = diagnostic_cff_charset_format(bytes)
+  match parse_cff_cid_charset(bytes, num_glyphs) {
+    Some(cids) => {
+      println(
+        "  charset format=" +
+        format.to_string() +
+        ", num_glyphs=" +
+        cids.length().to_string() +
+        ", first CIDs=" +
+        diagnostic_cid_values(cids),
+      )
+      match cff_cid_to_glyph_id_map(bytes, num_glyphs) {
+        Some(map) =>
+          println(
+            "  cid_map size=" +
+            map.length().to_string() +
+            ", sample=" +
+            diagnostic_cid_map_sample(cids),
+          )
+        None => println("  cid_map failed")
+      }
+    }
+    None =>
+      println(
+        "  charset format=" +
+        format.to_string() +
+        ", parse_cff_cid_charset failed",
+      )
+  }
+}
+
+///|
+fn diagnostic_print_cid_lookup(
+  bytes : Bytes,
+  num_glyphs : Int,
+  ttf : @font.TTFont,
+) -> Unit {
+  match parse_cff_cid_charset(bytes, num_glyphs) {
+    Some(cids) =>
+      println(
+        "  svg_cid_glyph_id sample=" + diagnostic_cid_lookup_sample(cids, ttf),
+      )
+    None => ()
+  }
+}
+
+///|
+fn diagnostic_cff_charset_format(bytes : Bytes) -> Int {
+  let offset = cff_charset_offset(bytes)
+  if offset >= 0 && offset < bytes.length() {
+    bytes[offset].to_int()
+  } else {
+    -1
+  }
+}
+
+///|
+fn diagnostic_print_post_names(label : String, ttf : @font.TTFont) -> Unit {
+  match ttf.post {
+    Some(post) => println(label + diagnostic_string_sample(post.glyph_names))
+    None => println(label + "<missing post table>")
+  }
+}
+
+///|
+fn diagnostic_string_sample(values : Array[String]) -> String {
+  let builder = StringBuilder::new()
+  builder.write_string("[")
+  let limit = diagnostic_min(5, values.length())
+  for i in 0..<limit {
+    if i > 0 {
+      builder.write_string(", ")
+    }
+    builder.write_string("\"")
+    builder.write_string(values[i])
+    builder.write_string("\"")
+  }
+  builder.write_string("]")
+  builder.to_string()
+}
+
+///|
+fn diagnostic_cid_values(cids : Array[Int]) -> String {
+  let builder = StringBuilder::new()
+  builder.write_string("[")
+  let limit = diagnostic_min(5, cids.length())
+  for i in 0..<limit {
+    if i > 0 {
+      builder.write_string(", ")
+    }
+    builder.write_string(cids[i].to_string())
+  }
+  builder.write_string("]")
+  builder.to_string()
+}
+
+///|
+fn diagnostic_cid_map_sample(cids : Array[Int]) -> String {
+  let builder = StringBuilder::new()
+  builder.write_string("{")
+  let limit = diagnostic_min(5, cids.length())
+  for glyph_id in 0..<limit {
+    if glyph_id > 0 {
+      builder.write_string(", ")
+    }
+    builder.write_string(cids[glyph_id].to_string())
+    builder.write_string("=>")
+    builder.write_string(glyph_id.to_string())
+  }
+  builder.write_string("}")
+  builder.to_string()
+}
+
+///|
+fn diagnostic_cid_lookup_sample(
+  cids : Array[Int],
+  ttf : @font.TTFont,
+) -> String {
+  let builder = StringBuilder::new()
+  builder.write_string("{")
+  let limit = diagnostic_min(5, cids.length())
+  for i in 0..<limit {
+    if i > 0 {
+      builder.write_string(", ")
+    }
+    builder.write_string(cids[i].to_string())
+    builder.write_string("=>")
+    let glyph_id = svg_cid_glyph_id(ttf, cids[i])
+    builder.write_string(glyph_id.to_string())
+    builder.write_string("/")
+    builder.write_string(ttf.glyph_outline(glyph_id).length().to_string())
+  }
+  builder.write_string("}")
+  builder.to_string()
+}
+
+///|
+fn diagnostic_bool(value : Bool) -> String {
+  if value {
+    "true"
+  } else {
+    "false"
+  }
+}
+
+///|
+fn diagnostic_min(a : Int, b : Int) -> Int {
+  if a < b {
+    a
+  } else {
+    b
   }
 }
 
