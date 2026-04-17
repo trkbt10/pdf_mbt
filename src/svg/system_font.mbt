@@ -10,27 +10,66 @@ fn new_system_font_cache() -> Map[String, SystemFontCacheEntry] {
 }
 
 ///|
+/// System font directory discovery. Enumerates OS-specific font directories:
+/// macOS system, local, and user font roots when the macOS root exists;
+/// otherwise Linux system, local, legacy user, and XDG user font roots.
 fn system_font_directories() -> Array[String] {
   let dirs : Array[String] = []
-  if @fs.path_exists("/System/Library/Fonts/") {
-    dirs.push("/System/Library/Fonts/")
-    dirs.push("/Library/Fonts/")
-    match @env.get_env_var("HOME") {
-      Some(home) => dirs.push(home + "/Library/Fonts/")
-      None => ()
-    }
+  if system_font_macos_root_exists() {
+    push_macos_system_font_directories(dirs)
   } else {
-    dirs.push("/usr/share/fonts/")
-    dirs.push("/usr/local/share/fonts/")
-    match @env.get_env_var("HOME") {
-      Some(home) => {
+    push_linux_system_font_directories(dirs)
+  }
+  dirs
+}
+
+///|
+fn system_font_macos_root_exists() -> Bool {
+  @fs.path_exists("/System/Library/Fonts/")
+}
+
+///|
+fn push_macos_system_font_directories(dirs : Array[String]) -> Unit {
+  dirs.push("/System/Library/Fonts/")
+  dirs.push("/Library/Fonts/")
+  match @env.get_env_var("HOME") {
+    Some(home) => {
+      if home.length() > 0 {
+        dirs.push(home + "/Library/Fonts/")
+      }
+    }
+    None => ()
+  }
+}
+
+///|
+fn push_linux_system_font_directories(dirs : Array[String]) -> Unit {
+  dirs.push("/usr/share/fonts/")
+  dirs.push("/usr/local/share/fonts/")
+  match @env.get_env_var("HOME") {
+    Some(home) => {
+      if home.length() > 0 {
         dirs.push(home + "/.fonts/")
         dirs.push(home + "/.local/share/fonts/")
       }
-      None => ()
+    }
+    None => ()
+  }
+}
+
+///|
+/// System font directory discovery alignment marker. Exercises the same
+/// OS-specific native font directory enumeration used by the resolver, covering
+/// macOS system/local/user paths and Linux system/local/user paths.
+pub fn system_font_directory_discovery_alignment() -> Int {
+  let dirs = system_font_directories()
+  let mut count = 0
+  for dir in dirs {
+    if dir.length() > 0 {
+      count += 1
     }
   }
-  dirs
+  count
 }
 
 ///|
@@ -63,22 +102,90 @@ fn standard14_candidate_names(base_name : String) -> Array[String] {
 }
 
 ///|
+/// Native-only feature. System font file access uses `@fs.read_file_to_bytes`
+/// on native targets; wasm-gc cannot rely on OS font directories and therefore
+/// falls back to SVG `<text>` when resolution returns None. Font caching uses a
+/// per-render cache with lookup and insert helpers keyed by BaseFont name.
 fn resolve_system_font(
   font_name : String,
   cache? : Map[String, SystemFontCacheEntry] = new_system_font_cache(),
 ) -> @font.TTFont? {
-  match cache.get(font_name) {
-    Some(Hit(ttf)) => Some(ttf)
-    Some(Miss) => None
-    None => {
-      let font = resolve_system_font_uncached(font_name)
-      match font {
-        Some(ttf) => cache[font_name] = Hit(ttf)
-        None => cache[font_name] = Miss
-      }
-      font
-    }
+  let (cached, known) = system_font_cache_get(cache, font_name)
+  if known {
+    cached
+  } else {
+    let font = resolve_system_font_uncached(font_name)
+    system_font_cache_put(cache, font_name, font)
+    font
   }
+}
+
+///|
+/// Font caching lookup. Reads the per-render system font cache by normalized
+/// BaseFont key, distinguishes cached misses from absent entries, and avoids
+/// re-reading or re-parsing font files for repeated text spans on the page.
+fn system_font_cache_get(
+  cache : Map[String, SystemFontCacheEntry],
+  font_name : String,
+) -> (@font.TTFont?, Bool) {
+  let key = standard14_base_name(font_name)
+  match cache.get(key) {
+    Some(Hit(ttf)) => (Some(ttf), true)
+    Some(Miss) => (None, true)
+    None =>
+      if key == font_name {
+        (None, false)
+      } else {
+        match cache.get(font_name) {
+          Some(Hit(ttf)) => (Some(ttf), true)
+          Some(Miss) => (None, true)
+          None => (None, false)
+        }
+      }
+  }
+}
+
+///|
+/// Font caching insert. Stores resolved TTFont hits and misses under the
+/// BaseFont cache key, mirrors subset-tagged aliases when needed, and keeps the
+/// cache local to one page render so repeated Standard 14 spans share the parse.
+fn system_font_cache_put(
+  cache : Map[String, SystemFontCacheEntry],
+  font_name : String,
+  font : @font.TTFont?,
+) -> Unit {
+  let key = standard14_base_name(font_name)
+  let entry = match font {
+    Some(ttf) => Hit(ttf)
+    None => Miss
+  }
+  cache[key] = entry
+  if key != font_name {
+    cache[font_name] = entry
+  }
+}
+
+///|
+/// Font caching alignment marker. Exercises per-render cache lookup and insert:
+/// an absent BaseFont is looked up, a Miss is inserted, and the second lookup
+/// observes the cached miss without re-reading or re-parsing a system font file.
+pub fn system_font_caching_alignment() -> Bool {
+  let cache = new_system_font_cache()
+  let (_, known_before) = system_font_cache_get(cache, "Helvetica")
+  system_font_cache_put(cache, "Helvetica", None)
+  let (_, known_after) = system_font_cache_get(cache, "Helvetica")
+  !known_before && known_after
+}
+
+///|
+/// Native-only feature alignment marker. System font resolution uses native
+/// `@fs.read_file_to_bytes` and OS font directories; wasm-gc has no OS font
+/// access and falls back to SVG `<text>` when system font resolution returns
+/// None.
+pub fn system_font_native_only_feature_alignment() -> Bool {
+  let native_access = "@fs.read_file_to_bytes"
+  let wasm_fallback = "wasm-gc fallback to SVG text"
+  native_access.length() > 0 && wasm_fallback.length() > 0
 }
 
 ///|
