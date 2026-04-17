@@ -3,6 +3,7 @@ package "trkbt10/pdf/src/text"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/ref",
   "trkbt10/pdf/src/content",
   "trkbt10/pdf/src/filters",
   "trkbt10/pdf/src/objects",
@@ -30,6 +31,14 @@ pub fn parse_to_unicode_stream(@objects.PdfStream, Int64, TextInterpretationLimi
 pub fn resolve_named_encoding(@objects.PdfName, Int64) -> SimpleEncoding raise PdfTextError
 
 pub fn resolve_predefined_cmap(@objects.PdfName, Int64) -> CMap raise PdfTextError
+
+pub fn text_interpret_diagnostic_report() -> String
+
+pub fn text_interpret_phase_disable() -> Unit
+
+pub let text_interpret_phase_ms : @ref.Ref[Array[(String, Double)]]
+
+pub fn text_interpret_phase_reset() -> Unit
 
 // Errors
 pub(all) suberror PdfTextError {

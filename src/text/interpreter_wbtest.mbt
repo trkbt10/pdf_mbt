@@ -99,7 +99,10 @@ fn runtime_font_cache_test_font(
 }
 
 ///|
-fn runtime_font_cache_to_unicode_cmap(code_65 : Bytes, code_66 : Bytes) -> Bytes {
+fn runtime_font_cache_to_unicode_cmap(
+  code_65 : Bytes,
+  code_66 : Bytes,
+) -> Bytes {
   if code_65 == b"0058" && code_66 == b"0059" {
     b"1 begincodespacerange\n<00> <ff>\nendcodespacerange\n2 beginbfchar\n<41> <0058>\n<42> <0059>\nendbfchar"
   } else {

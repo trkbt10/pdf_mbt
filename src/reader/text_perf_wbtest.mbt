@@ -7,11 +7,10 @@ let local-fixture_text_bound_ms : UInt64 = 800UL
 ///|
 test "local-fixture text_program pages stay under performance bound" {
   match open_local-fixture_for_text_perf() {
-    Some(document) => {
+    Some(document) =>
       for page_index in [4, 5, 7, 8] {
         assert_local-fixture_text_program_bound(document, page_index)
       }
-    }
     None => ()
   }
 }

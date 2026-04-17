@@ -513,9 +513,7 @@ fn TextInterpreter::current_font_size(
 }
 
 ///|
-fn text_operator_label(
-  operator : @content.StandardContentOperator,
-) -> String {
+fn text_operator_label(operator : @content.StandardContentOperator) -> String {
   match operator {
     SaveGraphicsState => "q"
     RestoreGraphicsState => "Q"
@@ -603,7 +601,11 @@ pub fn text_interpret_diagnostic_report() -> String {
   builder.write_string(" font_load_ms=")
   builder.write_string(text_interpret_font_load_ms.val.to_string())
   builder.write_string("\ntext_interpret operators:")
-  for label in ["q", "Q", "cm", "Tc", "Tw", "Tz", "TL", "Tf", "Tr", "Ts", "BT", "ET", "Td", "TD", "Tm", "T*", "Tj", "'", "\"", "TJ", "other"] {
+  for
+    label in [
+      "q", "Q", "cm", "Tc", "Tw", "Tz", "TL", "Tf", "Tr", "Ts", "BT", "ET", "Td",
+      "TD", "Tm", "T*", "Tj", "'", "\"", "TJ", "other",
+    ] {
     let count = text_interpret_operator_counts.val.get(label).unwrap_or(0)
     if count > 0 {
       builder.write_string(" ")

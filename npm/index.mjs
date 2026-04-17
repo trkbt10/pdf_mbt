@@ -402,6 +402,10 @@ function importObject(extra) {
       ...(extra.console || {}),
       log: (value) => console.log(value),
     },
+    "__moonbit_time_unstable": {
+      ...(extra["__moonbit_time_unstable"] || {}),
+      now: () => BigInt(Date.now()),
+    },
     "__moonbit_fs_unstable": {
       // Stubs for @fs and @env FFI — system font resolution is unavailable
       // in the wasm-gc target. All file operations return errors, causing

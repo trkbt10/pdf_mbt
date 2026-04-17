@@ -357,6 +357,10 @@ function importObject(extra) {
       ...(extra.console || {}),
       log: (value) => console.log(value),
     },
+    "__moonbit_time_unstable": {
+      ...(extra["__moonbit_time_unstable"] || {}),
+      now: () => BigInt(Date.now()),
+    },
     "__moonbit_fs_unstable": {
       get_error_message: () => "filesystem unavailable in wasm",
       get_file_content: () => null,
