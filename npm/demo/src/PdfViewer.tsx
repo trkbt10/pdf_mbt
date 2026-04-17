@@ -64,11 +64,33 @@ interface PdfViewerPatchStats {
   surfaceNulls: Record<number, number>;
 }
 
+interface ViewerDiagnostics {
+  ensureCache: EnsureCacheDiagnostic[];
+  patches: PatchDiagnostic[];
+}
+
+interface EnsureCacheDiagnostic {
+  action: "recreate" | "reuse";
+  afterHandle: number;
+  beforeHandle: number | null;
+}
+
+interface PatchDiagnostic {
+  imageCount: number;
+  imageUrlCount: number;
+  pageIndex: number;
+  surfaceId: number;
+}
+
 declare global {
   interface Window {
     __pdfViewerPatchStats?: PdfViewerPatchStats;
+    __viewerDiagnostics?: ViewerDiagnostics;
   }
 }
+
+const surfaceIds = new WeakMap<HTMLElement, number>();
+let nextSurfaceId = 1;
 
 interface PageImagesState {
   status: "idle" | "loading" | "ready" | "error";
@@ -729,6 +751,7 @@ function patchDeferredSvgImages(
   const images = Array.from(
     surface.querySelectorAll<SVGImageElement>("image[data-image-index]")
   );
+  recordPatchDiagnostic(pageIndex, surface, images.length, imageUrls.size);
   recordPatchQuerySelectorHits(pageIndex, images.length);
   for (const image of images) {
     patchDeferredSvgImage(
@@ -1089,6 +1112,7 @@ function ensureCache(
   const handle = document.source.handle;
   const cache = cacheRef.current;
   if (cache && cache.handle === handle) {
+    recordEnsureCacheDiagnostic(cache.handle, handle, "reuse");
     return cache;
   }
   if (cache) {
@@ -1096,6 +1120,7 @@ function ensureCache(
   }
   const nextCache = { handle, pages: new Map<number, CachedPage>() };
   cacheRef.current = nextCache;
+  recordEnsureCacheDiagnostic(cache?.handle ?? null, handle, "recreate");
   return nextCache;
 }
 
@@ -1283,6 +1308,10 @@ function resetPdfViewerPatchStats() {
     successes: {},
     surfaceNulls: {},
   };
+  window.__viewerDiagnostics = {
+    ensureCache: [],
+    patches: [],
+  };
 }
 
 function recordPatchInvocation(pageIndex: number) {
@@ -1318,6 +1347,56 @@ function recordPatchSuccess(pageIndex: number) {
     return;
   }
   incrementPatchStat(stats.successes, pageIndex, 1);
+}
+
+function recordEnsureCacheDiagnostic(
+  beforeHandle: number | null,
+  afterHandle: number,
+  action: EnsureCacheDiagnostic["action"]
+) {
+  mutateViewerDiagnostics((diagnostics) => {
+    diagnostics.ensureCache.push({ action, afterHandle, beforeHandle });
+  });
+}
+
+function recordPatchDiagnostic(
+  pageIndex: number,
+  surface: HTMLElement,
+  imageCount: number,
+  imageUrlCount: number
+) {
+  mutateViewerDiagnostics((diagnostics) => {
+    diagnostics.patches.push({
+      imageCount,
+      imageUrlCount,
+      pageIndex,
+      surfaceId: surfaceIdForElement(surface),
+    });
+  });
+}
+
+function surfaceIdForElement(surface: HTMLElement): number {
+  const current = surfaceIds.get(surface);
+  if (current) {
+    return current;
+  }
+  const nextId = nextSurfaceId;
+  nextSurfaceId += 1;
+  surfaceIds.set(surface, nextId);
+  return nextId;
+}
+
+function mutateViewerDiagnostics(
+  mutate: (diagnostics: ViewerDiagnostics) => void
+) {
+  if (!shouldRecordPatchStats()) {
+    return;
+  }
+  window.__viewerDiagnostics ??= {
+    ensureCache: [],
+    patches: [],
+  };
+  mutate(window.__viewerDiagnostics);
 }
 
 function recordPatchFetchOk(pageIndex: number) {
@@ -1356,7 +1435,7 @@ function pdfViewerPatchStats(): PdfViewerPatchStats | null {
 }
 
 function shouldRecordPatchStats(): boolean {
-  return typeof window !== "undefined" && import.meta.env?.DEV !== false;
+  return typeof window !== "undefined";
 }
 
 function emptyPageImages(status: PageImagesState["status"]): PageImagesState {
