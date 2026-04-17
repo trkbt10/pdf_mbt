@@ -365,6 +365,29 @@ test "local-fixture page 6 per-glyph outline golden" {
 }
 
 ///|
+test "local-fixture page 6 Handset glyph paths use source text colour" {
+  let path = "<local-fixture>"
+  if !@fs.path_exists(path) {
+    println("diagnostic skipped: " + path + " is not present")
+    return
+  }
+  let document = @reader.PdfDocument::open(@fs.read_file_to_bytes(path))
+  let page = document.page(5)
+  let program = page.text_program(@reader.TextPageOptions::default())
+  let colours = page_svg_text_fill_colours(page, program)
+  let mut checked = false
+  for index in 0..<program.spans.length() {
+    let span = program.spans[index]
+    if span.text.contains("Handset Power On/Of") {
+      assert_eq(span_fill_colour(colours, index), "#231F20")
+      checked = true
+      break
+    }
+  }
+  assert_true(checked)
+}
+
+///|
 test "parse_cff_charset reads cff.add.otf extracted CFF charset" {
   let cff = cff_add_fixture_cff()
   assert_true(is_raw_cff(cff))

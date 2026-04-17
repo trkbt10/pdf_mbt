@@ -2169,6 +2169,10 @@ fn svg_colour(
   state : @graphics.GraphicsState,
   colour_use : @graphics.ColourUse,
 ) -> String {
+  match svg_poppler_separation_black_colour(state, colour_use) {
+    Some(colour) => return colour
+    None => ()
+  }
   let result : Result[@graphics.DeviceRgbColour, @graphics.PdfGraphicsError] = try? state.current_colour_as_rgb(
     colour_use,
   )
@@ -2176,6 +2180,61 @@ fn svg_colour(
     Ok(rgb) => rgb_hex_colour(rgb)
     Err(_) => "#000000"
   }
+}
+
+///|
+fn svg_poppler_separation_black_colour(
+  state : @graphics.GraphicsState,
+  colour_use : @graphics.ColourUse,
+) -> String? {
+  let colour_state = state.colour_state(colour_use)
+  match colour_state.colour_space {
+    @graphics.ColourSpace::Separation(params) => {
+      if params.colorant != @objects.PdfName::new(b"Black") ||
+        colour_state.colour_value.components.length() != 1 {
+        return None
+      }
+      let alternate_result : Result[
+        @graphics.ColourValue,
+        @graphics.PdfGraphicsError,
+      ] = try? params.alternate_colour_value(
+        colour_state.colour_value.components[0],
+      )
+      match alternate_result {
+        Ok(alternate) =>
+          if svg_is_device_cmyk_k_only(params.alternate, alternate.components) {
+            Some(svg_poppler_process_black_hex(alternate.components[3]))
+          } else {
+            None
+          }
+        Err(_) => None
+      }
+    }
+    _ => None
+  }
+}
+
+///|
+fn svg_is_device_cmyk_k_only(
+  space : @graphics.ColourSpace,
+  components : Array[Double],
+) -> Bool {
+  space ==
+    @graphics.ColourSpace::Device(@graphics.DeviceColourSpace::DeviceCMYK) &&
+  components.length() == 4 &&
+  components[0].abs() <= 0.0001 &&
+  components[1].abs() <= 0.0001 &&
+  components[2].abs() <= 0.0001
+}
+
+///|
+fn svg_poppler_process_black_hex(k : Double) -> String {
+  let tint = clamp_unit(k)
+  rgb_hex_colour(@graphics.DeviceRgbColour::{
+    red: 1.0 - tint * (1.0 - 35.0 / 255.0),
+    green: 1.0 - tint * (1.0 - 31.0 / 255.0),
+    blue: 1.0 - tint * (1.0 - 32.0 / 255.0),
+  })
 }
 
 ///|
