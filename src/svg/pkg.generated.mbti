@@ -9,6 +9,8 @@ import {
 // Values
 pub fn adobe_standard_string(Int) -> String?
 
+pub fn apply_clip_path_to_rendered_elements_alignment() -> Unit
+
 pub fn cff_charset_offset(Bytes) -> Int
 
 pub fn cff_cid_count(Bytes) -> Int
@@ -20,6 +22,8 @@ pub fn cff_glyph_name_table(Bytes, Int) -> Array[String]?
 pub fn cff_string_index_entry(Bytes, Int) -> String?
 
 pub fn cid_realpath_root_cause_fixes_alignment() -> Unit
+
+pub fn clip_path_geometry_transformation_alignment() -> Unit
 
 pub fn diagnostic_instrumentation_real_local_fixture_cff_alignment() -> Unit
 

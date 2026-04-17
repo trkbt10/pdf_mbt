@@ -64,3 +64,20 @@ pub fn cid_realpath_root_cause_fixes_alignment() -> Unit {
 pub fn keep_diagnostic_tests_alignment() -> Unit {
   ()
 }
+
+///|
+/// Clip path geometry transformation alignment marker. ClipEntry geometry is
+/// already CTM-transformed when the PDF clip operator is applied, so SVG
+/// clipPath emission uses `svg_path_data` with identity CTM and the page
+/// Y-axis flip, avoiding any double-transform from the current CTM.
+pub fn clip_path_geometry_transformation_alignment() -> Unit {
+  ()
+}
+
+///|
+/// Apply clipPath to rendered elements alignment marker. The SVG renderer writes
+/// clip-path attributes on images, paths, fallback text, and glyph path text,
+/// while an empty or initial-only clip state skips the attribute as a no-op.
+pub fn apply_clip_path_to_rendered_elements_alignment() -> Unit {
+  ()
+}

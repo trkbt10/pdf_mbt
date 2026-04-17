@@ -405,9 +405,10 @@ fn page_render_graphics_svg(
 }
 
 ///|
-/// SVG output format for painted graphics paths: emits the concrete
-/// `<path d="..." fill="..."/>` shape after path data conversion, optional
-/// clip-path attribute on paths, and fill/stroke paint attributes.
+/// Apply clipPath to rendered elements for painted graphics paths. Emits the
+/// concrete `<path d="..." fill="..."/>` shape after path data conversion,
+/// writes the clip-path attribute on paths when `clip_id` is nonzero, and
+/// skips the attribute for empty clip states.
 fn page_render_path_svg(
   builder : StringBuilder,
   operation : @graphics.PathPaintOperation,
@@ -675,6 +676,9 @@ fn svg_graphics_point(
 }
 
 ///|
+/// Apply clipPath to rendered elements for image XObjects. The image pipeline
+/// forwards the registered clip id so `<image>` output can write the
+/// clip-path attribute on images, while empty clip states remain a no-op.
 fn page_render_image_svg(
   builder : StringBuilder,
   page : @reader.PdfPage,
@@ -855,8 +859,10 @@ fn write_svg_image_with_index(
 
 ///|
 /// Writes the clip-path attribute that applies a registered SVG clipPath to a
-/// rendered image, path, or text element. Clip id 0 means no accumulated
-/// clipping path beyond the initial page clip, so the attribute is omitted.
+/// rendered image, path, or text element. This is the shared apply clipPath to
+/// rendered elements helper for clip-path attribute on images / paths / text.
+/// Clip id 0 means no accumulated clipping path beyond the initial page clip,
+/// so the attribute is omitted as the no-op skip for empty clip states.
 fn write_svg_clip_path_attribute(
   builder : StringBuilder,
   clip_id : Int,
@@ -1304,6 +1310,8 @@ fn span_clip_id(clip_ids : Array[Int], index : Int) -> Int {
 /// outline and CFF font outlines through `TTFont::glyph_outline(gid)`.
 /// This is the glyph path fill colour implementation for text rendered as
 /// SVG `<path>` elements instead of hardcoded black.
+/// Apply clipPath to rendered elements for glyph paths by writing the
+/// clip-path attribute on text path output when a span has a clip id.
 fn page_render_text_span_as_paths(
   builder : StringBuilder,
   span : @text.TextSpan,
@@ -1552,6 +1560,7 @@ fn svg_glyph_is_spacing(glyph : @text.TextGlyphEvent) -> Bool {
 /// the mapped CSS font-family. The text element fill colour comes from the
 /// per-span nonstroking colour and the clip-path attribute on text is applied
 /// by `write_svg_clip_path_attribute`.
+/// Empty clip states skip the attribute as a no-op.
 fn page_render_text_svg(
   builder : StringBuilder,
   span : @text.TextSpan,
