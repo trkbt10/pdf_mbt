@@ -12,6 +12,11 @@ import {
   "trkbt10/pdf/src/content",
 }
 
+import {
+  "moonbitlang/core/env",
+  "moonbitlang/x/fs",
+} for "wbtest"
+
 supported_targets = "wasm-gc"
 
 options(

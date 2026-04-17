@@ -35,6 +35,9 @@ let deferred_svg_pages : Map[String, @svg.SvgDeferredResult] = Map::new()
 let deferred_svg_image_page_cache : Map[String, Array[@svg.SvgImageEntry]] = Map::new()
 
 ///|
+let graphics_walk_counter : Ref[Int] = { val: 0 }
+
+///|
 priv struct HandleCounter {
   mut value : Int
 }
@@ -237,6 +240,18 @@ pub fn pdf_close(handle : Int) -> Unit {
 }
 
 ///|
+/// test-only
+pub fn test_reset_graphics_walk_counter() -> Unit {
+  graphics_walk_counter.val = 0
+}
+
+///|
+/// test-only
+pub fn test_graphics_walk_counter() -> Int {
+  graphics_walk_counter.val
+}
+
+///|
 pub fn ctx_new() -> Int {
   let handle = next_context_handle()
   contexts[handle] = @context.PdfContext::new()
@@ -413,6 +428,7 @@ fn build_deferred_svg_image_page(
 ) -> Array[@svg.SvgImageEntry]? {
   match get_page(handle, page) {
     Some(pdf_page) => {
+      graphics_walk_counter.val += 1
       let result : Result[
         Array[@graphics.GraphicsEvent],
         @reader.PdfDocumentError,
