@@ -124,12 +124,7 @@ fn render_page_svg_impl(
   builder.write_string("\" fill=\"#ffffff\"/>")
   write_svg_clip_defs(builder, clip_registry, height)
   page_render_graphics_svg(
-    builder,
-    page,
-    height,
-    deferred_images,
-    graphics_events,
-    clip_registry,
+    builder, page, height, deferred_images, graphics_events, clip_registry,
   )
   page_render_texts_svg(builder, page, height, text_info)
   builder.write_string("</svg>")

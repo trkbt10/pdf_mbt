@@ -357,7 +357,8 @@ fn write_svg_clip_rule(
   rule : @graphics.FillRule,
 ) -> Unit {
   match rule {
-    @graphics.FillRule::EvenOdd => builder.write_string(" clip-rule=\"evenodd\"")
+    @graphics.FillRule::EvenOdd =>
+      builder.write_string(" clip-rule=\"evenodd\"")
     @graphics.FillRule::NonZero => ()
   }
 }
@@ -676,13 +677,7 @@ fn page_render_image_svg(
       match page_image_entry_by_name(page, name) {
         Some(entry) =>
           page_render_image_entry_svg(
-            builder,
-            entry,
-            descriptor,
-            state,
-            page_height,
-            clip_id,
-            deferred_images,
+            builder, entry, descriptor, state, page_height, clip_id, deferred_images,
           )
         None => ()
       }
@@ -850,7 +845,10 @@ fn write_svg_image_with_index(
 /// Writes the clip-path attribute that applies a registered SVG clipPath to a
 /// rendered image, path, or text element. Clip id 0 means no accumulated
 /// clipping path beyond the initial page clip, so the attribute is omitted.
-fn write_svg_clip_path_attribute(builder : StringBuilder, clip_id : Int) -> Unit {
+fn write_svg_clip_path_attribute(
+  builder : StringBuilder,
+  clip_id : Int,
+) -> Unit {
   if clip_id > 0 {
     builder.write_string(" clip-path=\"url(#c")
     builder.write_string(clip_id.to_string())
@@ -1056,13 +1054,7 @@ fn page_render_texts_svg(
             Some(ttf) => {
               let path_builder = StringBuilder::new()
               if page_render_text_span_as_paths(
-                  path_builder,
-                  span,
-                  glyphs,
-                  ttf,
-                  page_height,
-                  fill_colour,
-                  clip_id,
+                  path_builder, span, glyphs, ttf, page_height, fill_colour, clip_id,
                 ) {
                 builder.write_string(path_builder.to_string())
               } else if span.text.length() > 0 {
@@ -1220,7 +1212,8 @@ fn page_svg_text_clip_ids(
       event_index += 1
     }
     match current_state {
-      Some(state) => clip_ids.push(svg_register_clip(registry, state, page_height))
+      Some(state) =>
+        clip_ids.push(svg_register_clip(registry, state, page_height))
       None => clip_ids.push(0)
     }
   }

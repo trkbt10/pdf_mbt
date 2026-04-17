@@ -629,10 +629,7 @@ test "render_page_svg nests clipPath definitions for stacked clips" {
   )
   let svg = render_page_svg(document.page(0))
   assert_eq(svg.contains("<clipPath id=\"c1\">"), true)
-  assert_eq(
-    svg.contains("<clipPath id=\"c2\" clip-path=\"url(#c1)\">"),
-    true,
-  )
+  assert_eq(svg.contains("<clipPath id=\"c2\" clip-path=\"url(#c1)\">"), true)
   assert_eq(svg.contains("<image"), true)
   assert_eq(svg.contains("clip-path=\"url(#c2)\""), true)
 }
