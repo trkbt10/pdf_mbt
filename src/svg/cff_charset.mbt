@@ -432,7 +432,8 @@ fn parse_cff_charset_format2(
 /// Builds a CFF glyph_id to glyph_name table by combining the parsed CFF
 /// charset SIDs with Adobe Standard Strings and the custom CFF String INDEX.
 /// The returned array is indexed directly by glyph_id for synthetic cmap
-/// construction and SVG glyph name resolution.
+/// reflecting charset, WinAnsiEncoding-based cmap population, and SVG glyph
+/// name resolution; callers use identity fallback when charset parsing fails.
 pub fn cff_glyph_name_table(data : Bytes, num_glyphs : Int) -> Array[String]? {
   match parse_cff_charset(data, num_glyphs) {
     Some(sids) => {

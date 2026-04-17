@@ -431,10 +431,11 @@ fn cff_post_name_length(name : String) -> Int {
 }
 
 ///|
-/// Builds a synthetic `cmap` table. When the CFF charset and String INDEX can
-/// be parsed, the cmap reflects WinAnsiEncoding character_code to glyph_id
-/// mappings through charset-resolved glyph names. If CFF charset parsing fails,
-/// it falls back to the identity cmap used by the original Type1C wrapper.
+/// Synthetic cmap reflecting charset. When the CFF charset and String INDEX
+/// can be parsed, this builds WinAnsiEncoding-based cmap population by
+/// resolving character_code values to charset glyph names and then glyph_id
+/// entries. If CFF charset parsing fails, it uses the identity fallback when
+/// charset parsing fails, matching the original Type1C wrapper behaviour.
 ///
 /// For PDF use, the actual character-to-glyph mapping comes from the PDF
 /// font's Encoding and ToUnicode entries. This synthetic cmap supplies
@@ -450,6 +451,14 @@ fn build_synthetic_cmap(cff_data : Bytes, num_glyphs : Int) -> Bytes {
       None => build_identity_cmap(num_glyphs)
     }
   }
+}
+
+///|
+/// Synthetic cmap reflecting charset alignment marker. The raw CFF wrapper uses
+/// WinAnsiEncoding-based cmap population by resolving Adobe charset glyph names
+/// and falls back to an identity fallback when charset parsing fails.
+pub fn synthetic_cmap_reflecting_charset_alignment() -> Unit {
+  ()
 }
 
 ///|

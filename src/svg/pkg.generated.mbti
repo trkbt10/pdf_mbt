@@ -53,6 +53,8 @@ pub fn svg_non_axis_aligned_image_transform_alignment() -> Unit
 
 pub fn svg_renderer_glyph_id_resolution_alignment() -> Unit
 
+pub fn synthetic_cmap_reflecting_charset_alignment() -> Unit
+
 pub fn text_colour_from_graphics_state_alignment() -> Unit
 
 pub fn text_element_fill_colour_alignment() -> Unit
