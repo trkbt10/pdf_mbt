@@ -119,3 +119,4 @@ expected in this SDD, but verify).
 ## Implementation Notes
 
 - Task 6: Drift gate passed with `Drifted: 0` for `npm/demo/src/`; `Impl only: 1` accepted per task guidance.
+- Task 7: `moon build --target wasm-gc --release`, wasm copy, and `npm/demo` production build passed; local-fixture PDF was not present locally, and sandbox denied starting the Vite dev server.
