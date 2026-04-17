@@ -1,7 +1,10 @@
 import {
   "moonbitlang/core/math",
+  "mizchi/font",
   "mizchi/image",
+  "mizchi/svg" @svgpath,
   "trkbt10/pdf/src/content",
+  "trkbt10/pdf/src/filters",
   "trkbt10/pdf/src/graphics",
   "trkbt10/pdf/src/objects",
   "trkbt10/pdf/src/reader",

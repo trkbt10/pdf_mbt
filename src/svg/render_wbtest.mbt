@@ -92,6 +92,35 @@ test "render_page_svg scales web PDF identity text matrix by Tf font size" {
 }
 
 ///|
+test "render_page_svg renders embedded TrueType glyphs as paths" {
+  let document = @reader.PdfDocument::open(
+    build_embedded_truetype_text_fixture(),
+  )
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<path d=\""), true)
+  assert_eq(svg.contains("<text"), false)
+  assert_eq(svg.contains("font-family=\""), false)
+  assert_eq(svg.contains("fill=\"#000000\""), true)
+}
+
+///|
+test "render_page_svg keeps Standard 14 fonts as text" {
+  let document = @reader.PdfDocument::open(build_identity_tm_text_fixture())
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<text"), true)
+  assert_eq(svg.contains("<path d=\""), false)
+}
+
+///|
+test "render_page_svg scales embedded TrueType path transform by units per em" {
+  let document = @reader.PdfDocument::open(
+    build_embedded_truetype_text_fixture(),
+  )
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("transform=\"matrix(0.01 0 0 0.01 10 80)\""), true)
+}
+
+///|
 test "render_page_svg uses rendering matrix with graphics CTM for text" {
   let document = @reader.PdfDocument::open(build_ctm_scaled_text_fixture())
   let svg = render_page_svg(document.page(0))
@@ -205,6 +234,25 @@ fn build_identity_tm_text_fixture() -> Bytes {
     b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /Contents 4 0 R >>",
     content,
     [],
+  )
+}
+
+///|
+fn build_embedded_truetype_text_fixture() -> Bytes {
+  let content = b"BT /F1 10 Tf 1 0 0 1 10 20 Tm (A) Tj ET"
+  let font_file = build_stream_object_body(
+    try! @fs.read_file_to_bytes(
+      ".mooncakes/mizchi/font/fixtures/minimal-kern.ttf",
+    ),
+  )
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+    content,
+    [
+      b"<< /Type /Font /Subtype /TrueType /BaseFont /MinimalKern /FirstChar 65 /LastChar 65 /Widths [600] /Encoding /WinAnsiEncoding /FontDescriptor 6 0 R >>",
+      b"<< /Type /FontDescriptor /FontName /MinimalKern /Flags 4 /FontBBox [0 -200 1000 1000] /ItalicAngle 0 /Ascent 1000 /Descent -200 /CapHeight 700 /StemV 80 /FontFile2 7 0 R >>",
+      font_file,
+    ],
   )
 }
 

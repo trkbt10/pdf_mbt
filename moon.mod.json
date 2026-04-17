@@ -5,7 +5,8 @@
     "moonbitlang/x": "0.4.41",
     "trkbt10/jpeg2000": "0.2.0",
     "mizchi/image": "0.1.1",
-    "mizchi/font": "0.7.0"
+    "mizchi/font": "0.7.0",
+    "mizchi/svg": "0.2.0"
   },
   "readme": "README.mbt.md",
   "repository": "https://github.com/trkbt10/pdf",

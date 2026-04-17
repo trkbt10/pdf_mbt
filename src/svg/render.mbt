@@ -593,20 +593,157 @@ fn page_render_texts_svg(
     Ok(program) => {
       let glyph_groups = text_program_span_glyphs(program)
       let font_families = page_svg_font_families(page)
+      let embedded_fonts = page_svg_embedded_fonts(page)
       for index in 0..<program.spans.length() {
         let span = program.spans[index]
         if span.text.length() > 0 {
-          page_render_text_svg(
-            builder,
-            span,
-            span_glyphs(glyph_groups, index),
-            span_svg_font_family(font_families, span),
-            page_height,
-          )
+          let glyphs = span_glyphs(glyph_groups, index)
+          match span_svg_embedded_font(embedded_fonts, span) {
+            Some(ttf) => {
+              let path_builder = StringBuilder::new()
+              if page_render_text_span_as_paths(
+                  path_builder, span, glyphs, ttf, page_height,
+                ) {
+                builder.write_string(path_builder.to_string())
+              } else {
+                page_render_text_svg(
+                  builder,
+                  span,
+                  glyphs,
+                  span_svg_font_family(font_families, span),
+                  page_height,
+                )
+              }
+            }
+            None =>
+              page_render_text_svg(
+                builder,
+                span,
+                glyphs,
+                span_svg_font_family(font_families, span),
+                page_height,
+              )
+          }
         }
       }
     }
     Err(_) => ()
+  }
+}
+
+///|
+fn page_render_text_span_as_paths(
+  builder : StringBuilder,
+  span : @text.TextSpan,
+  glyphs : Array[@text.TextGlyphEvent],
+  ttf : @font.TTFont,
+  page_height : Double,
+) -> Bool {
+  if span.text.length() == 0 {
+    return true
+  }
+  if glyphs.length() == 0 {
+    return false
+  }
+  let units_per_em = svg_font_units_per_em(ttf)
+  for glyph in glyphs {
+    if !render_glyph_as_path(builder, glyph, ttf, units_per_em, page_height) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn render_glyph_as_path(
+  builder : StringBuilder,
+  glyph : @text.TextGlyphEvent,
+  ttf : @font.TTFont,
+  units_per_em : Int,
+  page_height : Double,
+) -> Bool {
+  if glyph.paint.invisible {
+    return true
+  }
+  if !glyph.paint.fill {
+    return false
+  }
+  if svg_glyph_is_zero_width_spacing(glyph) {
+    return true
+  }
+  match ttf.cmap.get(glyph.glyph.source_code) {
+    Some(gid) => {
+      let outline : Array[@svgpath.PathCommand] = ttf.glyph_outline(gid)
+      if outline.length() == 0 {
+        return svg_glyph_is_spacing(glyph)
+      }
+      let d = @font.path_commands_to_svg_d(outline)
+      if d.length() == 0 {
+        return svg_glyph_is_spacing(glyph)
+      }
+      builder.write_string("<path d=\"")
+      builder.write_string(d)
+      builder.write_string("\" transform=\"matrix(")
+      write_svg_glyph_path_matrix(
+        builder,
+        glyph.rendering_matrix.matrix,
+        units_per_em,
+        page_height,
+      )
+      builder.write_string(")\" fill=\"#000000\"/>")
+      true
+    }
+    None => false
+  }
+}
+
+///|
+fn svg_font_units_per_em(ttf : @font.TTFont) -> Int {
+  if ttf.units_per_em > 0 {
+    ttf.units_per_em
+  } else {
+    1000
+  }
+}
+
+///|
+fn write_svg_glyph_path_matrix(
+  builder : StringBuilder,
+  matrix : @text.TextMatrix,
+  units_per_em : Int,
+  page_height : Double,
+) -> Unit {
+  let scale = 1.0 / units_per_em.to_double()
+  builder.write_string(format_svg_number(matrix.a * scale))
+  builder.write_string(" ")
+  builder.write_string(format_svg_number((0.0 - matrix.b) * scale))
+  builder.write_string(" ")
+  builder.write_string(format_svg_number((0.0 - matrix.c) * scale))
+  builder.write_string(" ")
+  builder.write_string(format_svg_number(matrix.d * scale))
+  builder.write_string(" ")
+  builder.write_string(format_svg_number(matrix.e))
+  builder.write_string(" ")
+  builder.write_string(format_svg_number(page_height - matrix.f))
+}
+
+///|
+fn svg_glyph_is_zero_width_spacing(glyph : @text.TextGlyphEvent) -> Bool {
+  match glyph.unicode {
+    @text.UnicodeMapping::Unicode(value) =>
+      value == " " &&
+      glyph.glyph.metrics.horizontal_displacement == 0.0 &&
+      glyph.glyph.metrics.width_source ==
+      @text.GlyphWidthSource::FontDescriptorMissingWidth
+    @text.UnicodeMapping::Unknown(_, _, _) => false
+  }
+}
+
+///|
+fn svg_glyph_is_spacing(glyph : @text.TextGlyphEvent) -> Bool {
+  match glyph.unicode {
+    @text.UnicodeMapping::Unicode(value) => value == " "
+    @text.UnicodeMapping::Unknown(_, _, _) => false
   }
 }
 
@@ -916,6 +1053,101 @@ fn page_svg_font_families(
     Err(_) => ()
   }
   families
+}
+
+///|
+fn page_svg_embedded_fonts(
+  page : @reader.PdfPage,
+) -> Map[@objects.PdfName, @font.TTFont] {
+  let fonts : Map[@objects.PdfName, @font.TTFont] = Map::new()
+  let result : Result[@text.TextResources, @reader.PdfDocumentError] = try? page.text_resources()
+  match result {
+    Ok(resources) =>
+      for name, summary in resources.fonts {
+        match font_object_embedded_truetype_font(summary.font_object) {
+          Some(ttf) => fonts[name] = ttf
+          None => ()
+        }
+      }
+    Err(_) => ()
+  }
+  fonts
+}
+
+///|
+fn font_object_embedded_truetype_font(
+  object : @objects.PdfObject,
+) -> @font.TTFont? {
+  match object {
+    @objects.PdfObject::Dictionary(dict) =>
+      font_dict_embedded_truetype_font(dict)
+    _ => None
+  }
+}
+
+///|
+fn font_dict_embedded_truetype_font(
+  dict : @objects.PdfDictionary,
+) -> @font.TTFont? {
+  match font_dict_direct_embedded_truetype_font(dict) {
+    Some(ttf) => Some(ttf)
+    None => font_dict_descendant_embedded_truetype_font(dict)
+  }
+}
+
+///|
+fn font_dict_direct_embedded_truetype_font(
+  dict : @objects.PdfDictionary,
+) -> @font.TTFont? {
+  match dict.get(@objects.PdfName::new(b"FontDescriptor")) {
+    Some(@objects.PdfObject::Dictionary(descriptor)) =>
+      match descriptor.get(@objects.PdfName::new(b"FontFile2")) {
+        Some(@objects.PdfObject::Stream(stream)) =>
+          parse_svg_font_file2_stream(stream)
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn font_dict_descendant_embedded_truetype_font(
+  dict : @objects.PdfDictionary,
+) -> @font.TTFont? {
+  match dict.get(@objects.PdfName::new(b"DescendantFonts")) {
+    Some(@objects.PdfObject::Array(fonts)) => {
+      for font_object in fonts {
+        match font_object_embedded_truetype_font(font_object) {
+          Some(ttf) => return Some(ttf)
+          None => ()
+        }
+      }
+      None
+    }
+    _ => None
+  }
+}
+
+///|
+fn parse_svg_font_file2_stream(stream : @objects.PdfStream) -> @font.TTFont? {
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream(
+    stream,
+  )
+  match decoded {
+    Ok(bytes) => @font.parse_ttf(bytes)
+    Err(_) => None
+  }
+}
+
+///|
+fn span_svg_embedded_font(
+  embedded_fonts : Map[@objects.PdfName, @font.TTFont],
+  span : @text.TextSpan,
+) -> @font.TTFont? {
+  match span.font_name {
+    Some(name) => embedded_fonts.get(name)
+    None => None
+  }
 }
 
 ///|
