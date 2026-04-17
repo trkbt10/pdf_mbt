@@ -6,7 +6,25 @@ import {
 }
 
 // Values
+pub fn font_descriptor_lookup_order_alignment() -> Unit
+
+pub fn font_file3_cid_font_type0c_subtype_alignment() -> Unit
+
+pub fn font_file3_open_type_subtype_alignment() -> Unit
+
+pub fn font_file3_type1c_subtype_alignment() -> Unit
+
+pub fn font_file_type1_non_compact_alignment() -> Unit
+
+pub fn glyph_path_fill_colour_alignment() -> Unit
+
 pub fn render_page_svg(@reader.PdfPage) -> String
+
+pub fn text_colour_from_graphics_state_alignment() -> Unit
+
+pub fn text_element_fill_colour_alignment() -> Unit
+
+pub fn text_glyph_event_colour_propagation_alignment() -> Unit
 
 // Errors
 

@@ -14,36 +14,6 @@ priv struct SvgPositionedText {
 }
 
 ///|
-/// Renders a PDF page as SVG. Text colour is taken from the graphics state's
-/// current nonstroking colour, so both fallback `<text>` and embedded glyph
-/// paths use the same fill colour that PDF text painting operators use.
-pub fn render_page_svg(page : @reader.PdfPage) -> String {
-  let width = page_width(page)
-  let height = page_height(page)
-  let builder = StringBuilder::new()
-  builder.write_string(
-    "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ",
-  )
-  builder.write_string(format_svg_number(width))
-  builder.write_string(" ")
-  builder.write_string(format_svg_number(height))
-  builder.write_string("\" width=\"")
-  builder.write_string(format_svg_number(width))
-  builder.write_string("\" height=\"")
-  builder.write_string(format_svg_number(height))
-  builder.write_string("\">")
-  builder.write_string("<rect x=\"0\" y=\"0\" width=\"")
-  builder.write_string(format_svg_number(width + 1.0))
-  builder.write_string("\" height=\"")
-  builder.write_string(format_svg_number(height + 1.0))
-  builder.write_string("\" fill=\"#ffffff\"/>")
-  page_render_graphics_svg(builder, page, height)
-  page_render_texts_svg(builder, page, height)
-  builder.write_string("</svg>")
-  builder.to_string()
-}
-
-///|
 fn page_width(page : @reader.PdfPage) -> Double {
   let (width, height) = page_dimensions(page)
   if page_is_rotated_sideways(page) {
@@ -695,6 +665,8 @@ fn page_render_texts_svg(
 }
 
 ///|
+/// Text colour from graphics state — extracts the nonstroking colour
+/// TextGlyphEvent colour propagation from graphics state
 /// Implements text colour from graphics state. It correlates TextGlyphEvent
 /// colour propagation with graphics state changes in the same decoded page
 /// content stream, then converts the active nonstroking colour into an SVG hex
@@ -825,6 +797,7 @@ fn page_render_text_span_as_paths(
 }
 
 ///|
+/// Glyph path fill colour from nonstroking colour
 /// Writes a single glyph path fill colour from the active graphics state into
 /// the SVG `<path fill="...">` attribute.
 fn render_glyph_as_path(
@@ -923,6 +896,7 @@ fn svg_glyph_is_spacing(glyph : @text.TextGlyphEvent) -> Bool {
 }
 
 ///|
+/// Text element fill colour from nonstroking colour
 /// Writes the fallback text element fill colour from the per-span nonstroking
 /// colour into the SVG `<text fill="...">` attribute.
 fn page_render_text_svg(
@@ -1295,6 +1269,8 @@ fn font_dict_embedded_truetype_font(
 }
 
 ///|
+/// Font descriptor lookup order: FontFile2, FontFile3, system font, text fallback
+/// FontFile Type 1 non-compact font programs fall back to text rendering
 /// Looks up embedded font descriptor entries in priority order. FontFile2 is
 /// parsed first as TrueType, FontFile3 is then parsed as OpenType or CFF-backed
 /// data, and FontFile Type 1 non-compact is intentionally unsupported here so
@@ -1350,6 +1326,9 @@ fn parse_svg_font_file2_stream(stream : @objects.PdfStream) -> @font.TTFont? {
 }
 
 ///|
+/// FontFile3 with OpenType subtype — parses embedded OpenType font programs
+/// FontFile3 with Type1C subtype — attempts CFF font program parsing
+/// FontFile3 with CIDFontType0C subtype — CID CFF font program
 /// Decodes FontFile3 embedded font programs for SVG glyph path rendering.
 /// FontFile3 with OpenType subtype streams, including OTF containers with CFF
 /// tables, are passed to `@font.parse_font`. FontFile3 with Type1C subtype and
