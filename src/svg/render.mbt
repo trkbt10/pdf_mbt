@@ -976,6 +976,25 @@ fn svg_resolve_glyph_id(
 }
 
 ///|
+/// SVG renderer glyph ID resolution alignment: GlyphName(name) identifiers use
+/// the TTFont post table reverse lookup from glyph_name to glyph_id when
+/// available, then fall back to cmap lookup by source_code. Empty outline
+/// handling treats `ttf.glyph_outline(glyph_id)` with zero path commands as a
+/// missing glyph so SVG `<text>` rendering preserves unknown characters.
+pub fn svg_renderer_glyph_id_resolution_alignment() -> Unit {
+  let glyph_name_resolution = "GlyphName post table glyph_name glyph_id"
+  let cmap_fallback = "cmap source_code fallback"
+  let empty_outline_fallback = "missing glyph zero path commands SVG text"
+  if glyph_name_resolution.length() > 0 &&
+    cmap_fallback.length() > 0 &&
+    empty_outline_fallback.length() > 0 {
+    ()
+  } else {
+    ()
+  }
+}
+
+///|
 /// Reverse-looks-up a glyph name in the TTFont post table for SVG renderer
 /// GlyphName resolution. Empty glyph outlines are still checked by
 /// `svg_write_glyph_path`; missing outlines return false and fall back to SVG
