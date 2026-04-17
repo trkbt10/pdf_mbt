@@ -230,6 +230,8 @@ test "diagnostic local-fixture page 6 CID CFF chain" {
       println(
         "diagnostic local-fixture page 6 FontFile3 streams=" + stream_count.to_string(),
       )
+      diagnostic_page6_text_path_summary(document.page(5), b"C0_0")
+      diagnostic_page6_text_path_summary(document.page(5), b"C0_1")
     }
     Err(_) => println("diagnostic local-fixture page 6 text_resources failed")
   }
@@ -993,6 +995,79 @@ fn diagnostic_min(a : Int, b : Int) -> Int {
     a
   } else {
     b
+  }
+}
+
+///|
+fn diagnostic_page6_text_path_summary(
+  page : @reader.PdfPage,
+  font_name_bytes : Bytes,
+) -> Unit {
+  let font_name = @objects.PdfName::new(font_name_bytes)
+  let result : Result[@text.TextProgram, @reader.PdfDocumentError] = try? page.text_program(
+    @reader.TextPageOptions::default(),
+  )
+  match result {
+    Ok(program) => {
+      let glyph_groups = text_program_span_glyphs(program)
+      let embedded_fonts = page_svg_embedded_fonts(page)
+      let mut spans = 0
+      let mut empty_text_spans = 0
+      let mut glyph_count = 0
+      let mut cid_count = 0
+      let mut resolved_count = 0
+      let mut outline_count = 0
+      for index in 0..<program.spans.length() {
+        let span = program.spans[index]
+        if span.font_name == Some(font_name) {
+          spans += 1
+          if span.text.length() == 0 {
+            empty_text_spans += 1
+          }
+          let glyphs = span_glyphs(glyph_groups, index)
+          glyph_count += glyphs.length()
+          match embedded_fonts.get(font_name) {
+            Some(ttf) =>
+              for glyph in glyphs {
+                match glyph.glyph.glyph {
+                  @text.GlyphIdentifier::CID(_) => cid_count += 1
+                  _ => ()
+                }
+                let glyph_id = svg_resolve_glyph_id(ttf, glyph)
+                if glyph_id >= 0 && glyph_id < ttf.num_glyphs {
+                  resolved_count += 1
+                  if ttf.glyph_outline(glyph_id).length() > 0 {
+                    outline_count += 1
+                  }
+                }
+              }
+            None => ()
+          }
+        }
+      }
+      println(
+        "diagnostic local-fixture page 6 text path " +
+        font_name.to_text() +
+        ": spans=" +
+        spans.to_string() +
+        " empty_text_spans=" +
+        empty_text_spans.to_string() +
+        " glyphs=" +
+        glyph_count.to_string() +
+        " cid_glyphs=" +
+        cid_count.to_string() +
+        " resolved=" +
+        resolved_count.to_string() +
+        " outlines=" +
+        outline_count.to_string(),
+      )
+    }
+    Err(_) =>
+      println(
+        "diagnostic local-fixture page 6 text path " +
+        font_name.to_text() +
+        ": text_program failed",
+      )
   }
 }
 
