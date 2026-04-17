@@ -143,6 +143,60 @@ fn trimmed3_fraction(value : Int) -> String {
 }
 
 ///|
+/// High-precision number formatter for glyph path transforms where
+/// the 3-decimal format_svg_number is too coarse (e.g. 24/2048 = 0.01171875
+/// rounds to 0.012, a 3% error that accumulates across glyph widths).
+fn format_svg_number_precise(value : Double) -> String {
+  let rounded = @math.floor(abs_double(value) * 1000000.0 + 0.5).to_int64()
+  if rounded == 0L {
+    return "0"
+  }
+  let sign = if value < 0.0 { "-" } else { "" }
+  let whole = (rounded / 1000000L).to_string()
+  let fraction = (rounded % 1000000L).to_int()
+  if fraction == 0 {
+    sign + whole
+  } else {
+    let digits = fixed6_fraction(fraction)
+    sign + whole + "." + trim_trailing_zeros(digits)
+  }
+}
+
+///|
+fn fixed6_fraction(value : Int) -> String {
+  let builder = StringBuilder::new()
+  let mut v = value
+  let parts = Array::make(6, 0)
+  for i = 5; i >= 0; i = i - 1 {
+    parts[i] = v % 10
+    v = v / 10
+  }
+  for digit in parts {
+    builder.write_char((b'0'.to_int() + digit).unsafe_to_char())
+  }
+  builder.to_string()
+}
+
+///|
+fn trim_trailing_zeros(s : String) -> String {
+  let mut end = s.length()
+  while end > 0 && s.code_unit_at(end - 1).to_int() == b'0'.to_int() {
+    end -= 1
+  }
+  if end == 0 {
+    "0"
+  } else {
+    let builder = StringBuilder::new()
+    for i in 0..<end {
+      builder.write_char(
+        UInt16::unsafe_to_char(s.code_unit_at(i)),
+      )
+    }
+    builder.to_string()
+  }
+}
+
+///|
 fn page_render_graphics_svg(
   builder : StringBuilder,
   page : @reader.PdfPage,
@@ -714,17 +768,17 @@ fn write_svg_glyph_path_matrix(
   page_height : Double,
 ) -> Unit {
   let scale = 1.0 / units_per_em.to_double()
-  builder.write_string(format_svg_number(matrix.a * scale))
+  builder.write_string(format_svg_number_precise(matrix.a * scale))
   builder.write_string(" ")
-  builder.write_string(format_svg_number((0.0 - matrix.b) * scale))
+  builder.write_string(format_svg_number_precise((0.0 - matrix.b) * scale))
   builder.write_string(" ")
-  builder.write_string(format_svg_number((0.0 - matrix.c) * scale))
+  builder.write_string(format_svg_number_precise((0.0 - matrix.c) * scale))
   builder.write_string(" ")
-  builder.write_string(format_svg_number((0.0 - matrix.d) * scale))
+  builder.write_string(format_svg_number_precise((0.0 - matrix.d) * scale))
   builder.write_string(" ")
-  builder.write_string(format_svg_number(matrix.e))
+  builder.write_string(format_svg_number_precise(matrix.e))
   builder.write_string(" ")
-  builder.write_string(format_svg_number(page_height - matrix.f))
+  builder.write_string(format_svg_number_precise(page_height - matrix.f))
 }
 
 ///|
