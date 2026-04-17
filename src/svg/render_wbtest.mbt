@@ -314,6 +314,76 @@ test "diagnostic local-fixture page 6 Handset header glyph trace" {
 }
 
 ///|
+test "diagnostic local-fixture page 6 glyph trace" {
+  let path = "<local-fixture>"
+  if !@fs.path_exists(path) {
+    println("diagnostic skipped: " + path + " is not present")
+    return
+  }
+  let document = @reader.PdfDocument::open(@fs.read_file_to_bytes(path))
+  let page = document.page(5)
+  let result : Result[@text.TextProgram, @reader.PdfDocumentError] = try? page.text_program(
+    @reader.TextPageOptions::default(),
+  )
+  match result {
+    Ok(program) => {
+      let glyph_groups = text_program_span_glyphs(program)
+      let embedded_fonts = page_svg_embedded_fonts(page)
+      let mut printed = 0
+      for index in 0..<program.spans.length() {
+        if printed >= 30 {
+          break
+        }
+        let span = program.spans[index]
+        let glyphs = span_glyphs(glyph_groups, index)
+        if diagnostic_string_has_visible_char(span.text) && glyphs.length() > 0 {
+          match span.font_name {
+            Some(font_name) =>
+              match embedded_fonts.get(font_name) {
+                Some(ttf) => {
+                  println(
+                    "diagnostic local-fixture glyph_trace: span_index=" +
+                    index.to_string() +
+                    " font=" +
+                    font_name.to_text() +
+                    " text=\"" +
+                    span.text +
+                    "\"",
+                  )
+                  for glyph in glyphs {
+                    if printed >= 30 {
+                      break
+                    }
+                    diagnostic_print_local_fixture_glyph_trace(
+                      font_name.to_text(),
+                      ttf,
+                      glyph,
+                    )
+                    printed += 1
+                  }
+                }
+                None =>
+                  println(
+                    "diagnostic local-fixture glyph_trace: font=" +
+                    font_name.to_text() +
+                    " embedded_font=<missing>",
+                  )
+              }
+            None =>
+              println("diagnostic local-fixture glyph_trace: font=<missing>")
+          }
+        }
+      }
+      if printed == 0 {
+        println("diagnostic local-fixture glyph_trace: no glyphs printed")
+      }
+    }
+    Err(_) =>
+      println("diagnostic local-fixture glyph_trace: text_program failed")
+  }
+}
+
+///|
 test "diagnostic local-fixture pages 6 7 tofu glyphs" {
   let path = "<local-fixture>"
   if !@fs.path_exists(path) {
@@ -1307,6 +1377,55 @@ fn diagnostic_print_glyph_trace(
     " outline_first_point=" +
     diagnostic_outline_first_point(ttf, gid),
   )
+}
+
+///|
+fn diagnostic_print_local_fixture_glyph_trace(
+  font_name : String,
+  ttf : @font.TTFont,
+  glyph : @text.TextGlyphEvent,
+) -> Unit {
+  let source_code = glyph.glyph.source_code
+  let gid = svg_resolve_glyph_id(ttf, glyph)
+  println(
+    "diagnostic local-fixture glyph_trace: font=" +
+    font_name +
+    " char_code=0x" +
+    diagnostic_hex(source_code) +
+    " glyph=" +
+    diagnostic_glyph_identifier(glyph.glyph.glyph) +
+    " glyph_id_resolved=" +
+    gid.to_string() +
+    " post_name_at_gid=" +
+    diagnostic_post_name(ttf, gid) +
+    " outline_first_point=" +
+    diagnostic_outline_first_point(ttf, gid) +
+    " expected_unicode=\"" +
+    diagnostic_unicode_text(glyph.unicode) +
+    "\"",
+  )
+}
+
+///|
+fn diagnostic_glyph_identifier(glyph : @text.GlyphIdentifier) -> String {
+  match glyph {
+    @text.GlyphIdentifier::CID(cid) => "CID(" + cid.to_string() + ")"
+    @text.GlyphIdentifier::CharacterCode(code) =>
+      "CharacterCode(" + code.to_string() + ")"
+    @text.GlyphIdentifier::GlyphName(name) =>
+      "GlyphName(" + name.to_text() + ")"
+    @text.GlyphIdentifier::Notdef => "Notdef"
+  }
+}
+
+///|
+fn diagnostic_string_has_visible_char(text : String) -> Bool {
+  for index in 0..<text.length() {
+    if text.code_unit_at(index).to_int() > b' '.to_int() {
+      return true
+    }
+  }
+  false
 }
 
 ///|
