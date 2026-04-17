@@ -100,6 +100,15 @@ export default function PdfViewer({
     imageLoadFailures.current.clear();
   }, [document]);
 
+  useEffect(() => {
+    return () => {
+      if (cacheRef.current) {
+        revokeAllBlobUrls(cacheRef.current);
+        cacheRef.current = null;
+      }
+    };
+  }, []);
+
   const loadPageSvg = useCallback(
     (pageIndex: number) => {
       if (!document) {
