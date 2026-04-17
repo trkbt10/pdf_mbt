@@ -260,6 +260,60 @@ test "diagnostic local-fixture page 6 CID CFF chain" {
 }
 
 ///|
+test "diagnostic local-fixture page 6 Handset header glyph trace" {
+  let path = "<local-fixture>"
+  if !@fs.path_exists(path) {
+    println("diagnostic skipped: " + path + " is not present")
+    return
+  }
+  let document = @reader.PdfDocument::open(@fs.read_file_to_bytes(path))
+  let page = document.page(5)
+  let result : Result[@text.TextProgram, @reader.PdfDocumentError] = try? page.text_program(
+    @reader.TextPageOptions::default(),
+  )
+  match result {
+    Ok(program) => {
+      let glyph_groups = text_program_span_glyphs(program)
+      let embedded_fonts = page_svg_embedded_fonts(page)
+      let mut printed = false
+      for index in 0..<program.spans.length() {
+        let span = program.spans[index]
+        if span.text.contains("Handset Power On/Of") ||
+          span.text.contains("Handset") {
+          match span.font_name {
+            Some(font_name) =>
+              match embedded_fonts.get(font_name) {
+                Some(ttf) => {
+                  let glyphs = span_glyphs(glyph_groups, index)
+                  for glyph in glyphs {
+                    diagnostic_print_glyph_trace(
+                      font_name.to_text(),
+                      ttf,
+                      glyph,
+                    )
+                    printed = true
+                  }
+                }
+                None =>
+                  println(
+                    "diagnostic local-fixture glyph_trace: font=" +
+                    font_name.to_text() +
+                    " embedded_font=<missing>",
+                  )
+              }
+            None => println("diagnostic local-fixture glyph_trace: font=<missing>")
+          }
+        }
+      }
+      if !printed {
+        println("diagnostic local-fixture glyph_trace: Handset span not found")
+      }
+    }
+    Err(_) => println("diagnostic local-fixture glyph_trace: text_program failed")
+  }
+}
+
+///|
 test "render_page_svg renders FontFile3 OpenType glyphs as paths" {
   let document = @reader.PdfDocument::open(
     build_embedded_fontfile3_text_fixture(),
@@ -1151,6 +1205,87 @@ fn diagnostic_cid_lookup_sample(
   }
   builder.write_string("}")
   builder.to_string()
+}
+
+///|
+fn diagnostic_print_glyph_trace(
+  font_name : String,
+  ttf : @font.TTFont,
+  glyph : @text.TextGlyphEvent,
+) -> Unit {
+  let source_code = glyph.glyph.source_code
+  let gid = svg_resolve_glyph_id(ttf, glyph)
+  println(
+    "diagnostic local-fixture glyph_trace: font=" +
+    font_name +
+    " char_code=0x" +
+    diagnostic_hex2(source_code) +
+    " glyph_id_resolved=" +
+    gid.to_string() +
+    " post_name_at_gid=" +
+    diagnostic_post_name(ttf, gid) +
+    " outline_first_point=" +
+    diagnostic_outline_first_point(ttf, gid),
+  )
+}
+
+///|
+fn diagnostic_post_name(ttf : @font.TTFont, gid : Int) -> String {
+  match ttf.post {
+    Some(post) =>
+      if gid >= 0 && gid < post.glyph_names.length() {
+        post.glyph_names[gid]
+      } else {
+        "<out-of-range>"
+      }
+    None => "<missing-post>"
+  }
+}
+
+///|
+fn diagnostic_outline_first_point(ttf : @font.TTFont, gid : Int) -> String {
+  if gid < 0 || gid >= ttf.num_glyphs {
+    return "<out-of-range>"
+  }
+  let outline = ttf.glyph_outline(gid)
+  for command in outline {
+    match command {
+      @svgpath.MoveTo(x, y) =>
+        return "(" + x.to_string() + "," + y.to_string() + ")"
+      _ => ()
+    }
+  }
+  "<empty>"
+}
+
+///|
+fn diagnostic_hex2(value : Int) -> String {
+  let hi = (value >> 4) & 0xF
+  let lo = value & 0xF
+  diagnostic_hex_digit(hi) + diagnostic_hex_digit(lo)
+}
+
+///|
+fn diagnostic_hex_digit(value : Int) -> String {
+  match value {
+    0 => "0"
+    1 => "1"
+    2 => "2"
+    3 => "3"
+    4 => "4"
+    5 => "5"
+    6 => "6"
+    7 => "7"
+    8 => "8"
+    9 => "9"
+    10 => "A"
+    11 => "B"
+    12 => "C"
+    13 => "D"
+    14 => "E"
+    15 => "F"
+    _ => "?"
+  }
 }
 
 ///|
