@@ -188,9 +188,7 @@ fn trim_trailing_zeros(s : String) -> String {
   } else {
     let builder = StringBuilder::new()
     for i in 0..<end {
-      builder.write_char(
-        UInt16::unsafe_to_char(s.code_unit_at(i)),
-      )
+      builder.write_char(UInt16::unsafe_to_char(s.code_unit_at(i)))
     }
     builder.to_string()
   }
@@ -646,17 +644,19 @@ fn page_render_texts_svg(
   match result {
     Ok(program) => {
       let glyph_groups = text_program_span_glyphs(program)
+      let fill_colours = page_svg_text_fill_colours(page, program)
       let font_families = page_svg_font_families(page)
       let embedded_fonts = page_svg_embedded_fonts(page)
       for index in 0..<program.spans.length() {
         let span = program.spans[index]
         if span.text.length() > 0 {
           let glyphs = span_glyphs(glyph_groups, index)
+          let fill_colour = span_fill_colour(fill_colours, index)
           match span_svg_embedded_font(embedded_fonts, span) {
             Some(ttf) => {
               let path_builder = StringBuilder::new()
               if page_render_text_span_as_paths(
-                  path_builder, span, glyphs, ttf, page_height,
+                  path_builder, span, glyphs, ttf, page_height, fill_colour,
                 ) {
                 builder.write_string(path_builder.to_string())
               } else {
@@ -666,6 +666,7 @@ fn page_render_texts_svg(
                   glyphs,
                   span_svg_font_family(font_families, span),
                   page_height,
+                  fill_colour,
                 )
               }
             }
@@ -676,6 +677,7 @@ fn page_render_texts_svg(
                 glyphs,
                 span_svg_font_family(font_families, span),
                 page_height,
+                fill_colour,
               )
           }
         }
@@ -686,12 +688,109 @@ fn page_render_texts_svg(
 }
 
 ///|
+fn page_svg_text_fill_colours(
+  page : @reader.PdfPage,
+  program : @text.TextProgram,
+) -> Array[String] {
+  let colours : Array[String] = []
+  let result : Result[Array[@graphics.GraphicsEvent], @reader.PdfDocumentError] = try? page.graphics_events(
+    @reader.GraphicsPageOptions::with_materialized_xobjects(None),
+  )
+  let events = match result {
+    Ok(value) => value
+    Err(_) => []
+  }
+  let initial_result : Result[
+    @graphics.GraphicsInitialState,
+    @reader.PdfDocumentError,
+  ] = try? page.graphics_initial_state(
+    @reader.GraphicsPageOptions::with_materialized_xobjects(None),
+  )
+  let mut current_state = match initial_result {
+    Ok(initial) => Some(@graphics.GraphicsState::initial(initial))
+    Err(_) => None
+  }
+  let mut event_index = 0
+  for span in program.spans {
+    while event_index < events.length() &&
+          graphics_event_offset(events[event_index]) <= span.offset {
+      match graphics_event_state(events[event_index]) {
+        Some(state) => current_state = Some(state)
+        None => ()
+      }
+      event_index += 1
+    }
+    match current_state {
+      Some(state) =>
+        colours.push(svg_colour(state, @graphics.ColourUse::Nonstroking))
+      None => colours.push("#000000")
+    }
+  }
+  colours
+}
+
+///|
+fn graphics_event_offset(event : @graphics.GraphicsEvent) -> Int64 {
+  match event {
+    @graphics.GraphicsEvent::StateSaved(offset, _)
+    | @graphics.GraphicsEvent::StateRestored(offset, _)
+    | @graphics.GraphicsEvent::StateChanged(offset, _, _)
+    | @graphics.GraphicsEvent::PathPainted(offset, _, _, _)
+    | @graphics.GraphicsEvent::ClipChanged(offset, _)
+    | @graphics.GraphicsEvent::TextObjectBegan(offset)
+    | @graphics.GraphicsEvent::TextObjectEnded(offset)
+    | @graphics.GraphicsEvent::ExternalObjectInvoked(offset, _)
+    | @graphics.GraphicsEvent::UnresolvedXObjectInvoked(offset, _, _)
+    | @graphics.GraphicsEvent::ImagePainted(offset, _, _)
+    | @graphics.GraphicsEvent::InlineImagePainted(offset, _, _)
+    | @graphics.GraphicsEvent::FormXObjectBegan(offset, _, _)
+    | @graphics.GraphicsEvent::FormXObjectEnded(offset, _, _)
+    | @graphics.GraphicsEvent::XObjectSkipped(offset, _, _)
+    | @graphics.GraphicsEvent::PatternColourSelected(offset, _, _, _, _)
+    | @graphics.GraphicsEvent::ShadingSeen(offset, _)
+    | @graphics.GraphicsEvent::ShadingPainted(offset, _, _)
+    | @graphics.GraphicsEvent::MarkedContentSeen(offset, _)
+    | @graphics.GraphicsEvent::IgnoredFutureDomainOperator(offset, _) => offset
+    @graphics.GraphicsEvent::InlineImageSeen(_) => 0L
+  }
+}
+
+///|
+fn graphics_event_state(
+  event : @graphics.GraphicsEvent,
+) -> @graphics.GraphicsState? {
+  match event {
+    @graphics.GraphicsEvent::StateSaved(_, state)
+    | @graphics.GraphicsEvent::StateRestored(_, state)
+    | @graphics.GraphicsEvent::StateChanged(_, _, state)
+    | @graphics.GraphicsEvent::PathPainted(_, _, _, state)
+    | @graphics.GraphicsEvent::ImagePainted(_, _, state)
+    | @graphics.GraphicsEvent::InlineImagePainted(_, _, state)
+    | @graphics.GraphicsEvent::FormXObjectBegan(_, _, state)
+    | @graphics.GraphicsEvent::FormXObjectEnded(_, _, state)
+    | @graphics.GraphicsEvent::PatternColourSelected(_, _, _, _, state)
+    | @graphics.GraphicsEvent::ShadingPainted(_, _, state) => Some(state)
+    _ => None
+  }
+}
+
+///|
+fn span_fill_colour(colours : Array[String], index : Int) -> String {
+  if index >= 0 && index < colours.length() {
+    colours[index]
+  } else {
+    "#000000"
+  }
+}
+
+///|
 fn page_render_text_span_as_paths(
   builder : StringBuilder,
   span : @text.TextSpan,
   glyphs : Array[@text.TextGlyphEvent],
   ttf : @font.TTFont,
   page_height : Double,
+  fill_colour : String,
 ) -> Bool {
   if span.text.length() == 0 {
     return true
@@ -701,7 +800,9 @@ fn page_render_text_span_as_paths(
   }
   let units_per_em = svg_font_units_per_em(ttf)
   for glyph in glyphs {
-    if !render_glyph_as_path(builder, glyph, ttf, units_per_em, page_height) {
+    if !render_glyph_as_path(
+        builder, glyph, ttf, units_per_em, page_height, fill_colour,
+      ) {
       return false
     }
   }
@@ -715,6 +816,7 @@ fn render_glyph_as_path(
   ttf : @font.TTFont,
   units_per_em : Int,
   page_height : Double,
+  fill_colour : String,
 ) -> Bool {
   if glyph.paint.invisible {
     return true
@@ -744,7 +846,9 @@ fn render_glyph_as_path(
         units_per_em,
         page_height,
       )
-      builder.write_string(")\" fill=\"#000000\"/>")
+      builder.write_string(")\" fill=\"")
+      builder.write_string(fill_colour)
+      builder.write_string("\"/>")
       true
     }
     None => false
@@ -808,6 +912,7 @@ fn page_render_text_svg(
   glyphs : Array[@text.TextGlyphEvent],
   font_family : String,
   page_height : Double,
+  fill_colour : String,
 ) -> Unit {
   let matrix = span_rendering_matrix(span, glyphs)
   let font_size = svg_extract_font_size(matrix)
@@ -823,7 +928,9 @@ fn page_render_text_svg(
     "\" text-rendering=\"geometricPrecision\" font-family=\"",
   )
   write_xml_escaped(builder, font_family)
-  builder.write_string("\" fill=\"#000000\"")
+  builder.write_string("\" fill=\"")
+  builder.write_string(fill_colour)
+  builder.write_string("\"")
   match positioned {
     Some(text) => {
       builder.write_string(">")
@@ -1171,7 +1278,12 @@ fn font_dict_direct_embedded_truetype_font(
       match descriptor.get(@objects.PdfName::new(b"FontFile2")) {
         Some(@objects.PdfObject::Stream(stream)) =>
           parse_svg_font_file2_stream(stream)
-        _ => None
+        _ =>
+          match descriptor.get(@objects.PdfName::new(b"FontFile3")) {
+            Some(@objects.PdfObject::Stream(stream)) =>
+              parse_svg_font_file3_stream(stream)
+            _ => None
+          }
       }
     _ => None
   }
@@ -1202,6 +1314,17 @@ fn parse_svg_font_file2_stream(stream : @objects.PdfStream) -> @font.TTFont? {
   )
   match decoded {
     Ok(bytes) => @font.parse_ttf(bytes)
+    Err(_) => None
+  }
+}
+
+///|
+fn parse_svg_font_file3_stream(stream : @objects.PdfStream) -> @font.TTFont? {
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream(
+    stream,
+  )
+  match decoded {
+    Ok(bytes) => @font.parse_font(bytes)
     Err(_) => None
   }
 }

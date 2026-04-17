@@ -123,6 +123,39 @@ test "render_page_svg renders embedded TrueType glyphs as paths" {
 }
 
 ///|
+test "render_page_svg uses nonstroking colour for embedded glyph paths" {
+  let document = @reader.PdfDocument::open(
+    build_coloured_embedded_truetype_text_fixture(),
+  )
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<path d=\""), true)
+  assert_eq(svg.contains("<text"), false)
+  assert_eq(svg.contains("fill=\"#FF0000\""), true)
+}
+
+///|
+test "render_page_svg uses nonstroking colour for text fallback" {
+  let document = @reader.PdfDocument::open(
+    build_coloured_text_fallback_fixture(),
+  )
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<text"), true)
+  assert_eq(svg.contains("<path d=\""), false)
+  assert_eq(svg.contains("fill=\"#00FF00\""), true)
+}
+
+///|
+test "render_page_svg renders FontFile3 OpenType glyphs as paths" {
+  let document = @reader.PdfDocument::open(
+    build_embedded_fontfile3_text_fixture(),
+  )
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<path d=\""), true)
+  assert_eq(svg.contains("<text"), false)
+  assert_eq(svg.contains("font-family=\""), false)
+}
+
+///|
 test "render_page_svg uses system font paths for Standard 14 when available" {
   let document = @reader.PdfDocument::open(build_identity_tm_text_fixture())
   let svg = render_page_svg(document.page(0))
@@ -312,6 +345,55 @@ fn build_embedded_truetype_text_fixture() -> Bytes {
 }
 
 ///|
+fn build_coloured_embedded_truetype_text_fixture() -> Bytes {
+  let content = b"1 0 0 rg BT /F1 10 Tf 1 0 0 1 10 20 Tm (A) Tj ET"
+  let font_file = build_stream_object_body(
+    try! @fs.read_file_to_bytes(
+      ".mooncakes/mizchi/font/fixtures/minimal-kern.ttf",
+    ),
+  )
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+    content,
+    [
+      b"<< /Type /Font /Subtype /TrueType /BaseFont /MinimalKern /FirstChar 65 /LastChar 65 /Widths [600] /Encoding /WinAnsiEncoding /FontDescriptor 6 0 R >>",
+      b"<< /Type /FontDescriptor /FontName /MinimalKern /Flags 4 /FontBBox [0 -200 1000 1000] /ItalicAngle 0 /Ascent 1000 /Descent -200 /CapHeight 700 /StemV 80 /FontFile2 7 0 R >>",
+      font_file,
+    ],
+  )
+}
+
+///|
+fn build_coloured_text_fallback_fixture() -> Bytes {
+  let content = b"0 1 0 rg BT /F1 12 Tf 1 0 0 1 10 20 Tm (A) Tj ET"
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /ColourFallback /FirstChar 65 /LastChar 65 /Widths [600] /Encoding /WinAnsiEncoding >> >> >> /Contents 4 0 R >>",
+    content,
+    [],
+  )
+}
+
+///|
+fn build_embedded_fontfile3_text_fixture() -> Bytes {
+  let content = b"BT /F1 10 Tf 1 0 0 1 10 20 Tm (A) Tj ET"
+  let font_file = build_stream_object_body_with_entries(
+    b"/Subtype /OpenType",
+    try! @fs.read_file_to_bytes(
+      ".mooncakes/mizchi/font/fixtures/minimal-kern.ttf",
+    ),
+  )
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+    content,
+    [
+      b"<< /Type /Font /Subtype /TrueType /BaseFont /MinimalKern /FirstChar 65 /LastChar 65 /Widths [600] /Encoding /WinAnsiEncoding /FontDescriptor 6 0 R >>",
+      b"<< /Type /FontDescriptor /FontName /MinimalKern /Flags 4 /FontBBox [0 -200 1000 1000] /ItalicAngle 0 /Ascent 1000 /Descent -200 /CapHeight 700 /StemV 80 /FontFile3 7 0 R >>",
+      font_file,
+    ],
+  )
+}
+
+///|
 fn build_ctm_scaled_text_fixture() -> Bytes {
   let content = b"2 0 0 2 10 20 cm BT /F1 10 Tf 1 0 0 1 5 6 Tm (A) Tj ET"
   build_single_page_pdf(
@@ -365,6 +447,20 @@ fn build_single_page_pdf(
 fn build_stream_object_body(content : Bytes) -> Bytes {
   b"<< /Length " +
   decimal_bytes(content.length().to_int64()) +
+  b" >>\nstream\n" +
+  content +
+  b"\nendstream"
+}
+
+///|
+fn build_stream_object_body_with_entries(
+  entries : Bytes,
+  content : Bytes,
+) -> Bytes {
+  b"<< /Length " +
+  decimal_bytes(content.length().to_int64()) +
+  b" " +
+  entries +
   b" >>\nstream\n" +
   content +
   b"\nendstream"
