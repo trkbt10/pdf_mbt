@@ -8,7 +8,10 @@ import type {
   PdfInfo,
   PdfPageGeometry,
   PdfRenderText,
+  PdfSvgImageInfo,
 } from "@trkbt10/pdf-wasm";
+
+const RAW_RGBA_IMAGE_MIME = "image/x-rgba8";
 
 export type ZoomValue = "fit" | "0.5" | "0.75" | "1" | "1.25" | "1.5" | "2";
 
@@ -125,17 +128,21 @@ export default function PdfViewer({
         svg: "",
       });
       setPageSvgVersion((version) => version + 1);
-      window.setTimeout(() => {
+      window.setTimeout(async () => {
         if (cacheRef.current !== cache) {
           return;
         }
         try {
           const svg = document.source.pageToSvgDeferred(pageIndex);
-          const imageUrls = createDeferredSvgImageUrls(
+          const imageUrls = await createDeferredSvgImageUrls(
             document.source,
             pageIndex,
             svg
           );
+          if (cacheRef.current !== cache) {
+            revokeBlobUrlMap(imageUrls);
+            return;
+          }
           cache.pages.set(pageIndex, { imageUrls, status: "ready", svg });
           setPageSvgVersion((version) => version + 1);
         } catch (error) {
@@ -1002,21 +1009,23 @@ function cachedPageSvgs(
   return cache.pages;
 }
 
-function createDeferredSvgImageUrls(
+async function createDeferredSvgImageUrls(
   source: PdfDocument,
   pageIndex: number,
   svg: string
-): Map<number, string> {
+): Promise<Map<number, string>> {
   const urls = new Map<number, string>();
   try {
     for (const imageIndex of deferredSvgImageIndexes(svg)) {
-      const { data, mime } = source.pageSvgImageData(pageIndex, imageIndex);
-      if (mime && data.length > 0) {
-        urls.set(
-          imageIndex,
-          URL.createObjectURL(
-            new Blob([uint8ArrayBlobPart(data)], { type: mime })
-          )
+      try {
+        const url = await createDeferredSvgImageUrl(source, pageIndex, imageIndex);
+        if (url) {
+          urls.set(imageIndex, url);
+        }
+      } catch (error) {
+        console.warn(
+          `Failed to decode deferred SVG image ${pageIndex}:${imageIndex}`,
+          error
         );
       }
     }
@@ -1025,6 +1034,81 @@ function createDeferredSvgImageUrls(
     throw error;
   }
   return urls;
+}
+
+async function createDeferredSvgImageUrl(
+  source: PdfDocument,
+  pageIndex: number,
+  imageIndex: number
+): Promise<string | null> {
+  const info = source.pageSvgImageInfo(pageIndex, imageIndex);
+  const { data, mime } = source.pageSvgImageData(pageIndex, imageIndex);
+  const imageMime = info?.mime ?? mime;
+  if (!imageMime || data.length === 0) {
+    return null;
+  }
+  if (imageMime === RAW_RGBA_IMAGE_MIME) {
+    if (!info) {
+      throw new Error("Raw RGBA image metadata is unavailable");
+    }
+    const blob = await rawRgbaImageBlob(data, info);
+    return URL.createObjectURL(blob);
+  }
+  return URL.createObjectURL(
+    new Blob([uint8ArrayBlobPart(data)], { type: imageMime })
+  );
+}
+
+async function rawRgbaImageBlob(
+  data: Uint8Array,
+  info: PdfSvgImageInfo
+): Promise<Blob> {
+  if (info.width <= 0 || info.height <= 0) {
+    throw new Error("Raw RGBA image dimensions are invalid");
+  }
+  if (data.length !== info.width * info.height * 4) {
+    throw new Error("Raw RGBA image byte count is invalid");
+  }
+  const imageData = new ImageData(
+    uint8ClampedArrayCopy(data),
+    info.width,
+    info.height
+  );
+  if (typeof OffscreenCanvas !== "undefined") {
+    const canvas = new OffscreenCanvas(info.width, info.height);
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.putImageData(imageData, 0, 0);
+      return canvas.convertToBlob({ type: "image/png" });
+    }
+  }
+  return rawRgbaImageBlobFromHtmlCanvas(imageData);
+}
+
+function rawRgbaImageBlobFromHtmlCanvas(imageData: ImageData): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = imageData.width;
+  canvas.height = imageData.height;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return Promise.reject(new Error("Canvas 2D context is unavailable"));
+  }
+  context.putImageData(imageData, 0, 0);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+        return;
+      }
+      reject(new Error("Canvas RGBA conversion failed"));
+    }, "image/png");
+  });
+}
+
+function uint8ClampedArrayCopy(data: Uint8Array): ImageDataArray {
+  const copy = new Uint8ClampedArray(new ArrayBuffer(data.byteLength));
+  copy.set(data);
+  return copy;
 }
 
 function deferredSvgImageIndexes(svg: string): number[] {
