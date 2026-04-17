@@ -325,3 +325,35 @@ fn parse_cff_charset_format2(
   }
   Some(sids)
 }
+
+///|
+/// Builds a CFF glyph_id to glyph_name table by combining the parsed CFF
+/// charset SIDs with Adobe Standard Strings and the custom CFF String INDEX.
+/// The returned array is indexed directly by glyph_id for synthetic cmap
+/// construction and SVG glyph name resolution.
+pub fn cff_glyph_name_table(data : Bytes, num_glyphs : Int) -> Array[String]? {
+  match parse_cff_charset(data, num_glyphs) {
+    Some(sids) => {
+      let names : Array[String] = []
+      for sid in sids {
+        match cff_sid_glyph_name(data, sid) {
+          Some(name) => names.push(name)
+          None => return None
+        }
+      }
+      Some(names)
+    }
+    None => None
+  }
+}
+
+///|
+fn cff_sid_glyph_name(data : Bytes, sid : Int) -> String? {
+  if sid < 0 {
+    return None
+  }
+  match adobe_standard_string(sid) {
+    Some(name) => Some(name)
+    None => cff_string_index_entry(data, sid - adobe_standard_strings.length())
+  }
+}
