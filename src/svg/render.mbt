@@ -720,7 +720,7 @@ fn write_svg_glyph_path_matrix(
   builder.write_string(" ")
   builder.write_string(format_svg_number((0.0 - matrix.c) * scale))
   builder.write_string(" ")
-  builder.write_string(format_svg_number(matrix.d * scale))
+  builder.write_string(format_svg_number((0.0 - matrix.d) * scale))
   builder.write_string(" ")
   builder.write_string(format_svg_number(matrix.e))
   builder.write_string(" ")

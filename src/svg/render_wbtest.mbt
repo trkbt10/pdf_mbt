@@ -145,7 +145,7 @@ test "render_page_svg scales embedded TrueType path transform by units per em" {
     build_embedded_truetype_text_fixture(),
   )
   let svg = render_page_svg(document.page(0))
-  assert_eq(svg.contains("transform=\"matrix(0.01 0 0 0.01 10 80)\""), true)
+  assert_eq(svg.contains("transform=\"matrix(0.01 0 0 -0.01 10 80)\""), true)
 }
 
 ///|
