@@ -11,6 +11,7 @@ test("revisit restores the cached image href on the freshly mounted SVG image", 
   const {
     patchDeferredSvgImagesForTest,
     resetPdfViewerPatchStats,
+    waitForPendingDeferredImageUrlChecks,
   } = await loadImagePatchHooks();
   const frames = installAnimationFrameQueue();
   resetPdfViewerPatchStats();
@@ -39,11 +40,12 @@ test("revisit restores the cached image href on the freshly mounted SVG image", 
 
   const revisitHref = revisitImage.getAttribute("href");
   const stats = globalThis.window.__pdfViewerPatchStats;
-  console.info("image revisit patch stats", JSON.stringify(stats));
   assert.equal(stats.invocations[0], 2);
-  assert.equal(stats.querySelectorHits[0], 1);
-  assert.equal(stats.successes[0], 1);
+  assert.equal(stats.querySelectorHits[0], 2);
+  assert.equal(stats.successes[0], 2);
   assert.equal(revisitHref, firstHref);
+  await waitForPendingDeferredImageUrlChecks();
+  assert.equal(stats.fetchOkBlobUrls[0], 2);
   await assertBlobUrlFetchable(revisitHref);
   revisitCleanup();
   URL.revokeObjectURL(firstHref);
