@@ -98,6 +98,25 @@ export class PdfDocument {
     return svg;
   }
 
+  pageToSvgDeferred(pageIndex) {
+    this.assertOpen();
+    const svg = this.wasm.pdf_page_to_svg_deferred(this.handle, pageIndex);
+    if (!svg) {
+      throw new Error("Failed to render deferred page SVG");
+    }
+    return svg;
+  }
+
+  pageSvgImageData(pageIndex, imageIndex) {
+    this.assertOpen();
+    return {
+      data: toUint8Array(
+        this.wasm.pdf_page_svg_image_data(this.handle, pageIndex, imageIndex)
+      ),
+      mime: this.wasm.pdf_page_svg_image_mime(this.handle, pageIndex, imageIndex),
+    };
+  }
+
   pageImageCount(page) {
     this.assertOpen();
     const count = this.wasm.pdf_page_image_count(this.handle, page);

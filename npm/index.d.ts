@@ -37,6 +37,11 @@ export interface PdfImageInfo {
   colorSpace: string | null;
 }
 
+export interface PdfSvgImageData {
+  data: Uint8Array;
+  mime: string;
+}
+
 export interface PdfPageRenderData {
   width: number;
   height: number;
@@ -81,6 +86,8 @@ export class PdfDocument {
   pageGeometry(pageIndex: number): PdfPageGeometry;
   pageTextPositions(pageIndex: number): PdfRenderText[];
   pageToSvg(pageIndex: number): string;
+  pageToSvgDeferred(pageIndex: number): string;
+  pageSvgImageData(pageIndex: number, imageIndex: number): PdfSvgImageData;
   pageImageCount(page: number): number;
   pageImageInfo(page: number, imageIndex: number): PdfImageInfo;
   pageImageRGBA(page: number, imageIndex: number): Uint8Array;
