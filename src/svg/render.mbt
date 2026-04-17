@@ -14,6 +14,24 @@ priv struct SvgPositionedText {
 }
 
 ///|
+priv struct SvgClipDef {
+  id : Int
+  entries : Array[@graphics.ClipEntry]
+  parent_id : Int?
+}
+
+///|
+priv struct SvgClipRegistry {
+  clips : Array[SvgClipDef]
+  id_by_signature : Map[String, Int]
+}
+
+///|
+fn SvgClipRegistry::new() -> SvgClipRegistry {
+  SvgClipRegistry::{ clips: [], id_by_signature: Map::new() }
+}
+
+///|
 fn page_width(page : @reader.PdfPage) -> Double {
   let (width, height) = page_dimensions(page)
   if page_is_rotated_sideways(page) {
@@ -165,6 +183,82 @@ fn trim_trailing_zeros(s : String) -> String {
       builder.write_char(UInt16::unsafe_to_char(s.code_unit_at(i)))
     }
     builder.to_string()
+  }
+}
+
+///|
+/// Builds a stable clipping path signature for the SVG clipPath registry.
+/// Each accumulated ClipEntry contributes its SVG path data plus the PDF
+/// clipping fill rule, so later elements with the same clipping_path reuse the
+/// same clip-path attribute id.
+fn svg_clip_signature(
+  state : @graphics.GraphicsState,
+  page_height : Double,
+) -> String {
+  let clips = state.clipping_path.clips
+  if clips.length() == 0 {
+    return ""
+  }
+  let builder = StringBuilder::new()
+  for entry in clips {
+    svg_write_clip_entry_signature(builder, entry, page_height)
+  }
+  builder.to_string()
+}
+
+///|
+fn svg_write_clip_entry_signature(
+  builder : StringBuilder,
+  entry : @graphics.ClipEntry,
+  page_height : Double,
+) -> Unit {
+  match entry.rule {
+    @graphics.FillRule::EvenOdd => builder.write_string("E:")
+    @graphics.FillRule::NonZero => builder.write_string("N:")
+  }
+  builder.write_string(
+    svg_path_data(entry.path, @graphics.GraphicsMatrix::identity(), page_height),
+  )
+  builder.write_string("|")
+}
+
+///|
+/// Registers a GraphicsState clipping path and returns the reusable clipPath
+/// id. Id 0 means no clip-path attribute is needed because there are no
+/// accumulated clips beyond the initial page clip.
+fn svg_register_clip(
+  registry : SvgClipRegistry,
+  state : @graphics.GraphicsState,
+  page_height : Double,
+) -> Int {
+  let signature = svg_clip_signature(state, page_height)
+  if signature.length() == 0 {
+    return 0
+  }
+  match registry.id_by_signature.get(signature) {
+    Some(id) => id
+    None => {
+      let mut parent_id : Int? = None
+      let prefix = StringBuilder::new()
+      for entry in state.clipping_path.clips {
+        svg_write_clip_entry_signature(prefix, entry, page_height)
+        let prefix_signature = prefix.to_string()
+        match registry.id_by_signature.get(prefix_signature) {
+          Some(id) => parent_id = Some(id)
+          None => {
+            let id = registry.clips.length() + 1
+            let entries : Array[@graphics.ClipEntry] = [entry]
+            registry.clips.push(SvgClipDef::{ id, entries, parent_id })
+            registry.id_by_signature[prefix_signature] = id
+            parent_id = Some(id)
+          }
+        }
+      }
+      match parent_id {
+        Some(id) => id
+        None => 0
+      }
+    }
   }
 }
 
