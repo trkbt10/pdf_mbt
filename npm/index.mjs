@@ -117,6 +117,12 @@ export class PdfDocument {
     };
   }
 
+  pageSvgImageInfo(pageIndex, imageIndex) {
+    this.assertOpen();
+    const json = this.wasm.pdf_page_svg_image_info(this.handle, pageIndex, imageIndex);
+    return json ? JSON.parse(json) : null;
+  }
+
   pageImageCount(page) {
     this.assertOpen();
     const count = this.wasm.pdf_page_image_count(this.handle, page);
