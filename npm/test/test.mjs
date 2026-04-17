@@ -50,10 +50,14 @@ assert.ok(
   "expected SVG text and graphics to avoid a flipped parent group"
 );
 assert.ok(
-  svg.includes("<text transform=\"matrix(24 0 0 -24 100 296)"),
-  "expected SVG text to use top-down page coordinates"
+  svg.includes("<text transform=\"matrix(1 0 0 1 100 296)"),
+  "expected SVG text to use decomposed transform (font-size factored out)"
 );
-assert.ok(svg.includes("HelloWorld"), "expected SVG text content");
+assert.ok(
+  svg.includes("font-size=\"24\""),
+  "expected SVG text to use actual font size instead of 1"
+);
+assert.ok(svg.includes(">H</tspan>") && svg.includes(">d</tspan>"), "expected SVG text content with per-character tspans");
 console.log("✓ Lazy page geometry and text positions");
 
 // Test 3: SVG path output
