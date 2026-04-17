@@ -102,6 +102,9 @@ fn render_page_svg_impl(
 ) -> String {
   let width = page_width(page)
   let height = page_height(page)
+  let graphics_events = page_svg_graphics_events(page)
+  let clip_registry = build_svg_clip_registry(graphics_events, height)
+  let text_info = page_svg_text_render_info(page, clip_registry, height)
   let builder = StringBuilder::new()
   builder.write_string(
     "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ",
@@ -119,8 +122,29 @@ fn render_page_svg_impl(
   builder.write_string("\" height=\"")
   builder.write_string(format_svg_number(height + 1.0))
   builder.write_string("\" fill=\"#ffffff\"/>")
-  page_render_graphics_svg(builder, page, height, deferred_images)
-  page_render_texts_svg(builder, page, height)
+  write_svg_clip_defs(builder, clip_registry, height)
+  page_render_graphics_svg(
+    builder,
+    page,
+    height,
+    deferred_images,
+    graphics_events,
+    clip_registry,
+  )
+  page_render_texts_svg(builder, page, height, text_info)
   builder.write_string("</svg>")
   builder.to_string()
+}
+
+///|
+fn page_svg_graphics_events(
+  page : @reader.PdfPage,
+) -> Array[@graphics.GraphicsEvent] {
+  let result : Result[Array[@graphics.GraphicsEvent], @reader.PdfDocumentError] = try? page.graphics_events(
+    @reader.GraphicsPageOptions::with_materialized_xobjects(None),
+  )
+  match result {
+    Ok(events) => events
+    Err(_) => []
+  }
 }

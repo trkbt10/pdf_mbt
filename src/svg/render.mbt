@@ -27,6 +27,13 @@ priv struct SvgClipRegistry {
 }
 
 ///|
+priv struct SvgTextRenderInfo {
+  program : @text.TextProgram
+  fill_colours : Array[String]
+  clip_ids : Array[Int]
+}
+
+///|
 fn SvgClipRegistry::new() -> SvgClipRegistry {
   SvgClipRegistry::{ clips: [], id_by_signature: Map::new() }
 }
@@ -263,6 +270,22 @@ fn svg_register_clip(
 }
 
 ///|
+fn svg_clip_id_for_state(
+  registry : SvgClipRegistry,
+  state : @graphics.GraphicsState,
+  page_height : Double,
+) -> Int {
+  let signature = svg_clip_signature(state, page_height)
+  if signature.length() == 0 {
+    return 0
+  }
+  match registry.id_by_signature.get(signature) {
+    Some(id) => id
+    None => 0
+  }
+}
+
+///|
 /// Builds the SVG clipPath registry from graphics events by registering each
 /// rendered element's current clipping path. Paths, image XObjects, and inline
 /// images all carry a GraphicsState snapshot with the accumulated clips.
@@ -345,24 +368,32 @@ fn page_render_graphics_svg(
   page : @reader.PdfPage,
   page_height : Double,
   deferred_images : Array[SvgImageEntry]?,
+  events : Array[@graphics.GraphicsEvent],
+  registry : SvgClipRegistry,
 ) -> Unit {
-  let result : Result[Array[@graphics.GraphicsEvent], @reader.PdfDocumentError] = try? page.graphics_events(
-    @reader.GraphicsPageOptions::with_materialized_xobjects(None),
-  )
-  match result {
-    Ok(events) =>
-      for event in events {
-        match event {
-          @graphics.GraphicsEvent::PathPainted(_, operation, path, state) =>
-            page_render_path_svg(builder, operation, path, state, page_height, 0)
-          @graphics.GraphicsEvent::ImagePainted(_, descriptor, state) =>
-            page_render_image_svg(
-              builder, page, descriptor, state, page_height, 0, deferred_images,
-            )
-          _ => ()
-        }
-      }
-    Err(_) => ()
+  for event in events {
+    match event {
+      @graphics.GraphicsEvent::PathPainted(_, operation, path, state) =>
+        page_render_path_svg(
+          builder,
+          operation,
+          path,
+          state,
+          page_height,
+          svg_clip_id_for_state(registry, state, page_height),
+        )
+      @graphics.GraphicsEvent::ImagePainted(_, descriptor, state) =>
+        page_render_image_svg(
+          builder,
+          page,
+          descriptor,
+          state,
+          page_height,
+          svg_clip_id_for_state(registry, state, page_height),
+          deferred_images,
+        )
+      _ => ()
+    }
   }
 }
 
@@ -1007,21 +1038,20 @@ fn page_render_texts_svg(
   builder : StringBuilder,
   page : @reader.PdfPage,
   page_height : Double,
+  info : SvgTextRenderInfo?,
 ) -> Unit {
-  let result : Result[@text.TextProgram, @reader.PdfDocumentError] = try? page.text_program(
-    @reader.TextPageOptions::default(),
-  )
-  match result {
-    Ok(program) => {
+  match info {
+    Some(info) => {
+      let program = info.program
       let glyph_groups = text_program_span_glyphs(program)
-      let fill_colours = page_svg_text_fill_colours(page, program)
       let font_families = page_svg_font_families(page)
       let embedded_fonts = page_svg_embedded_fonts(page)
       for index in 0..<program.spans.length() {
         let span = program.spans[index]
         let glyphs = span_glyphs(glyph_groups, index)
         if span.text.length() > 0 || glyphs.length() > 0 {
-          let fill_colour = span_fill_colour(fill_colours, index)
+          let fill_colour = span_fill_colour(info.fill_colours, index)
+          let clip_id = span_clip_id(info.clip_ids, index)
           match span_svg_embedded_font(embedded_fonts, span) {
             Some(ttf) => {
               let path_builder = StringBuilder::new()
@@ -1032,7 +1062,7 @@ fn page_render_texts_svg(
                   ttf,
                   page_height,
                   fill_colour,
-                  0,
+                  clip_id,
                 ) {
                 builder.write_string(path_builder.to_string())
               } else if span.text.length() > 0 {
@@ -1043,7 +1073,7 @@ fn page_render_texts_svg(
                   span_svg_font_family(font_families, span),
                   page_height,
                   fill_colour,
-                  0,
+                  clip_id,
                 )
               }
             }
@@ -1056,14 +1086,34 @@ fn page_render_texts_svg(
                   span_svg_font_family(font_families, span),
                   page_height,
                   fill_colour,
-                  0,
+                  clip_id,
                 )
               }
           }
         }
       }
     }
-    Err(_) => ()
+    None => ()
+  }
+}
+
+///|
+fn page_svg_text_render_info(
+  page : @reader.PdfPage,
+  registry : SvgClipRegistry,
+  page_height : Double,
+) -> SvgTextRenderInfo? {
+  let result : Result[@text.TextProgram, @reader.PdfDocumentError] = try? page.text_program(
+    @reader.TextPageOptions::default(),
+  )
+  match result {
+    Ok(program) =>
+      Some(SvgTextRenderInfo::{
+        program,
+        fill_colours: page_svg_text_fill_colours(page, program),
+        clip_ids: page_svg_text_clip_ids(page, program, registry, page_height),
+      })
+    Err(_) => None
   }
 }
 
@@ -1119,6 +1169,65 @@ fn page_svg_text_fill_colours(
 }
 
 ///|
+/// Registers and returns per-span clip-path ids for fallback `<text>` output
+/// and glyph path text. Text spans are correlated with graphics events by
+/// decoded-content offset, and ClipChanged events update the current
+/// GraphicsState clipping_path before the span is rendered.
+fn page_svg_text_clip_ids(
+  page : @reader.PdfPage,
+  program : @text.TextProgram,
+  registry : SvgClipRegistry,
+  page_height : Double,
+) -> Array[Int] {
+  let clip_ids : Array[Int] = []
+  let result : Result[Array[@graphics.GraphicsEvent], @reader.PdfDocumentError] = try? page.graphics_events(
+    @reader.GraphicsPageOptions::with_materialized_resources(None),
+  )
+  let events = match result {
+    Ok(value) => value
+    Err(_) => []
+  }
+  let initial_result : Result[
+    @graphics.GraphicsInitialState,
+    @reader.PdfDocumentError,
+  ] = try? page.graphics_initial_state(
+    @reader.GraphicsPageOptions::with_materialized_resources(None),
+  )
+  let mut current_state = match initial_result {
+    Ok(initial) => Some(@graphics.GraphicsState::initial(initial))
+    Err(_) => None
+  }
+  let mut event_index = 0
+  for span in program.spans {
+    while event_index < events.length() &&
+          graphics_event_offset(events[event_index]) <= span.offset {
+      match events[event_index] {
+        @graphics.GraphicsEvent::ClipChanged(_, clip) =>
+          match current_state {
+            Some(state) => {
+              let updated = state.copy()
+              updated.clipping_path = clip.copy()
+              current_state = Some(updated)
+            }
+            None => ()
+          }
+        _ =>
+          match graphics_event_state(events[event_index]) {
+            Some(state) => current_state = Some(state)
+            None => ()
+          }
+      }
+      event_index += 1
+    }
+    match current_state {
+      Some(state) => clip_ids.push(svg_register_clip(registry, state, page_height))
+      None => clip_ids.push(0)
+    }
+  }
+  clip_ids
+}
+
+///|
 fn graphics_event_offset(event : @graphics.GraphicsEvent) -> Int64 {
   match event {
     @graphics.GraphicsEvent::StateSaved(offset, _)
@@ -1169,6 +1278,15 @@ fn span_fill_colour(colours : Array[String], index : Int) -> String {
     colours[index]
   } else {
     "#000000"
+  }
+}
+
+///|
+fn span_clip_id(clip_ids : Array[Int], index : Int) -> Int {
+  if index >= 0 && index < clip_ids.length() {
+    clip_ids[index]
+  } else {
+    0
   }
 }
 
