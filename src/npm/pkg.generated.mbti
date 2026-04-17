@@ -50,6 +50,10 @@ pub fn pdf_page_to_svg(Int, Int) -> String
 
 pub fn pdf_page_to_svg_deferred(Int, Int) -> String
 
+pub fn test_graphics_walk_counter() -> Int
+
+pub fn test_reset_graphics_walk_counter() -> Unit
+
 // Errors
 
 // Types and methods
