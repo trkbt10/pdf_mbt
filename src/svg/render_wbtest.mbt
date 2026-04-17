@@ -606,6 +606,50 @@ test "render_page_svg_deferred emits image placeholders and entries" {
 }
 
 ///|
+test "render_page_svg emits clipPath and clip-path for clipped image" {
+  let document = @reader.PdfDocument::open(build_clipped_rgb_image_fixture())
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<defs><clipPath id=\"c1\">"), true)
+  assert_eq(svg.contains("<image"), true)
+  assert_eq(svg.contains("clip-path=\"url(#c1)\""), true)
+}
+
+///|
+test "render_page_svg omits clipPath for default page clip only" {
+  let document = @reader.PdfDocument::open(build_rgb_image_fixture())
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<clipPath"), false)
+  assert_eq(svg.contains("clip-path=\""), false)
+}
+
+///|
+test "render_page_svg nests clipPath definitions for stacked clips" {
+  let document = @reader.PdfDocument::open(
+    build_stacked_clipped_rgb_image_fixture(),
+  )
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<clipPath id=\"c1\">"), true)
+  assert_eq(
+    svg.contains("<clipPath id=\"c2\" clip-path=\"url(#c1)\">"),
+    true,
+  )
+  assert_eq(svg.contains("<image"), true)
+  assert_eq(svg.contains("clip-path=\"url(#c2)\""), true)
+}
+
+///|
+test "render_page_svg emits clip-path for clipped fallback text" {
+  let document = @reader.PdfDocument::open(
+    build_clipped_text_fallback_fixture(),
+  )
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<clipPath id=\"c1\">"), true)
+  assert_eq(svg.contains("<text"), true)
+  assert_eq(svg.contains("<text transform="), true)
+  assert_eq(svg.contains("clip-path=\"url(#c1)\""), true)
+}
+
+///|
 fn build_svg_path_fixture() -> Bytes {
   let content = b"2 0 0 2 10 20 cm 1 2 m 3 4 l S"
   build_single_page_pdf(
@@ -652,6 +696,43 @@ fn build_rgb_image_fixture() -> Bytes {
       Bytes::from_array([0xff, 0x00, 0x00]) +
       b"\nendstream",
     ],
+  )
+}
+
+///|
+fn build_clipped_rgb_image_fixture() -> Bytes {
+  let content = b"10 10 30 30 re W n q 20 0 0 20 0 0 cm /Im1 Do Q"
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /XObject << /Im1 5 0 R >> >> /Contents 4 0 R >>",
+    content,
+    [rgb_1x1_image_object()],
+  )
+}
+
+///|
+fn build_stacked_clipped_rgb_image_fixture() -> Bytes {
+  let content = b"10 10 60 60 re W n 20 20 40 40 re W n q 20 0 0 20 0 0 cm /Im1 Do Q"
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /XObject << /Im1 5 0 R >> >> /Contents 4 0 R >>",
+    content,
+    [rgb_1x1_image_object()],
+  )
+}
+
+///|
+fn rgb_1x1_image_object() -> Bytes {
+  b"<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length 3 >>\nstream\n" +
+  Bytes::from_array([0xff, 0x00, 0x00]) +
+  b"\nendstream"
+}
+
+///|
+fn build_clipped_text_fallback_fixture() -> Bytes {
+  let content = b"10 10 30 30 re W n BT /F1 12 Tf 1 0 0 1 12 20 Tm (A) Tj ET"
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /ClipFallback /FirstChar 65 /LastChar 65 /Widths [600] /Encoding /WinAnsiEncoding >> >> >> /Contents 4 0 R >>",
+    content,
+    [],
   )
 }
 
