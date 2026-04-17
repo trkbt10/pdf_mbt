@@ -440,6 +440,7 @@ fn build_deferred_svg_image_page(
       match result {
         Ok(events) => {
           let page_entries = page_image_entries(pdf_page)
+          let extracted_cache : Map[@objects.PdfName, @graphics.ExtractedImage] = Map::new()
           let entries : Array[@svg.SvgImageEntry] = []
           for event in events {
             match event {
@@ -449,7 +450,10 @@ fn build_deferred_svg_image_page(
                     match
                       page_image_entry_by_name_from_entries(page_entries, name) {
                       Some(entry) =>
-                        match deferred_svg_image_entry_data(entry, state) {
+                        match
+                          deferred_svg_image_entry_data_cached(
+                            entry, state, extracted_cache,
+                          ) {
                           Some(image) => entries.push(image)
                           None => ()
                         }
@@ -484,37 +488,76 @@ fn page_image_entry_by_name_from_entries(
 }
 
 ///|
+fn deferred_svg_image_entry_data_cached(
+  entry : PageImageEntry,
+  state : @graphics.GraphicsState,
+  extracted_cache : Map[@objects.PdfName, @graphics.ExtractedImage],
+) -> @svg.SvgImageEntry? {
+  match entry.name {
+    Some(name) =>
+      match extracted_cache.get(name) {
+        Some(extracted) => svg_image_entry_from_extracted(extracted, state)
+        None =>
+          match extract_deferred_svg_image(entry) {
+            Some(extracted) => {
+              extracted_cache[name] = extracted
+              svg_image_entry_from_extracted(extracted, state)
+            }
+            None => None
+          }
+      }
+    None => deferred_svg_image_entry_data(entry, state)
+  }
+}
+
+///|
 fn deferred_svg_image_entry_data(
   entry : PageImageEntry,
   state : @graphics.GraphicsState,
 ) -> @svg.SvgImageEntry? {
+  match extract_deferred_svg_image(entry) {
+    Some(extracted) => svg_image_entry_from_extracted(extracted, state)
+    None => None
+  }
+}
+
+///|
+fn extract_deferred_svg_image(
+  entry : PageImageEntry,
+) -> @graphics.ExtractedImage? {
   let result : Result[@graphics.ExtractedImage, @graphics.PdfGraphicsError] = try? @graphics.extract_image_xobject(
     entry.name,
     prepare_render_image_stream(entry.stream, entry.resources),
     0L,
   )
   match result {
-    Ok(extracted) =>
-      match extracted.data {
-        @graphics.ExtractedImageData::DeviceRgbRaster(raster) =>
-          raw_rgba_svg_image_entry(raster.width, raster.height, raster.rgba)
-        @graphics.ExtractedImageData::StencilMaskRaster(mask) => {
-          let paint_result : Result[
-            @graphics.DeviceRgbColour,
-            @graphics.PdfGraphicsError,
-          ] = try? state.current_colour_as_rgb(@graphics.ColourUse::Nonstroking)
-          let paint = match paint_result {
-            Ok(rgb) => rgb
-            Err(_) =>
-              @graphics.DeviceRgbColour::{ red: 0.0, green: 0.0, blue: 0.0 }
-          }
-          let raster = @graphics.paint_stencil_mask_with_colour(mask, paint)
-          raw_rgba_svg_image_entry(raster.width, raster.height, raster.rgba)
-        }
-        @graphics.ExtractedImageData::EncodedImageData(data, filters) =>
-          browser_encoded_svg_image_entry(data, filters)
-      }
+    Ok(extracted) => Some(extracted)
     Err(_) => None
+  }
+}
+
+///|
+fn svg_image_entry_from_extracted(
+  extracted : @graphics.ExtractedImage,
+  state : @graphics.GraphicsState,
+) -> @svg.SvgImageEntry? {
+  match extracted.data {
+    @graphics.ExtractedImageData::DeviceRgbRaster(raster) =>
+      raw_rgba_svg_image_entry(raster.width, raster.height, raster.rgba)
+    @graphics.ExtractedImageData::StencilMaskRaster(mask) => {
+      let paint_result : Result[
+        @graphics.DeviceRgbColour,
+        @graphics.PdfGraphicsError,
+      ] = try? state.current_colour_as_rgb(@graphics.ColourUse::Nonstroking)
+      let paint = match paint_result {
+        Ok(rgb) => rgb
+        Err(_) => @graphics.DeviceRgbColour::{ red: 0.0, green: 0.0, blue: 0.0 }
+      }
+      let raster = @graphics.paint_stencil_mask_with_colour(mask, paint)
+      raw_rgba_svg_image_entry(raster.width, raster.height, raster.rgba)
+    }
+    @graphics.ExtractedImageData::EncodedImageData(data, filters) =>
+      browser_encoded_svg_image_entry(data, filters)
   }
 }
 
