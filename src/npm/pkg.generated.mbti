@@ -36,9 +36,17 @@ pub fn pdf_page_image_info_json(Int, Int, Int) -> String
 
 pub fn pdf_page_image_rgba(Int, Int, Int) -> JSUint8Array
 
+pub fn pdf_page_svg_image_count(Int, Int) -> Int
+
+pub fn pdf_page_svg_image_data(Int, Int, Int) -> JSUint8Array
+
+pub fn pdf_page_svg_image_mime(Int, Int, Int) -> String
+
 pub fn pdf_page_text_positions_json(Int, Int) -> String
 
 pub fn pdf_page_to_svg(Int, Int) -> String
+
+pub fn pdf_page_to_svg_deferred(Int, Int) -> String
 
 // Errors
 

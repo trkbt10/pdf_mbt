@@ -133,10 +133,14 @@ pub fn pdf_page_svg_image_count(handle : Int, page : Int) -> Int {
 }
 
 ///|
-pub fn pdf_page_svg_image_data(handle : Int, page : Int, index : Int) -> Bytes {
+pub fn pdf_page_svg_image_data(
+  handle : Int,
+  page : Int,
+  index : Int,
+) -> JSUint8Array {
   match get_deferred_svg_image(handle, page, index) {
-    Some(image) => image.data
-    None => b""
+    Some(image) => bytes_to_uint8array(image.data)
+    None => bytes_to_uint8array(b"")
   }
 }
 

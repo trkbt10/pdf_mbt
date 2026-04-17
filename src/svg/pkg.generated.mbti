@@ -2,10 +2,23 @@
 package "trkbt10/pdf/src/svg"
 
 import {
+  "moonbitlang/core/debug",
   "trkbt10/pdf/src/reader",
 }
 
 // Values
+pub fn adobe_standard_string(Int) -> String?
+
+pub fn cff_charset_offset(Bytes) -> Int
+
+pub fn cff_cid_count(Bytes) -> Int
+
+pub fn cff_cid_to_glyph_id_map(Bytes, Int) -> Map[Int, Int]?
+
+pub fn cff_glyph_name_table(Bytes, Int) -> Array[String]?
+
+pub fn cff_string_index_entry(Bytes, Int) -> String?
+
 pub fn font_descriptor_lookup_order_alignment() -> Unit
 
 pub fn font_file3_cid_font_type0c_subtype_alignment() -> Unit
@@ -18,7 +31,15 @@ pub fn font_file_type1_non_compact_alignment() -> Unit
 
 pub fn glyph_path_fill_colour_alignment() -> Unit
 
+pub fn is_cid_keyed_cff(Bytes) -> Bool
+
+pub fn parse_cff_charset(Bytes, Int) -> Array[Int]?
+
+pub fn parse_cff_cid_charset(Bytes, Int) -> Array[Int]?
+
 pub fn render_page_svg(@reader.PdfPage) -> String
+
+pub fn render_page_svg_deferred(@reader.PdfPage) -> SvgDeferredResult
 
 pub fn svg_axis_aligned_image_bounds_alignment() -> Unit
 
@@ -28,16 +49,30 @@ pub fn svg_image_precision_acceptance_alignment() -> Unit
 
 pub fn svg_non_axis_aligned_image_transform_alignment() -> Unit
 
+pub fn svg_renderer_glyph_id_resolution_alignment() -> Unit
+
 pub fn text_colour_from_graphics_state_alignment() -> Unit
 
 pub fn text_element_fill_colour_alignment() -> Unit
 
 pub fn text_glyph_event_colour_propagation_alignment() -> Unit
 
+pub fn winansi_glyph_name(Int) -> String
+
 // Errors
 
 // Types and methods
+pub(all) struct SvgDeferredResult {
+  svg : String
+  images : Array[SvgImageEntry]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SvgImageEntry {
+  mime_type : String
+  data : Bytes
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 
 // Traits
+

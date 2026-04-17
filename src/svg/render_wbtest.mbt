@@ -537,6 +537,21 @@ test "render_page_svg skips unsupported encoded image data without crashing" {
 }
 
 ///|
+test "render_page_svg_deferred emits image placeholders and entries" {
+  let document = @reader.PdfDocument::open(
+    @fs.read_file_to_bytes("spec/pdf20examples/PDF 2.0 image with BPC.pdf"),
+  )
+  let result = render_page_svg_deferred(document.page(0))
+  assert_eq(result.svg.has_prefix("<svg"), true)
+  assert_eq(result.svg.contains("data-image-index=\"0\" href=\"\""), true)
+  assert_eq(result.svg.contains("data-image-index=\"1\" href=\"\""), true)
+  assert_eq(result.svg.contains("data:image/"), false)
+  assert_eq(result.images.length(), 2)
+  assert_eq(result.images[0].mime_type, "image/png")
+  assert_true(result.images[0].data.length() > 0)
+}
+
+///|
 fn build_svg_path_fixture() -> Bytes {
   let content = b"2 0 0 2 10 20 cm 1 2 m 3 4 l S"
   build_single_page_pdf(
