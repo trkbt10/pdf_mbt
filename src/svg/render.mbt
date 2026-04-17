@@ -819,31 +819,55 @@ fn render_glyph_as_path(
   if svg_glyph_is_zero_width_spacing(glyph) {
     return true
   }
-  match ttf.cmap.get(glyph.glyph.source_code) {
-    Some(gid) => {
-      let outline : Array[@svgpath.PathCommand] = ttf.glyph_outline(gid)
-      if outline.length() == 0 {
-        return svg_glyph_is_spacing(glyph)
+  let gid = svg_resolve_glyph_id(ttf, glyph)
+  if gid < 0 || gid >= ttf.num_glyphs {
+    return false
+  }
+  let outline : Array[@svgpath.PathCommand] = ttf.glyph_outline(gid)
+  if outline.length() == 0 {
+    return svg_glyph_is_spacing(glyph)
+  }
+  let d = @font.path_commands_to_svg_d(outline)
+  if d.length() == 0 {
+    return svg_glyph_is_spacing(glyph)
+  }
+  builder.write_string("<path d=\"")
+  builder.write_string(d)
+  builder.write_string("\" transform=\"matrix(")
+  write_svg_glyph_path_matrix(
+    builder,
+    glyph.rendering_matrix.matrix,
+    units_per_em,
+    page_height,
+  )
+  builder.write_string(")\" fill=\"")
+  builder.write_string(fill_colour)
+  builder.write_string("\"/>")
+  true
+}
+
+///|
+/// Resolves the glyph ID for a text glyph event. CID fonts use the CID
+/// directly as the glyph ID (CIDFontType0/Type1C fonts encode glyphs by CID
+/// order). Simple fonts look up the source code in the font's cmap table.
+/// Returns -1 if the glyph ID cannot be resolved.
+fn svg_resolve_glyph_id(
+  ttf : @font.TTFont,
+  glyph : @text.TextGlyphEvent,
+) -> Int {
+  match glyph.glyph.glyph {
+    @text.GlyphIdentifier::CID(cid) => cid
+    @text.GlyphIdentifier::CharacterCode(code) =>
+      match ttf.cmap.get(code) {
+        Some(gid) => gid
+        None => -1
       }
-      let d = @font.path_commands_to_svg_d(outline)
-      if d.length() == 0 {
-        return svg_glyph_is_spacing(glyph)
+    @text.GlyphIdentifier::GlyphName(_) =>
+      match ttf.cmap.get(glyph.glyph.source_code) {
+        Some(gid) => gid
+        None => -1
       }
-      builder.write_string("<path d=\"")
-      builder.write_string(d)
-      builder.write_string("\" transform=\"matrix(")
-      write_svg_glyph_path_matrix(
-        builder,
-        glyph.rendering_matrix.matrix,
-        units_per_em,
-        page_height,
-      )
-      builder.write_string(")\" fill=\"")
-      builder.write_string(fill_colour)
-      builder.write_string("\"/>")
-      true
-    }
-    None => false
+    @text.GlyphIdentifier::Notdef => 0
   }
 }
 
@@ -1342,7 +1366,15 @@ fn parse_svg_font_file3_stream(stream : @objects.PdfStream) -> @font.TTFont? {
     stream,
   )
   match decoded {
-    Ok(bytes) => @font.parse_font(bytes)
+    Ok(bytes) =>
+      if is_raw_cff(bytes) {
+        match wrap_cff_in_otf(bytes) {
+          Some(wrapped) => @font.parse_font(wrapped)
+          None => None
+        }
+      } else {
+        @font.parse_font(bytes)
+      }
     Err(_) => None
   }
 }
