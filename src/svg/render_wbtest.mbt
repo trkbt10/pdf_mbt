@@ -327,6 +327,24 @@ test "diagnostic local-fixture pages 6 7 tofu glyphs" {
 }
 
 ///|
+test "local-fixture pages 6 7 render no notdef paths" {
+  let path = "<local-fixture>"
+  if !@fs.path_exists(path) {
+    println("diagnostic skipped: " + path + " is not present")
+    return
+  }
+  let document = @reader.PdfDocument::open(@fs.read_file_to_bytes(path))
+  let mut rendered_notdef_paths = 0
+  for page_index in [5, 6] {
+    let page = document.page(page_index)
+    let svg = render_page_svg(page)
+    assert_true(svg.length() > 0)
+    rendered_notdef_paths += count_rendered_non_source_notdef_paths(page)
+  }
+  assert_eq(rendered_notdef_paths, 0)
+}
+
+///|
 test "render_page_svg renders FontFile3 OpenType glyphs as paths" {
   let document = @reader.PdfDocument::open(
     build_embedded_fontfile3_text_fixture(),
@@ -1398,6 +1416,61 @@ fn diagnostic_hex(value : Int) -> String {
     remaining = remaining >> 4
   }
   output
+}
+
+///|
+fn count_rendered_non_source_notdef_paths(page : @reader.PdfPage) -> Int {
+  let result : Result[@text.TextProgram, @reader.PdfDocumentError] = try? page.text_program(
+    @reader.TextPageOptions::default(),
+  )
+  match result {
+    Ok(program) => {
+      let glyph_groups = text_program_span_glyphs(program)
+      let embedded_fonts = page_svg_embedded_fonts(page)
+      let mut count = 0
+      for index in 0..<program.spans.length() {
+        let span = program.spans[index]
+        match span.font_name {
+          Some(font_name) =>
+            match embedded_fonts.get(font_name) {
+              Some(ttf) =>
+                count += count_span_rendered_non_source_notdef_paths(
+                  span_glyphs(glyph_groups, index),
+                  ttf,
+                  page_height(page),
+                )
+              None => ()
+            }
+          None => ()
+        }
+      }
+      count
+    }
+    Err(_) => 0
+  }
+}
+
+///|
+fn count_span_rendered_non_source_notdef_paths(
+  glyphs : Array[@text.TextGlyphEvent],
+  ttf : @font.TTFont,
+  page_height : Double,
+) -> Int {
+  let mut count = 0
+  let units_per_em = svg_font_units_per_em(ttf)
+  for glyph in glyphs {
+    let gid = svg_resolve_glyph_id(ttf, glyph)
+    if gid == 0 && !svg_glyph_is_notdef_source(glyph) {
+      let builder = StringBuilder::new()
+      if render_glyph_as_path(
+          builder, glyph, ttf, units_per_em, page_height, "#000000", 0,
+        ) &&
+        builder.to_string().contains("<path") {
+        count += 1
+      }
+    }
+  }
+  count
 }
 
 ///|
