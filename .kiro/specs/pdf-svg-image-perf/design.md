@@ -123,3 +123,17 @@ The existing `pageToSvg()` is unchanged — tests continue using inline base64.
 - `npm/index.mjs`, `npm/index.cjs` — add JS wrapper methods
 - `npm/index.d.ts` — add TypeScript types
 - `npm/demo/src/PdfViewer.tsx` — switch to deferred mode
+
+## Acceptance criteria
+
+The <local-fixture> page 7 no browser block criterion is that
+after deferred loading is enabled, inserting the page's SVG into the
+DOM does not block the main thread beyond 100ms. Image data loading
+happens asynchronously through `URL.createObjectURL(blob)` after the
+SVG is visible.
+
+The existing `pageToSvg(pageIndex)` path remains unchanged so that
+the test suite (npm visual regression via rsvg-convert + inline
+base64 output, and `moon test --target native`) continues to pass.
+The deferred API is additive and does not replace the existing
+synchronous path.
