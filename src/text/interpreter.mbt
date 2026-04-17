@@ -5,7 +5,18 @@ pub fn interpret_text(
   initial : TextInitialState,
 ) -> TextProgram raise PdfTextError {
   let interpreter = TextInterpreter::new(resources, initial)
+  let started = if text_interpret_diagnostics_enabled.val {
+    @env.now()
+  } else {
+    0UL
+  }
   interpreter.interpret(content.instructions)
+  if text_interpret_diagnostics_enabled.val {
+    text_interpret_phase_record(
+      "interpret_loop",
+      text_interpret_elapsed(started),
+    )
+  }
   TextProgram::{
     events: interpreter.events.copy(),
     spans: interpreter.spans.copy(),
@@ -60,6 +71,23 @@ fn TextInterpreter::interpret(
 
 ///|
 fn TextInterpreter::interpret_operation(
+  self : TextInterpreter,
+  operation : @content.ContentOperation,
+) -> Unit raise PdfTextError {
+  if text_interpret_diagnostics_enabled.val {
+    let started = @env.now()
+    self.interpret_operation_unmeasured(operation)
+    text_interpret_operator_record(
+      text_operator_label(operation.operator),
+      text_interpret_elapsed(started),
+    )
+  } else {
+    self.interpret_operation_unmeasured(operation)
+  }
+}
+
+///|
+fn TextInterpreter::interpret_operation_unmeasured(
   self : TextInterpreter,
   operation : @content.ContentOperation,
 ) -> Unit raise PdfTextError {
@@ -334,6 +362,10 @@ fn TextInterpreter::show_string(
     return
   }
   let decoded = decode_runtime_font_string(font, bytes, offset)
+  if text_interpret_diagnostics_enabled.val {
+    text_interpret_glyph_decode_record(decoded.length())
+    text_interpret_allocation_record(decoded.length() + 1)
+  }
   let mappings : Array[UnicodeMapping] = []
   let mut text = ""
   for item in decoded {
@@ -432,7 +464,18 @@ fn TextInterpreter::current_font(
   match self.state.font_name {
     Some(name) =>
       match self.resources.fonts.get(name) {
-        Some(summary) => load_runtime_font(summary, offset, self.limits)
+        Some(summary) => {
+          let started = if text_interpret_diagnostics_enabled.val {
+            @env.now()
+          } else {
+            0UL
+          }
+          let font = load_runtime_font(summary, offset, self.limits)
+          if text_interpret_diagnostics_enabled.val {
+            text_interpret_font_load_record(text_interpret_elapsed(started))
+          }
+          font
+        }
         None =>
           raise PdfTextError::MissingResource(
             TextErrorContext::with_resource(offset, name.to_text()),
@@ -460,6 +503,157 @@ fn TextInterpreter::current_font_size(
         "text showing requires a current font size",
       )
   }
+}
+
+///|
+fn text_operator_label(
+  operator : @content.StandardContentOperator,
+) -> String {
+  match operator {
+    SaveGraphicsState => "q"
+    RestoreGraphicsState => "Q"
+    ConcatMatrix => "cm"
+    SetCharacterSpacing => "Tc"
+    SetWordSpacing => "Tw"
+    SetHorizontalScaling => "Tz"
+    SetTextLeading => "TL"
+    SetTextFont => "Tf"
+    SetTextRenderingMode => "Tr"
+    SetTextRise => "Ts"
+    BeginText => "BT"
+    EndText => "ET"
+    MoveTextPosition => "Td"
+    MoveTextPositionSetLeading => "TD"
+    SetTextMatrix => "Tm"
+    MoveToNextLine => "T*"
+    ShowText => "Tj"
+    QuoteShowText => "'"
+    DoubleQuoteShowText => "\""
+    ShowTextAdjusted => "TJ"
+    _ => "other"
+  }
+}
+
+///|
+pub let text_interpret_phase_ms : Ref[Array[(String, Double)]] = { val: [] }
+
+///|
+let text_interpret_diagnostics_enabled : Ref[Bool] = { val: false }
+
+///|
+let text_interpret_operator_ms : Ref[Map[String, Double]] = { val: Map::new() }
+
+///|
+let text_interpret_operator_counts : Ref[Map[String, Int]] = { val: Map::new() }
+
+///|
+let text_interpret_glyph_decodes : Ref[Int] = { val: 0 }
+
+///|
+let text_interpret_allocations : Ref[Int] = { val: 0 }
+
+///|
+let text_interpret_font_loads : Ref[Int] = { val: 0 }
+
+///|
+let text_interpret_font_load_ms : Ref[Double] = { val: 0.0 }
+
+///|
+pub fn text_interpret_phase_reset() -> Unit {
+  text_interpret_diagnostics_enabled.val = true
+  text_interpret_phase_ms.val = []
+  text_interpret_operator_ms.val = Map::new()
+  text_interpret_operator_counts.val = Map::new()
+  text_interpret_glyph_decodes.val = 0
+  text_interpret_allocations.val = 0
+  text_interpret_font_loads.val = 0
+  text_interpret_font_load_ms.val = 0.0
+}
+
+///|
+pub fn text_interpret_phase_disable() -> Unit {
+  text_interpret_diagnostics_enabled.val = false
+}
+
+///|
+pub fn text_interpret_diagnostic_report() -> String {
+  let builder = StringBuilder::new()
+  builder.write_string("text_interpret phases:")
+  for entry in text_interpret_phase_ms.val {
+    let (name, ms) = entry
+    builder.write_string(" ")
+    builder.write_string(name)
+    builder.write_string("=")
+    builder.write_string(ms.to_string())
+    builder.write_string("ms")
+  }
+  builder.write_string("\ntext_interpret glyph_decodes=")
+  builder.write_string(text_interpret_glyph_decodes.val.to_string())
+  builder.write_string(" allocation_count=")
+  builder.write_string(text_interpret_allocations.val.to_string())
+  builder.write_string(" font_loads=")
+  builder.write_string(text_interpret_font_loads.val.to_string())
+  builder.write_string(" font_load_ms=")
+  builder.write_string(text_interpret_font_load_ms.val.to_string())
+  builder.write_string("\ntext_interpret operators:")
+  for label in ["q", "Q", "cm", "Tc", "Tw", "Tz", "TL", "Tf", "Tr", "Ts", "BT", "ET", "Td", "TD", "Tm", "T*", "Tj", "'", "\"", "TJ", "other"] {
+    let count = text_interpret_operator_counts.val.get(label).unwrap_or(0)
+    if count > 0 {
+      builder.write_string(" ")
+      builder.write_string(label)
+      builder.write_string("[count=")
+      builder.write_string(count.to_string())
+      builder.write_string(",ms=")
+      builder.write_string(
+        text_interpret_operator_ms.val.get(label).unwrap_or(0.0).to_string(),
+      )
+      builder.write_string("]")
+    }
+  }
+  builder.to_string()
+}
+
+///|
+fn text_interpret_elapsed(started : UInt64) -> Double {
+  let ended = @env.now()
+  if ended >= started {
+    (ended - started).to_double()
+  } else {
+    0.0
+  }
+}
+
+///|
+fn text_interpret_phase_record(name : String, ms : Double) -> Unit {
+  text_interpret_phase_ms.val.push((name, ms))
+}
+
+///|
+fn text_interpret_operator_record(name : String, ms : Double) -> Unit {
+  text_interpret_operator_counts.val[name] = text_interpret_operator_counts.val
+    .get(name)
+    .unwrap_or(0) +
+    1
+  text_interpret_operator_ms.val[name] = text_interpret_operator_ms.val
+    .get(name)
+    .unwrap_or(0.0) +
+    ms
+}
+
+///|
+fn text_interpret_glyph_decode_record(count : Int) -> Unit {
+  text_interpret_glyph_decodes.val += count
+}
+
+///|
+fn text_interpret_allocation_record(count : Int) -> Unit {
+  text_interpret_allocations.val += count
+}
+
+///|
+fn text_interpret_font_load_record(ms : Double) -> Unit {
+  text_interpret_font_loads.val += 1
+  text_interpret_font_load_ms.val += ms
 }
 
 ///|
