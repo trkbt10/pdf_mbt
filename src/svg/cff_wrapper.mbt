@@ -42,7 +42,7 @@ fn wrap_cff_in_otf(cff_data : Bytes) -> Bytes? {
   let maxp = build_synthetic_maxp(num_glyphs)
   let hhea = build_synthetic_hhea(num_glyphs)
   let hmtx = build_synthetic_hmtx(num_glyphs)
-  let glyph_names = cff_glyph_name_table(cff_data, num_glyphs)
+  let glyph_names = cff_post_glyph_name_table(cff_data, num_glyphs)
   let cmap = build_synthetic_cmap(cff_data, num_glyphs)
   let tables : Array[(String, Bytes)] = [
     ("CFF ", cff_data),
@@ -57,6 +57,48 @@ fn wrap_cff_in_otf(cff_data : Bytes) -> Bytes? {
     None => ()
   }
   Some(@font.rebuild_sfnt(0x4F54544F, tables))
+}
+
+///|
+/// Builds synthetic post glyph names for the CFF wrapper. CID-keyed
+/// CIDFontType0C fonts expose their CID reverse map through cid.XXXXX post
+/// name entries such as cid00012, while Type1C fonts preserve SID-based Adobe
+/// glyph names.
+fn cff_post_glyph_name_table(
+  cff_data : Bytes,
+  num_glyphs : Int,
+) -> Array[String]? {
+  if is_cid_keyed_cff(cff_data) {
+    match parse_cff_cid_charset(cff_data, num_glyphs) {
+      Some(cids) => {
+        let names : Array[String] = []
+        for cid in cids {
+          names.push(cff_cid_post_name(cid))
+        }
+        Some(names)
+      }
+      None => None
+    }
+  } else {
+    cff_glyph_name_table(cff_data, num_glyphs)
+  }
+}
+
+///|
+fn cff_cid_post_name(cid : Int) -> String {
+  "cid" + cff_pad5(cid)
+}
+
+///|
+fn cff_pad5(value : Int) -> String {
+  let s = value.to_string()
+  match s.length() {
+    1 => "0000" + s
+    2 => "000" + s
+    3 => "00" + s
+    4 => "0" + s
+    _ => s
+  }
 }
 
 ///|
@@ -394,10 +436,14 @@ fn cff_post_name_length(name : String) -> Int {
 /// `@font.parse_font` with a bounded mapping so `TTFont::cmap.get(code)` can
 /// resolve embedded CFF glyph IDs for SVG path rendering.
 fn build_synthetic_cmap(cff_data : Bytes, num_glyphs : Int) -> Bytes {
-  match cff_glyph_name_table(cff_data, num_glyphs) {
-    Some(glyph_names) =>
-      build_synthetic_cmap_format4(cff_charset_cmap_entries(glyph_names))
-    None => build_identity_cmap(num_glyphs)
+  if is_cid_keyed_cff(cff_data) {
+    build_identity_cmap(num_glyphs)
+  } else {
+    match cff_glyph_name_table(cff_data, num_glyphs) {
+      Some(glyph_names) =>
+        build_synthetic_cmap_format4(cff_charset_cmap_entries(glyph_names))
+      None => build_identity_cmap(num_glyphs)
+    }
   }
 }
 
