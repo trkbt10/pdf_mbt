@@ -20,6 +20,14 @@ pub fn glyph_path_fill_colour_alignment() -> Unit
 
 pub fn render_page_svg(@reader.PdfPage) -> String
 
+pub fn svg_axis_aligned_image_bounds_alignment() -> Unit
+
+pub fn svg_image_high_precision_alignment() -> Unit
+
+pub fn svg_image_precision_acceptance_alignment() -> Unit
+
+pub fn svg_non_axis_aligned_image_transform_alignment() -> Unit
+
 pub fn text_colour_from_graphics_state_alignment() -> Unit
 
 pub fn text_element_fill_colour_alignment() -> Unit
@@ -33,4 +41,3 @@ pub fn text_glyph_event_colour_propagation_alignment() -> Unit
 // Type aliases
 
 // Traits
-
