@@ -7,15 +7,15 @@ test "render_page_svg positions Simple PDF text without page group flip" {
   assert_eq(svg.has_prefix("<svg"), true)
   assert_eq(svg.contains("<text"), true)
   assert_eq(svg.contains("<tspan x=\"0\" y=\"0\">H</tspan>"), true)
-  assert_eq(svg.contains("<tspan x=\"4.333\" y=\"0\">d</tspan>"), true)
+  assert_eq(svg.contains("<tspan x=\"103.992\" y=\"0\">d</tspan>"), true)
   assert_eq(svg.contains("xml:space=\"preserve\">HelloWorld</tspan>"), false)
   assert_eq(svg.contains("<g transform=\"matrix(1 0 0 -1"), false)
-  assert_eq(svg.contains("<text transform=\"matrix(24 0 0 24 100 296)"), true)
-  assert_eq(svg.contains("font-size=\"1\""), true)
+  assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 100 296)"), true)
+  assert_eq(svg.contains("font-size=\"24\""), true)
 }
 
 ///|
-test "write_svg_text_matrix writes rendering matrix in SVG coordinates" {
+test "write_svg_text_matrix writes factored text matrix in SVG coordinates" {
   let builder = StringBuilder::new()
   let matrix = @text.TextRenderingMatrix::from_text_state(
       @text.TextMatrix::from_six(1.0, 0.0, 0.0, 1.0, 10.0, 20.0),
@@ -24,8 +24,34 @@ test "write_svg_text_matrix writes rendering matrix in SVG coordinates" {
       0.0,
       @text.TextMatrix::identity(),
     ).matrix
-  write_svg_text_matrix(builder, matrix, 100.0)
-  assert_eq(builder.to_string(), "12 0 0 12 10 80")
+  let font_size = svg_extract_font_size(matrix)
+  let svg_matrix = svg_text_transform_without_fontsize(matrix, font_size, 100.0)
+  write_svg_text_matrix(builder, svg_matrix)
+  assert_eq(builder.to_string(), "1 0 0 1 10 80")
+}
+
+///|
+test "svg_extract_font_size uses y scale for non-rotated text" {
+  let matrix = @text.TextMatrix::from_six(18.0, 0.0, 0.0, -12.0, 10.0, 20.0)
+  assert_eq(svg_extract_font_size(matrix), 12.0)
+}
+
+///|
+test "svg_extract_font_size uses first axis length for rotated text" {
+  let matrix = @text.TextMatrix::from_six(0.0, 14.0, -14.0, 0.0, 10.0, 20.0)
+  assert_eq(svg_extract_font_size(matrix), 14.0)
+}
+
+///|
+test "svg_text_transform_without_fontsize preserves rotation and translation" {
+  let matrix = @text.TextMatrix::from_six(0.0, 14.0, -14.0, 0.0, 10.0, 20.0)
+  let svg_matrix = svg_text_transform_without_fontsize(matrix, 14.0, 100.0)
+  assert_eq(svg_matrix.a, 0.0)
+  assert_eq(svg_matrix.b, -1.0)
+  assert_eq(svg_matrix.c, 1.0)
+  assert_eq(svg_matrix.d, 0.0)
+  assert_eq(svg_matrix.e, 10.0)
+  assert_eq(svg_matrix.f, 80.0)
 }
 
 ///|
@@ -60,8 +86,8 @@ test "rgb_hex_colour follows pdftoppm-style single precision rounding" {
 test "render_page_svg scales web PDF identity text matrix by Tf font size" {
   let document = @reader.PdfDocument::open(build_identity_tm_text_fixture())
   let svg = render_page_svg(document.page(0))
-  assert_eq(svg.contains("<text transform=\"matrix(12 0 0 12 10 80)"), true)
-  assert_eq(svg.contains("font-size=\"1\""), true)
+  assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 10 80)"), true)
+  assert_eq(svg.contains("font-size=\"12\""), true)
   assert_eq(svg.contains("<tspan x=\"0\" y=\"0\">A</tspan>"), true)
 }
 
@@ -69,9 +95,9 @@ test "render_page_svg scales web PDF identity text matrix by Tf font size" {
 test "render_page_svg uses rendering matrix with graphics CTM for text" {
   let document = @reader.PdfDocument::open(build_ctm_scaled_text_fixture())
   let svg = render_page_svg(document.page(0))
-  assert_eq(svg.contains("<text transform=\"matrix(20 0 0 20 20 68)"), true)
+  assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 20 68)"), true)
   assert_eq(svg.contains("<text transform=\"matrix(10 0 0 10 5 94)"), false)
-  assert_eq(svg.contains("font-size=\"1\""), true)
+  assert_eq(svg.contains("font-size=\"20\""), true)
 }
 
 ///|
@@ -80,9 +106,9 @@ test "render_page_svg positions UTF-8 text with text matrix path" {
     @fs.read_file_to_bytes("spec/pdf20examples/pdf20-utf8-test.pdf"),
   )
   let svg = render_page_svg(document.page(0))
-  assert_eq(svg.contains("<text transform=\"matrix(16 0 0 16 72 99.26)"), true)
+  assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 72 99.26)"), true)
   assert_eq(svg.contains("text-rendering=\"geometricPrecision\""), true)
-  assert_eq(svg.contains("<tspan x=\"0 0.667 1.389 2 2.278"), true)
+  assert_eq(svg.contains("<tspan x=\"0 10.672 22.224 32 36.448"), true)
 }
 
 ///|
@@ -125,10 +151,10 @@ test "render_page_svg starts wrapped CalRGB continuation text at line origin" {
     @fs.read_file_to_bytes("spec/pdf20examples/PDF 2.0 image with BPC.pdf"),
   )
   let svg = render_page_svg(document.page(0))
-  assert_eq(svg.contains("<text transform=\"matrix(12 0 0 12 36 110)"), true)
+  assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 36 110)"), true)
   assert_eq(svg.contains("<tspan x=\"0\" y=\"0\">T</tspan>"), true)
   assert_eq(
-    svg.contains("<text transform=\"matrix(12 0 0 12 170.028 110)"),
+    svg.contains("<text transform=\"matrix(1 0 0 1 170.028 110)"),
     false,
   )
 }

@@ -619,11 +619,15 @@ fn page_render_text_svg(
   page_height : Double,
 ) -> Unit {
   let matrix = span_rendering_matrix(span, glyphs)
-  let positioned = svg_positioned_text(span, matrix, glyphs, page_height)
+  let font_size = svg_extract_font_size(matrix)
+  let text_matrix = svg_text_transform_without_fontsize(
+    matrix, font_size, page_height,
+  )
+  let positioned = svg_positioned_text(span, text_matrix, glyphs, page_height)
   builder.write_string("<text transform=\"matrix(")
-  write_svg_text_matrix(builder, matrix, page_height)
+  write_svg_text_matrix(builder, text_matrix)
   builder.write_string(")\" font-size=\"")
-  builder.write_string("1")
+  builder.write_string(format_svg_number(font_size))
   builder.write_string(
     "\" text-rendering=\"geometricPrecision\" font-family=\"",
   )
@@ -635,7 +639,7 @@ fn page_render_text_svg(
       write_svg_positioned_tspans(
         builder,
         text,
-        svg_use_position_list_tspan(matrix, page_height, text),
+        svg_use_position_list_tspan(text_matrix, text),
       )
     }
     None => {
@@ -649,14 +653,13 @@ fn page_render_text_svg(
 ///|
 fn svg_positioned_text(
   span : @text.TextSpan,
-  matrix : @text.TextMatrix,
+  parent : @text.TextMatrix,
   glyphs : Array[@text.TextGlyphEvent],
   page_height : Double,
 ) -> SvgPositionedText? {
   if glyphs.length() == 0 {
     return None
   }
-  let parent = svg_text_matrix(matrix, page_height)
   if !svg_matrix_is_invertible(parent) {
     return None
   }
@@ -714,20 +717,44 @@ fn span_rendering_matrix(
 fn write_svg_text_matrix(
   builder : StringBuilder,
   matrix : @text.TextMatrix,
-  page_height : Double,
 ) -> Unit {
-  let svg_matrix = svg_text_matrix(matrix, page_height)
-  builder.write_string(format_svg_number(svg_matrix.a))
+  builder.write_string(format_svg_number(matrix.a))
   builder.write_string(" ")
-  builder.write_string(format_svg_number(svg_matrix.b))
+  builder.write_string(format_svg_number(matrix.b))
   builder.write_string(" ")
-  builder.write_string(format_svg_number(svg_matrix.c))
+  builder.write_string(format_svg_number(matrix.c))
   builder.write_string(" ")
-  builder.write_string(format_svg_number(svg_matrix.d))
+  builder.write_string(format_svg_number(matrix.d))
   builder.write_string(" ")
-  builder.write_string(format_svg_number(svg_matrix.e))
+  builder.write_string(format_svg_number(matrix.e))
   builder.write_string(" ")
-  builder.write_string(format_svg_number(svg_matrix.f))
+  builder.write_string(format_svg_number(matrix.f))
+}
+
+///|
+fn svg_extract_font_size(matrix : @text.TextMatrix) -> Double {
+  if matrix.b == 0.0 && matrix.c == 0.0 {
+    abs_double(matrix.d)
+  } else {
+    (matrix.a * matrix.a + matrix.b * matrix.b).sqrt()
+  }
+}
+
+///|
+fn svg_text_transform_without_fontsize(
+  matrix : @text.TextMatrix,
+  font_size : Double,
+  page_height : Double,
+) -> @text.TextMatrix {
+  let scale = if font_size == 0.0 { 1.0 } else { font_size }
+  @text.TextMatrix::from_six(
+    matrix.a / scale,
+    (0.0 - matrix.b) / scale,
+    (0.0 - matrix.c) / scale,
+    matrix.d / scale,
+    matrix.e,
+    page_height - matrix.f,
+  )
 }
 
 ///|
@@ -807,21 +834,15 @@ fn write_svg_positioned_tspans(
 ///|
 fn svg_use_position_list_tspan(
   matrix : @text.TextMatrix,
-  page_height : Double,
   text : SvgPositionedText,
 ) -> Bool {
   string_char_count(text.text) > 10 &&
-  svg_text_translation_is_fractional(matrix, page_height)
+  svg_text_translation_is_fractional(matrix)
 }
 
 ///|
-fn svg_text_translation_is_fractional(
-  matrix : @text.TextMatrix,
-  page_height : Double,
-) -> Bool {
-  let svg_matrix = svg_text_matrix(matrix, page_height)
-  svg_number_is_fractional(svg_matrix.e) ||
-  svg_number_is_fractional(svg_matrix.f)
+fn svg_text_translation_is_fractional(matrix : @text.TextMatrix) -> Bool {
+  svg_number_is_fractional(matrix.e) || svg_number_is_fractional(matrix.f)
 }
 
 ///|
