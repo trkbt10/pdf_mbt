@@ -144,19 +144,20 @@ export async function updateBaseline(options) {
   const documentKey = basename(pdfPath);
   const pageKey = pageBaselineKey(pageIndex);
   const next = {
-    _meta: {
-      measured_on: "2026-04-17",
-      pixelmatch: {
-        threshold: PIXELMATCH_THRESHOLD,
-        includeAA: PIXELMATCH_INCLUDE_AA,
-        alpha: PIXELMATCH_ALPHA,
-        aaColor: PIXELMATCH_AA_COLOR,
-        diffColor: PIXELMATCH_DIFF_COLOR,
-      },
-    },
     ...baselines,
+    _meta: baselineMetadata(),
   };
-  next._meta = {
+
+  next[documentKey] = {
+    ...(isObject(next[documentKey]) ? next[documentKey] : {}),
+    [pageKey]: roundDiff(current.diff),
+  };
+  await writeFile(BASELINES_PATH, JSON.stringify(next, null, 2) + "\n");
+  return current;
+}
+
+function baselineMetadata() {
+  return {
     measured_on: "2026-04-17",
     pixelmatch: {
       threshold: PIXELMATCH_THRESHOLD,
@@ -166,12 +167,6 @@ export async function updateBaseline(options) {
       diffColor: PIXELMATCH_DIFF_COLOR,
     },
   };
-  next[documentKey] = {
-    ...(isObject(next[documentKey]) ? next[documentKey] : {}),
-    [pageKey]: roundDiff(current.diff),
-  };
-  await writeFile(BASELINES_PATH, JSON.stringify(next, null, 2) + "\n");
-  return current;
 }
 
 export function baselineKey(pdfPath, pageIndex) {
