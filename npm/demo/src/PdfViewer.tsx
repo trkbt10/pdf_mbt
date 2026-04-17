@@ -50,6 +50,8 @@ interface DocumentCache {
   pages: Map<number, CachedPage>;
 }
 
+const pendingDeferredImageUrlChecks = new Set<Promise<void>>();
+
 interface PdfViewerPatchStats {
   fetchFailedBlobUrls: Record<number, number>;
   fetchOkBlobUrls: Record<number, number>;
@@ -517,6 +519,7 @@ function PageList({
           loadPageText={loadPageText}
           onSelectPage={onSelectPage}
           page={page}
+          source={document.source}
           svgState={pageSvgs.get(page.index) ?? emptyPageSvg("idle")}
           textState={pageTexts[page.index] ?? emptyPageText("idle")}
           zoomValue={zoomValue}
@@ -535,6 +538,7 @@ function PageItem({
   loadPageText,
   onSelectPage,
   page,
+  source,
   svgState,
   textState,
   zoomValue,
@@ -547,6 +551,7 @@ function PageItem({
   loadPageText: (pageIndex: number) => void;
   onSelectPage: (index: number) => void;
   page: ViewerPage;
+  source: PdfDocument;
   svgState: PageSvgState | CachedPage;
   textState: PageTextState;
   zoomValue: ZoomValue;
@@ -599,6 +604,7 @@ function PageItem({
         geometry={page.geometry}
         isNearViewport={isNearViewport}
         pageIndex={page.index}
+        source={source}
         svgState={svgState}
         textState={textState}
         zoomValue={zoomValue}
@@ -620,6 +626,7 @@ function RenderedPageSvg({
   geometry,
   isNearViewport,
   pageIndex,
+  source,
   svgState,
   textState,
   zoomValue,
@@ -627,6 +634,7 @@ function RenderedPageSvg({
   geometry: PdfPageGeometry;
   isNearViewport: boolean;
   pageIndex: number;
+  source: PdfDocument;
   svgState: PageSvgState | CachedPage;
   textState: PageTextState;
   zoomValue: ZoomValue;
@@ -659,8 +667,13 @@ function RenderedPageSvg({
       recordPatchSurfaceNull(pageIndex);
       return;
     }
-    return patchDeferredSvgImages(surface, imageUrlsForSvgState(svgState), pageIndex);
-  }, [isNearViewport, svgState]);
+    return patchDeferredSvgImages(
+      surface,
+      source,
+      pageIndex,
+      imageUrlsForSvgState(svgState)
+    );
+  }, [isNearViewport, source, svgState]);
 
   return (
     <div className="pageCanvasViewport" ref={frameRef}>
@@ -707,47 +720,37 @@ function RenderedPageSvg({
 
 function patchDeferredSvgImages(
   surface: HTMLElement,
-  imageUrls: ReadonlyMap<number, string>,
-  pageIndex: number
+  source: PdfDocument,
+  pageIndex: number,
+  imageUrls: Map<number, string>
 ) {
   recordPatchInvocation(pageIndex);
   let cancelled = false;
-  let frameId = 0;
-  let images: SVGImageElement[] = [];
-  let cursor = 0;
-
-  const patchNext = () => {
-    if (cancelled) {
-      return;
-    }
-    const image = images[cursor];
-    cursor += 1;
-    if (image) {
-      patchDeferredSvgImage(image, imageUrls, pageIndex);
-    }
-    if (cursor < images.length) {
-      frameId = window.requestAnimationFrame(patchNext);
-    }
-  };
-
-  frameId = window.requestAnimationFrame(() => {
-    images = Array.from(
-      surface.querySelectorAll<SVGImageElement>("image[data-image-index]")
+  const images = Array.from(
+    surface.querySelectorAll<SVGImageElement>("image[data-image-index]")
+  );
+  recordPatchQuerySelectorHits(pageIndex, images.length);
+  for (const image of images) {
+    patchDeferredSvgImage(
+      image,
+      source,
+      pageIndex,
+      imageUrls,
+      () => cancelled
     );
-    recordPatchQuerySelectorHits(pageIndex, images.length);
-    patchNext();
-  });
+  }
 
   return () => {
     cancelled = true;
-    window.cancelAnimationFrame(frameId);
   };
 }
 
 function patchDeferredSvgImage(
   image: SVGImageElement,
-  imageUrls: ReadonlyMap<number, string>,
-  pageIndex: number
+  source: PdfDocument,
+  pageIndex: number,
+  imageUrls: Map<number, string>,
+  isCancelled: () => boolean
 ) {
   const imageIndex = parseImageIndex(image.getAttribute("data-image-index"));
   if (imageIndex === null) {
@@ -759,6 +762,78 @@ function patchDeferredSvgImage(
   }
   image.setAttribute("href", url);
   recordPatchSuccess(pageIndex);
+  trackDeferredImageUrlCheck(
+    validateDeferredSvgImageUrl(
+      image,
+      source,
+      pageIndex,
+      imageIndex,
+      imageUrls,
+      url,
+      isCancelled
+    )
+  );
+}
+
+async function validateDeferredSvgImageUrl(
+  image: SVGImageElement,
+  source: PdfDocument,
+  pageIndex: number,
+  imageIndex: number,
+  imageUrls: Map<number, string>,
+  url: string,
+  isCancelled: () => boolean
+) {
+  if (await blobUrlIsLive(url, pageIndex)) {
+    return;
+  }
+  URL.revokeObjectURL(url);
+  let nextUrl: string | null = null;
+  try {
+    nextUrl = await createDeferredSvgImageUrl(source, pageIndex, imageIndex);
+  } catch (error) {
+    console.warn(
+      `Failed to recreate deferred SVG image ${pageIndex}:${imageIndex}`,
+      error
+    );
+    return;
+  }
+  if (!nextUrl) {
+    return;
+  }
+  if (isCancelled()) {
+    URL.revokeObjectURL(nextUrl);
+    return;
+  }
+  imageUrls.set(imageIndex, nextUrl);
+  image.setAttribute("href", nextUrl);
+  recordPatchSuccess(pageIndex);
+}
+
+async function blobUrlIsLive(url: string, pageIndex: number): Promise<boolean> {
+  try {
+    const response = await fetch(url);
+    if (response.ok) {
+      recordPatchFetchOk(pageIndex);
+      return true;
+    }
+  } catch {
+    recordPatchFetchFailed(pageIndex);
+    return false;
+  }
+  recordPatchFetchFailed(pageIndex);
+  return false;
+}
+
+function trackDeferredImageUrlCheck(check: Promise<void>) {
+  pendingDeferredImageUrlChecks.add(check);
+  void check.finally(() => pendingDeferredImageUrlChecks.delete(check));
+}
+
+async function waitForPendingDeferredImageUrlChecks() {
+  while (pendingDeferredImageUrlChecks.size > 0) {
+    await Promise.all(Array.from(pendingDeferredImageUrlChecks));
+  }
 }
 
 function parseImageIndex(rawIndex: string | null): number | null {
@@ -1173,7 +1248,7 @@ function emptyPageSvg(status: PageSvgState["status"]): PageSvgState {
 
 function imageUrlsForSvgState(
   svgState: PageSvgState | CachedPage
-): ReadonlyMap<number, string> {
+): Map<number, string> {
   if ("imageUrls" in svgState) {
     return svgState.imageUrls;
   }
@@ -1183,13 +1258,14 @@ function imageUrlsForSvgState(
 export const __pdfViewerImagePatchTestHooks = {
   patchDeferredSvgImagesForTest(
     surface: HTMLElement,
-    _source: PdfDocument,
+    source: PdfDocument,
     pageIndex: number,
-    imageUrls: ReadonlyMap<number, string>
+    imageUrls: Map<number, string>
   ) {
-    return patchDeferredSvgImages(surface, imageUrls, pageIndex);
+    return patchDeferredSvgImages(surface, source, pageIndex, imageUrls);
   },
   resetPdfViewerPatchStats,
+  waitForPendingDeferredImageUrlChecks,
 };
 
 function resetPdfViewerPatchStats() {
@@ -1242,6 +1318,23 @@ function recordPatchSuccess(pageIndex: number) {
     return;
   }
   incrementPatchStat(stats.successes, pageIndex, 1);
+}
+
+function recordPatchFetchOk(pageIndex: number) {
+  const stats = pdfViewerPatchStats();
+  if (!stats) {
+    return;
+  }
+  incrementPatchStat(stats.fetchOkBlobUrls, pageIndex, 1);
+  stats.lastFetchOkBlobUrls += 1;
+}
+
+function recordPatchFetchFailed(pageIndex: number) {
+  const stats = pdfViewerPatchStats();
+  if (!stats) {
+    return;
+  }
+  incrementPatchStat(stats.fetchFailedBlobUrls, pageIndex, 1);
 }
 
 function incrementPatchStat(
