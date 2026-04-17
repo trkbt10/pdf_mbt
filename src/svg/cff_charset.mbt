@@ -198,3 +198,130 @@ fn cff_ascii_string(data : Bytes, start : Int, end : Int) -> String {
   }
   String::from_array(chars)
 }
+
+///|
+/// Reads the CFF charset offset from Top DICT operator 15. Values 0, 1, and 2
+/// identify predefined charsets; other non-negative values are absolute CFF
+/// offsets to a charset table. Returns -1 when the charset operator is absent
+/// or the Top DICT cannot be parsed.
+pub fn cff_charset_offset(data : Bytes) -> Int {
+  match cff_top_dict_entry_bounds(data) {
+    Some((offset, length)) => cff_dict_find_operator(data, offset, length, 15)
+    None => -1
+  }
+}
+
+///|
+/// Parses the CFF charset table into a glyph_id to SID array. Supports CFF
+/// charset format 0, format 1, and format 2 as defined by Adobe TN 5176.
+/// glyph_id 0 is always SID 0 (.notdef). Returns None for malformed charset
+/// data or predefined charset offsets that do not contain an inline table.
+pub fn parse_cff_charset(data : Bytes, num_glyphs : Int) -> Array[Int]? {
+  if num_glyphs <= 0 {
+    return None
+  }
+  let sids = Array::make(num_glyphs, 0)
+  if num_glyphs == 1 {
+    return Some(sids)
+  }
+  let offset = cff_charset_offset(data)
+  if offset < 3 || offset >= data.length() {
+    return None
+  }
+  let format = data[offset].to_int()
+  match format {
+    0 => parse_cff_charset_format0(data, offset + 1, sids, num_glyphs)
+    1 => parse_cff_charset_format1(data, offset + 1, sids, num_glyphs)
+    2 => parse_cff_charset_format2(data, offset + 1, sids, num_glyphs)
+    _ => None
+  }
+}
+
+///|
+fn cff_top_dict_entry_bounds(data : Bytes) -> (Int, Int)? {
+  if data.length() < 5 {
+    return None
+  }
+  let hdr_size = data[2].to_int()
+  if hdr_size < 4 || hdr_size > data.length() {
+    return None
+  }
+  let name_end = cff_skip_index(data, hdr_size)
+  if name_end < 0 {
+    return None
+  }
+  cff_index_entry_bounds(data, name_end, 0)
+}
+
+///|
+fn parse_cff_charset_format0(
+  data : Bytes,
+  pos : Int,
+  sids : Array[Int],
+  num_glyphs : Int,
+) -> Array[Int]? {
+  let needed = pos + (num_glyphs - 1) * 2
+  if needed > data.length() {
+    return None
+  }
+  for glyph_id in 1..<num_glyphs {
+    sids[glyph_id] = cff_read_uint16(data, pos + (glyph_id - 1) * 2)
+  }
+  Some(sids)
+}
+
+///|
+fn parse_cff_charset_format1(
+  data : Bytes,
+  pos : Int,
+  sids : Array[Int],
+  num_glyphs : Int,
+) -> Array[Int]? {
+  let mut current_pos = pos
+  let mut glyph_id = 1
+  while glyph_id < num_glyphs {
+    if current_pos + 3 > data.length() {
+      return None
+    }
+    let first_sid = cff_read_uint16(data, current_pos)
+    let num_left = data[current_pos + 2].to_int()
+    current_pos += 3
+    let count = num_left + 1
+    if glyph_id + count > num_glyphs {
+      return None
+    }
+    for i in 0..<count {
+      sids[glyph_id + i] = first_sid + i
+    }
+    glyph_id += count
+  }
+  Some(sids)
+}
+
+///|
+fn parse_cff_charset_format2(
+  data : Bytes,
+  pos : Int,
+  sids : Array[Int],
+  num_glyphs : Int,
+) -> Array[Int]? {
+  let mut current_pos = pos
+  let mut glyph_id = 1
+  while glyph_id < num_glyphs {
+    if current_pos + 4 > data.length() {
+      return None
+    }
+    let first_sid = cff_read_uint16(data, current_pos)
+    let num_left = cff_read_uint16(data, current_pos + 2)
+    current_pos += 4
+    let count = num_left + 1
+    if glyph_id + count > num_glyphs {
+      return None
+    }
+    for i in 0..<count {
+      sids[glyph_id + i] = first_sid + i
+    }
+    glyph_id += count
+  }
+  Some(sids)
+}
