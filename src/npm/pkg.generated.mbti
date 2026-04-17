@@ -40,6 +40,8 @@ pub fn pdf_page_svg_image_count(Int, Int) -> Int
 
 pub fn pdf_page_svg_image_data(Int, Int, Int) -> JSUint8Array
 
+pub fn pdf_page_svg_image_info(Int, Int, Int) -> String
+
 pub fn pdf_page_svg_image_mime(Int, Int, Int) -> String
 
 pub fn pdf_page_text_positions_json(Int, Int) -> String

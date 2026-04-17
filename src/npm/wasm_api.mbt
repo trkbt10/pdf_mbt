@@ -29,6 +29,12 @@ let contexts : Map[Int, @context.PdfContext] = Map::new()
 let deferred_svg_pages : Map[String, @svg.SvgDeferredResult] = Map::new()
 
 ///|
+/// Lazily materialized deferred SVG image entries for the wasm API surface.
+/// The pageToSvgDeferred path records placeholders; first data/info access
+/// extracts raw RGBA or encoded pass-through bytes and caches them here.
+let deferred_svg_image_entries : Map[String, @svg.SvgImageEntry] = Map::new()
+
+///|
 priv struct HandleCounter {
   mut value : Int
 }
@@ -120,6 +126,7 @@ pub fn pdf_page_to_svg(handle : Int, page : Int) -> String {
 pub fn pdf_page_to_svg_deferred(handle : Int, page : Int) -> String {
   match get_page(handle, page) {
     Some(pdf_page) => {
+      remove_deferred_images_for_page(handle, page)
       let result = @svg.render_page_svg_deferred(pdf_page.reader_page())
       let svg = result.svg
       deferred_svg_pages[deferred_page_key(handle, page)] = result
@@ -143,15 +150,26 @@ pub fn pdf_page_svg_image_data(
   page : Int,
   index : Int,
 ) -> JSUint8Array {
-  match get_deferred_svg_image(handle, page, index) {
+  match get_deferred_svg_image_entry(handle, page, index) {
     Some(image) => bytes_to_uint8array(image.data)
     None => bytes_to_uint8array(b"")
   }
 }
 
 ///|
+/// wasm API surface for deferred SVG image metadata. Raw RGBA image/x-rgba8
+/// entries report width/height for browser canvas decoding; PNG/JPEG/JP2
+/// entries keep 0 dimensions because their encoded bytes are self-describing.
+pub fn pdf_page_svg_image_info(handle : Int, page : Int, index : Int) -> String {
+  match get_deferred_svg_image_entry(handle, page, index) {
+    Some(image) => svg_image_info_json(image)
+    None => ""
+  }
+}
+
+///|
 pub fn pdf_page_svg_image_mime(handle : Int, page : Int, index : Int) -> String {
-  match get_deferred_svg_image(handle, page, index) {
+  match get_deferred_svg_image_entry(handle, page, index) {
     Some(image) => image.mime_type
     None => ""
   }
@@ -343,6 +361,11 @@ fn deferred_page_key(handle : Int, page : Int) -> String {
 }
 
 ///|
+fn deferred_image_key(handle : Int, page : Int, index : Int) -> String {
+  deferred_page_key(handle, page) + ":" + index.to_string()
+}
+
+///|
 fn get_deferred_svg_image(
   handle : Int,
   page : Int,
@@ -360,9 +383,204 @@ fn get_deferred_svg_image(
 }
 
 ///|
+fn get_deferred_svg_image_entry(
+  handle : Int,
+  page : Int,
+  index : Int,
+) -> @svg.SvgImageEntry? {
+  if get_deferred_svg_image(handle, page, index) is None {
+    return None
+  }
+  let key = deferred_image_key(handle, page, index)
+  match deferred_svg_image_entries.get(key) {
+    Some(image) => Some(image)
+    None =>
+      match build_deferred_svg_image_entry(handle, page, index) {
+        Some(image) => {
+          deferred_svg_image_entries[key] = image
+          Some(image)
+        }
+        None => None
+      }
+  }
+}
+
+///|
+fn build_deferred_svg_image_entry(
+  handle : Int,
+  page : Int,
+  index : Int,
+) -> @svg.SvgImageEntry? {
+  match get_page(handle, page) {
+    Some(pdf_page) => page_svg_image_entry_by_occurrence(pdf_page, index)
+    None => None
+  }
+}
+
+///|
+fn page_svg_image_entry_by_occurrence(
+  page : @pdfapi.PdfPage,
+  target_index : Int,
+) -> @svg.SvgImageEntry? {
+  let result : Result[Array[@graphics.GraphicsEvent], @reader.PdfDocumentError] = try? page
+    .reader_page()
+    .graphics_events(
+      @reader.GraphicsPageOptions::with_materialized_xobjects(None),
+    )
+  match result {
+    Ok(events) => {
+      let mut image_index = 0
+      for event in events {
+        match event {
+          @graphics.GraphicsEvent::ImagePainted(_, descriptor, state) =>
+            match descriptor.source {
+              @graphics.ImageSource::XObjectImage(Some(name)) =>
+                match page_image_entry_by_name(page, name) {
+                  Some(entry) => {
+                    if image_index == target_index {
+                      return deferred_svg_image_entry_data(entry, state)
+                    }
+                    image_index += 1
+                  }
+                  None => ()
+                }
+              _ => ()
+            }
+          _ => ()
+        }
+      }
+      None
+    }
+    Err(_) => None
+  }
+}
+
+///|
+fn page_image_entry_by_name(
+  page : @pdfapi.PdfPage,
+  name : @objects.PdfName,
+) -> PageImageEntry? {
+  let entries = page_image_entries(page)
+  for entry in entries {
+    match entry.name {
+      Some(entry_name) if entry_name == name => return Some(entry)
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn deferred_svg_image_entry_data(
+  entry : PageImageEntry,
+  state : @graphics.GraphicsState,
+) -> @svg.SvgImageEntry? {
+  let result : Result[@graphics.ExtractedImage, @graphics.PdfGraphicsError] = try? @graphics.extract_image_xobject(
+    entry.name,
+    prepare_render_image_stream(entry.stream, entry.resources),
+    0L,
+  )
+  match result {
+    Ok(extracted) =>
+      match extracted.data {
+        @graphics.ExtractedImageData::DeviceRgbRaster(raster) =>
+          raw_rgba_svg_image_entry(raster.width, raster.height, raster.rgba)
+        @graphics.ExtractedImageData::StencilMaskRaster(mask) => {
+          let paint_result : Result[
+            @graphics.DeviceRgbColour,
+            @graphics.PdfGraphicsError,
+          ] = try? state.current_colour_as_rgb(@graphics.ColourUse::Nonstroking)
+          let paint = match paint_result {
+            Ok(rgb) => rgb
+            Err(_) =>
+              @graphics.DeviceRgbColour::{ red: 0.0, green: 0.0, blue: 0.0 }
+          }
+          let raster = @graphics.paint_stencil_mask_with_colour(mask, paint)
+          raw_rgba_svg_image_entry(raster.width, raster.height, raster.rgba)
+        }
+        @graphics.ExtractedImageData::EncodedImageData(data, filters) =>
+          browser_encoded_svg_image_entry(data, filters)
+      }
+    Err(_) => None
+  }
+}
+
+///|
+fn raw_rgba_svg_image_entry(
+  width : Int,
+  height : Int,
+  rgba : Bytes,
+) -> @svg.SvgImageEntry? {
+  if width <= 0 || height <= 0 || rgba.length() != width * height * 4 {
+    None
+  } else {
+    Some(@svg.SvgImageEntry::{
+      mime_type: @svg.raw_rgba_image_mime,
+      data: rgba,
+      width: Some(width),
+      height: Some(height),
+    })
+  }
+}
+
+///|
+fn browser_encoded_svg_image_entry(
+  data : Bytes,
+  filters : Array[@objects.PdfName],
+) -> @svg.SvgImageEntry? {
+  if filters.length() != 1 {
+    return None
+  }
+  let filter = filters[0]
+  if filter == @objects.PdfName::new(b"DCTDecode") {
+    Some(@svg.SvgImageEntry::{
+      mime_type: "image/jpeg",
+      data,
+      width: None,
+      height: None,
+    })
+  } else if filter == @objects.PdfName::new(b"JPXDecode") {
+    Some(@svg.SvgImageEntry::{
+      mime_type: "image/jp2",
+      data,
+      width: None,
+      height: None,
+    })
+  } else {
+    None
+  }
+}
+
+///|
+fn svg_image_info_json(image : @svg.SvgImageEntry) -> String {
+  "{\"mime\":\"" +
+  image.mime_type +
+  "\",\"width\":" +
+  svg_image_optional_dimension(image.width).to_string() +
+  ",\"height\":" +
+  svg_image_optional_dimension(image.height).to_string() +
+  "}"
+}
+
+///|
+fn svg_image_optional_dimension(value : Int?) -> Int {
+  match value {
+    Some(size) => size
+    None => 0
+  }
+}
+
+///|
 fn remove_deferred_pages_for_handle(handle : Int) -> Unit {
   let prefix = handle.to_string() + ":"
   deferred_svg_pages.retain(fn(key, _value) { !key.has_prefix(prefix) })
+  deferred_svg_image_entries.retain(fn(key, _value) { !key.has_prefix(prefix) })
+}
+
+///|
+fn remove_deferred_images_for_page(handle : Int, page : Int) -> Unit {
+  let prefix = deferred_page_key(handle, page) + ":"
+  deferred_svg_image_entries.retain(fn(key, _value) { !key.has_prefix(prefix) })
 }
 
 ///|

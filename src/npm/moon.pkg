@@ -29,6 +29,7 @@ options(
         "pdf_page_to_svg_deferred",
         "pdf_page_svg_image_count",
         "pdf_page_svg_image_data",
+        "pdf_page_svg_image_info",
         "pdf_page_svg_image_mime",
         "pdf_page_image_count",
         "pdf_page_image_info_json",
