@@ -1038,17 +1038,22 @@ fn render_glyph_as_path(
 }
 
 ///|
-/// Resolves the glyph ID for a text glyph event. CID fonts use the CID
-/// directly as the glyph ID (CIDFontType0/Type1C fonts encode glyphs by CID
-/// order). Simple fonts resolve GlyphName identifiers through the TTFont post
-/// table glyph_name reverse lookup when available, then fall back to cmap
-/// lookup by source_code. Returns -1 if the glyph ID cannot be resolved.
+/// Resolves the glyph ID for a text glyph event. CID-keyed CFF
+/// CIDFontType0C fonts first consult the synthetic post table CID reverse map
+/// encoded with cid.XXXXX post name entries such as cid00012, then fall back
+/// to treating the CID as the glyph_id. Simple fonts resolve GlyphName
+/// identifiers through the TTFont post table glyph_name reverse lookup when
+/// available, then fall back to cmap lookup by source_code. Returns -1 if the
+/// glyph ID cannot be resolved.
 fn svg_resolve_glyph_id(
   ttf : @font.TTFont,
   glyph : @text.TextGlyphEvent,
 ) -> Int {
   match glyph.glyph.glyph {
-    @text.GlyphIdentifier::CID(cid) => cid
+    @text.GlyphIdentifier::CID(cid) => {
+      let mapped = svg_cid_glyph_id(ttf, cid)
+      if mapped >= 0 { mapped } else { cid }
+    }
     @text.GlyphIdentifier::CharacterCode(code) =>
       match ttf.cmap.get(code) {
         Some(gid) => gid
@@ -1083,6 +1088,41 @@ pub fn svg_renderer_glyph_id_resolution_alignment() -> Unit {
     ()
   } else {
     ()
+  }
+}
+
+///|
+/// Resolves a CID through the synthetic CID reverse map carried by CFF wrapper
+/// post names. CID-keyed CFF fonts emit cid00000-style names; missing names
+/// return -1 so non-CFF CIDFontType2 and identity CID mappings keep their
+/// existing glyph_id fallback.
+fn svg_cid_glyph_id(ttf : @font.TTFont, cid : Int) -> Int {
+  if cid < 0 {
+    return -1
+  }
+  let glyph_name = "cid" + svg_pad5(cid)
+  match ttf.post {
+    Some(post) => {
+      for glyph_id in 0..<post.glyph_names.length() {
+        if post.glyph_names[glyph_id] == glyph_name {
+          return glyph_id
+        }
+      }
+      -1
+    }
+    None => -1
+  }
+}
+
+///|
+fn svg_pad5(value : Int) -> String {
+  let s = value.to_string()
+  match s.length() {
+    1 => "0000" + s
+    2 => "000" + s
+    3 => "00" + s
+    4 => "0" + s
+    _ => s
   }
 }
 
