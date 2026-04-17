@@ -115,3 +115,86 @@ pub fn winansi_glyph_name(code : Int) -> String {
     ""
   }
 }
+
+///|
+/// Reads an entry from the CFF String INDEX. The String INDEX is the third
+/// CFF INDEX after the header, following Name INDEX and Top DICT INDEX, and
+/// supplies custom glyph name strings for SIDs starting at 391.
+pub fn cff_string_index_entry(data : Bytes, index : Int) -> String? {
+  if index < 0 || data.length() < 5 {
+    return None
+  }
+  let hdr_size = data[2].to_int()
+  if hdr_size < 4 || hdr_size > data.length() {
+    return None
+  }
+  let name_end = cff_skip_index(data, hdr_size)
+  if name_end < 0 {
+    return None
+  }
+  let top_dict_end = cff_skip_index(data, name_end)
+  if top_dict_end < 0 {
+    return None
+  }
+  match cff_index_entry_bounds(data, top_dict_end, index) {
+    Some((start, end)) => Some(cff_ascii_string(data, start, end))
+    None => None
+  }
+}
+
+///|
+fn cff_index_entry_bounds(
+  data : Bytes,
+  pos : Int,
+  index : Int,
+) -> (Int, Int)? {
+  if pos + 2 > data.length() {
+    return None
+  }
+  let count = cff_read_uint16(data, pos)
+  if index < 0 || index >= count {
+    return None
+  }
+  if count == 0 || pos + 3 > data.length() {
+    return None
+  }
+  let off_size = data[pos + 2].to_int()
+  if off_size < 1 || off_size > 4 {
+    return None
+  }
+  let offsets_start = pos + 3
+  let offsets_end = offsets_start + (count + 1) * off_size
+  if offsets_end > data.length() {
+    return None
+  }
+  let start_offset = cff_read_offset(
+    data,
+    offsets_start + index * off_size,
+    off_size,
+  )
+  let end_offset = cff_read_offset(
+    data,
+    offsets_start + (index + 1) * off_size,
+    off_size,
+  )
+  if start_offset < 1 || end_offset < start_offset {
+    return None
+  }
+  let data_start = offsets_end
+  let start = data_start + start_offset - 1
+  let end = data_start + end_offset - 1
+  if start < data_start || end > data.length() {
+    None
+  } else {
+    Some((start, end))
+  }
+}
+
+///|
+fn cff_ascii_string(data : Bytes, start : Int, end : Int) -> String {
+  let chars : Array[Char] = []
+  for pos in start..<end {
+    chars.push(data[pos].to_char())
+  }
+  String::from_array(chars)
+}
