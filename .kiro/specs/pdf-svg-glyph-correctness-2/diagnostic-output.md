@@ -74,3 +74,38 @@ diagnostic local-fixture glyph_trace: font=F2 char_code=0x65 glyph=GlyphName(e) 
 The first 30 visible glyphs are `GlyphName(...)` identifiers from simple fonts
 (`F6`, `F5`, `F2`), not `CID(...)` identifiers from a Type0 Identity-H font.
 The trace does not support candidate D for this visible header/body sample.
+
+## Failure mode identification
+
+The active failure mode is **not A, B, C, or D**.
+
+- A is not active: this page 6 sample does not use the CFF synthetic cmap path
+  for the visible broken title/body glyphs.
+- B is not active: the traced glyphs are embedded TrueType outlines, not CFF
+  charset format 1/2 ranges.
+- C is not active: `post_name_at_gid=<out-of-range>` shows the embedded
+  TrueType fonts do not provide usable post glyph names, but the path data
+  selected by `glyph_id_resolved` matches Poppler's glyph outlines after
+  scaling. The selected glyph IDs are not the visual corruption point.
+- D is not active: the traced title/body glyphs are `GlyphName(...)` simple-font
+  events, not Identity-H `CID(...)` events.
+
+Additional RED check:
+
+```bash
+perl -pe 's/ clip-path="url\(#c1\)"//g; s/ clip-path="url\(#c3\)"//g' \
+  /var/folders/cc/kf106b_d2mjgpmgzcb4757cw0000gn/T/pdf-visual-harness-M4zIAc/page-6.svg \
+  > /tmp/setting-noclip.svg
+rsvg-convert /tmp/setting-noclip.svg -o /tmp/setting-noclip.png
+```
+
+With the text clip attributes removed, the same glyph paths render as readable
+English (`Precautions for use`). With clip attributes present on each
+transformed glyph `<path>`, only tiny slices of the glyphs remain visible.
+
+Conclusion: the real root cause for this fixture is SVG clip application on
+transformed glyph paths. The renderer writes `clip-path` directly on glyph
+`<path>` elements that also carry a glyph-local `transform`. SVG viewers apply
+the page-space clip in the glyph-local coordinate context, clipping away most
+of every glyph. The targeted fix is to apply the clip to an untransformed group
+around the transformed glyph paths.
