@@ -284,6 +284,62 @@ fn build_svg_clip_registry(
 }
 
 ///|
+/// Emits SVG clipPath definitions for every registered clipping path. Stacked
+/// PDF clips are represented as nested clipPath definitions through the
+/// clip-path attribute, preserving intersection of clips while SVG unions
+/// multiple paths inside one clipPath by default.
+fn write_svg_clip_defs(
+  builder : StringBuilder,
+  registry : SvgClipRegistry,
+  page_height : Double,
+) -> Unit {
+  if registry.clips.length() == 0 {
+    return
+  }
+  builder.write_string("<defs>")
+  for clip in registry.clips {
+    builder.write_string("<clipPath id=\"c")
+    builder.write_string(clip.id.to_string())
+    builder.write_string("\"")
+    match clip.parent_id {
+      Some(parent_id) => {
+        builder.write_string(" clip-path=\"url(#c")
+        builder.write_string(parent_id.to_string())
+        builder.write_string(")\"")
+      }
+      None => ()
+    }
+    builder.write_string(">")
+    for entry in clip.entries {
+      builder.write_string("<path d=\"")
+      builder.write_string(
+        svg_path_data(
+          entry.path,
+          @graphics.GraphicsMatrix::identity(),
+          page_height,
+        ),
+      )
+      builder.write_string("\"")
+      write_svg_clip_rule(builder, entry.rule)
+      builder.write_string("/>")
+    }
+    builder.write_string("</clipPath>")
+  }
+  builder.write_string("</defs>")
+}
+
+///|
+fn write_svg_clip_rule(
+  builder : StringBuilder,
+  rule : @graphics.FillRule,
+) -> Unit {
+  match rule {
+    @graphics.FillRule::EvenOdd => builder.write_string(" clip-rule=\"evenodd\"")
+    @graphics.FillRule::NonZero => ()
+  }
+}
+
+///|
 fn page_render_graphics_svg(
   builder : StringBuilder,
   page : @reader.PdfPage,
