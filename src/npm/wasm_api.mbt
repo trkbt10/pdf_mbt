@@ -21,6 +21,9 @@ let documents : Map[Int, @pdfapi.PdfDocument] = Map::new()
 let contexts : Map[Int, @context.PdfContext] = Map::new()
 
 ///|
+let deferred_svg_pages : Map[String, @svg.SvgDeferredResult] = Map::new()
+
+///|
 priv struct HandleCounter {
   mut value : Int
 }
@@ -109,6 +112,43 @@ pub fn pdf_page_to_svg(handle : Int, page : Int) -> String {
 }
 
 ///|
+pub fn pdf_page_to_svg_deferred(handle : Int, page : Int) -> String {
+  match get_page(handle, page) {
+    Some(pdf_page) => {
+      let result = @svg.render_page_svg_deferred(pdf_page.reader_page())
+      let svg = result.svg
+      deferred_svg_pages[deferred_page_key(handle, page)] = result
+      svg
+    }
+    None => ""
+  }
+}
+
+///|
+pub fn pdf_page_svg_image_count(handle : Int, page : Int) -> Int {
+  match deferred_svg_pages.get(deferred_page_key(handle, page)) {
+    Some(result) => result.images.length()
+    None => 0
+  }
+}
+
+///|
+pub fn pdf_page_svg_image_data(handle : Int, page : Int, index : Int) -> Bytes {
+  match get_deferred_svg_image(handle, page, index) {
+    Some(image) => image.data
+    None => b""
+  }
+}
+
+///|
+pub fn pdf_page_svg_image_mime(handle : Int, page : Int, index : Int) -> String {
+  match get_deferred_svg_image(handle, page, index) {
+    Some(image) => image.mime_type
+    None => ""
+  }
+}
+
+///|
 pub fn pdf_page_image_count(handle : Int, page : Int) -> Int {
   match get_page(handle, page) {
     Some(pdf_page) => page_image_entries(pdf_page).length()
@@ -165,6 +205,7 @@ pub fn pdf_check_json(handle : Int) -> String {
 ///|
 pub fn pdf_close(handle : Int) -> Unit {
   documents.remove(handle)
+  remove_deferred_pages_for_handle(handle)
 }
 
 ///|
@@ -285,6 +326,34 @@ fn get_page_image_entry(
     }
     None => None
   }
+}
+
+///|
+fn deferred_page_key(handle : Int, page : Int) -> String {
+  handle.to_string() + ":" + page.to_string()
+}
+
+///|
+fn get_deferred_svg_image(
+  handle : Int,
+  page : Int,
+  index : Int,
+) -> @svg.SvgImageEntry? {
+  match deferred_svg_pages.get(deferred_page_key(handle, page)) {
+    Some(result) =>
+      if index >= 0 && index < result.images.length() {
+        Some(result.images[index])
+      } else {
+        None
+      }
+    None => None
+  }
+}
+
+///|
+fn remove_deferred_pages_for_handle(handle : Int) -> Unit {
+  let prefix = handle.to_string() + ":"
+  deferred_svg_pages.retain(fn(key, _value) { !key.has_prefix(prefix) })
 }
 
 ///|
