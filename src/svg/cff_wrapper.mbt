@@ -225,7 +225,7 @@ fn cff_dict_find_operator(
   while pos < end {
     let b0 = data[pos].to_int()
     pos += 1
-    if b0 >= 32 {
+    if cff_dict_byte_is_operand(b0) {
       // Operand
       let (val, new_pos) = cff_decode_dict_operand(data, pos, b0)
       last_operand = val
@@ -249,6 +249,11 @@ fn cff_dict_find_operator(
     }
   }
   -1
+}
+
+///|
+fn cff_dict_byte_is_operand(b0 : Int) -> Bool {
+  b0 == 28 || b0 == 29 || b0 == 30 || (b0 >= 32 && b0 <= 254)
 }
 
 ///|

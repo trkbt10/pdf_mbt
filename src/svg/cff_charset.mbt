@@ -337,7 +337,7 @@ fn cff_dict_has_operator(
   while pos < end {
     let b0 = data[pos].to_int()
     pos += 1
-    if b0 >= 32 {
+    if cff_dict_byte_is_operand(b0) {
       let (_, new_pos) = cff_decode_dict_operand(data, pos, b0)
       pos = new_pos
     } else if b0 == 12 {
