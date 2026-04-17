@@ -17,10 +17,14 @@ pub fn render_page_svg(page : @reader.PdfPage) -> String {
 
 ///|
 /// Raw image data collected while rendering an SVG in deferred image mode.
-/// The data bytes are encoded image payloads suitable for browser Blob URLs.
+/// PNG/JPEG/JP2 entries keep encoded bytes for browser Blob URLs. The
+/// platform-dispatched wasm path may instead carry raw RGBA bytes with the
+/// image/x-rgba8 MIME sentinel plus width/height metadata for canvas decoding.
 pub(all) struct SvgImageEntry {
   mime_type : String
   data : Bytes
+  width : Int?
+  height : Int?
 } derive(Eq, Debug)
 
 ///|

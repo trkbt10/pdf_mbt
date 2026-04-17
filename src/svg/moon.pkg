@@ -12,3 +12,12 @@ import {
   "trkbt10/pdf/src/reader",
   "trkbt10/pdf/src/text",
 }
+
+options(
+  targets: {
+    "render_native.mbt": [ "native" ],
+    "render_native_wbtest.mbt": [ "native" ],
+    "render_wasm.mbt": [ "wasm-gc" ],
+    "render_wasm_wbtest.mbt": [ "wasm-gc" ],
+  },
+)

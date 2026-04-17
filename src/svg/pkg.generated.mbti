@@ -37,6 +37,8 @@ pub fn parse_cff_charset(Bytes, Int) -> Array[Int]?
 
 pub fn parse_cff_cid_charset(Bytes, Int) -> Array[Int]?
 
+pub let raw_rgba_image_mime : String
+
 pub fn render_page_svg(@reader.PdfPage) -> String
 
 pub fn render_page_svg_deferred(@reader.PdfPage) -> SvgDeferredResult
@@ -70,6 +72,8 @@ pub(all) struct SvgDeferredResult {
 pub(all) struct SvgImageEntry {
   mime_type : String
   data : Bytes
+  width : Int?
+  height : Int?
 } derive(Eq, @debug.Debug)
 
 // Type aliases

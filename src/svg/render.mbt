@@ -34,6 +34,12 @@ priv struct SvgTextRenderInfo {
 }
 
 ///|
+/// Shared sentinel for raw RGBA deferred image payloads. The wasm API surface
+/// reports image/x-rgba8 so the JS consumer can choose OffscreenCanvas canvas
+/// decoding instead of direct Blob creation.
+pub let raw_rgba_image_mime : String = "image/x-rgba8"
+
+///|
 fn SvgClipRegistry::new() -> SvgClipRegistry {
   SvgClipRegistry::{ clips: [], id_by_signature: Map::new() }
 }
@@ -698,7 +704,7 @@ fn page_render_image_entry_svg(
   let (expand_x, expand_y) = svg_image_pixel_expansion(state.ctm, descriptor)
   match deferred_images {
     Some(images) =>
-      match page_image_entry_data(entry, state) {
+      match deferred_image_entry(entry, state) {
         Some(image) => {
           let index = images.length()
           images.push(image)
@@ -2325,7 +2331,7 @@ fn page_image_entry_data(
     Ok(extracted) =>
       match extracted.data {
         @graphics.ExtractedImageData::DeviceRgbRaster(raster) =>
-          png_image_entry(raster.width, raster.height, raster.rgba)
+          raster_image_entry(raster.width, raster.height, raster.rgba)
         @graphics.ExtractedImageData::StencilMaskRaster(mask) => {
           let paint_result : Result[
             @graphics.DeviceRgbColour,
@@ -2337,7 +2343,7 @@ fn page_image_entry_data(
               @graphics.DeviceRgbColour::{ red: 0.0, green: 0.0, blue: 0.0 }
           }
           let raster = @graphics.paint_stencil_mask_with_colour(mask, paint)
-          png_image_entry(raster.width, raster.height, raster.rgba)
+          raster_image_entry(raster.width, raster.height, raster.rgba)
         }
         @graphics.ExtractedImageData::EncodedImageData(data, filters) =>
           encoded_image_entry(data, filters)
@@ -2387,15 +2393,17 @@ fn stream_subtype_is(stream : @objects.PdfStream, expected : Bytes) -> Bool {
 }
 
 ///|
-fn png_image_entry(width : Int, height : Int, rgba : Bytes) -> SvgImageEntry? {
-  match image_data_from_rgba(width, height, rgba) {
-    Some(image) =>
-      match encode_png_bytes(image) {
-        Some(bytes) =>
-          Some(SvgImageEntry::{ mime_type: "image/png", data: bytes })
-        None => None
-      }
-    None => None
+/// Validates PDF image XObject DeviceRGB raw RGBA data before target-specific,
+/// platform-dispatched encoding.
+fn raster_image_entry(
+  width : Int,
+  height : Int,
+  rgba : Bytes,
+) -> SvgImageEntry? {
+  if width <= 0 || height <= 0 || rgba.length() != width * height * 4 {
+    None
+  } else {
+    encode_raster_image_entry(width, height, rgba)
   }
 }
 
@@ -2413,7 +2421,13 @@ fn encoded_image_entry(
 ///|
 fn bmp_image_entry(image : @image.ImageData) -> SvgImageEntry? {
   match encode_bmp_bytes(image) {
-    Some(bytes) => Some(SvgImageEntry::{ mime_type: "image/bmp", data: bytes })
+    Some(bytes) =>
+      Some(SvgImageEntry::{
+        mime_type: "image/bmp",
+        data: bytes,
+        width: None,
+        height: None,
+      })
     None => None
   }
 }
@@ -2428,9 +2442,19 @@ fn browser_encoded_image_entry(
   }
   let filter = filters[0]
   if filter == @objects.PdfName::new(b"DCTDecode") {
-    Some(SvgImageEntry::{ mime_type: "image/jpeg", data })
+    Some(SvgImageEntry::{
+      mime_type: "image/jpeg",
+      data,
+      width: None,
+      height: None,
+    })
   } else if filter == @objects.PdfName::new(b"JPXDecode") {
-    Some(SvgImageEntry::{ mime_type: "image/jp2", data })
+    Some(SvgImageEntry::{
+      mime_type: "image/jp2",
+      data,
+      width: None,
+      height: None,
+    })
   } else {
     None
   }
@@ -2438,7 +2462,22 @@ fn browser_encoded_image_entry(
 
 ///|
 fn image_data_url(image : SvgImageEntry) -> String {
-  "data:" + image.mime_type + ";base64," + base64_encode(image.data)
+  if image.mime_type == raw_rgba_image_mime {
+    match (image.width, image.height) {
+      (Some(width), Some(height)) =>
+        match image_data_from_rgba(width, height, image.data) {
+          Some(rgba_image) =>
+            match encode_png_bytes(rgba_image) {
+              Some(bytes) => "data:image/png;base64," + base64_encode(bytes)
+              None => ""
+            }
+          None => ""
+        }
+      _ => ""
+    }
+  } else {
+    "data:" + image.mime_type + ";base64," + base64_encode(image.data)
+  }
 }
 
 ///|
