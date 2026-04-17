@@ -8,8 +8,12 @@ import ts from "typescript";
 const require = createRequire(import.meta.url);
 
 test("revisit restores the cached image href on the freshly mounted SVG image", async () => {
-  const { patchDeferredSvgImagesForTest } = await loadImagePatchHooks();
+  const {
+    patchDeferredSvgImagesForTest,
+    resetPdfViewerPatchStats,
+  } = await loadImagePatchHooks();
   const frames = installAnimationFrameQueue();
+  resetPdfViewerPatchStats();
   const imageUrls = new Map([[0, createBlobUrl("image-0")]]);
 
   const firstImage = new FakeSvgImage(0);
@@ -34,6 +38,11 @@ test("revisit restores the cached image href on the freshly mounted SVG image", 
   );
 
   const revisitHref = revisitImage.getAttribute("href");
+  const stats = globalThis.window.__pdfViewerPatchStats;
+  console.info("image revisit patch stats", JSON.stringify(stats));
+  assert.equal(stats.invocations[0], 2);
+  assert.equal(stats.querySelectorHits[0], 1);
+  assert.equal(stats.successes[0], 1);
   assert.equal(revisitHref, firstHref);
   await assertBlobUrlFetchable(revisitHref);
   revisitCleanup();

@@ -50,6 +50,24 @@ interface DocumentCache {
   pages: Map<number, CachedPage>;
 }
 
+interface PdfViewerPatchStats {
+  fetchFailedBlobUrls: Record<number, number>;
+  fetchOkBlobUrls: Record<number, number>;
+  invocations: Record<number, number>;
+  lastFetchOkBlobUrls: number;
+  lastQuerySelectorHits: number;
+  lastSurfaceNull: boolean;
+  querySelectorHits: Record<number, number>;
+  successes: Record<number, number>;
+  surfaceNulls: Record<number, number>;
+}
+
+declare global {
+  interface Window {
+    __pdfViewerPatchStats?: PdfViewerPatchStats;
+  }
+}
+
 interface PageImagesState {
   status: "idle" | "loading" | "ready" | "error";
   count: number;
@@ -91,6 +109,7 @@ export default function PdfViewer({
 
   useEffect(() => {
     setCurrentPageIndex(0);
+    resetPdfViewerPatchStats();
     if (document) {
       ensureCache(cacheRef, document);
     } else if (cacheRef.current) {
@@ -637,9 +656,10 @@ function RenderedPageSvg({
     }
     const surface = surfaceRef.current;
     if (!surface) {
+      recordPatchSurfaceNull(pageIndex);
       return;
     }
-    return patchDeferredSvgImages(surface, imageUrlsForSvgState(svgState));
+    return patchDeferredSvgImages(surface, imageUrlsForSvgState(svgState), pageIndex);
   }, [isNearViewport, svgState]);
 
   return (
@@ -687,8 +707,10 @@ function RenderedPageSvg({
 
 function patchDeferredSvgImages(
   surface: HTMLElement,
-  imageUrls: ReadonlyMap<number, string>
+  imageUrls: ReadonlyMap<number, string>,
+  pageIndex: number
 ) {
+  recordPatchInvocation(pageIndex);
   let cancelled = false;
   let frameId = 0;
   let images: SVGImageElement[] = [];
@@ -701,7 +723,7 @@ function patchDeferredSvgImages(
     const image = images[cursor];
     cursor += 1;
     if (image) {
-      patchDeferredSvgImage(image, imageUrls);
+      patchDeferredSvgImage(image, imageUrls, pageIndex);
     }
     if (cursor < images.length) {
       frameId = window.requestAnimationFrame(patchNext);
@@ -712,6 +734,7 @@ function patchDeferredSvgImages(
     images = Array.from(
       surface.querySelectorAll<SVGImageElement>("image[data-image-index]")
     );
+    recordPatchQuerySelectorHits(pageIndex, images.length);
     patchNext();
   });
 
@@ -723,7 +746,8 @@ function patchDeferredSvgImages(
 
 function patchDeferredSvgImage(
   image: SVGImageElement,
-  imageUrls: ReadonlyMap<number, string>
+  imageUrls: ReadonlyMap<number, string>,
+  pageIndex: number
 ) {
   const imageIndex = parseImageIndex(image.getAttribute("data-image-index"));
   if (imageIndex === null) {
@@ -734,6 +758,7 @@ function patchDeferredSvgImage(
     return;
   }
   image.setAttribute("href", url);
+  recordPatchSuccess(pageIndex);
 }
 
 function parseImageIndex(rawIndex: string | null): number | null {
@@ -1159,12 +1184,87 @@ export const __pdfViewerImagePatchTestHooks = {
   patchDeferredSvgImagesForTest(
     surface: HTMLElement,
     _source: PdfDocument,
-    _pageIndex: number,
+    pageIndex: number,
     imageUrls: ReadonlyMap<number, string>
   ) {
-    return patchDeferredSvgImages(surface, imageUrls);
+    return patchDeferredSvgImages(surface, imageUrls, pageIndex);
   },
+  resetPdfViewerPatchStats,
 };
+
+function resetPdfViewerPatchStats() {
+  if (!shouldRecordPatchStats()) {
+    return;
+  }
+  window.__pdfViewerPatchStats = {
+    fetchFailedBlobUrls: {},
+    fetchOkBlobUrls: {},
+    invocations: {},
+    lastFetchOkBlobUrls: 0,
+    lastQuerySelectorHits: 0,
+    lastSurfaceNull: false,
+    querySelectorHits: {},
+    successes: {},
+    surfaceNulls: {},
+  };
+}
+
+function recordPatchInvocation(pageIndex: number) {
+  const stats = pdfViewerPatchStats();
+  if (!stats) {
+    return;
+  }
+  incrementPatchStat(stats.invocations, pageIndex, 1);
+  stats.lastSurfaceNull = false;
+}
+
+function recordPatchSurfaceNull(pageIndex: number) {
+  const stats = pdfViewerPatchStats();
+  if (!stats) {
+    return;
+  }
+  incrementPatchStat(stats.surfaceNulls, pageIndex, 1);
+  stats.lastSurfaceNull = true;
+}
+
+function recordPatchQuerySelectorHits(pageIndex: number, hits: number) {
+  const stats = pdfViewerPatchStats();
+  if (!stats) {
+    return;
+  }
+  incrementPatchStat(stats.querySelectorHits, pageIndex, hits);
+  stats.lastQuerySelectorHits = hits;
+}
+
+function recordPatchSuccess(pageIndex: number) {
+  const stats = pdfViewerPatchStats();
+  if (!stats) {
+    return;
+  }
+  incrementPatchStat(stats.successes, pageIndex, 1);
+}
+
+function incrementPatchStat(
+  bucket: Record<number, number>,
+  pageIndex: number,
+  amount: number
+) {
+  bucket[pageIndex] = (bucket[pageIndex] ?? 0) + amount;
+}
+
+function pdfViewerPatchStats(): PdfViewerPatchStats | null {
+  if (!shouldRecordPatchStats()) {
+    return null;
+  }
+  if (!window.__pdfViewerPatchStats) {
+    resetPdfViewerPatchStats();
+  }
+  return window.__pdfViewerPatchStats ?? null;
+}
+
+function shouldRecordPatchStats(): boolean {
+  return typeof window !== "undefined" && import.meta.env?.DEV !== false;
+}
 
 function emptyPageImages(status: PageImagesState["status"]): PageImagesState {
   return { count: 0, items: [], status };
