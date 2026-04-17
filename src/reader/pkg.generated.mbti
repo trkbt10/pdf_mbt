@@ -87,10 +87,12 @@ pub fn ByteSource::slice_range(Self, Int64, Int64) -> Bytes raise PdfReaderError
 
 pub(all) struct GraphicsPageOptions {
   initial_ctm : @graphics.GraphicsMatrix?
+  materialize_resources : Bool
   materialize_xobjects : Bool
   evaluate_optional_content : Bool
 } derive(Eq, @debug.Debug)
 pub fn GraphicsPageOptions::default() -> Self
+pub fn GraphicsPageOptions::with_materialized_resources(@graphics.GraphicsMatrix?) -> Self
 pub fn GraphicsPageOptions::with_materialized_xobjects(@graphics.GraphicsMatrix?) -> Self
 
 pub(all) enum NameTreeCategory {

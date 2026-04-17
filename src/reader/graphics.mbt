@@ -5,6 +5,7 @@
 /// page metadata.
 pub(all) struct GraphicsPageOptions {
   initial_ctm : @graphics.GraphicsMatrix?
+  materialize_resources : Bool
   materialize_xobjects : Bool
   evaluate_optional_content : Bool
 } derive(Eq, Debug)
@@ -13,6 +14,19 @@ pub(all) struct GraphicsPageOptions {
 pub fn GraphicsPageOptions::default() -> GraphicsPageOptions {
   GraphicsPageOptions::{
     initial_ctm: None,
+    materialize_resources: false,
+    materialize_xobjects: false,
+    evaluate_optional_content: false,
+  }
+}
+
+///|
+pub fn GraphicsPageOptions::with_materialized_resources(
+  initial_ctm : @graphics.GraphicsMatrix?,
+) -> GraphicsPageOptions {
+  GraphicsPageOptions::{
+    initial_ctm,
+    materialize_resources: true,
     materialize_xobjects: false,
     evaluate_optional_content: false,
   }
@@ -24,6 +38,7 @@ pub fn GraphicsPageOptions::with_materialized_xobjects(
 ) -> GraphicsPageOptions {
   GraphicsPageOptions::{
     initial_ctm,
+    materialize_resources: true,
     materialize_xobjects: true,
     evaluate_optional_content: true,
   }
@@ -80,9 +95,10 @@ pub fn PdfPage::graphics_program(
   options : GraphicsPageOptions,
 ) -> @graphics.GraphicsProgram raise PdfDocumentError {
   let initial = self.graphics_initial_state(options)
-  let content = if options.materialize_xobjects ||
-    options.evaluate_optional_content {
+  let content = if options.materialize_xobjects {
     self.materialized_content_stream()
+  } else if options.materialize_resources || options.evaluate_optional_content {
+    self.materialized_content_stream_without_xobjects()
   } else {
     self.content_stream()
   }

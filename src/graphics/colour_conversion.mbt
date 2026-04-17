@@ -574,11 +574,16 @@ fn evaluate_direct_colour_function(
       }
     @objects.PdfObject::Dictionary(dict) =>
       evaluate_colour_function_dictionary(
-        dict, inputs, expected_outputs, offset,
+        dict,
+        None,
+        inputs,
+        expected_outputs,
+        offset,
       )
     @objects.PdfObject::Stream(stream) =>
       evaluate_colour_function_dictionary(
         stream.dict,
+        Some(decode_colour_function_stream(stream, offset)),
         inputs,
         expected_outputs,
         offset,
@@ -599,6 +604,7 @@ fn evaluate_direct_colour_function(
 ///|
 fn evaluate_colour_function_dictionary(
   dict : @objects.PdfDictionary,
+  decoded_stream : Bytes?,
   inputs : Array[Double],
   expected_outputs : Int,
   offset : Int64,
@@ -615,6 +621,18 @@ fn evaluate_colour_function_dictionary(
       )
   }
   match function_type {
+    0L => {
+      let decoded = match decoded_stream {
+        Some(data) => data
+        None =>
+          raise PdfGraphicsError::InvalidGraphicsState(
+            offset, "Type 0 colour function requires a stream",
+          )
+      }
+      evaluate_type0_colour_function(
+        dict, decoded, inputs, expected_outputs, offset,
+      )
+    }
     2L => evaluate_type2_colour_function(dict, inputs, expected_outputs, offset)
     _ =>
       raise PdfGraphicsError::InvalidGraphicsState(
@@ -623,6 +641,328 @@ fn evaluate_colour_function_dictionary(
         function_type.to_string() +
         " is not supported for direct evaluation",
       )
+  }
+}
+
+///|
+fn decode_colour_function_stream(
+  stream : @objects.PdfStream,
+  offset : Int64,
+) -> Bytes raise PdfGraphicsError {
+  try @filters.decode_stream(stream) catch {
+    _ =>
+      raise PdfGraphicsError::InvalidGraphicsState(
+        offset, "failed to decode Type 0 colour function stream",
+      )
+  } noraise {
+    decoded => decoded
+  }
+}
+
+///|
+fn evaluate_type0_colour_function(
+  dict : @objects.PdfDictionary,
+  decoded : Bytes,
+  inputs : Array[Double],
+  expected_outputs : Int,
+  offset : Int64,
+) -> Array[Double] raise PdfGraphicsError {
+  let sizes = required_positive_integer_array(dict, b"Size", offset)
+  let input_count = sizes.length()
+  if input_count == 0 {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "Type 0 colour function requires at least one input dimension",
+    )
+  }
+  if inputs.length() != input_count {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "Type 0 colour function input count mismatch",
+    )
+  }
+  let domain = required_interval_array(dict, b"Domain", input_count, offset)
+  let range = required_interval_array(dict, b"Range", expected_outputs, offset)
+  let encode = optional_sampled_encode_array(dict, sizes, offset)
+  let decode = optional_sampled_decode_array(dict, range, offset)
+  let bits_per_sample = required_bits_per_sample(dict, offset)
+  let encoded = encoded_sample_positions(inputs, domain, encode)
+  sampled_function_outputs(
+    decoded, sizes, encoded, decode, bits_per_sample, expected_outputs, offset,
+  )
+}
+
+///|
+fn required_positive_integer_array(
+  dict : @objects.PdfDictionary,
+  key : Bytes,
+  offset : Int64,
+) -> Array[Int] raise PdfGraphicsError {
+  match dict.get(@objects.PdfName::new(key)) {
+    Some(@objects.PdfObject::Array(values)) => {
+      let output : Array[Int] = []
+      for value in values {
+        let integer = require_integer(
+          value,
+          offset,
+          @objects.PdfName::new(key).to_text(),
+        )
+        if integer <= 0L || integer > 2147483647L {
+          raise PdfGraphicsError::InvalidGraphicsState(
+            offset,
+            @objects.PdfName::new(key).to_text() +
+            " values must be positive integers",
+          )
+        }
+        output.push(integer.to_int())
+      }
+      output
+    }
+    Some(_) =>
+      raise PdfGraphicsError::InvalidGraphicsState(
+        offset,
+        @objects.PdfName::new(key).to_text() + " must be an array",
+      )
+    None =>
+      raise PdfGraphicsError::InvalidGraphicsState(
+        offset,
+        "colour function requires " + @objects.PdfName::new(key).to_text(),
+      )
+  }
+}
+
+///|
+fn required_bits_per_sample(
+  dict : @objects.PdfDictionary,
+  offset : Int64,
+) -> Int raise PdfGraphicsError {
+  let value = match dict.get(@objects.PdfName::new(b"BitsPerSample")) {
+    Some(object) => require_integer(object, offset, "BitsPerSample")
+    None =>
+      raise PdfGraphicsError::InvalidGraphicsState(
+        offset, "Type 0 colour function requires BitsPerSample",
+      )
+  }
+  match value {
+    1L | 2L | 4L | 8L | 12L | 16L | 24L | 32L => value.to_int()
+    _ =>
+      raise PdfGraphicsError::InvalidGraphicsState(
+        offset, "unsupported Type 0 BitsPerSample value",
+      )
+  }
+}
+
+///|
+fn optional_sampled_encode_array(
+  dict : @objects.PdfDictionary,
+  sizes : Array[Int],
+  offset : Int64,
+) -> Array[ColourRange] raise PdfGraphicsError {
+  match dict.get(@objects.PdfName::new(b"Encode")) {
+    Some(value) => interval_array(value, sizes.length(), offset, "Encode")
+    None => {
+      let encode : Array[ColourRange] = []
+      for size in sizes {
+        encode.push(ColourRange::{ min: 0.0, max: (size - 1).to_double() })
+      }
+      encode
+    }
+  }
+}
+
+///|
+fn optional_sampled_decode_array(
+  dict : @objects.PdfDictionary,
+  range : Array[ColourRange],
+  offset : Int64,
+) -> Array[ColourRange] raise PdfGraphicsError {
+  match dict.get(@objects.PdfName::new(b"Decode")) {
+    Some(value) => interval_array(value, range.length(), offset, "Decode")
+    None => range.copy()
+  }
+}
+
+///|
+fn encoded_sample_positions(
+  inputs : Array[Double],
+  domain : Array[ColourRange],
+  encode : Array[ColourRange],
+) -> Array[Double] {
+  let positions : Array[Double] = []
+  for index in 0..<inputs.length() {
+    let clipped = domain[index].clip(inputs[index])
+    let denominator = domain[index].max - domain[index].min
+    let encoded = if denominator == 0.0 {
+      encode[index].min
+    } else {
+      encode[index].min +
+      (clipped - domain[index].min) *
+      (encode[index].max - encode[index].min) /
+      denominator
+    }
+    positions.push(encode[index].clip(encoded))
+  }
+  positions
+}
+
+///|
+fn sampled_function_outputs(
+  data : Bytes,
+  sizes : Array[Int],
+  encoded : Array[Double],
+  decode : Array[ColourRange],
+  bits_per_sample : Int,
+  output_count : Int,
+  offset : Int64,
+) -> Array[Double] raise PdfGraphicsError {
+  if sizes.length() > 12 {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "Type 0 colour function has too many input dimensions",
+    )
+  }
+  require_sample_table_bits(data, sizes, output_count, bits_per_sample, offset)
+  let lows : Array[Int] = []
+  let highs : Array[Int] = []
+  let fractions : Array[Double] = []
+  for index in 0..<sizes.length() {
+    let low = @math.floor(encoded[index]).to_int()
+    let clipped_low = clamp_int(low, 0, sizes[index] - 1)
+    let clipped_high = clamp_int(clipped_low + 1, 0, sizes[index] - 1)
+    lows.push(clipped_low)
+    highs.push(clipped_high)
+    if clipped_high == clipped_low {
+      fractions.push(0.0)
+    } else {
+      fractions.push(encoded[index] - clipped_low.to_double())
+    }
+  }
+  let outputs = repeat_double(output_count, 0.0)
+  let corner_count = 1 << sizes.length()
+  for corner in 0..<corner_count {
+    let mut weight = 1.0
+    let indices : Array[Int] = []
+    for dimension in 0..<sizes.length() {
+      if ((corner >> dimension) & 1) == 0 {
+        indices.push(lows[dimension])
+        weight = weight * (1.0 - fractions[dimension])
+      } else {
+        indices.push(highs[dimension])
+        weight = weight * fractions[dimension]
+      }
+    }
+    if weight != 0.0 {
+      for component in 0..<output_count {
+        outputs[component] += weight *
+          decoded_sample_value(
+            data,
+            sizes,
+            indices,
+            component,
+            output_count,
+            bits_per_sample,
+            decode[component],
+            offset,
+          )
+      }
+    }
+  }
+  outputs
+}
+
+///|
+fn require_sample_table_bits(
+  data : Bytes,
+  sizes : Array[Int],
+  output_count : Int,
+  bits_per_sample : Int,
+  offset : Int64,
+) -> Unit raise PdfGraphicsError {
+  let mut sample_count = output_count
+  for size in sizes {
+    sample_count = sample_count * size
+  }
+  let required_bits = sample_count * bits_per_sample
+  if data.length() * 8 < required_bits {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "truncated Type 0 colour function sample table",
+    )
+  }
+}
+
+///|
+fn decoded_sample_value(
+  data : Bytes,
+  sizes : Array[Int],
+  indices : Array[Int],
+  component : Int,
+  output_count : Int,
+  bits_per_sample : Int,
+  decode : ColourRange,
+  offset : Int64,
+) -> Double raise PdfGraphicsError {
+  let sample_index = sampled_function_sample_index(sizes, indices)
+  let value_index = sample_index * output_count + component
+  let raw = read_sample_bits(
+    data,
+    value_index * bits_per_sample,
+    bits_per_sample,
+    offset,
+  )
+  let max_raw = (1L << bits_per_sample) - 1L
+  decode.clip(
+    decode.min +
+    raw.to_double() / max_raw.to_double() * (decode.max - decode.min),
+  )
+}
+
+///|
+fn sampled_function_sample_index(
+  sizes : Array[Int],
+  indices : Array[Int],
+) -> Int {
+  let mut index = 0
+  let mut stride = 1
+  for dimension in 0..<sizes.length() {
+    index += indices[dimension] * stride
+    stride *= sizes[dimension]
+  }
+  index
+}
+
+///|
+fn read_sample_bits(
+  data : Bytes,
+  bit_offset : Int,
+  count : Int,
+  offset : Int64,
+) -> Int64 raise PdfGraphicsError {
+  if count <= 0 || count > 32 {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "Type 0 sample bit count is out of range",
+    )
+  }
+  if bit_offset + count > data.length() * 8 {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "truncated Type 0 colour function sample table",
+    )
+  }
+  let mut value = 0L
+  for bit in 0..<count {
+    let position = bit_offset + bit
+    let byte_index = position / 8
+    let bit_index = 7 - position % 8
+    let bit_value = (data[byte_index].to_int() >> bit_index) & 1
+    value = (value << 1) | bit_value.to_int64()
+  }
+  value
+}
+
+///|
+fn clamp_int(value : Int, min : Int, max : Int) -> Int {
+  if value < min {
+    min
+  } else if value > max {
+    max
+  } else {
+    value
   }
 }
 

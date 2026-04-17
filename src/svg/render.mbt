@@ -680,7 +680,7 @@ fn page_svg_text_fill_colours(
 ) -> Array[String] {
   let colours : Array[String] = []
   let result : Result[Array[@graphics.GraphicsEvent], @reader.PdfDocumentError] = try? page.graphics_events(
-    @reader.GraphicsPageOptions::default(),
+    @reader.GraphicsPageOptions::with_materialized_resources(None),
   )
   let events = match result {
     Ok(value) => value
@@ -689,7 +689,9 @@ fn page_svg_text_fill_colours(
   let initial_result : Result[
     @graphics.GraphicsInitialState,
     @reader.PdfDocumentError,
-  ] = try? page.graphics_initial_state(@reader.GraphicsPageOptions::default())
+  ] = try? page.graphics_initial_state(
+    @reader.GraphicsPageOptions::with_materialized_resources(None),
+  )
   let mut current_state = match initial_result {
     Ok(initial) => Some(@graphics.GraphicsState::initial(initial))
     Err(_) => None

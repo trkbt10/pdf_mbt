@@ -155,6 +155,59 @@ test "render_page_svg keeps text colour when unresolved XObject graphics fail" {
 }
 
 ///|
+test "diagnostic local-fixture page 4 colour conversion state changes" {
+  let path = "<local-fixture>"
+  if !@fs.path_exists(path) {
+    println("diagnostic skipped: " + path + " is not present")
+    return
+  }
+  let document = @reader.PdfDocument::open(@fs.read_file_to_bytes(path))
+  let events = document
+    .page(3)
+    .graphics_events(
+      @reader.GraphicsPageOptions::with_materialized_xobjects(None),
+    )
+  let mut state_changes = 0
+  let mut successes = 0
+  let mut errors = 0
+  for event in events {
+    match event {
+      @graphics.GraphicsEvent::StateChanged(offset, _, state) => {
+        state_changes += 1
+        if diagnostic_colour_conversion(
+            state,
+            @graphics.ColourUse::Nonstroking,
+            offset,
+          ) {
+          successes += 1
+        } else {
+          errors += 1
+        }
+        if diagnostic_colour_conversion(
+            state,
+            @graphics.ColourUse::Stroking,
+            offset,
+          ) {
+          successes += 1
+        } else {
+          errors += 1
+        }
+      }
+      _ => ()
+    }
+  }
+  println(
+    "diagnostic local-fixture page 4 StateChanged=" +
+    state_changes.to_string() +
+    " colour conversion successes=" +
+    successes.to_string() +
+    " errors=" +
+    errors.to_string(),
+  )
+  assert_true(state_changes > 0)
+}
+
+///|
 test "render_page_svg renders FontFile3 OpenType glyphs as paths" {
   let document = @reader.PdfDocument::open(
     build_embedded_fontfile3_text_fixture(),
@@ -306,6 +359,16 @@ test "render_page_svg writes transformed path coordinates in SVG space" {
 }
 
 ///|
+test "render_page_svg uses sampled Separation colour space tint transform" {
+  let document = @reader.PdfDocument::open(
+    build_sampled_separation_path_fixture(),
+  )
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<path"), true)
+  assert_eq(svg.contains("fill=\"#404040\""), true)
+}
+
+///|
 test "render_page_svg skips unsupported encoded image data without crashing" {
   let document = @reader.PdfDocument::open(build_encoded_image_fixture())
   let svg = render_page_svg(document.page(0))
@@ -320,6 +383,20 @@ fn build_svg_path_fixture() -> Bytes {
     b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Contents 4 0 R >>",
     content,
     [],
+  )
+}
+
+///|
+fn build_sampled_separation_path_fixture() -> Bytes {
+  let content = b"/CS1 cs 0.25 scn 10 10 20 20 re f"
+  let function = build_stream_object_body_with_entries(
+    b"/FunctionType 0 /Domain [0 1] /Range [0 1] /Size [2] /BitsPerSample 8",
+    Bytes::from_array([b'\x00', b'\xff']),
+  )
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /ColorSpace << /CS1 [ /Separation /Spot /DeviceGray 5 0 R ] >> >> /Contents 4 0 R >>",
+    content,
+    [function],
   )
 }
 
@@ -343,6 +420,92 @@ fn build_identity_tm_text_fixture() -> Bytes {
     content,
     [],
   )
+}
+
+///|
+fn diagnostic_colour_conversion(
+  state : @graphics.GraphicsState,
+  colour_use : @graphics.ColourUse,
+  offset : Int64,
+) -> Bool {
+  let colour_state = state.colour_state(colour_use)
+  let result : Result[@graphics.DeviceRgbColour, @graphics.PdfGraphicsError] = try? state.current_colour_as_rgb(
+    colour_use,
+  )
+  match result {
+    Ok(_) => true
+    Err(error) => {
+      println(
+        "diagnostic colour error offset=" +
+        offset.to_string() +
+        " use=" +
+        diagnostic_colour_use_name(colour_use) +
+        " space=" +
+        diagnostic_colour_space_name(colour_state.colour_space) +
+        " value_components=" +
+        colour_state.colour_value.components.length().to_string() +
+        " error=" +
+        diagnostic_graphics_error_message(error),
+      )
+      false
+    }
+  }
+}
+
+///|
+fn diagnostic_colour_use_name(colour_use : @graphics.ColourUse) -> String {
+  match colour_use {
+    @graphics.ColourUse::Stroking => "Stroking"
+    @graphics.ColourUse::Nonstroking => "Nonstroking"
+  }
+}
+
+///|
+fn diagnostic_colour_space_name(space : @graphics.ColourSpace) -> String {
+  match space {
+    @graphics.ColourSpace::Device(device) =>
+      match device {
+        @graphics.DeviceColourSpace::DeviceGray => "DeviceGray"
+        @graphics.DeviceColourSpace::DeviceRGB => "DeviceRGB"
+        @graphics.DeviceColourSpace::DeviceCMYK => "DeviceCMYK"
+      }
+    @graphics.ColourSpace::CalGray(_) => "CalGray"
+    @graphics.ColourSpace::CalRGB(_) => "CalRGB"
+    @graphics.ColourSpace::Lab(_) => "Lab"
+    @graphics.ColourSpace::ICCBased(_) => "ICCBased"
+    @graphics.ColourSpace::Pattern(_) => "Pattern"
+    @graphics.ColourSpace::Indexed(_) => "Indexed"
+    @graphics.ColourSpace::Separation(_) => "Separation"
+    @graphics.ColourSpace::DeviceN(_) => "DeviceN"
+  }
+}
+
+///|
+fn diagnostic_graphics_error_message(
+  error : @graphics.PdfGraphicsError,
+) -> String {
+  match error {
+    @graphics.PdfGraphicsError::BadOperand(offset, message) =>
+      "BadOperand(" + offset.to_string() + "): " + message
+    @graphics.PdfGraphicsError::InvalidGraphicsState(offset, message) =>
+      "InvalidGraphicsState(" + offset.to_string() + "): " + message
+    @graphics.PdfGraphicsError::GraphicsStackUnderflow(offset) =>
+      "GraphicsStackUnderflow(" + offset.to_string() + ")"
+    @graphics.PdfGraphicsError::InvalidPathState(offset, message) =>
+      "InvalidPathState(" + offset.to_string() + "): " + message
+    @graphics.PdfGraphicsError::InvalidObjectContext(offset, message) =>
+      "InvalidObjectContext(" + offset.to_string() + "): " + message
+    @graphics.PdfGraphicsError::ResourceFailure(offset, message) =>
+      "ResourceFailure(" + offset.to_string() + "): " + message
+    @graphics.PdfGraphicsError::InvalidXObject(offset, message) =>
+      "InvalidXObject(" + offset.to_string() + "): " + message
+    @graphics.PdfGraphicsError::InvalidImage(offset, message) =>
+      "InvalidImage(" + offset.to_string() + "): " + message
+    @graphics.PdfGraphicsError::InvalidOptionalContent(offset, message) =>
+      "InvalidOptionalContent(" + offset.to_string() + "): " + message
+    @graphics.PdfGraphicsError::InterchangeFailure(_) => "InterchangeFailure"
+    @graphics.PdfGraphicsError::ContentFailure(_) => "ContentFailure"
+  }
 }
 
 ///|

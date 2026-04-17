@@ -167,6 +167,34 @@ test "Separation and DeviceN apply tint transforms to alternate spaces" {
 }
 
 ///|
+test "Separation applies sampled tint transform stream to alternate space" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[colour_fn_name(b"FunctionType")] = @objects.PdfObject::Integer(0L)
+  dict[colour_fn_name(b"Domain")] = @objects.PdfObject::Array([
+    colour_fn_number(0.0),
+    colour_fn_number(1.0),
+  ])
+  dict[colour_fn_name(b"Range")] = @objects.PdfObject::Array([
+    colour_fn_number(0.0),
+    colour_fn_number(1.0),
+  ])
+  dict[colour_fn_name(b"Size")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Integer(2L),
+  ])
+  dict[colour_fn_name(b"BitsPerSample")] = @objects.PdfObject::Integer(8L)
+  let separation = SeparationParams::{
+    colorant: colour_fn_name(b"Spot"),
+    alternate: ColourSpace::Device(DeviceColourSpace::DeviceGray),
+    tint_transform: @objects.PdfObject::Stream(@objects.PdfStream::{
+      dict,
+      data: Bytes::from_array([b'\x00', b'\xff']),
+    }),
+  }
+  let alternate = separation.alternate_colour_value(0.25)
+  assert_close(alternate.components[0], 0.25)
+}
+
+///|
 test "transfer functions apply one in one out transforms to components" {
   let gamma = DirectTransformFunction(type2_colour_function([0.0], [1.0], 2.0))
   let single = apply_transfer_functions([0.5, 0.25], SingleTransfer(gamma))
