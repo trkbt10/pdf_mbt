@@ -266,6 +266,63 @@ test "cff_glyph_name_table resolves custom String INDEX names" {
 }
 
 ///|
+test "is_cid_keyed_cff detects ROS operator and CIDCount" {
+  let type1c = cff_add_fixture_cff()
+  let cid_cff = minimal_cid_keyed_cff()
+  assert_eq(is_cid_keyed_cff(type1c), false)
+  assert_eq(cff_cid_count(type1c), 0)
+  assert_eq(is_cid_keyed_cff(cid_cff), true)
+  assert_eq(cff_cid_count(cid_cff), 100)
+}
+
+///|
+test "parse_cff_cid_charset reads CID-keyed charset as CIDs" {
+  let cid_cff = minimal_cid_keyed_cff()
+  match parse_cff_cid_charset(cid_cff, 4) {
+    Some(cids) => {
+      assert_eq(cids.length(), 4)
+      assert_eq(cids[0], 0)
+      assert_eq(cids[1], 10)
+      assert_eq(cids[2], 11)
+      assert_eq(cids[3], 12)
+    }
+    None => assert_true(false)
+  }
+}
+
+///|
+test "cff_cid_to_glyph_id_map inverts CID-keyed charset" {
+  let cid_cff = minimal_cid_keyed_cff()
+  match cff_cid_to_glyph_id_map(cid_cff, 4) {
+    Some(map) => {
+      assert_eq(map.get(0), Some(0))
+      assert_eq(map.get(10), Some(1))
+      assert_eq(map.get(11), Some(2))
+      assert_eq(map.get(12), Some(3))
+      assert_eq(map.get(13) is None, true)
+    }
+    None => assert_true(false)
+  }
+  assert_eq(cff_cid_to_glyph_id_map(cff_add_fixture_cff(), 28) is None, true)
+}
+
+///|
+test "svg_cid_glyph_id resolves cid post glyph names" {
+  match cff_post_glyph_name_table(minimal_cid_keyed_cff(), 4) {
+    Some(names) => {
+      assert_eq(names[0], "cid00000")
+      assert_eq(names[1], "cid00010")
+      assert_eq(names[3], "cid00012")
+      let ttf = minimal_post_ttf(names)
+      assert_eq(svg_cid_glyph_id(ttf, 10), 1)
+      assert_eq(svg_cid_glyph_id(ttf, 12), 3)
+      assert_eq(svg_cid_glyph_id(ttf, 13), -1)
+    }
+    None => assert_true(false)
+  }
+}
+
+///|
 test "wrap_cff_in_otf builds non-identity WinAnsi cmap from CFF charset" {
   let cff = cff_add_fixture_cff()
   match wrap_cff_in_otf(cff) {
@@ -516,6 +573,20 @@ fn build_encoded_image_fixture() -> Bytes {
 }
 
 ///|
+fn build_rgb_image_fixture() -> Bytes {
+  let content = b"q 10 0 0 10 5 5 cm /Im1 Do Q"
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /XObject << /Im1 5 0 R >> >> /Contents 4 0 R >>",
+    content,
+    [
+      b"<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length 3 >>\nstream\n" +
+      Bytes::from_array([0xff, 0x00, 0x00]) +
+      b"\nendstream",
+    ],
+  )
+}
+
+///|
 fn build_identity_tm_text_fixture() -> Bytes {
   let content = b"BT /F1 12 Tf 1 0 0 1 10 20 Tm (A) Tj ET"
   build_single_page_pdf(
@@ -718,6 +789,103 @@ fn cff_add_fixture_cff() -> Bytes {
     ),
     b"CFF ",
   )
+}
+
+///|
+fn minimal_cid_keyed_cff() -> Bytes {
+  let bytes : Array[Byte] = []
+  // Header
+  bytes.push(b'\x01')
+  bytes.push(b'\x00')
+  bytes.push(b'\x04')
+  bytes.push(b'\x04')
+  // Name INDEX: one name, "CID"
+  push_u16(bytes, 1)
+  bytes.push(b'\x01')
+  bytes.push(b'\x01')
+  bytes.push(b'\x04')
+  bytes.push(b'\x43')
+  bytes.push(b'\x49')
+  bytes.push(b'\x44')
+  // Top DICT INDEX with ROS, CIDCount, charset offset, CharStrings offset.
+  push_u16(bytes, 1)
+  bytes.push(b'\x01')
+  bytes.push(b'\x01')
+  bytes.push(b'\x0D')
+  bytes.push(b'\x8B')
+  bytes.push(b'\x8B')
+  bytes.push(b'\x8B')
+  bytes.push(b'\x0C')
+  bytes.push(b'\x1E')
+  bytes.push(b'\xEF')
+  bytes.push(b'\x0C')
+  bytes.push(b'\x22')
+  bytes.push(b'\xAC')
+  bytes.push(b'\x0F')
+  bytes.push(b'\xB0')
+  bytes.push(b'\x11')
+  // String INDEX and Global Subr INDEX are empty.
+  push_u16(bytes, 0)
+  push_u16(bytes, 0)
+  // CID-keyed charset format 1: glyph_id 1..3 map to CID 10..12.
+  bytes.push(b'\x01')
+  push_u16(bytes, 10)
+  bytes.push(b'\x02')
+  // CharStrings INDEX: four one-byte endchar charstrings.
+  push_u16(bytes, 4)
+  bytes.push(b'\x01')
+  bytes.push(b'\x01')
+  bytes.push(b'\x02')
+  bytes.push(b'\x03')
+  bytes.push(b'\x04')
+  bytes.push(b'\x05')
+  bytes.push(b'\x0E')
+  bytes.push(b'\x0E')
+  bytes.push(b'\x0E')
+  bytes.push(b'\x0E')
+  Bytes::from_array(bytes[:])
+}
+
+///|
+fn push_u16(bytes : Array[Byte], value : Int) -> Unit {
+  bytes.push(((value >> 8) & 0xFF).to_byte())
+  bytes.push((value & 0xFF).to_byte())
+}
+
+///|
+fn minimal_post_ttf(glyph_names : Array[String]) -> @font.TTFont {
+  @font.TTFont::{
+    units_per_em: 1000,
+    index_to_loc_format: 0,
+    num_glyphs: glyph_names.length(),
+    ascent: 0,
+    descent: 0,
+    line_gap: 0,
+    num_h_metrics: 0,
+    glyf_offset: 0,
+    data: b"",
+    cmap: Map::new(),
+    loca: [],
+    advance_widths: [],
+    left_side_bearings: [],
+    cff: None,
+    gvar: None,
+    var_axes: [],
+    kern_pairs: Map::new(),
+    avar_segments: [],
+    name_records: Map::new(),
+    os2: None,
+    post: Some(@font.PostTable::{
+      italic_angle: 0.0,
+      underline_position: 0,
+      underline_thickness: 0,
+      is_fixed_pitch: false,
+      glyph_names,
+    }),
+    vertical: None,
+    gasp: [],
+    vorg: None,
+  }
 }
 
 ///|
