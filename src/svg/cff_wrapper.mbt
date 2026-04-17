@@ -42,7 +42,7 @@ fn wrap_cff_in_otf(cff_data : Bytes) -> Bytes? {
   let maxp = build_synthetic_maxp(num_glyphs)
   let hhea = build_synthetic_hhea(num_glyphs)
   let hmtx = build_synthetic_hmtx(num_glyphs)
-  let cmap = build_synthetic_cmap(num_glyphs)
+  let cmap = build_synthetic_cmap(cff_data, num_glyphs)
   let tables : Array[(String, Bytes)] = [
     ("CFF ", cff_data),
     ("cmap", cmap),
@@ -334,14 +334,130 @@ fn build_synthetic_hmtx(num_glyphs : Int) -> Bytes {
 }
 
 ///|
-/// Builds a synthetic `cmap` table with format 12 identity mapping.
-/// Maps codepoints 0..numGlyphs-1 → glyph IDs 0..numGlyphs-1.
+/// Builds a synthetic `cmap` table. When the CFF charset and String INDEX can
+/// be parsed, the cmap reflects WinAnsiEncoding character_code to glyph_id
+/// mappings through charset-resolved glyph names. If CFF charset parsing fails,
+/// it falls back to the identity cmap used by the original Type1C wrapper.
 ///
 /// For PDF use, the actual character-to-glyph mapping comes from the PDF
-/// font's Encoding and ToUnicode entries, not from the cmap table. This
-/// identity mapping ensures `@font.parse_font` succeeds and
-/// `TTFont::glyph_outline(glyph_id)` works with glyph IDs from PDF.
-fn build_synthetic_cmap(num_glyphs : Int) -> Bytes {
+/// font's Encoding and ToUnicode entries. This synthetic cmap supplies
+/// `@font.parse_font` with a bounded mapping so `TTFont::cmap.get(code)` can
+/// resolve embedded CFF glyph IDs for SVG path rendering.
+fn build_synthetic_cmap(cff_data : Bytes, num_glyphs : Int) -> Bytes {
+  match cff_glyph_name_table(cff_data, num_glyphs) {
+    Some(glyph_names) =>
+      build_synthetic_cmap_format4(cff_charset_cmap_entries(glyph_names))
+    None => build_identity_cmap(num_glyphs)
+  }
+}
+
+///|
+fn cff_charset_cmap_entries(glyph_names : Array[String]) -> Array[(Int, Int)] {
+  let entries : Array[(Int, Int)] = []
+  for code in 0..<256 {
+    let glyph_name = winansi_glyph_name(code)
+    if glyph_name.length() > 0 {
+      let glyph_id = cff_find_glyph_name(glyph_names, glyph_name)
+      if glyph_id > 0 {
+        entries.push((code, glyph_id))
+      }
+    }
+  }
+  entries
+}
+
+///|
+fn cff_find_glyph_name(glyph_names : Array[String], glyph_name : String) -> Int {
+  for glyph_id in 1..<glyph_names.length() {
+    if glyph_names[glyph_id] == glyph_name {
+      return glyph_id
+    }
+  }
+  -1
+}
+
+///|
+fn build_synthetic_cmap_format4(entries : Array[(Int, Int)]) -> Bytes {
+  let seg_count = entries.length() + 1
+  let subtable_length = 16 + seg_count * 8
+  let total = 4 + 8 + subtable_length
+  let buf : Array[Byte] = Array::make(total, b'\x00')
+  // cmap header: version=0, numTables=1
+  cff_write_uint16(buf, 2, 1)
+  // Encoding record: platformID=3 (Windows), encodingID=1 (Unicode BMP)
+  cff_write_uint16(buf, 4, 3)
+  cff_write_uint16(buf, 6, 1)
+  cff_write_uint32(buf, 8, 12)
+  let base = 12
+  cff_write_uint16(buf, base, 4)
+  cff_write_uint16(buf, base + 2, subtable_length)
+  cff_write_uint16(buf, base + 6, seg_count * 2)
+  let (search_range, entry_selector, range_shift) = cff_format4_search_values(
+    seg_count,
+  )
+  cff_write_uint16(buf, base + 8, search_range)
+  cff_write_uint16(buf, base + 10, entry_selector)
+  cff_write_uint16(buf, base + 12, range_shift)
+  let end_codes = base + 14
+  let reserved_pad = end_codes + seg_count * 2
+  let start_codes = reserved_pad + 2
+  let id_deltas = start_codes + seg_count * 2
+  let id_range_offsets = id_deltas + seg_count * 2
+  for i in 0..<entries.length() {
+    let (code, glyph_id) = entries[i]
+    cff_write_uint16(buf, end_codes + i * 2, code)
+    cff_write_uint16(buf, start_codes + i * 2, code)
+    cff_write_uint16(buf, id_deltas + i * 2, cff_format4_delta(code, glyph_id))
+    cff_write_uint16(buf, id_range_offsets + i * 2, 0)
+  }
+  let sentinel = entries.length()
+  cff_write_uint16(buf, end_codes + sentinel * 2, 0xFFFF)
+  cff_write_uint16(buf, start_codes + sentinel * 2, 0xFFFF)
+  cff_write_uint16(buf, id_deltas + sentinel * 2, 1)
+  cff_write_uint16(buf, id_range_offsets + sentinel * 2, 0)
+  Bytes::from_array(buf[:])
+}
+
+///|
+fn cff_format4_search_values(seg_count : Int) -> (Int, Int, Int) {
+  let mut power = 1
+  let mut entry_selector = 0
+  while power * 2 <= seg_count {
+    power *= 2
+    entry_selector += 1
+  }
+  let search_range = power * 2
+  let range_shift = seg_count * 2 - search_range
+  (search_range, entry_selector, range_shift)
+}
+
+///|
+fn cff_format4_delta(code : Int, glyph_id : Int) -> Int {
+  let mut delta = glyph_id - code
+  while delta < 0 {
+    delta += 65536
+  }
+  delta & 0xFFFF
+}
+
+///|
+fn cff_write_uint16(buf : Array[Byte], offset : Int, value : Int) -> Unit {
+  buf[offset] = ((value >> 8) & 0xFF).to_byte()
+  buf[offset + 1] = (value & 0xFF).to_byte()
+}
+
+///|
+fn cff_write_uint32(buf : Array[Byte], offset : Int, value : Int) -> Unit {
+  buf[offset] = ((value >> 24) & 0xFF).to_byte()
+  buf[offset + 1] = ((value >> 16) & 0xFF).to_byte()
+  buf[offset + 2] = ((value >> 8) & 0xFF).to_byte()
+  buf[offset + 3] = (value & 0xFF).to_byte()
+}
+
+///|
+/// Builds a synthetic `cmap` table with format 12 identity mapping.
+/// Maps codepoints 0..numGlyphs-1 → glyph IDs 0..numGlyphs-1.
+fn build_identity_cmap(num_glyphs : Int) -> Bytes {
   let end_code = num_glyphs - 1
   // cmap header (4 bytes) + encoding record (8 bytes) + format 12 subtable
   // Format 12: fixed header (16 bytes) + 1 group (12 bytes) = 28 bytes
@@ -349,36 +465,23 @@ fn build_synthetic_cmap(num_glyphs : Int) -> Bytes {
   let total = 4 + 8 + subtable_length
   let buf : Array[Byte] = Array::make(total, b'\x00')
   // cmap header: version=0, numTables=1
-  buf[2] = b'\x00'
-  buf[3] = b'\x01'
+  cff_write_uint16(buf, 2, 1)
   // Encoding record: platformID=3 (Windows), encodingID=10 (Unicode full)
-  buf[4] = b'\x00'
-  buf[5] = b'\x03'
-  buf[6] = b'\x00'
-  buf[7] = b'\x0A'
+  cff_write_uint16(buf, 4, 3)
+  cff_write_uint16(buf, 6, 10)
   // subtableOffset = 12
-  buf[8] = b'\x00'
-  buf[9] = b'\x00'
-  buf[10] = b'\x00'
-  buf[11] = b'\x0C'
+  cff_write_uint32(buf, 8, 12)
   // Format 12 subtable at offset 12
   let base = 12
   // format: 12
-  buf[base] = b'\x00'
-  buf[base + 1] = b'\x0C'
+  cff_write_uint16(buf, base, 12)
   // length (uint32)
   let len = subtable_length
-  buf[base + 4] = ((len >> 24) & 0xFF).to_byte()
-  buf[base + 5] = ((len >> 16) & 0xFF).to_byte()
-  buf[base + 6] = ((len >> 8) & 0xFF).to_byte()
-  buf[base + 7] = (len & 0xFF).to_byte()
+  cff_write_uint32(buf, base + 4, len)
   // numGroups: 1
-  buf[base + 15] = b'\x01'
+  cff_write_uint32(buf, base + 12, 1)
   // Group 0: startCharCode=0, endCharCode=end_code, startGlyphID=0
   let g = base + 16
-  buf[g + 4] = ((end_code >> 24) & 0xFF).to_byte()
-  buf[g + 5] = ((end_code >> 16) & 0xFF).to_byte()
-  buf[g + 6] = ((end_code >> 8) & 0xFF).to_byte()
-  buf[g + 7] = (end_code & 0xFF).to_byte()
+  cff_write_uint32(buf, g + 4, end_code)
   Bytes::from_array(buf[:])
 }
