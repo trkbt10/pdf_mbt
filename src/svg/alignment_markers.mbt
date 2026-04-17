@@ -85,6 +85,44 @@ pub fn demo_application_integration_alignment() -> Unit {
 }
 
 ///|
+/// Application-lifetime page SVG cache alignment marker. The web viewer stores
+/// rendered page SVG strings and deferred image entries in a document-scoped
+/// cache keyed by zero-based page index, survives React component
+/// unmount/remount, discards the cache on document change, and never evicts on
+/// scroll.
+pub fn viewer_cache_application_lifetime_alignment() -> Unit {
+  ()
+}
+
+///|
+/// loadPageSvg stable identity alignment marker. The TypeScript viewer keeps
+/// `loadPageSvg` out of the per-page `pageSvgs` state dependency array, reads
+/// cache state through a stable `useRef`, and makes repeated calls idempotent
+/// when a page is already cached or loading.
+pub fn viewer_cache_load_page_svg_stable_identity_alignment() -> Unit {
+  ()
+}
+
+///|
+/// Blob URL lifecycle alignment marker. Blob URLs created with
+/// `URL.createObjectURL` are stored alongside the page SVG cache, reused across
+/// page component remounts, never revoked on per-page unmount, and revoked on
+/// document change or top-level unmount with `URL.revokeObjectURL`.
+pub fn viewer_cache_blob_url_lifecycle_alignment() -> Unit {
+  ()
+}
+
+///|
+/// wasm API remains stateless per call alignment marker. The wasm signatures
+/// for `pdf_page_to_svg`, `pdf_page_to_svg_deferred`, and image accessors stay
+/// unchanged; `deferred_svg_pages` is per-call pending state for the accessor
+/// bridge, not a cache, while the TypeScript viewer cache avoids repeated
+/// `pageToSvgDeferred` calls.
+pub fn viewer_cache_wasm_stateless_per_call_alignment() -> Unit {
+  ()
+}
+
+///|
 /// Apply clipPath to rendered elements alignment marker. The SVG renderer writes
 /// clip-path attributes on images, paths, fallback text, and glyph path text,
 /// while an empty or initial-only clip state skips the attribute as a no-op.

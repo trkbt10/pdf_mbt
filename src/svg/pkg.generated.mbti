@@ -83,6 +83,14 @@ pub fn text_element_fill_colour_alignment() -> Unit
 
 pub fn text_glyph_event_colour_propagation_alignment() -> Unit
 
+pub fn viewer_cache_application_lifetime_alignment() -> Unit
+
+pub fn viewer_cache_blob_url_lifecycle_alignment() -> Unit
+
+pub fn viewer_cache_load_page_svg_stable_identity_alignment() -> Unit
+
+pub fn viewer_cache_wasm_stateless_per_call_alignment() -> Unit
+
 pub fn winansi_glyph_name(Int) -> String
 
 // Errors
