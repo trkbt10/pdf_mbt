@@ -2,7 +2,7 @@
 let local-fixture_perf_path : String = "<local-fixture>"
 
 ///|
-let local-fixture_text_bound_ms : UInt64 = 3000UL
+let local-fixture_text_bound_ms : UInt64 = 800UL
 
 ///|
 test "local-fixture text_program pages stay under performance bound" {
