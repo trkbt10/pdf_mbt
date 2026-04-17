@@ -465,13 +465,14 @@ fn alpha_from_single_component_samples(
   bits_per_component : Int,
   range : ImageDecodeRange,
 ) -> Bytes {
-  let alpha : Array[Byte] = []
-  for sample in samples {
-    alpha.push(
-      unit_to_byte(decode_sample_value(sample, bits_per_component, range)),
+  // Pre-sized alpha buffer for ImageMask and soft-mask decode paths.
+  let alpha = FixedArray::make(samples.length(), b'\x00')
+  for index in 0..<samples.length() {
+    alpha[index] = unit_to_byte(
+      decode_sample_value(samples[index], bits_per_component, range),
     )
   }
-  Bytes::from_array(alpha)
+  Bytes::makei(samples.length(), fn(i) { alpha[i] })
 }
 
 ///|
