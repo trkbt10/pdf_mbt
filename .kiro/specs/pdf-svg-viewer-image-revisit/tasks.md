@@ -115,3 +115,7 @@ visible.
 expected in this SDD, but verify).
 
 `npm test` — if it exists, must pass.
+
+## Implementation Notes
+
+- Task 6: Drift gate passed with `Drifted: 0` for `npm/demo/src/`; `Impl only: 1` accepted per task guidance.
