@@ -173,6 +173,7 @@ fn page_render_graphics_svg(
   builder : StringBuilder,
   page : @reader.PdfPage,
   page_height : Double,
+  deferred_images : Array[SvgImageEntry]?,
 ) -> Unit {
   let result : Result[Array[@graphics.GraphicsEvent], @reader.PdfDocumentError] = try? page.graphics_events(
     @reader.GraphicsPageOptions::with_materialized_xobjects(None),
@@ -184,7 +185,9 @@ fn page_render_graphics_svg(
           @graphics.GraphicsEvent::PathPainted(_, operation, path, state) =>
             page_render_path_svg(builder, operation, path, state, page_height)
           @graphics.GraphicsEvent::ImagePainted(_, descriptor, state) =>
-            page_render_image_svg(builder, page, descriptor, state, page_height)
+            page_render_image_svg(
+              builder, page, descriptor, state, page_height, deferred_images,
+            )
           _ => ()
         }
       }
@@ -461,30 +464,61 @@ fn page_render_image_svg(
   descriptor : @graphics.ImageDescriptor,
   state : @graphics.GraphicsState,
   page_height : Double,
+  deferred_images : Array[SvgImageEntry]?,
 ) -> Unit {
   match descriptor.source {
     @graphics.ImageSource::XObjectImage(Some(name)) =>
       match page_image_entry_by_name(page, name) {
-        Some(entry) => {
-          let href = page_image_data_url(entry, state)
-          if href.length() > 0 {
-            let (expand_x, expand_y) = svg_image_pixel_expansion(
-              state.ctm,
-              descriptor,
-            )
-            write_svg_image(
-              builder,
-              href,
-              state.ctm,
-              expand_x,
-              expand_y,
-              page_height,
-            )
-          }
-        }
+        Some(entry) =>
+          page_render_image_entry_svg(
+            builder, entry, descriptor, state, page_height, deferred_images,
+          )
         None => ()
       }
     _ => ()
+  }
+}
+
+///|
+fn page_render_image_entry_svg(
+  builder : StringBuilder,
+  entry : PageImageEntry,
+  descriptor : @graphics.ImageDescriptor,
+  state : @graphics.GraphicsState,
+  page_height : Double,
+  deferred_images : Array[SvgImageEntry]?,
+) -> Unit {
+  let (expand_x, expand_y) = svg_image_pixel_expansion(state.ctm, descriptor)
+  match deferred_images {
+    Some(images) =>
+      match page_image_entry_data(entry, state) {
+        Some(image) => {
+          let index = images.length()
+          images.push(image)
+          write_svg_image_deferred(
+            builder,
+            index,
+            state.ctm,
+            expand_x,
+            expand_y,
+            page_height,
+          )
+        }
+        None => ()
+      }
+    None => {
+      let href = page_image_data_url(entry, state)
+      if href.length() > 0 {
+        write_svg_image(
+          builder,
+          href,
+          state.ctm,
+          expand_x,
+          expand_y,
+          page_height,
+        )
+      }
+    }
   }
 }
 
@@ -524,6 +558,47 @@ fn write_svg_image(
   expand_y : Bool,
   page_height : Double,
 ) -> Unit {
+  write_svg_image_with_index(
+    builder,
+    href,
+    None,
+    matrix,
+    expand_x,
+    expand_y,
+    page_height,
+  )
+}
+
+///|
+fn write_svg_image_deferred(
+  builder : StringBuilder,
+  image_index : Int,
+  matrix : @graphics.GraphicsMatrix,
+  expand_x : Bool,
+  expand_y : Bool,
+  page_height : Double,
+) -> Unit {
+  write_svg_image_with_index(
+    builder,
+    "",
+    Some(image_index),
+    matrix,
+    expand_x,
+    expand_y,
+    page_height,
+  )
+}
+
+///|
+fn write_svg_image_with_index(
+  builder : StringBuilder,
+  href : String,
+  image_index : Int?,
+  matrix : @graphics.GraphicsMatrix,
+  expand_x : Bool,
+  expand_y : Bool,
+  page_height : Double,
+) -> Unit {
   if !expand_x && !expand_y {
     match svg_axis_aligned_image_rect(matrix, page_height) {
       Some((x, y, width, height)) => {
@@ -535,21 +610,38 @@ fn write_svg_image(
         builder.write_string(format_svg_number_precise(width))
         builder.write_string("\" height=\"")
         builder.write_string(format_svg_number_precise(height))
-        builder.write_string("\" href=\"")
-        builder.write_string(href)
-        builder.write_string("\"/>")
+        builder.write_string("\"")
+        write_svg_image_href(builder, href, image_index)
+        builder.write_string("/>")
         return
       }
       None => ()
     }
   }
-  builder.write_string(
-    "<image x=\"0\" y=\"0\" width=\"1\" height=\"1\" href=\"",
-  )
-  builder.write_string(href)
-  builder.write_string("\" transform=\"matrix(")
+  builder.write_string("<image x=\"0\" y=\"0\" width=\"1\" height=\"1\"")
+  write_svg_image_href(builder, href, image_index)
+  builder.write_string(" transform=\"matrix(")
   write_svg_image_matrix(builder, matrix, expand_x, expand_y, page_height)
   builder.write_string(")\"/>")
+}
+
+///|
+fn write_svg_image_href(
+  builder : StringBuilder,
+  href : String,
+  image_index : Int?,
+) -> Unit {
+  match image_index {
+    Some(index) => {
+      builder.write_string(" data-image-index=\"")
+      builder.write_string(index.to_string())
+      builder.write_string("\"")
+    }
+    None => ()
+  }
+  builder.write_string(" href=\"")
+  builder.write_string(href)
+  builder.write_string("\"")
 }
 
 ///|
@@ -1843,6 +1935,17 @@ fn page_image_data_url(
   entry : PageImageEntry,
   state : @graphics.GraphicsState,
 ) -> String {
+  match page_image_entry_data(entry, state) {
+    Some(image) => image_data_url(image)
+    None => ""
+  }
+}
+
+///|
+fn page_image_entry_data(
+  entry : PageImageEntry,
+  state : @graphics.GraphicsState,
+) -> SvgImageEntry? {
   let result : Result[@graphics.ExtractedImage, @graphics.PdfGraphicsError] = try? @graphics.extract_image_xobject(
     entry.name,
     prepare_render_image_stream(entry.stream, entry.resources),
@@ -1852,7 +1955,7 @@ fn page_image_data_url(
     Ok(extracted) =>
       match extracted.data {
         @graphics.ExtractedImageData::DeviceRgbRaster(raster) =>
-          png_data_url(raster.width, raster.height, raster.rgba)
+          png_image_entry(raster.width, raster.height, raster.rgba)
         @graphics.ExtractedImageData::StencilMaskRaster(mask) => {
           let paint_result : Result[
             @graphics.DeviceRgbColour,
@@ -1864,12 +1967,12 @@ fn page_image_data_url(
               @graphics.DeviceRgbColour::{ red: 0.0, green: 0.0, blue: 0.0 }
           }
           let raster = @graphics.paint_stencil_mask_with_colour(mask, paint)
-          png_data_url(raster.width, raster.height, raster.rgba)
+          png_image_entry(raster.width, raster.height, raster.rgba)
         }
         @graphics.ExtractedImageData::EncodedImageData(data, filters) =>
-          encoded_image_data_url(data, filters)
+          encoded_image_entry(data, filters)
       }
-    Err(_) => ""
+    Err(_) => None
   }
 }
 
@@ -1914,52 +2017,58 @@ fn stream_subtype_is(stream : @objects.PdfStream, expected : Bytes) -> Bool {
 }
 
 ///|
-fn png_data_url(width : Int, height : Int, rgba : Bytes) -> String {
+fn png_image_entry(width : Int, height : Int, rgba : Bytes) -> SvgImageEntry? {
   match image_data_from_rgba(width, height, rgba) {
     Some(image) =>
       match encode_png_bytes(image) {
-        Some(bytes) => "data:image/png;base64," + base64_encode(bytes)
-        None => ""
+        Some(bytes) =>
+          Some(SvgImageEntry::{ mime_type: "image/png", data: bytes })
+        None => None
       }
-    None => ""
+    None => None
   }
 }
 
 ///|
-fn encoded_image_data_url(
+fn encoded_image_entry(
   data : Bytes,
   filters : Array[@objects.PdfName],
-) -> String {
+) -> SvgImageEntry? {
   match decode_external_image_bytes(data) {
-    Some(image) => bmp_data_url(image)
-    None => browser_encoded_image_data_url(data, filters)
+    Some(image) => bmp_image_entry(image)
+    None => browser_encoded_image_entry(data, filters)
   }
 }
 
 ///|
-fn bmp_data_url(image : @image.ImageData) -> String {
+fn bmp_image_entry(image : @image.ImageData) -> SvgImageEntry? {
   match encode_bmp_bytes(image) {
-    Some(bytes) => "data:image/bmp;base64," + base64_encode(bytes)
-    None => ""
+    Some(bytes) => Some(SvgImageEntry::{ mime_type: "image/bmp", data: bytes })
+    None => None
   }
 }
 
 ///|
-fn browser_encoded_image_data_url(
+fn browser_encoded_image_entry(
   data : Bytes,
   filters : Array[@objects.PdfName],
-) -> String {
+) -> SvgImageEntry? {
   if filters.length() != 1 {
-    return ""
+    return None
   }
   let filter = filters[0]
   if filter == @objects.PdfName::new(b"DCTDecode") {
-    "data:image/jpeg;base64," + base64_encode(data)
+    Some(SvgImageEntry::{ mime_type: "image/jpeg", data })
   } else if filter == @objects.PdfName::new(b"JPXDecode") {
-    "data:image/jp2;base64," + base64_encode(data)
+    Some(SvgImageEntry::{ mime_type: "image/jp2", data })
   } else {
-    ""
+    None
   }
+}
+
+///|
+fn image_data_url(image : SvgImageEntry) -> String {
+  "data:" + image.mime_type + ";base64," + base64_encode(image.data)
 }
 
 ///|

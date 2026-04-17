@@ -12,7 +12,33 @@
 /// current nonstroking colour, so both fallback `<text>` and embedded glyph
 /// paths use the same fill colour that PDF text painting operators use.
 pub fn render_page_svg(page : @reader.PdfPage) -> String {
-  render_page_svg_impl(page)
+  render_page_svg_impl(page, None)
+}
+
+///|
+/// Raw image data collected while rendering an SVG in deferred image mode.
+/// The data bytes are encoded image payloads suitable for browser Blob URLs.
+pub(all) struct SvgImageEntry {
+  mime_type : String
+  data : Bytes
+} derive(Eq, Debug)
+
+///|
+/// SVG rendering result with image placeholders and separately collected
+/// encoded image data.
+pub(all) struct SvgDeferredResult {
+  svg : String
+  images : Array[SvgImageEntry]
+} derive(Eq, Debug)
+
+///|
+/// Renders a PDF page as SVG using image placeholders. Each image element in
+/// the SVG has an empty href and a data-image-index attribute pointing into
+/// the returned image collection.
+pub fn render_page_svg_deferred(page : @reader.PdfPage) -> SvgDeferredResult {
+  let images : Array[SvgImageEntry] = []
+  let svg = render_page_svg_impl(page, Some(images))
+  SvgDeferredResult::{ svg, images }
 }
 
 ///|
@@ -70,7 +96,10 @@ pub fn font_descriptor_lookup_order_alignment() -> Unit {
 }
 
 ///|
-fn render_page_svg_impl(page : @reader.PdfPage) -> String {
+fn render_page_svg_impl(
+  page : @reader.PdfPage,
+  deferred_images : Array[SvgImageEntry]?,
+) -> String {
   let width = page_width(page)
   let height = page_height(page)
   let builder = StringBuilder::new()
@@ -90,7 +119,7 @@ fn render_page_svg_impl(page : @reader.PdfPage) -> String {
   builder.write_string("\" height=\"")
   builder.write_string(format_svg_number(height + 1.0))
   builder.write_string("\" fill=\"#ffffff\"/>")
-  page_render_graphics_svg(builder, page, height)
+  page_render_graphics_svg(builder, page, height, deferred_images)
   page_render_texts_svg(builder, page, height)
   builder.write_string("</svg>")
   builder.to_string()
