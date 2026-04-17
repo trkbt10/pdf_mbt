@@ -1364,6 +1364,9 @@ fn render_glyph_as_path(
   if gid < 0 || gid >= ttf.num_glyphs {
     return false
   }
+  if gid == 0 && !svg_glyph_is_notdef_source(glyph) {
+    return false
+  }
   let outline : Array[@svgpath.PathCommand] = ttf.glyph_outline(gid)
   if outline.length() == 0 {
     return svg_glyph_is_spacing(glyph)
@@ -1551,6 +1554,16 @@ fn svg_glyph_is_spacing(glyph : @text.TextGlyphEvent) -> Bool {
   match glyph.unicode {
     @text.UnicodeMapping::Unicode(value) => value == " "
     @text.UnicodeMapping::Unknown(_, _, _) => false
+  }
+}
+
+///|
+fn svg_glyph_is_notdef_source(glyph : @text.TextGlyphEvent) -> Bool {
+  match glyph.glyph.glyph {
+    @text.GlyphIdentifier::Notdef => true
+    @text.GlyphIdentifier::CID(0) => true
+    @text.GlyphIdentifier::CharacterCode(0) => true
+    _ => false
   }
 }
 
