@@ -1310,8 +1310,10 @@ fn span_clip_id(clip_ids : Array[Int], index : Int) -> Int {
 /// outline and CFF font outlines through `TTFont::glyph_outline(gid)`.
 /// This is the glyph path fill colour implementation for text rendered as
 /// SVG `<path>` elements instead of hardcoded black.
-/// Apply clipPath to rendered elements for glyph paths by writing the
-/// clip-path attribute on text path output when a span has a clip id.
+/// Apply clipPath to rendered elements for glyph paths by wrapping the
+/// transformed glyph paths in an untransformed clipped group. Putting
+/// clip-path directly on a transformed glyph path makes SVG viewers evaluate
+/// the page-space clip in glyph-local font units.
 fn page_render_text_span_as_paths(
   builder : StringBuilder,
   span : @text.TextSpan,
@@ -1325,14 +1327,27 @@ fn page_render_text_span_as_paths(
     return span.text.length() == 0
   }
   let units_per_em = svg_font_units_per_em(ttf)
+  let glyph_clip_id = if clip_id > 0 {
+    builder.write_string("<g")
+    write_svg_clip_path_attribute(builder, clip_id)
+    builder.write_string(">")
+    0
+  } else {
+    0
+  }
+  let mut ok = true
   for glyph in glyphs {
     if !render_glyph_as_path(
-        builder, glyph, ttf, units_per_em, page_height, fill_colour, clip_id,
+        builder, glyph, ttf, units_per_em, page_height, fill_colour, glyph_clip_id,
       ) {
-      return false
+      ok = false
+      break
     }
   }
-  true
+  if clip_id > 0 {
+    builder.write_string("</g>")
+  }
+  ok
 }
 
 ///|
@@ -2233,7 +2248,7 @@ fn svg_is_device_cmyk_k_only(
   components : Array[Double],
 ) -> Bool {
   space ==
-    @graphics.ColourSpace::Device(@graphics.DeviceColourSpace::DeviceCMYK) &&
+  @graphics.ColourSpace::Device(@graphics.DeviceColourSpace::DeviceCMYK) &&
   components.length() == 4 &&
   components[0].abs() <= 0.0001 &&
   components[1].abs() <= 0.0001 &&

@@ -370,7 +370,9 @@ test "diagnostic local-fixture page 6 glyph trace" {
                   )
               }
             None =>
-              println("diagnostic local-fixture glyph_trace: font=<missing>")
+              println(
+                "diagnostic local-fixture glyph_trace: font=<missing>",
+              )
           }
         }
       }
@@ -846,6 +848,18 @@ test "render_page_svg emits clip-path for clipped fallback text" {
   assert_eq(svg.contains("<text"), true)
   assert_eq(svg.contains("<text transform="), true)
   assert_eq(svg.contains("clip-path=\"url(#c1)\""), true)
+}
+
+///|
+test "render_page_svg wraps clipped embedded glyph paths in clip group" {
+  let document = @reader.PdfDocument::open(
+    build_clipped_embedded_truetype_text_fixture(),
+  )
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<clipPath id=\"c1\">"), true)
+  assert_eq(svg.contains("<g clip-path=\"url(#c1)\"><path d=\""), true)
+  assert_eq(svg.contains("transform=\"matrix("), true)
+  assert_eq(svg.contains("fill=\"#000000\" clip-path=\"url(#c1)\""), false)
 }
 
 ///|
@@ -1890,6 +1904,25 @@ fn diagnostic_page6_text_path_summary(
 ///|
 fn build_embedded_truetype_text_fixture() -> Bytes {
   let content = b"BT /F1 10 Tf 1 0 0 1 10 20 Tm (A) Tj ET"
+  let font_file = build_stream_object_body(
+    try! @fs.read_file_to_bytes(
+      ".mooncakes/mizchi/font/fixtures/minimal-kern.ttf",
+    ),
+  )
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+    content,
+    [
+      b"<< /Type /Font /Subtype /TrueType /BaseFont /MinimalKern /FirstChar 65 /LastChar 65 /Widths [600] /Encoding /WinAnsiEncoding /FontDescriptor 6 0 R >>",
+      b"<< /Type /FontDescriptor /FontName /MinimalKern /Flags 4 /FontBBox [0 -200 1000 1000] /ItalicAngle 0 /Ascent 1000 /Descent -200 /CapHeight 700 /StemV 80 /FontFile2 7 0 R >>",
+      font_file,
+    ],
+  )
+}
+
+///|
+fn build_clipped_embedded_truetype_text_fixture() -> Bytes {
+  let content = b"q 0 0 100 100 re W n BT /F1 10 Tf 1 0 0 1 10 20 Tm (A) Tj ET Q"
   let font_file = build_stream_object_body(
     try! @fs.read_file_to_bytes(
       ".mooncakes/mizchi/font/fixtures/minimal-kern.ttf",
