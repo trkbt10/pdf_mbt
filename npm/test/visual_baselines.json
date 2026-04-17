@@ -20,5 +20,10 @@
   "<local-fixture>": {
     "page_6": 0.1612,
     "page_7": 0.2145
+  },
+  "<local-fixture>": {
+    "page_4": 0.0028,
+    "page_5": 0.076,
+    "page_6": 0.1169
   }
 }
