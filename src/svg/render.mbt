@@ -263,6 +263,27 @@ fn svg_register_clip(
 }
 
 ///|
+/// Builds the SVG clipPath registry from graphics events by registering each
+/// rendered element's current clipping path. Paths, image XObjects, and inline
+/// images all carry a GraphicsState snapshot with the accumulated clips.
+fn build_svg_clip_registry(
+  events : Array[@graphics.GraphicsEvent],
+  page_height : Double,
+) -> SvgClipRegistry {
+  let registry = SvgClipRegistry::new()
+  for event in events {
+    match event {
+      @graphics.GraphicsEvent::PathPainted(_, _, _, state)
+      | @graphics.GraphicsEvent::ImagePainted(_, _, state)
+      | @graphics.GraphicsEvent::InlineImagePainted(_, _, state) =>
+        svg_register_clip(registry, state, page_height) |> ignore
+      _ => ()
+    }
+  }
+  registry
+}
+
+///|
 fn page_render_graphics_svg(
   builder : StringBuilder,
   page : @reader.PdfPage,
