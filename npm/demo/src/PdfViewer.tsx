@@ -695,7 +695,7 @@ function RenderedPageSvg({
       pageIndex,
       imageUrlsForSvgState(svgState)
     );
-  }, [isNearViewport, source, svgState]);
+  });
 
   return (
     <div className="pageCanvasViewport" ref={frameRef}>
