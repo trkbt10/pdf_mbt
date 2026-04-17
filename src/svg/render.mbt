@@ -357,7 +357,7 @@ fn page_render_graphics_svg(
             page_render_path_svg(builder, operation, path, state, page_height)
           @graphics.GraphicsEvent::ImagePainted(_, descriptor, state) =>
             page_render_image_svg(
-              builder, page, descriptor, state, page_height, deferred_images,
+              builder, page, descriptor, state, page_height, 0, deferred_images,
             )
           _ => ()
         }
@@ -635,6 +635,7 @@ fn page_render_image_svg(
   descriptor : @graphics.ImageDescriptor,
   state : @graphics.GraphicsState,
   page_height : Double,
+  clip_id : Int,
   deferred_images : Array[SvgImageEntry]?,
 ) -> Unit {
   match descriptor.source {
@@ -642,7 +643,13 @@ fn page_render_image_svg(
       match page_image_entry_by_name(page, name) {
         Some(entry) =>
           page_render_image_entry_svg(
-            builder, entry, descriptor, state, page_height, deferred_images,
+            builder,
+            entry,
+            descriptor,
+            state,
+            page_height,
+            clip_id,
+            deferred_images,
           )
         None => ()
       }
@@ -657,6 +664,7 @@ fn page_render_image_entry_svg(
   descriptor : @graphics.ImageDescriptor,
   state : @graphics.GraphicsState,
   page_height : Double,
+  clip_id : Int,
   deferred_images : Array[SvgImageEntry]?,
 ) -> Unit {
   let (expand_x, expand_y) = svg_image_pixel_expansion(state.ctm, descriptor)
@@ -673,6 +681,7 @@ fn page_render_image_entry_svg(
             expand_x,
             expand_y,
             page_height,
+            clip_id,
           )
         }
         None => ()
@@ -687,6 +696,7 @@ fn page_render_image_entry_svg(
           expand_x,
           expand_y,
           page_height,
+          clip_id,
         )
       }
     }
@@ -728,6 +738,7 @@ fn write_svg_image(
   expand_x : Bool,
   expand_y : Bool,
   page_height : Double,
+  clip_id : Int,
 ) -> Unit {
   write_svg_image_with_index(
     builder,
@@ -737,6 +748,7 @@ fn write_svg_image(
     expand_x,
     expand_y,
     page_height,
+    clip_id,
   )
 }
 
@@ -748,6 +760,7 @@ fn write_svg_image_deferred(
   expand_x : Bool,
   expand_y : Bool,
   page_height : Double,
+  clip_id : Int,
 ) -> Unit {
   write_svg_image_with_index(
     builder,
@@ -757,6 +770,7 @@ fn write_svg_image_deferred(
     expand_x,
     expand_y,
     page_height,
+    clip_id,
   )
 }
 
@@ -769,6 +783,7 @@ fn write_svg_image_with_index(
   expand_x : Bool,
   expand_y : Bool,
   page_height : Double,
+  clip_id : Int,
 ) -> Unit {
   if !expand_x && !expand_y {
     match svg_axis_aligned_image_rect(matrix, page_height) {
@@ -782,6 +797,7 @@ fn write_svg_image_with_index(
         builder.write_string("\" height=\"")
         builder.write_string(format_svg_number_precise(height))
         builder.write_string("\"")
+        write_svg_clip_path_attribute(builder, clip_id)
         write_svg_image_href(builder, href, image_index)
         builder.write_string("/>")
         return
@@ -790,10 +806,23 @@ fn write_svg_image_with_index(
     }
   }
   builder.write_string("<image x=\"0\" y=\"0\" width=\"1\" height=\"1\"")
+  write_svg_clip_path_attribute(builder, clip_id)
   write_svg_image_href(builder, href, image_index)
   builder.write_string(" transform=\"matrix(")
   write_svg_image_matrix(builder, matrix, expand_x, expand_y, page_height)
   builder.write_string(")\"/>")
+}
+
+///|
+/// Writes the clip-path attribute that applies a registered SVG clipPath to a
+/// rendered image, path, or text element. Clip id 0 means no accumulated
+/// clipping path beyond the initial page clip, so the attribute is omitted.
+fn write_svg_clip_path_attribute(builder : StringBuilder, clip_id : Int) -> Unit {
+  if clip_id > 0 {
+    builder.write_string(" clip-path=\"url(#c")
+    builder.write_string(clip_id.to_string())
+    builder.write_string(")\"")
+  }
 }
 
 ///|

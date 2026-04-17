@@ -515,6 +515,7 @@ test "write_svg_image uses unit image with CTM transform" {
     true,
     true,
     396.0,
+    0,
   )
   assert_eq(
     builder.to_string(),
@@ -532,6 +533,7 @@ test "write_svg_image does not expand multi-pixel image CTM" {
     false,
     false,
     841.92,
+    0,
   )
   assert_eq(
     builder.to_string(),
