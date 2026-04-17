@@ -21,6 +21,11 @@ let documents : Map[Int, @pdfapi.PdfDocument] = Map::new()
 let contexts : Map[Int, @context.PdfContext] = Map::new()
 
 ///|
+/// Pending SVG render results for the accessor bridge, keyed by
+/// "handle:page" and populated by each pdf_page_to_svg_deferred call.
+/// This is per-call pending state, not a cache; the viewer layer avoids
+/// duplicate deferred-render invocations with its own application-lifetime
+/// cache.
 let deferred_svg_pages : Map[String, @svg.SvgDeferredResult] = Map::new()
 
 ///|
