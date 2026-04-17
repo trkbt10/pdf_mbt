@@ -531,7 +531,7 @@ fn GraphicsInterpreter::apply_path_painting_operator(
       )
     }
     self.state.clipping_path = self.state.clipping_path.append_clip(
-      self.current_path.snapshot(),
+      self.current_path.snapshot().transformed(self.state.ctm),
       rule,
     )
     self.events.push(

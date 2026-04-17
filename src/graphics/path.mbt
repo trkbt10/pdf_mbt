@@ -177,6 +177,53 @@ pub fn GraphicsPath::copy(self : GraphicsPath) -> GraphicsPath {
 }
 
 ///|
+fn GraphicsPath::transformed(
+  self : GraphicsPath,
+  matrix : GraphicsMatrix,
+) -> GraphicsPath {
+  let subpaths : Array[PathSubpath] = []
+  for subpath in self.subpaths {
+    subpaths.push(subpath.transformed(matrix))
+  }
+  GraphicsPath::{ subpaths, }
+}
+
+///|
+fn PathSubpath::transformed(
+  self : PathSubpath,
+  matrix : GraphicsMatrix,
+) -> PathSubpath {
+  let segments : Array[PathSegment] = []
+  for segment in self.segments {
+    segments.push(segment.transformed(matrix))
+  }
+  PathSubpath::{
+    start: matrix.transform_point(self.start),
+    segments,
+    current: matrix.transform_point(self.current),
+    closed: self.closed,
+  }
+}
+
+///|
+fn PathSegment::transformed(
+  self : PathSegment,
+  matrix : GraphicsMatrix,
+) -> PathSegment {
+  match self {
+    PathSegment::LineTo(point) =>
+      PathSegment::LineTo(matrix.transform_point(point))
+    PathSegment::CurveTo(control1, control2, end_point) =>
+      PathSegment::CurveTo(
+        matrix.transform_point(control1),
+        matrix.transform_point(control2),
+        matrix.transform_point(end_point),
+      )
+    PathSegment::ClosePath => PathSegment::ClosePath
+  }
+}
+
+///|
 pub fn ClipState::new(initial_clip : GraphicsPath?) -> ClipState {
   ClipState::{ initial_clip: copy_optional_path(initial_clip), clips: [] }
 }

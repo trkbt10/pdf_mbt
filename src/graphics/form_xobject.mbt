@@ -168,7 +168,7 @@ pub fn apply_form_xobject_geometry(
   let geometry = form.geometry()
   state.concat_ctm(geometry.matrix)
   state.clipping_path = state.clipping_path.append_clip(
-    geometry.clip_path,
+    geometry.clip_path.transformed(state.ctm),
     FillRule::NonZero,
   )
   state

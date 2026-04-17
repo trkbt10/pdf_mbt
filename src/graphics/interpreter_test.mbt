@@ -15,7 +15,16 @@ test "interpret content applies graphics state and emits path clipping events" {
     _ => fail("expected fill-stroke path event")
   }
   match program.events[4] {
-    ClipChanged(_, clip) => assert_eq(clip.clips.length(), 1)
+    ClipChanged(_, clip) => {
+      assert_eq(clip.clips.length(), 1)
+      let subpath = clip.clips[0].path.subpaths[0]
+      assert_eq(subpath.start == GraphicsPoint::new(10.0, 20.0), true)
+      match subpath.segments[1] {
+        LineTo(point) =>
+          assert_eq(point == GraphicsPoint::new(30.0, 40.0), true)
+        _ => fail("expected transformed rectangle segment")
+      }
+    }
     _ => fail("expected clip changed event")
   }
 }

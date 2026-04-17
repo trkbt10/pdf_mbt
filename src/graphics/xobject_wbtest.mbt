@@ -184,6 +184,12 @@ test "Form XObject geometry applies Matrix and BBox clip" {
     true,
   )
   assert_eq(state.clipping_path.clips.length(), 1)
+  let subpath = state.clipping_path.clips[0].path.subpaths[0]
+  assert_eq(subpath.start == GraphicsPoint::new(15.0, 27.0), true)
+  match subpath.segments[1] {
+    LineTo(point) => assert_eq(point == GraphicsPoint::new(35.0, 57.0), true)
+    _ => fail("expected transformed form BBox clip segment")
+  }
 }
 
 ///|
