@@ -95,6 +95,16 @@ let winansi_encoding : Array[String] = [
 ]
 
 ///|
+/// Escaped TopDICT operator for CID-keyed CFF ROS (Registry/Ordering/
+/// Supplement), encoded in Adobe TN 5176 as byte sequence 12 30.
+let cff_ros_operator : Int = (12 << 8) | 30
+
+///|
+/// Escaped TopDICT operator for CID-keyed CFF CIDCount, encoded in Adobe TN
+/// 5176 as byte sequence 12 34.
+let cff_cid_count_operator : Int = (12 << 8) | 34
+
+///|
 /// Resolves a predefined CFF SID through Adobe Standard Strings. Returns None
 /// for custom SIDs, which are resolved through the CFF String INDEX.
 pub fn adobe_standard_string(sid : Int) -> String? {
@@ -143,11 +153,7 @@ pub fn cff_string_index_entry(data : Bytes, index : Int) -> String? {
 }
 
 ///|
-fn cff_index_entry_bounds(
-  data : Bytes,
-  pos : Int,
-  index : Int,
-) -> (Int, Int)? {
+fn cff_index_entry_bounds(data : Bytes, pos : Int, index : Int) -> (Int, Int)? {
   if pos + 2 > data.length() {
     return None
   }
@@ -212,6 +218,38 @@ pub fn cff_charset_offset(data : Bytes) -> Int {
 }
 
 ///|
+/// Detects CID-keyed CFF fonts by scanning the TopDICT for the ROS operator
+/// or CIDCount operator. CIDFontType0C streams use ROS to identify the CID
+/// system and their charset entries are CIDs rather than Type1C SIDs.
+pub fn is_cid_keyed_cff(data : Bytes) -> Bool {
+  match cff_top_dict_entry_bounds(data) {
+    Some((offset, length)) =>
+      cff_dict_has_operator(data, offset, length, cff_ros_operator) ||
+      cff_dict_has_operator(data, offset, length, cff_cid_count_operator)
+    None => false
+  }
+}
+
+///|
+/// Reads the CIDCount TopDICT operator for a CID-keyed CFF font. Returns 0
+/// when CIDCount is absent or the TopDICT cannot be parsed.
+pub fn cff_cid_count(data : Bytes) -> Int {
+  match cff_top_dict_entry_bounds(data) {
+    Some((offset, length)) => {
+      let count = cff_dict_find_operator(
+        data, offset, length, cff_cid_count_operator,
+      )
+      if count > 0 {
+        count
+      } else {
+        0
+      }
+    }
+    None => 0
+  }
+}
+
+///|
 /// Parses the CFF charset table into a glyph_id to SID array. Supports CFF
 /// charset format 0, format 1, and format 2 as defined by Adobe TN 5176.
 /// glyph_id 0 is always SID 0 (.notdef). Returns None for malformed charset
@@ -251,6 +289,36 @@ fn cff_top_dict_entry_bounds(data : Bytes) -> (Int, Int)? {
     return None
   }
   cff_index_entry_bounds(data, name_end, 0)
+}
+
+///|
+fn cff_dict_has_operator(
+  data : Bytes,
+  offset : Int,
+  length : Int,
+  target_op : Int,
+) -> Bool {
+  let end = offset + length
+  let mut pos = offset
+  while pos < end {
+    let b0 = data[pos].to_int()
+    pos += 1
+    if b0 >= 32 {
+      let (_, new_pos) = cff_decode_dict_operand(data, pos, b0)
+      pos = new_pos
+    } else if b0 == 12 {
+      if pos < end {
+        let op = (12 << 8) | data[pos].to_int()
+        pos += 1
+        if op == target_op {
+          return true
+        }
+      }
+    } else if b0 == target_op {
+      return true
+    }
+  }
+  false
 }
 
 ///|

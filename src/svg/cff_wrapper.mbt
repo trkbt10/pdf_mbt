@@ -100,7 +100,9 @@ fn cff_charstrings_count(data : Bytes) -> Int {
     return 0
   }
   // Parse Top DICT for operator 17 (CharStrings offset)
-  let charstrings_offset = cff_dict_find_operator(data, td_offset, td_length, 17)
+  let charstrings_offset = cff_dict_find_operator(
+    data, td_offset, td_length, 17,
+  )
   if charstrings_offset < 0 || charstrings_offset + 2 > data.length() {
     return 0
   }
@@ -132,7 +134,11 @@ fn cff_skip_index(data : Bytes, pos : Int) -> Int {
     return -1
   }
   // Last offset value gives data size
-  let last_offset = cff_read_offset(data, offsets_start + count * off_size, off_size) -
+  let last_offset = cff_read_offset(
+      data,
+      offsets_start + count * off_size,
+      off_size,
+    ) -
     1
   offsets_end + last_offset
 }
@@ -185,7 +191,11 @@ fn cff_dict_find_operator(
     } else if b0 == 12 {
       // Two-byte operator
       if pos < end {
+        let op = (12 << 8) | data[pos].to_int()
         pos += 1
+        if op == target_op {
+          return last_operand
+        }
       }
       last_operand = -1
     } else {
@@ -201,11 +211,7 @@ fn cff_dict_find_operator(
 
 ///|
 /// Decodes a CFF DICT operand. Returns (value, new_position).
-fn cff_decode_dict_operand(
-  data : Bytes,
-  pos : Int,
-  b0 : Int,
-) -> (Int, Int) {
+fn cff_decode_dict_operand(data : Bytes, pos : Int, b0 : Int) -> (Int, Int) {
   if b0 >= 32 && b0 <= 246 {
     (b0 - 139, pos)
   } else if b0 >= 247 && b0 <= 250 {
