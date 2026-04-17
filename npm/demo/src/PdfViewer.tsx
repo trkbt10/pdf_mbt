@@ -38,6 +38,15 @@ interface PageSvgState {
   error?: string;
 }
 
+interface CachedPage extends PageSvgState {
+  imageUrls: Map<number, string>;
+}
+
+interface DocumentCache {
+  handle: number;
+  pages: Map<number, CachedPage>;
+}
+
 interface PageImagesState {
   status: "idle" | "loading" | "ready" | "error";
   count: number;
@@ -69,6 +78,8 @@ export default function PdfViewer({
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [dragActive, setDragActive] = useState(false);
   const [pageSvgs, setPageSvgs] = useState<Record<number, PageSvgState>>({});
+  const cacheRef = useRef<DocumentCache | null>(null);
+  const [, setPageSvgVersion] = useState(0);
   const [pageTexts, setPageTexts] = useState<Record<number, PageTextState>>({});
   const [pageImages, setPageImages] = useState<Record<number, PageImagesState>>(
     {}
@@ -949,6 +960,31 @@ function updateImageState(
     ...states,
     [pageIndex]: { ...page, items },
   };
+}
+
+function ensureCache(
+  cacheRef: RefObject<DocumentCache | null>,
+  document: ViewerDocument
+): DocumentCache {
+  const handle = document.source.handle;
+  const cache = cacheRef.current;
+  if (cache && cache.handle === handle) {
+    return cache;
+  }
+  if (cache) {
+    revokeAllBlobUrls(cache);
+  }
+  const nextCache = { handle, pages: new Map<number, CachedPage>() };
+  cacheRef.current = nextCache;
+  return nextCache;
+}
+
+function revokeAllBlobUrls(cache: DocumentCache) {
+  for (const page of cache.pages.values()) {
+    for (const url of page.imageUrls.values()) {
+      URL.revokeObjectURL(url);
+    }
+  }
 }
 
 function imageLoadKey(pageIndex: number, imageIndex: number): string {
