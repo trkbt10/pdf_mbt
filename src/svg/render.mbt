@@ -948,8 +948,9 @@ fn render_glyph_as_path(
 ///|
 /// Resolves the glyph ID for a text glyph event. CID fonts use the CID
 /// directly as the glyph ID (CIDFontType0/Type1C fonts encode glyphs by CID
-/// order). Simple fonts look up the source code in the font's cmap table.
-/// Returns -1 if the glyph ID cannot be resolved.
+/// order). Simple fonts resolve GlyphName identifiers through the TTFont post
+/// table glyph_name reverse lookup when available, then fall back to cmap
+/// lookup by source_code. Returns -1 if the glyph ID cannot be resolved.
 fn svg_resolve_glyph_id(
   ttf : @font.TTFont,
   glyph : @text.TextGlyphEvent,
@@ -961,12 +962,35 @@ fn svg_resolve_glyph_id(
         Some(gid) => gid
         None => -1
       }
-    @text.GlyphIdentifier::GlyphName(_) =>
-      match ttf.cmap.get(glyph.glyph.source_code) {
+    @text.GlyphIdentifier::GlyphName(name) =>
+      match svg_post_glyph_id(ttf, name.to_text()) {
         Some(gid) => gid
-        None => -1
+        None =>
+          match ttf.cmap.get(glyph.glyph.source_code) {
+            Some(gid) => gid
+            None => -1
+          }
       }
     @text.GlyphIdentifier::Notdef => 0
+  }
+}
+
+///|
+/// Reverse-looks-up a glyph name in the TTFont post table for SVG renderer
+/// GlyphName resolution. Empty glyph outlines are still checked by
+/// `svg_write_glyph_path`; missing outlines return false and fall back to SVG
+/// `<text>` rendering.
+fn svg_post_glyph_id(ttf : @font.TTFont, glyph_name : String) -> Int? {
+  match ttf.post {
+    Some(post) => {
+      for glyph_id in 0..<post.glyph_names.length() {
+        if post.glyph_names[glyph_id] == glyph_name {
+          return Some(glyph_id)
+        }
+      }
+      None
+    }
+    None => None
   }
 }
 

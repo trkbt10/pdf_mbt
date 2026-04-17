@@ -42,6 +42,7 @@ fn wrap_cff_in_otf(cff_data : Bytes) -> Bytes? {
   let maxp = build_synthetic_maxp(num_glyphs)
   let hhea = build_synthetic_hhea(num_glyphs)
   let hmtx = build_synthetic_hmtx(num_glyphs)
+  let glyph_names = cff_glyph_name_table(cff_data, num_glyphs)
   let cmap = build_synthetic_cmap(cff_data, num_glyphs)
   let tables : Array[(String, Bytes)] = [
     ("CFF ", cff_data),
@@ -51,6 +52,10 @@ fn wrap_cff_in_otf(cff_data : Bytes) -> Bytes? {
     ("hmtx", hmtx),
     ("maxp", maxp),
   ]
+  match glyph_names {
+    Some(names) => tables.push(("post", build_synthetic_post(names)))
+    None => ()
+  }
   Some(@font.rebuild_sfnt(0x4F54544F, tables))
 }
 
@@ -331,6 +336,45 @@ fn build_synthetic_hmtx(num_glyphs : Int) -> Bytes {
     // lsb: 0 (already zero)
   }
   Bytes::from_array(buf[:])
+}
+
+///|
+/// Builds a synthetic `post` format 2 table from CFF charset glyph names.
+/// SVG renderer GlyphName resolution can reverse lookup glyph_name to glyph_id
+/// through this post table when PDF Encoding Differences are not represented by
+/// WinAnsiEncoding source codes in the synthetic cmap.
+fn build_synthetic_post(glyph_names : Array[String]) -> Bytes {
+  let mut string_bytes = 0
+  for name in glyph_names {
+    string_bytes += 1 + cff_post_name_length(name)
+  }
+  let total = 32 + 2 + glyph_names.length() * 2 + string_bytes
+  let buf : Array[Byte] = Array::make(total, b'\x00')
+  cff_write_uint32(buf, 0, 0x00020000)
+  cff_write_uint16(buf, 32, glyph_names.length())
+  let indices = 34
+  let mut string_pos = indices + glyph_names.length() * 2
+  for glyph_id in 0..<glyph_names.length() {
+    cff_write_uint16(buf, indices + glyph_id * 2, 258 + glyph_id)
+    let name = glyph_names[glyph_id]
+    let length = cff_post_name_length(name)
+    buf[string_pos] = length.to_byte()
+    string_pos += 1
+    for i in 0..<length {
+      buf[string_pos + i] = name.code_unit_at(i).to_byte()
+    }
+    string_pos += length
+  }
+  Bytes::from_array(buf[:])
+}
+
+///|
+fn cff_post_name_length(name : String) -> Int {
+  if name.length() > 255 {
+    255
+  } else {
+    name.length()
+  }
 }
 
 ///|

@@ -277,6 +277,13 @@ test "wrap_cff_in_otf builds non-identity WinAnsi cmap from CFF charset" {
           assert_eq(ttf.cmap.get(66), Some(2))
           assert_eq(ttf.cmap.get(65) == Some(65), false)
           assert_eq(ttf.cmap.get(90) is None, true)
+          match ttf.post {
+            Some(post) => {
+              assert_eq(post.glyph_names[1], "A")
+              assert_eq(post.glyph_names[27], "rectangle")
+            }
+            None => assert_true(false)
+          }
         }
         None => assert_true(false)
       }
