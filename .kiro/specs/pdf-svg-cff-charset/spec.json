@@ -1,0 +1,14 @@
+{
+  "name": "pdf-svg-cff-charset",
+  "approvals": {
+    "requirements": {
+      "approved": true
+    },
+    "design": {
+      "approved": true
+    },
+    "tasks": {
+      "approved": true
+    }
+  }
+}

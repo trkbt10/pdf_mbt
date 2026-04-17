@@ -1,0 +1,14 @@
+{
+  "name": "pdf-svg-image-precision",
+  "approvals": {
+    "requirements": {
+      "approved": true
+    },
+    "design": {
+      "approved": true
+    },
+    "tasks": {
+      "approved": true
+    }
+  }
+}
