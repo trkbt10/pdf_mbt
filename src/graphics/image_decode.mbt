@@ -290,6 +290,7 @@ fn decode_sample_bytes_to_rgb(
   let alpha = alpha_for_image_descriptor(descriptor, samples, offset)
   let bits_per_component = require_bits_per_component(descriptor, offset)
   let total = descriptor.width * descriptor.height
+  let scratch = Array::make(image_decode_scratch_component_count(space), 0.0)
   // Pre-allocated RGBA buffer for the image decode hot loop.
   let rgba = FixedArray::make(total * 4, b'\x00')
   for pixel in 0..<total {
@@ -299,6 +300,7 @@ fn decode_sample_bytes_to_rgb(
       bits_per_component,
       samples,
       pixel,
+      scratch,
       offset,
     )
     let rgba_index = pixel * 4
@@ -312,6 +314,14 @@ fn decode_sample_bytes_to_rgb(
     height: descriptor.height,
     rgba: Bytes::makei(total * 4, fn(i) { rgba[i] }),
   })
+}
+
+///|
+fn image_decode_scratch_component_count(space : ColourSpace) -> Int {
+  match space {
+    Indexed(params) => params.base.component_count()
+    _ => space.component_count()
+  }
 }
 
 ///|
@@ -605,6 +615,7 @@ fn pixel_to_device_rgb(
   bits_per_component : Int,
   samples : Array[Int],
   pixel : Int,
+  scratch : Array[Double],
   offset : Int64,
 ) -> (Double, Double, Double) raise PdfGraphicsError {
   match space {
@@ -614,21 +625,19 @@ fn pixel_to_device_rgb(
         decode,
         bits_per_component,
         samples[pixel],
+        scratch,
         offset,
       )
     _ => {
       let count = space.component_count()
-      let components : Array[Double] = []
       for component in 0..<count {
-        components.push(
-          decode_sample_value(
-            samples[pixel * count + component],
-            bits_per_component,
-            decode[component],
-          ),
+        scratch[component] = decode_sample_value(
+          samples[pixel * count + component],
+          bits_per_component,
+          decode[component],
         )
       }
-      components_to_device_rgb(space, components, offset)
+      components_to_device_rgb(space, scratch, offset)
     }
   }
 }
@@ -639,6 +648,7 @@ fn indexed_pixel_to_device_rgb(
   decode : Array[ImageDecodeRange],
   bits_per_component : Int,
   raw_sample : Int,
+  scratch : Array[Double],
   offset : Int64,
 ) -> (Double, Double, Double) raise PdfGraphicsError {
   let decoded_index = decode_sample_value(
@@ -659,11 +669,10 @@ fn indexed_pixel_to_device_rgb(
       offset, "Indexed lookup table is shorter than selected image sample",
     )
   }
-  let components : Array[Double] = []
   for component in 0..<base_count {
-    components.push(lookup[start + component].to_int().to_double() / 255.0)
+    scratch[component] = lookup[start + component].to_int().to_double() / 255.0
   }
-  components_to_device_rgb(params.base, components, offset)
+  components_to_device_rgb(params.base, scratch, offset)
 }
 
 ///|
