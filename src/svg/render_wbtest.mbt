@@ -339,6 +339,32 @@ test "CFF charset static tables expose Adobe Standard Strings and WinAnsiEncodin
 }
 
 ///|
+test "local-fixture page 6 per-glyph outline golden" {
+  let path = "<local-fixture>"
+  if !@fs.path_exists(path) {
+    println("diagnostic skipped: " + path + " is not present")
+    return
+  }
+  let document = @reader.PdfDocument::open(@fs.read_file_to_bytes(path))
+  let page = document.page(5)
+  let result : Result[@text.TextProgram, @reader.PdfDocumentError] = try? page.text_program(
+    @reader.TextPageOptions::default(),
+  )
+  match result {
+    Ok(program) => {
+      let glyph_groups = text_program_span_glyphs(program)
+      let embedded_fonts = page_svg_embedded_fonts(page)
+      for golden in page6_glyph_outline_golden_cases() {
+        assert_page6_glyph_outline_golden(
+          program, glyph_groups, embedded_fonts, golden,
+        )
+      }
+    }
+    Err(_) => assert_true(false)
+  }
+}
+
+///|
 test "parse_cff_charset reads cff.add.otf extracted CFF charset" {
   let cff = cff_add_fixture_cff()
   assert_true(is_raw_cff(cff))
@@ -1286,6 +1312,151 @@ fn diagnostic_hex_digit(value : Int) -> String {
     15 => "F"
     _ => "?"
   }
+}
+
+///|
+struct Page6GlyphOutlineGolden {
+  font_name : @objects.PdfName
+  source_code : Int
+  expected_gid : Int
+  expected_x : Double
+  expected_y : Double
+  require_non_identity : Bool
+}
+
+///|
+fn page6_glyph_outline_golden_cases() -> Array[Page6GlyphOutlineGolden] {
+  // Generated on 2026-04-17 from <local-fixture> page 6 with
+  // dev/pdf-svg-glyph-correctness/extract_local_fixture_glyph_golden.py. The fixture is
+  // embedded here so CI does not need Python or external font tools at runtime.
+  [
+    Page6GlyphOutlineGolden::{
+      font_name: @objects.PdfName::new(b"T1_0"),
+      source_code: 53,
+      expected_gid: 6,
+      expected_x: 458.0,
+      expected_y: 698.0,
+      require_non_identity: true,
+    },
+    Page6GlyphOutlineGolden::{
+      font_name: @objects.PdfName::new(b"T1_1"),
+      source_code: 71,
+      expected_gid: 29,
+      expected_x: 635.0,
+      expected_y: 681.0,
+      require_non_identity: true,
+    },
+    Page6GlyphOutlineGolden::{
+      font_name: @objects.PdfName::new(b"T1_2"),
+      source_code: 68,
+      expected_gid: 28,
+      expected_x: 83.0,
+      expected_y: 0.0,
+      require_non_identity: true,
+    },
+    Page6GlyphOutlineGolden::{
+      font_name: @objects.PdfName::new(b"T1_3"),
+      source_code: 72,
+      expected_gid: 24,
+      expected_x: 65.0,
+      expected_y: 0.0,
+      require_non_identity: true,
+    },
+    Page6GlyphOutlineGolden::{
+      font_name: @objects.PdfName::new(b"T1_4"),
+      source_code: 80,
+      expected_gid: 19,
+      expected_x: 309.0,
+      expected_y: 566.0,
+      require_non_identity: true,
+    },
+    Page6GlyphOutlineGolden::{
+      font_name: @objects.PdfName::new(b"T1_5"),
+      source_code: 83,
+      expected_gid: 13,
+      expected_x: 553.0,
+      expected_y: 679.0,
+      require_non_identity: true,
+    },
+    Page6GlyphOutlineGolden::{
+      font_name: @objects.PdfName::new(b"C0_0"),
+      source_code: 11578,
+      expected_gid: 1,
+      expected_x: 144.0,
+      expected_y: 838.0,
+      require_non_identity: true,
+    },
+    Page6GlyphOutlineGolden::{
+      font_name: @objects.PdfName::new(b"C0_1"),
+      source_code: 8206,
+      expected_gid: 23,
+      expected_x: 966.0,
+      expected_y: 380.0,
+      require_non_identity: true,
+    },
+  ]
+}
+
+///|
+fn assert_page6_glyph_outline_golden(
+  program : @text.TextProgram,
+  glyph_groups : Array[Array[@text.TextGlyphEvent]],
+  embedded_fonts : Map[@objects.PdfName, @font.TTFont],
+  golden : Page6GlyphOutlineGolden,
+) -> Unit raise {
+  match embedded_fonts.get(golden.font_name) {
+    Some(ttf) => {
+      for index in 0..<program.spans.length() {
+        let span = program.spans[index]
+        if span.font_name == Some(golden.font_name) {
+          let glyphs = span_glyphs(glyph_groups, index)
+          for glyph in glyphs {
+            if glyph.glyph.source_code == golden.source_code {
+              let gid = svg_resolve_glyph_id(ttf, glyph)
+              assert_eq(gid, golden.expected_gid)
+              if golden.require_non_identity {
+                assert_true(gid != golden.source_code)
+              }
+              let outline = ttf.glyph_outline(gid)
+              assert_true(outline.length() > 0)
+              match glyph_outline_first_move(outline) {
+                Some((x, y)) => {
+                  assert_double_near(x, golden.expected_x, 0.001)
+                  assert_double_near(y, golden.expected_y, 0.001)
+                }
+                None => assert_true(false)
+              }
+              return
+            }
+          }
+        }
+      }
+      assert_true(false)
+    }
+    None => assert_true(false)
+  }
+}
+
+///|
+fn glyph_outline_first_move(
+  outline : Array[@svgpath.PathCommand],
+) -> (Double, Double)? {
+  for command in outline {
+    match command {
+      @svgpath.MoveTo(x, y) => return Some((x, y))
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn assert_double_near(
+  actual : Double,
+  expected : Double,
+  tolerance : Double,
+) -> Unit raise {
+  assert_true((actual - expected).abs() <= tolerance)
 }
 
 ///|
