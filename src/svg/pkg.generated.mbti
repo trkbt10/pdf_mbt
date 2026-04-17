@@ -19,6 +19,8 @@ pub fn cff_glyph_name_table(Bytes, Int) -> Array[String]?
 
 pub fn cff_string_index_entry(Bytes, Int) -> String?
 
+pub fn fallback_for_non_embedded_fonts_alignment() -> Unit
+
 pub fn font_descriptor_lookup_order_alignment() -> Unit
 
 pub fn font_file3_cid_font_type0c_subtype_alignment() -> Unit
@@ -29,7 +31,15 @@ pub fn font_file3_type1c_subtype_alignment() -> Unit
 
 pub fn font_file_type1_non_compact_alignment() -> Unit
 
+pub fn glyph_fill_and_stroke_alignment() -> Unit
+
+pub fn glyph_outline_extraction_alignment() -> Unit
+
 pub fn glyph_path_fill_colour_alignment() -> Unit
+
+pub fn glyph_positioning_and_scaling_alignment() -> Unit
+
+pub fn glyph_svg_output_format_alignment() -> Unit
 
 pub fn is_cid_keyed_cff(Bytes) -> Bool
 
