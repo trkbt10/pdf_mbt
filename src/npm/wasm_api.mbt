@@ -29,6 +29,12 @@ let contexts : Map[Int, @context.PdfContext] = Map::new()
 let deferred_svg_pages : Map[String, @svg.SvgDeferredResult] = Map::new()
 
 ///|
+/// Page-scoped deferred SVG image cache. The intended accessor contract is one
+/// graphics event walk per (handle, page), not one walk per image accessor; the
+/// first data/info/mime access fills this ordered array for the whole page.
+let deferred_svg_image_page_cache : Map[String, Array[@svg.SvgImageEntry]] = Map::new()
+
+///|
 /// Lazily materialized deferred SVG image entries for the wasm API surface.
 /// The pageToSvgDeferred path records placeholders; first data/info access
 /// extracts raw RGBA or encoded pass-through bytes and caches them here.
@@ -413,6 +419,51 @@ fn build_deferred_svg_image_entry(
 ) -> @svg.SvgImageEntry? {
   match get_page(handle, page) {
     Some(pdf_page) => page_svg_image_entry_by_occurrence(pdf_page, index)
+    None => None
+  }
+}
+
+///|
+fn build_deferred_svg_image_page(
+  handle : Int,
+  page : Int,
+) -> Array[@svg.SvgImageEntry]? {
+  match get_page(handle, page) {
+    Some(pdf_page) => {
+      let result : Result[
+        Array[@graphics.GraphicsEvent],
+        @reader.PdfDocumentError,
+      ] = try? pdf_page
+        .reader_page()
+        .graphics_events(
+          @reader.GraphicsPageOptions::with_materialized_xobjects(None),
+        )
+      match result {
+        Ok(events) => {
+          let entries : Array[@svg.SvgImageEntry] = []
+          for event in events {
+            match event {
+              @graphics.GraphicsEvent::ImagePainted(_, descriptor, state) =>
+                match descriptor.source {
+                  @graphics.ImageSource::XObjectImage(Some(name)) =>
+                    match page_image_entry_by_name(pdf_page, name) {
+                      Some(entry) =>
+                        match deferred_svg_image_entry_data(entry, state) {
+                          Some(image) => entries.push(image)
+                          None => ()
+                        }
+                      None => ()
+                    }
+                  _ => ()
+                }
+              _ => ()
+            }
+          }
+          Some(entries)
+        }
+        Err(_) => None
+      }
+    }
     None => None
   }
 }
