@@ -219,14 +219,75 @@ test "render_page_svg renders FontFile3 OpenType glyphs as paths" {
 }
 
 ///|
+test "CFF charset static tables expose Adobe Standard Strings and WinAnsiEncoding" {
+  assert_eq(adobe_standard_string(0), Some(".notdef"))
+  assert_eq(adobe_standard_string(1), Some("space"))
+  assert_eq(adobe_standard_string(17), Some("zero"))
+  assert_eq(adobe_standard_string(34), Some("A"))
+  assert_eq(adobe_standard_string(391) is None, true)
+  assert_eq(winansi_glyph_name(32), "space")
+  assert_eq(winansi_glyph_name(65), "A")
+  assert_eq(winansi_glyph_name(97), "a")
+  assert_eq(winansi_glyph_name(128), "Euro")
+  assert_eq(winansi_glyph_name(129), "")
+}
+
+///|
+test "parse_cff_charset reads cff.add.otf extracted CFF charset" {
+  let cff = cff_add_fixture_cff()
+  assert_true(is_raw_cff(cff))
+  assert_eq(cff_charstrings_count(cff), 28)
+  assert_eq(cff_string_index_entry(cff, 3), Some("A"))
+  match parse_cff_charset(cff, 28) {
+    Some(sids) => {
+      assert_eq(sids.length(), 28)
+      assert_eq(sids[0], 0)
+      assert_eq(sids[1], 394)
+      assert_eq(sids[27], 420)
+    }
+    None => assert_true(false)
+  }
+}
+
+///|
+test "cff_glyph_name_table resolves custom String INDEX names" {
+  let cff = cff_add_fixture_cff()
+  match cff_glyph_name_table(cff, 28) {
+    Some(names) => {
+      assert_eq(names.length(), 28)
+      assert_eq(names[0], ".notdef")
+      assert_eq(names[1], "A")
+      assert_eq(names[2], "B")
+      assert_eq(names[26], "alphabet")
+      assert_eq(names[27], "rectangle")
+    }
+    None => assert_true(false)
+  }
+}
+
+///|
+test "wrap_cff_in_otf builds non-identity WinAnsi cmap from CFF charset" {
+  let cff = cff_add_fixture_cff()
+  match wrap_cff_in_otf(cff) {
+    Some(wrapped) =>
+      match @font.parse_font(wrapped) {
+        Some(ttf) => {
+          assert_eq(ttf.num_glyphs, 28)
+          assert_eq(ttf.cmap.get(65), Some(1))
+          assert_eq(ttf.cmap.get(66), Some(2))
+          assert_eq(ttf.cmap.get(65) == Some(65), false)
+          assert_eq(ttf.cmap.get(90) is None, true)
+        }
+        None => assert_true(false)
+      }
+    None => assert_true(false)
+  }
+}
+
+///|
 test "wrap_cff_in_otf wraps raw CFF and parse_font succeeds" {
   // Extract raw CFF table from an OTF file
-  let cff = extract_sfnt_table(
-    try! @fs.read_file_to_bytes(
-      ".mooncakes/mizchi/font/fixtures/cff-opcodes/cff.add.otf",
-    ),
-    b"CFF ",
-  )
+  let cff = cff_add_fixture_cff()
   assert_true(is_raw_cff(cff))
   assert_true(cff_charstrings_count(cff) > 0)
   match wrap_cff_in_otf(cff) {
@@ -627,12 +688,7 @@ fn build_embedded_fontfile3_text_fixture() -> Bytes {
 ///|
 fn build_raw_type1c_fontfile3_text_fixture() -> Bytes {
   let content = b"BT /F1 12 Tf 1 0 0 1 10 20 Tm (A) Tj ET"
-  let cff = extract_sfnt_table(
-    try! @fs.read_file_to_bytes(
-      ".mooncakes/mizchi/font/fixtures/cff-opcodes/cff.add.otf",
-    ),
-    b"CFF ",
-  )
+  let cff = cff_add_fixture_cff()
   let font_file = build_stream_object_body_with_entries(
     b"/Subtype /Type1C", cff,
   )
@@ -644,6 +700,16 @@ fn build_raw_type1c_fontfile3_text_fixture() -> Bytes {
       b"<< /Type /FontDescriptor /FontName /RawCffFallback /Flags 4 /FontBBox [0 -200 1000 1000] /ItalicAngle 0 /Ascent 1000 /Descent -200 /CapHeight 700 /StemV 80 /FontFile3 7 0 R >>",
       font_file,
     ],
+  )
+}
+
+///|
+fn cff_add_fixture_cff() -> Bytes {
+  extract_sfnt_table(
+    try! @fs.read_file_to_bytes(
+      ".mooncakes/mizchi/font/fixtures/cff-opcodes/cff.add.otf",
+    ),
+    b"CFF ",
   )
 }
 
