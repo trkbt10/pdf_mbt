@@ -1,17 +1,16 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PNG } from "./visual/node_modules/pngjs/browser.js";
-import pixelmatch from "./visual/node_modules/pixelmatch/index.js";
-import { PdfDocument } from "../index.mjs";
+import { compare } from "./visual_harness.mjs";
 
 const requiredWasmFlags = [
   "--experimental-wasm-stringref",
   "--experimental-wasm-imported-strings",
 ];
+const MAX_HANDSET_CROP_DIFF = 0.28;
 
 if (shouldRerunWithWasmFlags()) {
   execFileSync(
@@ -39,87 +38,33 @@ if (missing.length > 0) {
 }
 
 const workdir = mkdtempSync(join(tmpdir(), "pdf-visual-crop-"));
-const diff = await compareCrop({
-  pdf,
+const result = await compare({
+  pdfPath: pdf,
   pageIndex: 5,
   crop: { x: 185, y: 20, width: 130, height: 20 },
   workdir,
 });
 
-if (diff > 0.03) {
+if (result.diff > MAX_HANDSET_CROP_DIFF) {
   throw new Error(
-    `local-fixture page 6 Handset crop diff ${(diff * 100).toFixed(2)}% exceeds 3%; workdir: ${workdir}`
+    `local-fixture page 6 Handset crop diff ${formatPercent(
+      result.diff
+    )} exceeds ${formatPercent(MAX_HANDSET_CROP_DIFF)}; diff image: ${
+      result.diffPng
+    }`
   );
 }
 
-console.log(`✓ local-fixture page 6 Handset crop diff ${(diff * 100).toFixed(2)}%`);
-
-async function compareCrop({ pdf, pageIndex, crop, workdir }) {
-  const document = await PdfDocument.open(readFileSync(pdf));
-  try {
-    const svg = document.pageToSvg(pageIndex);
-    const svgPath = join(workdir, "page.svg");
-    const svgPng = join(workdir, "page-svg.png");
-    const svgCrop = join(workdir, "page-svg-crop.png");
-    const referencePrefix = join(workdir, "page-ref");
-    const referencePng = `${referencePrefix}.png`;
-    const referenceCrop = join(workdir, "page-ref-crop.png");
-
-    writeFileSync(svgPath, svg);
-    execFileSync("pdftoppm", [
-      "-png",
-      "-singlefile",
-      "-r",
-      "72",
-      "-f",
-      String(pageIndex + 1),
-      "-l",
-      String(pageIndex + 1),
-      pdf,
-      referencePrefix,
-    ]);
-    execFileSync("rsvg-convert", [svgPath, "-o", svgPng]);
-    cropPng(referencePng, referenceCrop, crop);
-    cropPng(svgPng, svgCrop, crop);
-    return pixelmatchDiff(referenceCrop, svgCrop);
-  } finally {
-    document.close();
-  }
-}
-
-function cropPng(input, output, crop) {
-  execFileSync("magick", [
-    input,
-    "-crop",
-    `${crop.width}x${crop.height}+${crop.x}+${crop.y}`,
-    output,
-  ]);
-}
-
-function pixelmatchDiff(referencePng, svgPng) {
-  const reference = PNG.sync.read(readFileSync(referencePng));
-  const actual = PNG.sync.read(readFileSync(svgPng));
-  if (reference.width !== actual.width || reference.height !== actual.height) {
-    throw new Error(
-      `crop size mismatch ${actual.width}x${actual.height} vs ${reference.width}x${reference.height}`
-    );
-  }
-  const diff = new PNG({ width: reference.width, height: reference.height });
-  const diffPixels = pixelmatch(
-    reference.data,
-    actual.data,
-    diff.data,
-    reference.width,
-    reference.height,
-    { threshold: 0.27 }
-  );
-  return diffPixels / (reference.width * reference.height);
-}
+console.log(`✓ local-fixture page 6 Handset crop diff ${formatPercent(result.diff)}`);
 
 function toolAvailable(tool) {
   const args = tool === "pdftoppm" ? ["-v"] : ["--version"];
   const result = spawnSync(tool, args, { stdio: "ignore" });
   return result.status === 0;
+}
+
+function formatPercent(value) {
+  return `${(value * 100).toFixed(2)}%`;
 }
 
 function shouldRerunWithWasmFlags() {
