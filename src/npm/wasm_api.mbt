@@ -233,6 +233,7 @@ pub fn pdf_check_json(handle : Int) -> String {
 pub fn pdf_close(handle : Int) -> Unit {
   documents.remove(handle)
   remove_deferred_pages_for_handle(handle)
+  remove_deferred_image_pages_for_handle(handle)
 }
 
 ///|
@@ -570,6 +571,14 @@ fn svg_image_optional_dimension(value : Int?) -> Int {
 fn remove_deferred_pages_for_handle(handle : Int) -> Unit {
   let prefix = handle.to_string() + ":"
   deferred_svg_pages.retain(fn(key, _value) { !key.has_prefix(prefix) })
+}
+
+///|
+fn remove_deferred_image_pages_for_handle(handle : Int) -> Unit {
+  let prefix = handle.to_string() + ":"
+  deferred_svg_image_page_cache.retain(fn(key, _value) {
+    !key.has_prefix(prefix)
+  })
 }
 
 ///|
