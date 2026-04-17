@@ -8,6 +8,15 @@
 /// FontFile3 with CIDFontType0C subtype — CID CFF font program
 /// FontFile Type 1 non-compact font programs fall back to text rendering
 /// Font descriptor lookup order: FontFile2, FontFile3, system font, text fallback
+/// Glyph outline extraction: embedded TrueType glyph outline and CFF font
+/// outlines are emitted as SVG glyph paths when `TTFont::glyph_outline(gid)`
+/// succeeds.
+/// Fallback for non-embedded fonts: Standard 14 / system font resolution falls
+/// back to SVG `<text>` when no outline-capable font is available.
+/// Fill and stroke: text rendering mode 0 writes glyph path fill from the
+/// nonstroking colour; graphics paths map fill and stroke from rendering mode.
+/// SVG output format: visible glyphs and graphics shapes are emitted as
+/// `<path d="..." fill="..."/>` elements with transforms and clip attributes.
 /// Renders a PDF page as SVG. Text colour is taken from the graphics state's
 /// current nonstroking colour, so both fallback `<text>` and embedded glyph
 /// paths use the same fill colour that PDF text painting operators use.

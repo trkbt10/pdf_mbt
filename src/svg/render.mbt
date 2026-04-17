@@ -405,6 +405,9 @@ fn page_render_graphics_svg(
 }
 
 ///|
+/// SVG output format for painted graphics paths: emits the concrete
+/// `<path d="..." fill="..."/>` shape after path data conversion, optional
+/// clip-path attribute on paths, and fill/stroke paint attributes.
 fn page_render_path_svg(
   builder : StringBuilder,
   operation : @graphics.PathPaintOperation,
@@ -529,6 +532,9 @@ fn svg_path_is_axis_aligned_rectangle(path : @graphics.GraphicsPath) -> Bool {
 }
 
 ///|
+/// Fill and stroke for SVG path output. Maps PDF path rendering modes to SVG
+/// fill and stroke attributes: stroke uses stroking colour, fill uses
+/// nonstroking colour, fill and stroke writes both, and EndPath writes neither.
 fn write_svg_paint_attributes(
   builder : StringBuilder,
   operation : @graphics.PathPaintOperation,
@@ -1038,6 +1044,9 @@ fn svg_image_axis_length(x : Double, y : Double) -> Double {
 /// Applies text colour from graphics state to each SVG text span. The
 /// TextGlyphEvent colour propagation path shares the same per-span fill colour
 /// with embedded glyph path fill colour and fallback text element fill colour.
+/// Fallback for non-embedded fonts happens here: if no embedded TrueType or
+/// CFF font outlines are available after Standard 14 / system font resolution,
+/// the renderer emits SVG `<text>` with the mapped CSS font-family.
 fn page_render_texts_svg(
   builder : StringBuilder,
   page : @reader.PdfPage,
@@ -1290,9 +1299,11 @@ fn span_clip_id(clip_ids : Array[Int], index : Int) -> Int {
 }
 
 ///|
-/// Supplies the per-span nonstroking colour to every embedded glyph path. This
-/// is the glyph path fill colour implementation for text rendered as SVG
-/// `<path>` elements instead of hardcoded black.
+/// Glyph outline extraction for a text span. Supplies the per-span
+/// nonstroking colour to every embedded glyph path, using TrueType glyph
+/// outline and CFF font outlines through `TTFont::glyph_outline(gid)`.
+/// This is the glyph path fill colour implementation for text rendered as
+/// SVG `<path>` elements instead of hardcoded black.
 fn page_render_text_span_as_paths(
   builder : StringBuilder,
   span : @text.TextSpan,
@@ -1317,9 +1328,12 @@ fn page_render_text_span_as_paths(
 }
 
 ///|
-/// Glyph path fill colour from nonstroking colour
-/// Writes a single glyph path fill colour from the active graphics state into
-/// the SVG `<path fill="...">` attribute.
+/// Glyph outline extraction. Resolves the glyph id, extracts TrueType glyph
+/// outline or CFF font outlines with `TTFont::glyph_outline(gid)`, converts
+/// them through `@font.path_commands_to_svg_d()`, and writes the SVG output
+/// format as `<path d="..." transform="matrix(...)" fill="..."/>`.
+/// Fill and stroke currently implements text rendering mode 0 by writing the
+/// glyph path fill colour from the active nonstroking colour.
 fn render_glyph_as_path(
   builder : StringBuilder,
   glyph : @text.TextGlyphEvent,
@@ -1530,9 +1544,11 @@ fn svg_glyph_is_spacing(glyph : @text.TextGlyphEvent) -> Bool {
 }
 
 ///|
-/// Text element fill colour from nonstroking colour
-/// Writes the fallback text element fill colour from the per-span nonstroking
-/// colour into the SVG `<text fill="...">` attribute.
+/// Fallback for non-embedded fonts. Writes fallback SVG `<text>` when glyph
+/// outlines are unavailable after Standard 14 / system font resolution, using
+/// the mapped CSS font-family. The text element fill colour comes from the
+/// per-span nonstroking colour and the clip-path attribute on text is applied
+/// by `write_svg_clip_path_attribute`.
 fn page_render_text_svg(
   builder : StringBuilder,
   span : @text.TextSpan,
