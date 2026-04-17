@@ -75,6 +75,16 @@ pub fn clip_path_geometry_transformation_alignment() -> Unit {
 }
 
 ///|
+/// Demo application integration. The web demo (npm/demo/src/PdfViewer.tsx)
+/// consumes pageToSvgDeferred, patches `<image>` element hrefs with
+/// URL.createObjectURL(blob) after DOM insertion, and revokes Blob URLs on
+/// document change or top-level unmount. Keeps the wasm renderer stateless per
+/// call.
+pub fn demo_application_integration_alignment() -> Unit {
+  ()
+}
+
+///|
 /// Apply clipPath to rendered elements alignment marker. The SVG renderer writes
 /// clip-path attributes on images, paths, fallback text, and glyph path text,
 /// while an empty or initial-only clip state skips the attribute as a no-op.

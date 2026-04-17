@@ -25,6 +25,8 @@ pub fn cid_realpath_root_cause_fixes_alignment() -> Unit
 
 pub fn clip_path_geometry_transformation_alignment() -> Unit
 
+pub fn demo_application_integration_alignment() -> Unit
+
 pub fn diagnostic_instrumentation_real_local_fixture_cff_alignment() -> Unit
 
 pub fn fallback_for_non_embedded_fonts_alignment() -> Unit
