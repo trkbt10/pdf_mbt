@@ -77,9 +77,9 @@ export default function PdfViewer({
   const [zoomValue, setZoomValue] = useState<ZoomValue>("fit");
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [dragActive, setDragActive] = useState(false);
-  const [pageSvgs, setPageSvgs] = useState<Record<number, PageSvgState>>({});
   const cacheRef = useRef<DocumentCache | null>(null);
   const [, setPageSvgVersion] = useState(0);
+  const pageSvgs = cachedPageSvgs(cacheRef.current, document);
   const [pageTexts, setPageTexts] = useState<Record<number, PageTextState>>({});
   const [pageImages, setPageImages] = useState<Record<number, PageImagesState>>(
     {}
@@ -88,7 +88,13 @@ export default function PdfViewer({
 
   useEffect(() => {
     setCurrentPageIndex(0);
-    setPageSvgs({});
+    if (document) {
+      ensureCache(cacheRef, document);
+    } else if (cacheRef.current) {
+      revokeAllBlobUrls(cacheRef.current);
+      cacheRef.current = null;
+    }
+    setPageSvgVersion((version) => version + 1);
     setPageTexts({});
     setPageImages({});
     imageLoadFailures.current.clear();
@@ -99,34 +105,42 @@ export default function PdfViewer({
       if (!document) {
         return;
       }
-      const current = pageSvgs[pageIndex];
-      if (current && current.status !== "idle") {
+      const cache = ensureCache(cacheRef, document);
+      const current = cache.pages.get(pageIndex);
+      if (current) {
         return;
       }
-      setPageSvgs((states) => ({
-        ...states,
-        [pageIndex]: { status: "loading", svg: "" },
-      }));
+      cache.pages.set(pageIndex, {
+        imageUrls: new Map(),
+        status: "loading",
+        svg: "",
+      });
+      setPageSvgVersion((version) => version + 1);
       window.setTimeout(() => {
+        if (cacheRef.current !== cache) {
+          return;
+        }
         try {
           const svg = document.source.pageToSvgDeferred(pageIndex);
-          setPageSvgs((states) => ({
-            ...states,
-            [pageIndex]: { status: "ready", svg },
-          }));
+          const imageUrls = createDeferredSvgImageUrls(
+            document.source,
+            pageIndex,
+            svg
+          );
+          cache.pages.set(pageIndex, { imageUrls, status: "ready", svg });
+          setPageSvgVersion((version) => version + 1);
         } catch (error) {
-          setPageSvgs((states) => ({
-            ...states,
-            [pageIndex]: {
-              error: errorMessage(error),
-              status: "error",
-              svg: "",
-            },
-          }));
+          cache.pages.set(pageIndex, {
+            error: errorMessage(error),
+            imageUrls: new Map(),
+            status: "error",
+            svg: "",
+          });
+          setPageSvgVersion((version) => version + 1);
         }
       }, 0);
     },
-    [document, pageSvgs]
+    [document]
   );
 
   const loadPageText = useCallback(
@@ -447,7 +461,7 @@ function PageList({
   loadPageText: (pageIndex: number) => void;
   onSelectPage: (index: number) => void;
   pageImages: Record<number, PageImagesState>;
-  pageSvgs: Record<number, PageSvgState>;
+  pageSvgs: ReadonlyMap<number, CachedPage>;
   pageTexts: Record<number, PageTextState>;
   zoomValue: ZoomValue;
 }) {
@@ -469,7 +483,7 @@ function PageList({
           onSelectPage={onSelectPage}
           page={page}
           source={document.source}
-          svgState={pageSvgs[page.index] ?? emptyPageSvg("idle")}
+          svgState={pageSvgs.get(page.index) ?? emptyPageSvg("idle")}
           textState={pageTexts[page.index] ?? emptyPageText("idle")}
           zoomValue={zoomValue}
         />
@@ -708,12 +722,8 @@ function patchDeferredSvgImage(
   pageIndex: number,
   urls: string[]
 ) {
-  const rawIndex = image.getAttribute("data-image-index");
-  if (!rawIndex) {
-    return;
-  }
-  const imageIndex = Number.parseInt(rawIndex, 10);
-  if (!Number.isFinite(imageIndex)) {
+  const imageIndex = parseImageIndex(image.getAttribute("data-image-index"));
+  if (imageIndex === null) {
     return;
   }
   const { data, mime } = source.pageSvgImageData(pageIndex, imageIndex);
@@ -725,6 +735,17 @@ function patchDeferredSvgImage(
   );
   urls.push(url);
   image.setAttribute("href", url);
+}
+
+function parseImageIndex(rawIndex: string | null): number | null {
+  if (!rawIndex) {
+    return null;
+  }
+  const imageIndex = Number.parseInt(rawIndex, 10);
+  if (!Number.isFinite(imageIndex)) {
+    return null;
+  }
+  return imageIndex;
 }
 
 function uint8ArrayBlobPart(data: Uint8Array): ArrayBuffer {
@@ -979,11 +1000,61 @@ function ensureCache(
   return nextCache;
 }
 
+function cachedPageSvgs(
+  cache: DocumentCache | null,
+  document: ViewerDocument | null
+): ReadonlyMap<number, CachedPage> {
+  if (!cache || !document || cache.handle !== document.source.handle) {
+    return new Map();
+  }
+  return cache.pages;
+}
+
+function createDeferredSvgImageUrls(
+  source: PdfDocument,
+  pageIndex: number,
+  svg: string
+): Map<number, string> {
+  const urls = new Map<number, string>();
+  try {
+    for (const imageIndex of deferredSvgImageIndexes(svg)) {
+      const { data, mime } = source.pageSvgImageData(pageIndex, imageIndex);
+      if (mime && data.length > 0) {
+        urls.set(
+          imageIndex,
+          URL.createObjectURL(
+            new Blob([uint8ArrayBlobPart(data)], { type: mime })
+          )
+        );
+      }
+    }
+  } catch (error) {
+    revokeBlobUrlMap(urls);
+    throw error;
+  }
+  return urls;
+}
+
+function deferredSvgImageIndexes(svg: string): number[] {
+  const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
+  const rawIndexes = Array.from(
+    parsed.querySelectorAll<SVGImageElement>("image[data-image-index]")
+  ).map((image) => image.getAttribute("data-image-index"));
+  const indexes = rawIndexes
+    .map((rawIndex) => parseImageIndex(rawIndex))
+    .filter((index): index is number => index !== null);
+  return Array.from(new Set(indexes));
+}
+
 function revokeAllBlobUrls(cache: DocumentCache) {
   for (const page of cache.pages.values()) {
-    for (const url of page.imageUrls.values()) {
-      URL.revokeObjectURL(url);
-    }
+    revokeBlobUrlMap(page.imageUrls);
+  }
+}
+
+function revokeBlobUrlMap(urls: ReadonlyMap<number, string>) {
+  for (const url of urls.values()) {
+    URL.revokeObjectURL(url);
   }
 }
 
