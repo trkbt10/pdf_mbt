@@ -35,12 +35,6 @@ let deferred_svg_pages : Map[String, @svg.SvgDeferredResult] = Map::new()
 let deferred_svg_image_page_cache : Map[String, Array[@svg.SvgImageEntry]] = Map::new()
 
 ///|
-/// Lazily materialized deferred SVG image entries for the wasm API surface.
-/// The pageToSvgDeferred path records placeholders; first data/info access
-/// extracts raw RGBA or encoded pass-through bytes and caches them here.
-let deferred_svg_image_entries : Map[String, @svg.SvgImageEntry] = Map::new()
-
-///|
 priv struct HandleCounter {
   mut value : Int
 }
@@ -367,11 +361,6 @@ fn deferred_page_key(handle : Int, page : Int) -> String {
 }
 
 ///|
-fn deferred_image_key(handle : Int, page : Int, index : Int) -> String {
-  deferred_page_key(handle, page) + ":" + index.to_string()
-}
-
-///|
 fn get_deferred_svg_image(
   handle : Int,
   page : Int,
@@ -397,29 +386,22 @@ fn get_deferred_svg_image_entry(
   if get_deferred_svg_image(handle, page, index) is None {
     return None
   }
-  let key = deferred_image_key(handle, page, index)
-  match deferred_svg_image_entries.get(key) {
-    Some(image) => Some(image)
+  let key = deferred_page_key(handle, page)
+  let entries = match deferred_svg_image_page_cache.get(key) {
+    Some(entries) => entries
     None =>
-      match build_deferred_svg_image_entry(handle, page, index) {
-        Some(image) => {
-          deferred_svg_image_entries[key] = image
-          Some(image)
+      match build_deferred_svg_image_page(handle, page) {
+        Some(entries) => {
+          deferred_svg_image_page_cache[key] = entries
+          entries
         }
-        None => None
+        None => return None
       }
   }
-}
-
-///|
-fn build_deferred_svg_image_entry(
-  handle : Int,
-  page : Int,
-  index : Int,
-) -> @svg.SvgImageEntry? {
-  match get_page(handle, page) {
-    Some(pdf_page) => page_svg_image_entry_by_occurrence(pdf_page, index)
-    None => None
+  if index >= 0 && index < entries.length() {
+    Some(entries[index])
+  } else {
+    None
   }
 }
 
@@ -440,13 +422,15 @@ fn build_deferred_svg_image_page(
         )
       match result {
         Ok(events) => {
+          let page_entries = page_image_entries(pdf_page)
           let entries : Array[@svg.SvgImageEntry] = []
           for event in events {
             match event {
               @graphics.GraphicsEvent::ImagePainted(_, descriptor, state) =>
                 match descriptor.source {
                   @graphics.ImageSource::XObjectImage(Some(name)) =>
-                    match page_image_entry_by_name(pdf_page, name) {
+                    match
+                      page_image_entry_by_name_from_entries(page_entries, name) {
                       Some(entry) =>
                         match deferred_svg_image_entry_data(entry, state) {
                           Some(image) => entries.push(image)
@@ -469,49 +453,10 @@ fn build_deferred_svg_image_page(
 }
 
 ///|
-fn page_svg_image_entry_by_occurrence(
-  page : @pdfapi.PdfPage,
-  target_index : Int,
-) -> @svg.SvgImageEntry? {
-  let result : Result[Array[@graphics.GraphicsEvent], @reader.PdfDocumentError] = try? page
-    .reader_page()
-    .graphics_events(
-      @reader.GraphicsPageOptions::with_materialized_xobjects(None),
-    )
-  match result {
-    Ok(events) => {
-      let mut image_index = 0
-      for event in events {
-        match event {
-          @graphics.GraphicsEvent::ImagePainted(_, descriptor, state) =>
-            match descriptor.source {
-              @graphics.ImageSource::XObjectImage(Some(name)) =>
-                match page_image_entry_by_name(page, name) {
-                  Some(entry) => {
-                    if image_index == target_index {
-                      return deferred_svg_image_entry_data(entry, state)
-                    }
-                    image_index += 1
-                  }
-                  None => ()
-                }
-              _ => ()
-            }
-          _ => ()
-        }
-      }
-      None
-    }
-    Err(_) => None
-  }
-}
-
-///|
-fn page_image_entry_by_name(
-  page : @pdfapi.PdfPage,
+fn page_image_entry_by_name_from_entries(
+  entries : Array[PageImageEntry],
   name : @objects.PdfName,
 ) -> PageImageEntry? {
-  let entries = page_image_entries(page)
   for entry in entries {
     match entry.name {
       Some(entry_name) if entry_name == name => return Some(entry)
@@ -625,13 +570,11 @@ fn svg_image_optional_dimension(value : Int?) -> Int {
 fn remove_deferred_pages_for_handle(handle : Int) -> Unit {
   let prefix = handle.to_string() + ":"
   deferred_svg_pages.retain(fn(key, _value) { !key.has_prefix(prefix) })
-  deferred_svg_image_entries.retain(fn(key, _value) { !key.has_prefix(prefix) })
 }
 
 ///|
 fn remove_deferred_images_for_page(handle : Int, page : Int) -> Unit {
-  let prefix = deferred_page_key(handle, page) + ":"
-  deferred_svg_image_entries.retain(fn(key, _value) { !key.has_prefix(prefix) })
+  deferred_svg_image_page_cache.remove(deferred_page_key(handle, page))
 }
 
 ///|
