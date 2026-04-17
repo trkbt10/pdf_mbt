@@ -482,7 +482,6 @@ function PageList({
           loadPageText={loadPageText}
           onSelectPage={onSelectPage}
           page={page}
-          source={document.source}
           svgState={pageSvgs.get(page.index) ?? emptyPageSvg("idle")}
           textState={pageTexts[page.index] ?? emptyPageText("idle")}
           zoomValue={zoomValue}
@@ -501,7 +500,6 @@ function PageItem({
   loadPageText,
   onSelectPage,
   page,
-  source,
   svgState,
   textState,
   zoomValue,
@@ -514,8 +512,7 @@ function PageItem({
   loadPageText: (pageIndex: number) => void;
   onSelectPage: (index: number) => void;
   page: ViewerPage;
-  source: PdfDocument;
-  svgState: PageSvgState;
+  svgState: PageSvgState | CachedPage;
   textState: PageTextState;
   zoomValue: ZoomValue;
 }) {
@@ -567,7 +564,6 @@ function PageItem({
         geometry={page.geometry}
         isNearViewport={isNearViewport}
         pageIndex={page.index}
-        source={source}
         svgState={svgState}
         textState={textState}
         zoomValue={zoomValue}
@@ -589,7 +585,6 @@ function RenderedPageSvg({
   geometry,
   isNearViewport,
   pageIndex,
-  source,
   svgState,
   textState,
   zoomValue,
@@ -597,8 +592,7 @@ function RenderedPageSvg({
   geometry: PdfPageGeometry;
   isNearViewport: boolean;
   pageIndex: number;
-  source: PdfDocument;
-  svgState: PageSvgState;
+  svgState: PageSvgState | CachedPage;
   textState: PageTextState;
   zoomValue: ZoomValue;
 }) {
@@ -629,8 +623,8 @@ function RenderedPageSvg({
     if (!surface) {
       return;
     }
-    return patchDeferredSvgImages(surface, source, pageIndex);
-  }, [isNearViewport, pageIndex, source, svgState.status, svgState.svg]);
+    return patchDeferredSvgImages(surface, imageUrlsForSvgState(svgState));
+  }, [isNearViewport, svgState]);
 
   return (
     <div className="pageCanvasViewport" ref={frameRef}>
@@ -677,10 +671,8 @@ function RenderedPageSvg({
 
 function patchDeferredSvgImages(
   surface: HTMLElement,
-  source: PdfDocument,
-  pageIndex: number
+  imageUrls: ReadonlyMap<number, string>
 ) {
-  const urls: string[] = [];
   let cancelled = false;
   let frameId = 0;
   let images: SVGImageElement[] = [];
@@ -693,7 +685,7 @@ function patchDeferredSvgImages(
     const image = images[cursor];
     cursor += 1;
     if (image) {
-      patchDeferredSvgImage(image, source, pageIndex, urls);
+      patchDeferredSvgImage(image, imageUrls);
     }
     if (cursor < images.length) {
       frameId = window.requestAnimationFrame(patchNext);
@@ -710,30 +702,21 @@ function patchDeferredSvgImages(
   return () => {
     cancelled = true;
     window.cancelAnimationFrame(frameId);
-    for (const url of urls) {
-      URL.revokeObjectURL(url);
-    }
   };
 }
 
 function patchDeferredSvgImage(
   image: SVGImageElement,
-  source: PdfDocument,
-  pageIndex: number,
-  urls: string[]
+  imageUrls: ReadonlyMap<number, string>
 ) {
   const imageIndex = parseImageIndex(image.getAttribute("data-image-index"));
   if (imageIndex === null) {
     return;
   }
-  const { data, mime } = source.pageSvgImageData(pageIndex, imageIndex);
-  if (!mime || data.length === 0) {
+  const url = imageUrls.get(imageIndex);
+  if (!url) {
     return;
   }
-  const url = URL.createObjectURL(
-    new Blob([uint8ArrayBlobPart(data)], { type: mime })
-  );
-  urls.push(url);
   image.setAttribute("href", url);
 }
 
@@ -1068,6 +1051,15 @@ function emptyPageText(status: PageTextState["status"]): PageTextState {
 
 function emptyPageSvg(status: PageSvgState["status"]): PageSvgState {
   return { status, svg: "" };
+}
+
+function imageUrlsForSvgState(
+  svgState: PageSvgState | CachedPage
+): ReadonlyMap<number, string> {
+  if ("imageUrls" in svgState) {
+    return svgState.imageUrls;
+  }
+  return new Map();
 }
 
 function emptyPageImages(status: PageImagesState["status"]): PageImagesState {
