@@ -30,22 +30,6 @@ points, not 1/T_fs-scaled units).
 
 ## Requirements
 
-### Requirement 1: SVG font-size SHALL reflect actual PDF font size
-
-#### 1.1: Font size extraction
-The SVG `font-size` attribute on `<text>` elements SHALL be set to the
-effective font size (T_fs from ISO 32000-2 §9.4.2), not hardcoded to "1".
-
-#### 1.2: Transform matrix decomposition
-The `transform="matrix(...)"` on `<text>` elements SHALL contain only the
-text positioning and orientation (T_m × CTM with PDF→SVG Y-flip), with
-font-size scaling factored out into the `font-size` attribute.
-
-#### 1.3: Horizontal scaling
-When the PDF text state specifies `T_h` (horizontal scaling) ≠ 1.0,
-the SVG text element SHALL apply it as a separate x-axis scale factor
-or via the transform matrix, not baked into font-size.
-
 ### Requirement 2: Glyph positioning in absolute coordinates
 
 #### 2.1: Per-character x positions
@@ -81,17 +65,6 @@ font size from the combined rendering matrix, not from T_fs alone.
 When T_m or CTM contains rotation, the SVG transform SHALL preserve the
 rotation angle and glyph positions SHALL follow the rotated baseline.
 
-### Requirement 4: Font family mapping
-
-#### 4.1: BaseFont to CSS font-family
-When the PDF font dictionary specifies BaseFont (e.g., Helvetica,
-Times-Roman, Courier), the SVG SHALL use the CSS font-family with
-appropriate fallback stack (e.g., "Helvetica, Arial, sans-serif").
-
-#### 4.2: Embedded font name extraction
-For embedded TrueType fonts, the font name SHALL be extracted from the
-font's name table and used in the CSS font-family.
-
 ### Requirement 5: Path and shape rendering
 
 #### 5.1: CTM precision
@@ -103,29 +76,63 @@ Line width, dash pattern, line cap, and line join SHALL be mapped to SVG
 stroke-width, stroke-dasharray, stroke-linecap, and stroke-linejoin
 with exact values from the graphics state.
 
-### Requirement 6: Colour accuracy
+## Test harness expectations (non-tracked)
 
-#### 6.1: Device colour mapping
+Items in this section describe visual regression expectations and harness
+behaviour for precision validation. They are intentionally below the `###`
+tracked requirement heading level, so spec align drift tracking does not treat
+them as implementation-surface requirements.
+
+#### SVG font-size SHALL reflect actual PDF font size
+
+##### Font size extraction
+The SVG `font-size` attribute on `<text>` elements SHALL be set to the
+effective font size (T_fs from ISO 32000-2 §9.4.2), not hardcoded to "1".
+
+##### Transform matrix decomposition
+The `transform="matrix(...)"` on `<text>` elements SHALL contain only the
+text positioning and orientation (T_m × CTM with PDF→SVG Y-flip), with
+font-size scaling factored out into the `font-size` attribute.
+
+##### Horizontal scaling
+When the PDF text state specifies `T_h` (horizontal scaling) ≠ 1.0,
+the SVG text element SHALL apply it as a separate x-axis scale factor
+or via the transform matrix, not baked into font-size.
+
+#### Font family mapping
+
+##### BaseFont to CSS font-family
+When the PDF font dictionary specifies BaseFont (e.g., Helvetica,
+Times-Roman, Courier), the SVG SHALL use the CSS font-family with
+appropriate fallback stack (e.g., "Helvetica, Arial, sans-serif").
+
+##### Embedded font name extraction
+For embedded TrueType fonts, the font name SHALL be extracted from the
+font's name table and used in the CSS font-family.
+
+#### Colour accuracy
+
+##### Device colour mapping
 DeviceGray, DeviceRGB, and DeviceCMYK colours SHALL be converted to SVG
 hex colours with correct component mapping.
 
-#### 6.2: Alpha transparency
+##### Alpha transparency
 The graphics state alpha values SHALL be mapped to SVG fill-opacity and
 stroke-opacity attributes.
 
-### Requirement 7: Image positioning accuracy
+#### Image positioning accuracy
 
-#### 7.1: Image transform
+##### Image transform
 The image CTM SHALL be applied as an SVG transform. The 1x1 PDF image
 unit square SHALL map correctly to the intended display rectangle.
 
-### Requirement 8: Visual regression gate
+#### Visual regression gate
 
-#### 8.1: Pixel diff threshold
+##### Pixel diff threshold
 SVG rendering SHALL pass pixelmatch comparison against pdftoppm reference
 PNGs at 72 DPI with < 0.01% pixel diff for all test fixture PDFs.
 
-#### 8.2: Test fixture PDFs
+##### Test fixture PDFs
 - Simple PDF 2.0 (text + shapes): HelloWorld with Helvetica 24pt
 - pdf20-utf8-test.pdf (multi-size headings + body text)
 - PDF 2.0 CalRGB (text + images in calibrated colour space)

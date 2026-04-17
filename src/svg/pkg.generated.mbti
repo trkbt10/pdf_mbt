@@ -59,6 +59,8 @@ pub fn parse_cff_charset(Bytes, Int) -> Array[Int]?
 
 pub fn parse_cff_cid_charset(Bytes, Int) -> Array[Int]?
 
+pub fn path_and_shape_rendering_alignment() -> Unit
+
 pub let raw_rgba_image_mime : String
 
 pub fn render_page_svg(@reader.PdfPage) -> String
@@ -82,6 +84,8 @@ pub fn text_colour_from_graphics_state_alignment() -> Unit
 pub fn text_element_fill_colour_alignment() -> Unit
 
 pub fn text_glyph_event_colour_propagation_alignment() -> Unit
+
+pub fn text_matrix_ctm_interaction_alignment() -> Unit
 
 pub fn viewer_cache_application_lifetime_alignment() -> Unit
 

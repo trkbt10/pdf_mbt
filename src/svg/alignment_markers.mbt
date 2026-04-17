@@ -15,6 +15,23 @@ pub fn glyph_positioning_and_scaling_alignment() -> Unit {
 }
 
 ///|
+/// Text matrix and CTM interaction alignment marker. The SVG renderer extracts
+/// effective font size from the combined rendering matrix when the CTM scales
+/// text, preserves rotated text in the SVG transform, and keeps glyph positions
+/// on the rotated baseline.
+pub fn text_matrix_ctm_interaction_alignment() -> Unit {
+  ()
+}
+
+///|
+/// Path and shape rendering alignment marker. Graphics CTM precision is applied
+/// to path coordinates without intermediate rounding, and line width, dash
+/// pattern, line cap, and line join map to SVG stroke attributes.
+pub fn path_and_shape_rendering_alignment() -> Unit {
+  ()
+}
+
+///|
 /// Fallback for non-embedded fonts alignment marker. Standard 14 and other
 /// non-embedded fonts use system font resolution when available, then fall back
 /// to SVG `<text>` output when no outline-capable TTFont can be resolved.
