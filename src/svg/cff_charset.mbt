@@ -278,9 +278,35 @@ pub fn parse_cff_charset(data : Bytes, num_glyphs : Int) -> Array[Int]? {
 ///|
 /// Parses a CID-keyed CFF charset as glyph_id to CID values. The binary
 /// charset formats are identical to Type1C SID charsets, but CIDFontType0C
-/// semantics define each entry as a CID; glyph_id 0 is CID 0 (.notdef).
+/// semantics define each entry as a CID; glyph_id 0 is CID 0 (.notdef). The
+/// returned glyph_id to CID array is the input for the CID reverse map that
+/// later exposes CID to glyph_id lookup through cid.XXXXX post name entries.
 pub fn parse_cff_cid_charset(data : Bytes, num_glyphs : Int) -> Array[Int]? {
   parse_cff_charset(data, num_glyphs)
+}
+
+///|
+/// Builds the CID reverse map for a CID-keyed CFF / CIDFontType0C font by
+/// inverting the charset values from CID to glyph_id. Non-CID Type1C fonts
+/// return None so SID-based glyph names and existing Type1C behaviour are
+/// preserved.
+pub fn cff_cid_to_glyph_id_map(
+  data : Bytes,
+  num_glyphs : Int,
+) -> Map[Int, Int]? {
+  if !is_cid_keyed_cff(data) {
+    return None
+  }
+  match parse_cff_cid_charset(data, num_glyphs) {
+    Some(cids) => {
+      let cid_to_gid : Map[Int, Int] = Map::new()
+      for glyph_id in 0..<cids.length() {
+        cid_to_gid[cids[glyph_id]] = glyph_id
+      }
+      Some(cid_to_gid)
+    }
+    None => None
+  }
 }
 
 ///|
