@@ -33,6 +33,7 @@ priv struct TextInterpreter {
   mut object_state : TextObjectState?
   stack : TextStateStack
   ctm_stack : Array[TextMatrix]
+  font_cache : Map[@objects.PdfName, RuntimeFont]
   events : Array[TextEvent]
   spans : Array[TextSpan]
 }
@@ -50,6 +51,7 @@ fn TextInterpreter::new(
     object_state: None,
     stack: TextStateStack::new(),
     ctm_stack: [],
+    font_cache: Map::new(),
     events: [],
     spans: [],
   }
@@ -465,6 +467,10 @@ fn TextInterpreter::current_font(
     Some(name) =>
       match self.resources.fonts.get(name) {
         Some(summary) => {
+          match self.font_cache.get(name) {
+            Some(font) => return font
+            None => ()
+          }
           let started = if text_interpret_diagnostics_enabled.val {
             @env.now()
           } else {
@@ -474,6 +480,7 @@ fn TextInterpreter::current_font(
           if text_interpret_diagnostics_enabled.val {
             text_interpret_font_load_record(text_interpret_elapsed(started))
           }
+          self.font_cache[name] = font
           font
         }
         None =>
