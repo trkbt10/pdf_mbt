@@ -49,7 +49,7 @@ fn elapsed_page_7_image_data_ms(handle : Int, count : Int) -> UInt64 {
 }
 
 ///|
-test "local-fixture page 7 image accessors use one graphics walk" {
+test "local-fixture page 7 image data stays under performance bound with one graphics walk" {
   match open_local-fixture_handle_for_test() {
     Some(handle) => {
       test_reset_graphics_walk_counter()
