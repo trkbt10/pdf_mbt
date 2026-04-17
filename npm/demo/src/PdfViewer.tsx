@@ -1155,6 +1155,17 @@ function imageUrlsForSvgState(
   return new Map();
 }
 
+export const __pdfViewerImagePatchTestHooks = {
+  patchDeferredSvgImagesForTest(
+    surface: HTMLElement,
+    _source: PdfDocument,
+    _pageIndex: number,
+    imageUrls: ReadonlyMap<number, string>
+  ) {
+    return patchDeferredSvgImages(surface, imageUrls);
+  },
+};
+
 function emptyPageImages(status: PageImagesState["status"]): PageImagesState {
   return { count: 0, items: [], status };
 }
