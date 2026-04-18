@@ -1586,9 +1586,9 @@ fn svg_glyph_is_notdef_source(glyph : @text.TextGlyphEvent) -> Bool {
 /// Fallback for non-embedded fonts. Writes fallback SVG `<text>` when glyph
 /// outlines are unavailable after Standard 14 / system font resolution, using
 /// the mapped CSS font-family. The text element fill colour comes from the
-/// per-span nonstroking colour and the clip-path attribute on text is applied
-/// by `write_svg_clip_path_attribute`.
-/// Empty clip states skip the attribute as a no-op.
+/// per-span nonstroking colour. Clipped text is wrapped in an untransformed
+/// group so the page-space clipPath is not evaluated in text-local units.
+/// Empty clip states skip the wrapper as a no-op.
 fn page_render_text_svg(
   builder : StringBuilder,
   span : @text.TextSpan,
@@ -1604,6 +1604,11 @@ fn page_render_text_svg(
     matrix, font_size, page_height,
   )
   let positioned = svg_positioned_text(span, text_matrix, glyphs, page_height)
+  if clip_id > 0 {
+    builder.write_string("<g")
+    write_svg_clip_path_attribute(builder, clip_id)
+    builder.write_string(">")
+  }
   builder.write_string("<text transform=\"matrix(")
   write_svg_text_matrix(builder, text_matrix)
   builder.write_string(")\" font-size=\"")
@@ -1615,7 +1620,6 @@ fn page_render_text_svg(
   builder.write_string("\" fill=\"")
   builder.write_string(fill_colour)
   builder.write_string("\"")
-  write_svg_clip_path_attribute(builder, clip_id)
   match positioned {
     Some(text) => {
       builder.write_string(">")
@@ -1631,6 +1635,9 @@ fn page_render_text_svg(
     }
   }
   builder.write_string("</text>")
+  if clip_id > 0 {
+    builder.write_string("</g>")
+  }
 }
 
 ///|
