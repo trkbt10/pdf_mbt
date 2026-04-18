@@ -269,8 +269,8 @@ pub fn parse_cff_charset(data : Bytes, num_glyphs : Int) -> Array[Int]? {
   let format = data[offset].to_int()
   match format {
     0 => parse_cff_charset_format0(data, offset + 1, sids, num_glyphs)
-    1 => parse_cff_charset_format1(data, offset + 1, sids, num_glyphs)
-    2 => parse_cff_charset_format2(data, offset + 1, sids, num_glyphs)
+    1 => parse_cff_charset_range_format(data, offset + 1, sids, num_glyphs, 1)
+    2 => parse_cff_charset_range_format(data, offset + 1, sids, num_glyphs, 2)
     _ => None
   }
 }
@@ -370,26 +370,6 @@ fn parse_cff_charset_format0(
     sids[glyph_id] = cff_read_uint16(data, pos + (glyph_id - 1) * 2)
   }
   Some(sids)
-}
-
-///|
-fn parse_cff_charset_format1(
-  data : Bytes,
-  pos : Int,
-  sids : Array[Int],
-  num_glyphs : Int,
-) -> Array[Int]? {
-  parse_cff_charset_range_format(data, pos, sids, num_glyphs, 1)
-}
-
-///|
-fn parse_cff_charset_format2(
-  data : Bytes,
-  pos : Int,
-  sids : Array[Int],
-  num_glyphs : Int,
-) -> Array[Int]? {
-  parse_cff_charset_range_format(data, pos, sids, num_glyphs, 2)
 }
 
 ///|

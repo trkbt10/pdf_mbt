@@ -882,10 +882,8 @@ fn write_svg_clip_wrapper_begin(builder : StringBuilder, clip_id : Int) -> Unit 
 /// page-clip-regression SDD rule that transformed glyph/text children are
 /// nested under a page-coordinate clip group.
 fn write_svg_clip_wrapper_end(builder : StringBuilder, clip_id : Int) -> Unit {
-  match clip_id {
-    id if id > 0 => builder.write_string("</g>")
-    _ => ()
-  }
+  let tag = if clip_id > 0 { "</g>" } else { "" }
+  builder.write_string(tag)
 }
 
 ///|

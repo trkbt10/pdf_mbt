@@ -391,12 +391,12 @@ fn build_synthetic_post(glyph_names : Array[String]) -> Bytes {
   }
   let total = 32 + 2 + glyph_names.length() * 2 + string_bytes
   let buf : Array[Byte] = Array::make(total, b'\x00')
-  cff_write_uint32(buf, 0, 0x00020000)
-  cff_write_uint16(buf, 32, glyph_names.length())
+  cff_write_uint(buf, 0, 0x00020000, 4)
+  cff_write_uint(buf, 32, glyph_names.length(), 2)
   let indices = 34
   let mut string_pos = indices + glyph_names.length() * 2
   for glyph_id in 0..<glyph_names.length() {
-    cff_write_uint16(buf, indices + glyph_id * 2, 258 + glyph_id)
+    cff_write_uint(buf, indices + glyph_id * 2, 258 + glyph_id, 2)
     let name = glyph_names[glyph_id]
     let length = cff_post_name_length(name)
     buf[string_pos] = length.to_byte()
@@ -481,21 +481,21 @@ fn build_synthetic_cmap_format4(entries : Array[(Int, Int)]) -> Bytes {
   let total = 4 + 8 + subtable_length
   let buf : Array[Byte] = Array::make(total, b'\x00')
   // cmap header: version=0, numTables=1
-  cff_write_uint16(buf, 2, 1)
+  cff_write_uint(buf, 2, 1, 2)
   // Encoding record: platformID=3 (Windows), encodingID=1 (Unicode BMP)
-  cff_write_uint16(buf, 4, 3)
-  cff_write_uint16(buf, 6, 1)
-  cff_write_uint32(buf, 8, 12)
+  cff_write_uint(buf, 4, 3, 2)
+  cff_write_uint(buf, 6, 1, 2)
+  cff_write_uint(buf, 8, 12, 4)
   let base = 12
-  cff_write_uint16(buf, base, 4)
-  cff_write_uint16(buf, base + 2, subtable_length)
-  cff_write_uint16(buf, base + 6, seg_count * 2)
+  cff_write_uint(buf, base, 4, 2)
+  cff_write_uint(buf, base + 2, subtable_length, 2)
+  cff_write_uint(buf, base + 6, seg_count * 2, 2)
   let (search_range, entry_selector, range_shift) = cff_format4_search_values(
     seg_count,
   )
-  cff_write_uint16(buf, base + 8, search_range)
-  cff_write_uint16(buf, base + 10, entry_selector)
-  cff_write_uint16(buf, base + 12, range_shift)
+  cff_write_uint(buf, base + 8, search_range, 2)
+  cff_write_uint(buf, base + 10, entry_selector, 2)
+  cff_write_uint(buf, base + 12, range_shift, 2)
   let end_codes = base + 14
   let reserved_pad = end_codes + seg_count * 2
   let start_codes = reserved_pad + 2
@@ -503,16 +503,16 @@ fn build_synthetic_cmap_format4(entries : Array[(Int, Int)]) -> Bytes {
   let id_range_offsets = id_deltas + seg_count * 2
   for i in 0..<entries.length() {
     let (code, glyph_id) = entries[i]
-    cff_write_uint16(buf, end_codes + i * 2, code)
-    cff_write_uint16(buf, start_codes + i * 2, code)
-    cff_write_uint16(buf, id_deltas + i * 2, cff_format4_delta(code, glyph_id))
-    cff_write_uint16(buf, id_range_offsets + i * 2, 0)
+    cff_write_uint(buf, end_codes + i * 2, code, 2)
+    cff_write_uint(buf, start_codes + i * 2, code, 2)
+    cff_write_uint(buf, id_deltas + i * 2, cff_format4_delta(code, glyph_id), 2)
+    cff_write_uint(buf, id_range_offsets + i * 2, 0, 2)
   }
   let sentinel = entries.length()
-  cff_write_uint16(buf, end_codes + sentinel * 2, 0xFFFF)
-  cff_write_uint16(buf, start_codes + sentinel * 2, 0xFFFF)
-  cff_write_uint16(buf, id_deltas + sentinel * 2, 1)
-  cff_write_uint16(buf, id_range_offsets + sentinel * 2, 0)
+  cff_write_uint(buf, end_codes + sentinel * 2, 0xFFFF, 2)
+  cff_write_uint(buf, start_codes + sentinel * 2, 0xFFFF, 2)
+  cff_write_uint(buf, id_deltas + sentinel * 2, 1, 2)
+  cff_write_uint(buf, id_range_offsets + sentinel * 2, 0, 2)
   Bytes::from_array(buf[:])
 }
 
@@ -539,16 +539,6 @@ fn cff_format4_delta(code : Int, glyph_id : Int) -> Int {
 }
 
 ///|
-fn cff_write_uint16(buf : Array[Byte], offset : Int, value : Int) -> Unit {
-  cff_write_uint(buf, offset, value, 2)
-}
-
-///|
-fn cff_write_uint32(buf : Array[Byte], offset : Int, value : Int) -> Unit {
-  cff_write_uint(buf, offset, value, 4)
-}
-
-///|
 fn cff_write_uint(
   buf : Array[Byte],
   offset : Int,
@@ -572,23 +562,23 @@ fn build_identity_cmap(num_glyphs : Int) -> Bytes {
   let total = 4 + 8 + subtable_length
   let buf : Array[Byte] = Array::make(total, b'\x00')
   // cmap header: version=0, numTables=1
-  cff_write_uint16(buf, 2, 1)
+  cff_write_uint(buf, 2, 1, 2)
   // Encoding record: platformID=3 (Windows), encodingID=10 (Unicode full)
-  cff_write_uint16(buf, 4, 3)
-  cff_write_uint16(buf, 6, 10)
+  cff_write_uint(buf, 4, 3, 2)
+  cff_write_uint(buf, 6, 10, 2)
   // subtableOffset = 12
-  cff_write_uint32(buf, 8, 12)
+  cff_write_uint(buf, 8, 12, 4)
   // Format 12 subtable at offset 12
   let base = 12
   // format: 12
-  cff_write_uint16(buf, base, 12)
+  cff_write_uint(buf, base, 12, 2)
   // length (uint32)
   let len = subtable_length
-  cff_write_uint32(buf, base + 4, len)
+  cff_write_uint(buf, base + 4, len, 4)
   // numGroups: 1
-  cff_write_uint32(buf, base + 12, 1)
+  cff_write_uint(buf, base + 12, 1, 4)
   // Group 0: startCharCode=0, endCharCode=end_code, startGlyphID=0
   let g = base + 16
-  cff_write_uint32(buf, g + 4, end_code)
+  cff_write_uint(buf, g + 4, end_code, 4)
   Bytes::from_array(buf[:])
 }
