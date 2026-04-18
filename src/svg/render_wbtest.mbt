@@ -860,7 +860,9 @@ test "render_page_svg keeps ordinary clipped fallback text direct" {
   assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 12 80)"), true)
   assert_eq(svg.contains("<g clip-path=\"url(#c1)\"><text transform="), false)
   assert_eq(
-    svg.contains("<text transform=\"matrix(1 0 0 1 12 80)\" font-size=\"12\" text-rendering=\"geometricPrecision\" font-family=\"ClipFallback, sans-serif\" fill=\"#000000\" clip-path=\"url(#c1)\""),
+    svg.contains(
+      "<text transform=\"matrix(1 0 0 1 12 80)\" font-size=\"12\" text-rendering=\"geometricPrecision\" font-family=\"ClipFallback, sans-serif\" fill=\"#000000\" clip-path=\"url(#c1)\"",
+    ),
     true,
   )
 }
