@@ -379,25 +379,7 @@ fn parse_cff_charset_format1(
   sids : Array[Int],
   num_glyphs : Int,
 ) -> Array[Int]? {
-  let mut current_pos = pos
-  let mut glyph_id = 1
-  while glyph_id < num_glyphs {
-    if current_pos + 3 > data.length() {
-      return None
-    }
-    let first_sid = cff_read_uint16(data, current_pos)
-    let num_left = data[current_pos + 2].to_int()
-    current_pos += 3
-    let count = num_left + 1
-    if glyph_id + count > num_glyphs {
-      return None
-    }
-    for i in 0..<count {
-      sids[glyph_id + i] = first_sid + i
-    }
-    glyph_id += count
-  }
-  Some(sids)
+  parse_cff_charset_range_format(data, pos, sids, num_glyphs, 1)
 }
 
 ///|
@@ -407,15 +389,31 @@ fn parse_cff_charset_format2(
   sids : Array[Int],
   num_glyphs : Int,
 ) -> Array[Int]? {
+  parse_cff_charset_range_format(data, pos, sids, num_glyphs, 2)
+}
+
+///|
+fn parse_cff_charset_range_format(
+  data : Bytes,
+  pos : Int,
+  sids : Array[Int],
+  num_glyphs : Int,
+  num_left_width : Int,
+) -> Array[Int]? {
   let mut current_pos = pos
   let mut glyph_id = 1
   while glyph_id < num_glyphs {
-    if current_pos + 4 > data.length() {
+    let entry_width = 2 + num_left_width
+    if current_pos + entry_width > data.length() {
       return None
     }
     let first_sid = cff_read_uint16(data, current_pos)
-    let num_left = cff_read_uint16(data, current_pos + 2)
-    current_pos += 4
+    let num_left = if num_left_width == 1 {
+      data[current_pos + 2].to_int()
+    } else {
+      cff_read_uint16(data, current_pos + 2)
+    }
+    current_pos += entry_width
     let count = num_left + 1
     if glyph_id + count > num_glyphs {
       return None

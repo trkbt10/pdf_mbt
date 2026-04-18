@@ -86,19 +86,7 @@ fn cff_post_glyph_name_table(
 
 ///|
 fn cff_cid_post_name(cid : Int) -> String {
-  "cid" + cff_pad5(cid)
-}
-
-///|
-fn cff_pad5(value : Int) -> String {
-  let s = value.to_string()
-  match s.length() {
-    1 => "0000" + s
-    2 => "000" + s
-    3 => "00" + s
-    4 => "0" + s
-    _ => s
-  }
+  "cid" + cid_pad5(cid)
 }
 
 ///|
@@ -552,16 +540,25 @@ fn cff_format4_delta(code : Int, glyph_id : Int) -> Int {
 
 ///|
 fn cff_write_uint16(buf : Array[Byte], offset : Int, value : Int) -> Unit {
-  buf[offset] = ((value >> 8) & 0xFF).to_byte()
-  buf[offset + 1] = (value & 0xFF).to_byte()
+  cff_write_uint(buf, offset, value, 2)
 }
 
 ///|
 fn cff_write_uint32(buf : Array[Byte], offset : Int, value : Int) -> Unit {
-  buf[offset] = ((value >> 24) & 0xFF).to_byte()
-  buf[offset + 1] = ((value >> 16) & 0xFF).to_byte()
-  buf[offset + 2] = ((value >> 8) & 0xFF).to_byte()
-  buf[offset + 3] = (value & 0xFF).to_byte()
+  cff_write_uint(buf, offset, value, 4)
+}
+
+///|
+fn cff_write_uint(
+  buf : Array[Byte],
+  offset : Int,
+  value : Int,
+  width : Int,
+) -> Unit {
+  for i in 0..<width {
+    let shift = (width - 1 - i) * 8
+    buf[offset + i] = ((value >> shift) & 0xFF).to_byte()
+  }
 }
 
 ///|

@@ -121,44 +121,37 @@ fn abs_double(value : Double) -> Double {
 
 ///|
 fn format_svg_number(value : Double) -> String {
-  let rounded = @math.floor(abs_double(value) * 1000.0 + 0.5).to_int()
-  if rounded == 0 {
+  format_svg_number_with_precision(value, 3)
+}
+
+///|
+/// Formats an SVG decimal with a fixed rounding precision and trimmed
+/// trailing zeroes. `format_svg_number` keeps the historical 3-decimal output;
+/// `format_svg_number_precise` keeps the 6-decimal glyph/image precision.
+fn format_svg_number_with_precision(value : Double, decimals : Int) -> String {
+  let scale = svg_decimal_scale(decimals)
+  let rounded = @math.floor(abs_double(value) * scale.to_double() + 0.5).to_int64()
+  if rounded == 0L {
     return "0"
   }
-  let sign = if value < 0.0 && rounded != 0 { "-" } else { "" }
-  let whole = (rounded / 1000).to_string()
-  let fraction = rounded % 1000
+  let sign = if value < 0.0 { "-" } else { "" }
+  let whole = (rounded / scale).to_string()
+  let fraction = (rounded % scale).to_int()
   if fraction == 0 {
     sign + whole
   } else {
-    sign + whole + "." + trimmed3_fraction(fraction)
+    let digits = fixed_width_fraction(fraction, decimals)
+    sign + whole + "." + trim_trailing_zeros(digits)
   }
 }
 
 ///|
-fn fixed3_fraction(value : Int) -> String {
-  let hundreds = value / 100
-  let tens = value / 10 % 10
-  let ones = value % 10
-  String::from_array([
-    (b'0'.to_int() + hundreds).unsafe_to_char(),
-    (b'0'.to_int() + tens).unsafe_to_char(),
-    (b'0'.to_int() + ones).unsafe_to_char(),
-  ])
-}
-
-///|
-fn trimmed3_fraction(value : Int) -> String {
-  if value % 100 == 0 {
-    String::from_array([(b'0'.to_int() + value / 100).unsafe_to_char()])
-  } else if value % 10 == 0 {
-    String::from_array([
-      (b'0'.to_int() + value / 100).unsafe_to_char(),
-      (b'0'.to_int() + value / 10 % 10).unsafe_to_char(),
-    ])
-  } else {
-    fixed3_fraction(value)
+fn svg_decimal_scale(decimals : Int) -> Int64 {
+  let mut scale = 1L
+  for _ in 0..<decimals {
+    scale *= 10L
   }
+  scale
 }
 
 ///|
@@ -166,27 +159,15 @@ fn trimmed3_fraction(value : Int) -> String {
 /// the 3-decimal format_svg_number is too coarse (e.g. 24/2048 = 0.01171875
 /// rounds to 0.012, a 3% error that accumulates across glyph widths).
 fn format_svg_number_precise(value : Double) -> String {
-  let rounded = @math.floor(abs_double(value) * 1000000.0 + 0.5).to_int64()
-  if rounded == 0L {
-    return "0"
-  }
-  let sign = if value < 0.0 { "-" } else { "" }
-  let whole = (rounded / 1000000L).to_string()
-  let fraction = (rounded % 1000000L).to_int()
-  if fraction == 0 {
-    sign + whole
-  } else {
-    let digits = fixed6_fraction(fraction)
-    sign + whole + "." + trim_trailing_zeros(digits)
-  }
+  format_svg_number_with_precision(value, 6)
 }
 
 ///|
-fn fixed6_fraction(value : Int) -> String {
+fn fixed_width_fraction(value : Int, decimals : Int) -> String {
   let builder = StringBuilder::new()
   let mut v = value
-  let parts = Array::make(6, 0)
-  for i = 5; i >= 0; i = i - 1 {
+  let parts = Array::make(decimals, 0)
+  for i = decimals - 1; i >= 0; i = i - 1 {
     parts[i] = v % 10
     v = v / 10
   }
@@ -422,7 +403,10 @@ fn page_render_graphics_svg(
 /// Apply clipPath to rendered elements for painted graphics paths. Emits the
 /// concrete `<path d="..." fill="..."/>` shape after path data conversion,
 /// writes the clip-path attribute on paths when `clip_id` is nonzero, and
-/// skips the attribute for empty clip states.
+/// skips the attribute for empty clip states. The path `d` data is already
+/// converted into page coordinates, so applying the page-space clip directly
+/// to the path element is geometrically sound and does not need the
+/// untransformed wrapper used by transformed glyph/text children.
 fn page_render_path_svg(
   builder : StringBuilder,
   operation : @graphics.PathPaintOperation,
@@ -833,6 +817,11 @@ fn write_svg_image_deferred(
 }
 
 ///|
+/// Emits SVG image elements with direct clip-path attributes. Axis-aligned
+/// images are written in page coordinates and non-axis-aligned images carry a
+/// page-space CTM matrix, so the direct `clip-path` attribute remains
+/// geometrically sound and intentionally does not use the transformed
+/// glyph/text wrapper helper.
 fn write_svg_image_with_index(
   builder : StringBuilder,
   href : String,
@@ -869,6 +858,34 @@ fn write_svg_image_with_index(
   builder.write_string(" transform=\"matrix(")
   write_svg_image_matrix(builder, matrix, expand_x, expand_y, page_height)
   builder.write_string(")\"/>")
+}
+
+///|
+/// Opens an untransformed page-space clip wrapper for transformed glyph/text
+/// children. This centralizes the wrapper pattern introduced by the
+/// glyph-correctness-2 and page-clip-regression SDDs: the clipPath stays in
+/// page coordinates while child transforms remain local to glyph/text output.
+fn write_svg_clip_wrapper_begin(builder : StringBuilder, clip_id : Int) -> Unit {
+  match clip_id {
+    id if id > 0 => {
+      builder.write_string("<g")
+      write_svg_clip_path_attribute(builder, id)
+      builder.write_string(">")
+    }
+    _ => ()
+  }
+}
+
+///|
+/// Closes the untransformed page-space clip wrapper opened by
+/// `write_svg_clip_wrapper_begin`, preserving the glyph-correctness-2 and
+/// page-clip-regression SDD rule that transformed glyph/text children are
+/// nested under a page-coordinate clip group.
+fn write_svg_clip_wrapper_end(builder : StringBuilder, clip_id : Int) -> Unit {
+  match clip_id {
+    id if id > 0 => builder.write_string("</g>")
+    _ => ()
+  }
 }
 
 ///|
@@ -1461,14 +1478,8 @@ fn page_render_text_span_as_paths(
     return span.text.length() == 0
   }
   let units_per_em = svg_font_units_per_em(ttf)
-  let glyph_clip_id = if clip_id > 0 {
-    builder.write_string("<g")
-    write_svg_clip_path_attribute(builder, clip_id)
-    builder.write_string(">")
-    0
-  } else {
-    0
-  }
+  write_svg_clip_wrapper_begin(builder, clip_id)
+  let glyph_clip_id = 0
   let mut ok = true
   for glyph in glyphs {
     if !render_glyph_as_path(
@@ -1478,9 +1489,7 @@ fn page_render_text_span_as_paths(
       break
     }
   }
-  if clip_id > 0 {
-    builder.write_string("</g>")
-  }
+  write_svg_clip_wrapper_end(builder, clip_id)
   ok
 }
 
@@ -1611,7 +1620,7 @@ fn svg_cid_glyph_id(ttf : @font.TTFont, cid : Int) -> Int {
   if cid < 0 {
     return -1
   }
-  let glyph_name = "cid" + svg_pad5(cid)
+  let glyph_name = "cid" + cid_pad5(cid)
   match ttf.post {
     Some(post) => {
       for glyph_id in 0..<post.glyph_names.length() {
@@ -1622,18 +1631,6 @@ fn svg_cid_glyph_id(ttf : @font.TTFont, cid : Int) -> Int {
       -1
     }
     None => -1
-  }
-}
-
-///|
-fn svg_pad5(value : Int) -> String {
-  let s = value.to_string()
-  match s.length() {
-    1 => "0000" + s
-    2 => "000" + s
-    3 => "00" + s
-    4 => "0" + s
-    _ => s
   }
 }
 
@@ -1740,9 +1737,7 @@ fn page_render_text_svg(
   let positioned = svg_positioned_text(span, text_matrix, glyphs, page_height)
   let actual_clip_id = svg_text_clip_actual_id(clip_id)
   if clip_id < 0 {
-    builder.write_string("<g")
-    write_svg_clip_path_attribute(builder, actual_clip_id)
-    builder.write_string(">")
+    write_svg_clip_wrapper_begin(builder, actual_clip_id)
   }
   builder.write_string("<text transform=\"matrix(")
   write_svg_text_matrix(builder, text_matrix)
@@ -1774,7 +1769,7 @@ fn page_render_text_svg(
   }
   builder.write_string("</text>")
   if clip_id < 0 {
-    builder.write_string("</g>")
+    write_svg_clip_wrapper_end(builder, actual_clip_id)
   }
 }
 
