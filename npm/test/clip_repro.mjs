@@ -10,37 +10,60 @@ if (!toolAvailable("rsvg-convert")) {
 }
 
 const workdir = mkdtempSync(join(tmpdir(), "pdf-clip-repro-"));
-const svgPath = join(workdir, "clip-repro.svg");
-const pngPath = join(workdir, "clip-repro.png");
+const directSvgPath = join(workdir, "clip-repro-direct.svg");
+const directPngPath = join(workdir, "clip-repro-direct.png");
+const wrappedSvgPath = join(workdir, "clip-repro-wrapped.svg");
+const wrappedPngPath = join(workdir, "clip-repro-wrapped.png");
 
-writeFileSync(
-  svgPath,
-  `<svg xmlns="http://www.w3.org/2000/svg" width="596" height="842" viewBox="0 0 596 842">
+writeReproSvg(
+  directSvgPath,
+  `<text clip-path="url(#c2)" transform="matrix(1 0 0 1 278 54)" font-size="24" font-family="sans-serif" fill="black">
+    <tspan>Test</tspan>
+  </text>`
+);
+writeReproSvg(
+  wrappedSvgPath,
+  `<g clip-path="url(#c2)">
+    <text transform="matrix(1 0 0 1 278 54)" font-size="24" font-family="sans-serif" fill="black">
+      <tspan>Test</tspan>
+    </text>
+  </g>`
+);
+
+execFileSync("rsvg-convert", [directSvgPath, "-o", directPngPath]);
+execFileSync("rsvg-convert", [wrappedSvgPath, "-o", wrappedPngPath]);
+
+const directPng = PNG.sync.read(readFileSync(directPngPath));
+const wrappedPng = PNG.sync.read(readFileSync(wrappedPngPath));
+const crop = { x: 270, y: 40, width: 120, height: 60 };
+const directDarkPixels = countDarkPixels(directPng, crop);
+const wrappedDarkPixels = countDarkPixels(wrappedPng, crop);
+
+if (wrappedDarkPixels === 0) {
+  throw new Error(
+    `clip repro failed: expected visible text pixels with page-space group clip; svg=${wrappedSvgPath} png=${wrappedPngPath}`
+  );
+}
+
+console.log(
+  `clip repro passed: direct=${directDarkPixels} wrapped=${wrappedDarkPixels} dark pixels`
+);
+
+function writeReproSvg(path, content) {
+  writeFileSync(
+    path,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="596" height="842" viewBox="0 0 596 842">
   <rect width="596" height="842" fill="white"/>
   <defs>
     <clipPath id="c2">
       <path d="M 271.05 832.8 L 581.01 832.8 L 581.01 43.71 L 271.05 43.71 Z" clip-rule="evenodd"/>
     </clipPath>
   </defs>
-  <text clip-path="url(#c2)" transform="matrix(1 0 0 1 278 54)" font-size="24" font-family="sans-serif" fill="black">
-    <tspan>Test</tspan>
-  </text>
+  ${content}
 </svg>
 `
-);
-
-execFileSync("rsvg-convert", [svgPath, "-o", pngPath]);
-
-const png = PNG.sync.read(readFileSync(pngPath));
-const darkPixels = countDarkPixels(png, { x: 270, y: 40, width: 120, height: 60 });
-
-if (darkPixels === 0) {
-  throw new Error(
-    `clip repro failed: expected visible text pixels inside c2; svg=${svgPath} png=${pngPath}`
   );
 }
-
-console.log(`clip repro passed: ${darkPixels} dark pixels inside clipped text region`);
 
 function countDarkPixels(png, crop) {
   let count = 0;

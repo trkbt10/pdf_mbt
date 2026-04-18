@@ -851,6 +851,21 @@ test "render_page_svg emits clip-path for clipped fallback text" {
 }
 
 ///|
+test "render_page_svg wraps clipped fallback text in page-space clip group" {
+  let document = @reader.PdfDocument::open(
+    build_clipped_text_fallback_fixture(),
+  )
+  let svg = render_page_svg(document.page(0))
+  assert_eq(svg.contains("<g clip-path=\"url(#c1)\"><text transform="), true)
+  assert_eq(svg.contains("<text transform="), true)
+  assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 12 80)"), true)
+  assert_eq(
+    svg.contains("<text transform=\"matrix(1 0 0 1 12 80)\" font-size=\"12\" text-rendering=\"geometricPrecision\" font-family=\"ClipFallback, sans-serif\" fill=\"#000000\" clip-path=\"url(#c1)\""),
+    false,
+  )
+}
+
+///|
 test "render_page_svg wraps clipped embedded glyph paths in clip group" {
   let document = @reader.PdfDocument::open(
     build_clipped_embedded_truetype_text_fixture(),
