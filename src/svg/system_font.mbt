@@ -5,6 +5,112 @@ priv enum SystemFontCacheEntry {
 }
 
 ///|
+priv struct SystemFontDirTable {
+  os : String
+  dirs : Array[String]
+  home_suffixes : Array[String]
+}
+
+///|
+let system_font_os_macos : String = "macos"
+
+///|
+let system_font_os_linux : String = "linux"
+
+///|
+let std14_helvetica : String = "Helvetica"
+
+///|
+let std14_courier : String = "Courier"
+
+///|
+let std14_times_roman : String = "Times-Roman"
+
+///|
+let std14_times_bold : String = "Times-Bold"
+
+///|
+let std14_times_italic : String = "Times-Italic"
+
+///|
+let std14_times_bold_italic : String = "Times-BoldItalic"
+
+///|
+let std14_times_family : String = "Times"
+
+///|
+let std14_helvetica_name : @objects.PdfName = @objects.PdfName::new(
+  b"Helvetica",
+)
+
+///|
+let std14_helvetica_bold_name : @objects.PdfName = @objects.PdfName::new(
+  b"Helvetica-Bold",
+)
+
+///|
+let std14_helvetica_oblique_name : @objects.PdfName = @objects.PdfName::new(
+  b"Helvetica-Oblique",
+)
+
+///|
+let std14_helvetica_bold_oblique_name : @objects.PdfName = @objects.PdfName::new(
+  b"Helvetica-BoldOblique",
+)
+
+///|
+let std14_courier_name : @objects.PdfName = @objects.PdfName::new(b"Courier")
+
+///|
+let std14_courier_bold_name : @objects.PdfName = @objects.PdfName::new(
+  b"Courier-Bold",
+)
+
+///|
+let std14_courier_oblique_name : @objects.PdfName = @objects.PdfName::new(
+  b"Courier-Oblique",
+)
+
+///|
+let std14_courier_bold_oblique_name : @objects.PdfName = @objects.PdfName::new(
+  b"Courier-BoldOblique",
+)
+
+///|
+let std14_times_roman_name : @objects.PdfName = @objects.PdfName::new(
+  b"Times-Roman",
+)
+
+///|
+let std14_times_bold_name : @objects.PdfName = @objects.PdfName::new(
+  b"Times-Bold",
+)
+
+///|
+let std14_times_italic_name : @objects.PdfName = @objects.PdfName::new(
+  b"Times-Italic",
+)
+
+///|
+let std14_times_bold_italic_name : @objects.PdfName = @objects.PdfName::new(
+  b"Times-BoldItalic",
+)
+
+///|
+let system_font_dir_tables : Array[SystemFontDirTable] = [
+  SystemFontDirTable::{
+    os: system_font_os_macos,
+    dirs: ["/System/Library/Fonts/", "/Library/Fonts/"],
+    home_suffixes: ["/Library/Fonts/"],
+  },
+  SystemFontDirTable::{
+    os: system_font_os_linux,
+    dirs: ["/usr/share/fonts/", "/usr/local/share/fonts/"],
+    home_suffixes: ["/.fonts/", "/.local/share/fonts/"],
+  },
+]
+
+///|
 fn new_system_font_cache() -> Map[String, SystemFontCacheEntry] {
   Map::new()
 }
@@ -15,11 +121,12 @@ fn new_system_font_cache() -> Map[String, SystemFontCacheEntry] {
 /// otherwise Linux system, local, legacy user, and XDG user font roots.
 fn system_font_directories() -> Array[String] {
   let dirs : Array[String] = []
-  if system_font_macos_root_exists() {
-    push_macos_system_font_directories(dirs)
+  let os = if system_font_macos_root_exists() {
+    system_font_os_macos
   } else {
-    push_linux_system_font_directories(dirs)
+    system_font_os_linux
   }
+  push_system_font_directories(os, dirs)
   dirs
 }
 
@@ -29,31 +136,22 @@ fn system_font_macos_root_exists() -> Bool {
 }
 
 ///|
-fn push_macos_system_font_directories(dirs : Array[String]) -> Unit {
-  dirs.push("/System/Library/Fonts/")
-  dirs.push("/Library/Fonts/")
-  match @env.get_env_var("HOME") {
-    Some(home) => {
-      if home.length() > 0 {
-        dirs.push(home + "/Library/Fonts/")
+fn push_system_font_directories(os : String, dirs : Array[String]) -> Unit {
+  for entry in system_font_dir_tables {
+    if entry.os == os {
+      for dir in entry.dirs {
+        dirs.push(dir)
+      }
+      match @env.get_env_var("HOME") {
+        Some(home) =>
+          if home.length() > 0 {
+            for suffix in entry.home_suffixes {
+              dirs.push(home + suffix)
+            }
+          }
+        None => ()
       }
     }
-    None => ()
-  }
-}
-
-///|
-fn push_linux_system_font_directories(dirs : Array[String]) -> Unit {
-  dirs.push("/usr/share/fonts/")
-  dirs.push("/usr/local/share/fonts/")
-  match @env.get_env_var("HOME") {
-    Some(home) => {
-      if home.length() > 0 {
-        dirs.push(home + "/.fonts/")
-        dirs.push(home + "/.local/share/fonts/")
-      }
-    }
-    None => ()
   }
 }
 
@@ -75,11 +173,11 @@ pub fn system_font_directory_discovery_alignment() -> Int {
 ///|
 fn standard14_base_name(font_name : String) -> String {
   let name = strip_subset_font_tag_text(font_name)
-  if name == "Times-Roman" ||
-    name == "Times-Bold" ||
-    name == "Times-Italic" ||
-    name == "Times-BoldItalic" {
-    "Times"
+  if name == std14_times_roman ||
+    name == std14_times_bold ||
+    name == std14_times_italic ||
+    name == std14_times_bold_italic {
+    std14_times_family
   } else {
     match last_hyphen_index(name) {
       Some(index) => string_prefix(name, index)
@@ -90,12 +188,12 @@ fn standard14_base_name(font_name : String) -> String {
 
 ///|
 fn standard14_candidate_names(base_name : String) -> Array[String] {
-  if base_name == "Helvetica" {
-    ["Helvetica", "Arial"]
-  } else if base_name == "Times" {
+  if base_name == std14_helvetica {
+    [std14_helvetica, "Arial"]
+  } else if base_name == std14_times_family {
     ["Times", "Times New Roman"]
-  } else if base_name == "Courier" {
-    ["Courier", "Courier New"]
+  } else if base_name == std14_courier {
+    [std14_courier, "Courier New"]
   } else {
     [base_name]
   }

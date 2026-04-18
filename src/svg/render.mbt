@@ -2239,20 +2239,20 @@ fn span_svg_font_family(
 ///|
 fn svg_font_family_for_base_font(base_font : @objects.PdfName) -> String {
   let normalized = strip_subset_font_tag(base_font)
-  if normalized == @objects.PdfName::new(b"Times-Roman") ||
-    normalized == @objects.PdfName::new(b"Times-Bold") ||
-    normalized == @objects.PdfName::new(b"Times-Italic") ||
-    normalized == @objects.PdfName::new(b"Times-BoldItalic") {
+  if normalized == std14_times_roman_name ||
+    normalized == std14_times_bold_name ||
+    normalized == std14_times_italic_name ||
+    normalized == std14_times_bold_italic_name {
     "Times New Roman, serif"
-  } else if normalized == @objects.PdfName::new(b"Courier") ||
-    normalized == @objects.PdfName::new(b"Courier-Bold") ||
-    normalized == @objects.PdfName::new(b"Courier-Oblique") ||
-    normalized == @objects.PdfName::new(b"Courier-BoldOblique") {
+  } else if normalized == std14_courier_name ||
+    normalized == std14_courier_bold_name ||
+    normalized == std14_courier_oblique_name ||
+    normalized == std14_courier_bold_oblique_name {
     "Courier New, monospace"
-  } else if normalized == @objects.PdfName::new(b"Helvetica") ||
-    normalized == @objects.PdfName::new(b"Helvetica-Bold") ||
-    normalized == @objects.PdfName::new(b"Helvetica-Oblique") ||
-    normalized == @objects.PdfName::new(b"Helvetica-BoldOblique") {
+  } else if normalized == std14_helvetica_name ||
+    normalized == std14_helvetica_bold_name ||
+    normalized == std14_helvetica_oblique_name ||
+    normalized == std14_helvetica_bold_oblique_name {
     "Helvetica, Arial, sans-serif"
   } else {
     normalized.to_text() + ", sans-serif"
