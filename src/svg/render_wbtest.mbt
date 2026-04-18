@@ -851,18 +851,33 @@ test "render_page_svg emits clip-path for clipped fallback text" {
 }
 
 ///|
-test "render_page_svg wraps clipped fallback text in page-space clip group" {
+test "render_page_svg keeps ordinary clipped fallback text direct" {
   let document = @reader.PdfDocument::open(
     build_clipped_text_fallback_fixture(),
   )
   let svg = render_page_svg(document.page(0))
-  assert_eq(svg.contains("<g clip-path=\"url(#c1)\"><text transform="), true)
   assert_eq(svg.contains("<text transform="), true)
   assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 12 80)"), true)
+  assert_eq(svg.contains("<g clip-path=\"url(#c1)\"><text transform="), false)
   assert_eq(
     svg.contains("<text transform=\"matrix(1 0 0 1 12 80)\" font-size=\"12\" text-rendering=\"geometricPrecision\" font-family=\"ClipFallback, sans-serif\" fill=\"#000000\" clip-path=\"url(#c1)\""),
-    false,
+    true,
   )
+}
+
+///|
+test "svg text clip ids mark high-volume fallback clips for page-space group" {
+  let clip_ids : Array[Int] = []
+  for _ in 0..<1000 {
+    clip_ids.push(2)
+  }
+  clip_ids.push(3)
+  let group_candidates : Map[Int, Bool] = Map::new()
+  group_candidates[2] = true
+  let marked = svg_mark_high_volume_text_clip_groups(clip_ids, group_candidates)
+  assert_eq(marked[0], -2)
+  assert_eq(marked[999], -2)
+  assert_eq(marked[1000], 3)
 }
 
 ///|

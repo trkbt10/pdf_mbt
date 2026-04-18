@@ -34,6 +34,15 @@ priv struct SvgTextRenderInfo {
 }
 
 ///|
+priv struct SvgPathBounds {
+  mut seen : Bool
+  mut left : Double
+  mut bottom : Double
+  mut right : Double
+  mut top : Double
+}
+
+///|
 /// Shared sentinel for raw RGBA deferred image payloads. The wasm API surface
 /// reports image/x-rgba8 so the JS consumer can choose OffscreenCanvas canvas
 /// decoding instead of direct Blob creation.
@@ -42,6 +51,11 @@ pub let raw_rgba_image_mime : String = "image/x-rgba8"
 ///|
 fn SvgClipRegistry::new() -> SvgClipRegistry {
   SvgClipRegistry::{ clips: [], id_by_signature: Map::new() }
+}
+
+///|
+fn SvgPathBounds::new() -> SvgPathBounds {
+  SvgPathBounds::{ seen: false, left: 0.0, bottom: 0.0, right: 0.0, top: 0.0 }
 }
 
 ///|
@@ -1075,7 +1089,13 @@ fn page_render_texts_svg(
             Some(ttf) => {
               let path_builder = StringBuilder::new()
               if page_render_text_span_as_paths(
-                  path_builder, span, glyphs, ttf, page_height, fill_colour, clip_id,
+                  path_builder,
+                  span,
+                  glyphs,
+                  ttf,
+                  page_height,
+                  fill_colour,
+                  svg_text_clip_actual_id(clip_id),
                 ) {
                 builder.write_string(path_builder.to_string())
               } else if span.text.length() > 0 {
@@ -1193,6 +1213,7 @@ fn page_svg_text_clip_ids(
   page_height : Double,
 ) -> Array[Int] {
   let clip_ids : Array[Int] = []
+  let group_candidates : Map[Int, Bool] = Map::new()
   let result : Result[Array[@graphics.GraphicsEvent], @reader.PdfDocumentError] = try? page.graphics_events(
     @reader.GraphicsPageOptions::with_materialized_resources(None),
   )
@@ -1233,12 +1254,17 @@ fn page_svg_text_clip_ids(
       event_index += 1
     }
     match current_state {
-      Some(state) =>
-        clip_ids.push(svg_register_clip(registry, state, page_height))
+      Some(state) => {
+        let clip_id = svg_register_clip(registry, state, page_height)
+        if clip_id > 0 && svg_text_clip_is_column_clip(state, page_height) {
+          group_candidates[clip_id] = true
+        }
+        clip_ids.push(clip_id)
+      }
       None => clip_ids.push(0)
     }
   }
-  clip_ids
+  svg_mark_high_volume_text_clip_groups(clip_ids, group_candidates)
 }
 
 ///|
@@ -1301,6 +1327,114 @@ fn span_clip_id(clip_ids : Array[Int], index : Int) -> Int {
     clip_ids[index]
   } else {
     0
+  }
+}
+
+///|
+fn svg_text_clip_actual_id(clip_id : Int) -> Int {
+  if clip_id < 0 {
+    0 - clip_id
+  } else {
+    clip_id
+  }
+}
+
+///|
+fn svg_mark_high_volume_text_clip_groups(
+  clip_ids : Array[Int],
+  group_candidates : Map[Int, Bool],
+) -> Array[Int] {
+  let counts : Map[Int, Int] = Map::new()
+  for clip_id in clip_ids {
+    if clip_id > 0 {
+      match counts.get(clip_id) {
+        Some(count) => counts[clip_id] = count + 1
+        None => counts[clip_id] = 1
+      }
+    }
+  }
+  for index in 0..<clip_ids.length() {
+    let clip_id = clip_ids[index]
+    if clip_id > 0 {
+      match counts.get(clip_id) {
+        Some(count) =>
+          if count >= 1000 && group_candidates.get(clip_id).unwrap_or(false) {
+            clip_ids[index] = 0 - clip_id
+          }
+        None => ()
+      }
+    }
+  }
+  clip_ids
+}
+
+///|
+fn svg_text_clip_is_column_clip(
+  state : @graphics.GraphicsState,
+  page_height : Double,
+) -> Bool {
+  let clips = state.clipping_path.clips
+  if clips.length() == 0 || page_height <= 0.0 {
+    return false
+  }
+  match svg_graphics_path_bounds(clips[clips.length() - 1].path) {
+    Some(bounds) => {
+      let width = abs_double(bounds.right - bounds.left)
+      let height = abs_double(bounds.top - bounds.bottom)
+      width >= 200.0 && width <= 400.0 && height >= page_height * 0.75
+    }
+    None => false
+  }
+}
+
+///|
+fn svg_graphics_path_bounds(path : @graphics.GraphicsPath) -> SvgPathBounds? {
+  let bounds = SvgPathBounds::new()
+  for subpath in path.subpaths {
+    bounds.include_point(subpath.start)
+    for segment in subpath.segments {
+      match segment {
+        @graphics.PathSegment::LineTo(point) => bounds.include_point(point)
+        @graphics.PathSegment::CurveTo(control1, control2, end_point) => {
+          bounds.include_point(control1)
+          bounds.include_point(control2)
+          bounds.include_point(end_point)
+        }
+        @graphics.PathSegment::ClosePath => ()
+      }
+    }
+  }
+  if bounds.seen {
+    Some(bounds)
+  } else {
+    None
+  }
+}
+
+///|
+fn SvgPathBounds::include_point(
+  self : SvgPathBounds,
+  point : @graphics.GraphicsPoint,
+) -> Unit {
+  if !self.seen {
+    self.seen = true
+    self.left = point.x
+    self.right = point.x
+    self.bottom = point.y
+    self.top = point.y
+  } else {
+    if point.x < self.left {
+      self.left = point.x
+    }
+    if point.x > self.right {
+      self.right = point.x
+    }
+    if point.y < self.bottom {
+      self.bottom = point.y
+    }
+    if point.y > self.top {
+      self.top = point.y
+    }
   }
 }
 
@@ -1586,9 +1720,9 @@ fn svg_glyph_is_notdef_source(glyph : @text.TextGlyphEvent) -> Bool {
 /// Fallback for non-embedded fonts. Writes fallback SVG `<text>` when glyph
 /// outlines are unavailable after Standard 14 / system font resolution, using
 /// the mapped CSS font-family. The text element fill colour comes from the
-/// per-span nonstroking colour. Clipped text is wrapped in an untransformed
-/// group so the page-space clipPath is not evaluated in text-local units.
-/// Empty clip states skip the wrapper as a no-op.
+/// per-span nonstroking colour. High-volume text clips are wrapped in an
+/// untransformed group so rsvg does not evaluate page-space clips in
+/// text-local units; other clips keep the historical direct attribute.
 fn page_render_text_svg(
   builder : StringBuilder,
   span : @text.TextSpan,
@@ -1604,9 +1738,10 @@ fn page_render_text_svg(
     matrix, font_size, page_height,
   )
   let positioned = svg_positioned_text(span, text_matrix, glyphs, page_height)
-  if clip_id > 0 {
+  let actual_clip_id = svg_text_clip_actual_id(clip_id)
+  if clip_id < 0 {
     builder.write_string("<g")
-    write_svg_clip_path_attribute(builder, clip_id)
+    write_svg_clip_path_attribute(builder, actual_clip_id)
     builder.write_string(">")
   }
   builder.write_string("<text transform=\"matrix(")
@@ -1620,6 +1755,9 @@ fn page_render_text_svg(
   builder.write_string("\" fill=\"")
   builder.write_string(fill_colour)
   builder.write_string("\"")
+  if clip_id > 0 {
+    write_svg_clip_path_attribute(builder, actual_clip_id)
+  }
   match positioned {
     Some(text) => {
       builder.write_string(">")
@@ -1635,7 +1773,7 @@ fn page_render_text_svg(
     }
   }
   builder.write_string("</text>")
-  if clip_id > 0 {
+  if clip_id < 0 {
     builder.write_string("</g>")
   }
 }
