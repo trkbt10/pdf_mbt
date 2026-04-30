@@ -57,10 +57,7 @@ fn parse_registered_direct_function(
       )
     Calculator => {
       require_range(input.common, input.offset, "Type 4") |> ignore
-      raise PdfFunctionError::InvalidFunction(
-        input.offset,
-        "Type 4 function parser is not registered yet",
-      )
+      CalculatorFunction(parse_calculator_function(input))
     }
   }
 }

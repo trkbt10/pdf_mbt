@@ -102,6 +102,14 @@ pub(all) struct SampledFunction {
 } derive(Eq, Debug)
 
 ///|
+/// Type 2 exponential interpolation function (PDF 1.3): a one-input function
+/// with parameters `C0`, `C1`, and required `N` that defines `f(x) = y0 ...`
+/// with `yj = C0j + x^N * (C1j - C0j)`. Default `C0` is `[0.0]`, default `C1`
+/// is `[1.0]`, output count is inferred from coefficient arrays, and optional
+/// Range clips output values. Domain preconditions reject negative input for a
+/// non-integer exponent and zero input for a negative exponent. Table 40
+/// vocabulary: C0 array defines function result when x = 0.0; C1 array defines
+/// function result when x = 1.0; N number is the interpolation exponent.
 pub(all) struct ExponentialFunction {
   common : FunctionCommon
   c0 : Array[Double]
@@ -124,13 +132,84 @@ pub(all) enum CalculatorValue {
 } derive(Eq, Debug)
 
 ///|
-pub(all) struct CalculatorProgram {
-  token_count : Int
+/// Operators allowed by Type 4 PostScript calculator functions from Table 42:
+/// arithmetic operators, relational boolean and bitwise operators, conditional
+/// `if` and `ifelse`, and stack operators. No variables, names outside this
+/// set, composite data structures, or procedure objects are represented.
+pub(all) enum CalculatorOperator {
+  Abs
+  Add
+  Atan
+  Ceiling
+  Cos
+  Cvi
+  Cvr
+  Div
+  Exp
+  Floor
+  Idiv
+  Ln
+  Log
+  Mod
+  Mul
+  Neg
+  Round
+  Sin
+  Sqrt
+  Sub
+  Truncate
+  And
+  Bitshift
+  Eq
+  False
+  Ge
+  Gt
+  Le
+  Lt
+  Ne
+  Not
+  Or
+  True
+  Xor
+  If
+  Ifelse
+  Copy
+  Dup
+  Exch
+  Index
+  Pop
+  Roll
 } derive(Eq, Debug)
 
 ///|
-/// Type 4 calculator function model. Calculator streams still use the Table 38
-/// common FunctionType, Domain, and Range entries before arithmetic, relational,
+/// Type 4 calculator instruction parsed from PDF brace syntax. Comments,
+/// numbers, booleans, allowed operator names, and nested conditional blocks are
+/// accepted; strings, arrays, dictionaries, variables, unknown names, and
+/// procedure-like unsupported syntax fail closed.
+pub(all) enum CalculatorInstruction {
+  CalculatorNumber(Double)
+  CalculatorBoolean(Bool)
+  CalculatorOperator(CalculatorOperator)
+  CalculatorBlock(Array[CalculatorInstruction])
+} derive(Eq, Debug)
+
+///|
+/// Type 4 PostScript calculator program parsed from one outer brace-delimited
+/// stream. Braces delimit conditional expressions only: `boolean {expression}
+/// if` and `boolean {expression1} {expression2} ifelse`; they do not create
+/// PostScript procedure objects.
+pub(all) struct CalculatorProgram {
+  token_count : Int
+  instructions : Array[CalculatorInstruction]
+} derive(Eq, Debug)
+
+///|
+/// Type 4 PostScript calculator function (PDF 1.3), represented as a stream
+/// containing code in the small subset of the PostScript language allowed for
+/// PDF functions: comments, numbers, booleans, no composite data structures
+/// such as strings or arrays, no procedures, and no variables or names outside
+/// the allowed operators. Calculator streams still use the Table 38 common
+/// FunctionType, Domain, and Range entries before arithmetic, relational,
 /// boolean, bitwise, conditional, and stack operators are evaluated.
 pub(all) struct CalculatorFunction {
   common : FunctionCommon

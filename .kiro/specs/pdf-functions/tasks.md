@@ -51,7 +51,7 @@
   - _Requirements: 0.3_
   - _Boundary: ExponentialFunctionModel_
 
-- [ ] 2.5 (P) Parse calculator function programs
+- [x] 2.5 (P) Parse calculator function programs
   - Tokenize decoded calculator streams with PDF brace syntax, comments, numbers, booleans, and allowed operator names only.
   - Build conditional block structure for calculator expressions while rejecting composite data, variables, unknown names, unbalanced braces, and procedure-like unsupported syntax.
   - Parser tests show valid top-level and nested conditional streams become bounded programs, while unsupported syntax fails closed with function-domain errors.
