@@ -8,7 +8,7 @@
   - Completion: public API review exposes the common annotation shell and diagnostic category, and existing document-structure callers compile without source changes.
   - _Requirements: 0.1, 0.2, 0.3, 0.6_
 
-- [ ] 1.2 Define shared descriptor model contracts
+- [x] 1.2 Define shared descriptor model contracts
   - Add externally inspectable values for borders, border effects, appearance descriptors, appearance states, geometry operands, colours, markup metadata, annotation states, widget appearance characteristics, and fixed-print descriptors.
   - Model documented defaults as structural values rather than renderer behavior.
   - Completion: public API review shows descriptor records are available for parser results without adding rendering, action, form, or media execution contracts.
