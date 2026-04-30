@@ -22,6 +22,33 @@ test "form field values are empty when AcroForm is absent" {
 }
 
 ///|
+test "acro form exposes document metadata and root fields" {
+  let document = PdfDocument::open(build_form_values_fixture())
+  let acro_form = document.acro_form().unwrap()
+
+  assert_eq(acro_form.root_fields.length(), 5)
+  assert_eq(acro_form.root_fields[0].partial_name, Some(b"person"))
+  assert_eq(acro_form.root_fields[0].field_type == PdfFormFieldType::Text, true)
+  assert_eq(acro_form.root_fields[0].kids.length(), 2)
+  assert_eq(
+    acro_form.root_fields[3].field_type == PdfFormFieldType::Button,
+    true,
+  )
+  assert_eq(acro_form.need_appearances, Some(false))
+  assert_eq(acro_form.signature_flags, Some(3))
+  assert_eq(acro_form.default_appearance, Some(b"/Helv 10 Tf 0 g"))
+  assert_eq(acro_form.quadding, Some(1))
+}
+
+///|
+test "acro form is absent when Catalog AcroForm is absent" {
+  let document = PdfDocument::open(
+    build_document_structure_single_page_fixture(),
+  )
+  assert_eq(document.acro_form() is None, true)
+}
+
+///|
 test "form field traversal rejects field tree cycles" {
   let document = PdfDocument::open(build_form_values_cycle_fixture())
   let result : Result[Map[String, String], PdfDocumentError] = try? document.form_field_values()
@@ -48,7 +75,7 @@ fn build_form_values_fixture() -> Bytes {
     bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
   )
   let (bytes, acroform_offset) = append_indirect_object(
-    bytes, header_base, 4, 0, b"<< /Fields [5 0 R 8 0 R 9 0 R 10 0 R 12 0 R] >>",
+    bytes, header_base, 4, 0, b"<< /Fields [5 0 R 8 0 R 9 0 R 10 0 R 12 0 R] /NeedAppearances false /SigFlags 3 /DA (/Helv 10 Tf 0 g) /Q 1 >>",
   )
   let (bytes, parent_text_offset) = append_indirect_object(
     bytes, header_base, 5, 0, b"<< /FT /Tx /T (person) /Kids [6 0 R 7 0 R] >>",

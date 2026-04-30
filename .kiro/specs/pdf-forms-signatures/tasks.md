@@ -15,7 +15,7 @@
   - _Boundary: ReaderModels, CompatibilitySurface_
 
 - [ ] 2. Build AcroForm field-tree support
-- [ ] 2.1 Load AcroForm dictionaries and document-wide form metadata
+- [x] 2.1 Load AcroForm dictionaries and document-wide form metadata
   - Read the Catalog AcroForm entry as a document-global aggregate with root fields, appearance requirements, signature flags, calculation order, default resources, default appearance, quadding, and XFA payloads.
   - Treat missing AcroForm data as absent form data while diagnosing malformed present dictionaries.
   - Completed state: callers can distinguish no form, an empty form, and a malformed form through typed reader results.

@@ -901,6 +901,7 @@ pub fn PdfDeveloperExtension::targets_pdf2_or_later(Self) -> Bool
 pub struct PdfDocument {
   // private fields
 }
+pub fn PdfDocument::acro_form(Self) -> PdfAcroForm? raise PdfDocumentError
 pub fn PdfDocument::alternate_presentations(Self) -> Array[PdfAlternatePresentation] raise PdfDocumentError
 pub fn PdfDocument::annotation_action(Self, PdfAnnotation) -> PdfAction? raise PdfDocumentError
 pub fn PdfDocument::annotation_additional_actions(Self, PdfAnnotation) -> PdfAnnotationAdditionalActions? raise PdfDocumentError
