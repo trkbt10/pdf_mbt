@@ -151,7 +151,7 @@
   - Completion: tests cover required movie payloads, default activation behavior, screen page-reference validation, appearance hand-off, and non-execution of media or actions.
   - _Requirements: 0.22, 0.23_
 
-- [ ] 5.8 Parse widget annotation-owned metadata and appearance characteristics
+- [x] 5.8 Parse widget annotation-owned metadata and appearance characteristics
   - Parse widget highlighting mode, action raw values, additional-actions raw values, border style, parent field reference, and widget-owned appearance characteristics.
   - Parse widget rotation, border/background colours, captions, icon references, icon-fit raw data, and text/icon placement defaults.
   - Completion: widget tests cover highlight defaults, appearance-characteristic fields, parent validation, icon raw preservation, and no form-field semantic merging beyond annotation-owned entries.
