@@ -99,7 +99,7 @@
   - Completion: raw hand-off tests compare preserved objects object-for-object and show no filesystem, network, media, action, or rendering behavior is invoked.
   - _Requirements: 0.5, 0.10, 0.20, 0.21, 0.22, 0.23, 0.24, 0.28, 0.29_
 
-- [ ] 4.5 Parse markup metadata, replies, groups, states, and external data
+- [x] 4.5 Parse markup metadata, replies, groups, states, and external data
   - Parse markup title, popup reference, rich content, creation date, reply target, reply type, subject, intent, external data, and grouping metadata.
   - Validate reply-type prerequisites, same-page reply references where identity is available, and cycle limits for reply or popup relationships.
   - Parse state and state-model records for text annotation replies with documented defaults.
