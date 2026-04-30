@@ -74,7 +74,7 @@
   - _Requirements: 2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 3.16, 3.17_
   - _Boundary: ColourPipeline_
 
-- [ ] 3. Implement transfer functions
+- [x] 3. Implement transfer functions
 - [ ] 3.1 (P) Resolve graphics-state transfer references and precedence
   - Select TR2 over TR and support single-function or per-component transfer sets.
   - Resolve Identity and provider-backed PDF functions with strict errors for unsupported required functions.
