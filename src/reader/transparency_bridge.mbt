@@ -45,3 +45,21 @@ pub fn PdfPage::materialized_transparency_inputs(
     resources: self.materialized_content_resources(),
   }
 }
+
+///|
+pub fn PdfPage::render_transparency_page(
+  self : PdfPage,
+  device : @rendering.RasterDevice,
+  options? : @rendering.RenderOptions = @rendering.RenderOptions::default(),
+  providers? : @rendering.RenderingProviders = @rendering.RenderingProviders::none(),
+) -> @rendering.RenderResult raise PdfDocumentError {
+  let _inputs = self.materialized_transparency_inputs()
+  let program = self.graphics_program(
+    GraphicsPageOptions::with_materialized_xobjects(None),
+  )
+  try @rendering.render_program(program, device, options~, providers~) catch {
+    error => raise PdfDocumentError::RenderingError(error)
+  } noraise {
+    result => result
+  }
+}

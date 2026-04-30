@@ -142,7 +142,7 @@
   - _Requirements: 2.30, 2.32, 2.33, 2.34, 2.35_
   - _Boundary: ReaderTransparencyBridge_
   - _Depends: 4.1_
-- [ ] 4.3 Pass materialized transparency inputs into rendering APIs
+- [x] 4.3 Pass materialized transparency inputs into rendering APIs
   - Provide page group metadata, materialized resources, device defaults, medium backdrop, and provider inputs to the rendering layer.
   - Keep colour conversion and compositing execution in rendering while reader remains responsible only for loading and API boundary errors.
   - End-to-end reader rendering tests show indirect transparency resources render through the same compositor path as direct resources.

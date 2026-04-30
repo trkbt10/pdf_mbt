@@ -25,6 +25,7 @@ pub(all) suberror PdfDocumentError {
   InterchangeError(@interchange.PdfInterchangeError)
   ContentError(@content.PdfContentError)
   GraphicsError(@graphics.PdfGraphicsError)
+  RenderingError(@rendering.PdfRenderingError)
   FunctionError(@objects.ObjectId, @functions.PdfFunctionError)
   TextError(@text.PdfTextError)
   PageIndexOutOfRange(Int, Int)

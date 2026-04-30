@@ -150,6 +150,16 @@ test "page transparency materialization rejects recursive soft mask resources" {
 }
 
 ///|
+test "page transparency rendering delegates materialized inputs to renderer" {
+  let document = PdfDocument::open(build_page_graphics_transparency_fixture())
+  let page = document.page(0)
+  let result = page.render_transparency_page(@rendering.RasterDevice::rgb(1, 1))
+  assert_eq(result.report.paint_count, 0)
+  assert_eq(result.surface.width, 1)
+  assert_eq(result.surface.height, 1)
+}
+
+///|
 fn build_page_graphics_metadata_fixture() -> Bytes {
   let (bytes, header_base) = build_document_structure_fixture_prefix()
 
