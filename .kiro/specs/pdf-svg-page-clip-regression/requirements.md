@@ -61,7 +61,7 @@ count of dark pixels in a known right-column region
 (x > 270, y 50..800). This proxy for "text is visible" is
 mechanically checkable without OCR.
 
-### Requirement 2: Diagnose the clip-path regression
+#### Diagnostic expectation: clip-path regression
 
 #### 2.1: Compare SVG clip output before and after clip-fix commit
 A diagnostic SHALL:
