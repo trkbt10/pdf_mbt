@@ -20,7 +20,7 @@
   - Completion: API review shows each visual or markup subtype can carry its owned fields and raw dictionary without requiring adjacent-domain parsing.
   - _Requirements: 0.6, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19_
 
-- [ ] 1.4 Define raw, media, widget, and special subtype model contracts
+- [x] 1.4 Define raw, media, widget, and special subtype model contracts
   - Add externally inspectable records for file attachment, sound, movie, screen, widget, printer mark, trap network, watermark, redaction, projection, 3D raw, RichMedia raw, and unknown subtype payloads.
   - Store adjacent-domain fields as exact raw objects with field identity preserved for future specs.
   - Completion: API review shows raw and special subtype records can represent all required 12.5-owned fields without executing actions, opening files, playing media, applying redactions, or interpreting 3D and RichMedia payloads.
