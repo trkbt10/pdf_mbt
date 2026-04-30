@@ -281,7 +281,7 @@
   - _Requirements: 2.1, 3.5, 3.18_
   - _Boundary: ReaderRenderingBridge, RenderingResourceContracts_
 
-- [ ] 8.3 Expose page rendering with optional text inputs
+- [x] 8.3 Expose page rendering with optional text inputs
   - Build page graphics programs through existing page APIs and include text programs only when text materialization is available.
   - Pass caller device, options, and providers through to the renderer.
   - The completed page-level rendering call returns a surface whose dimensions and native colour space match the supplied device.
