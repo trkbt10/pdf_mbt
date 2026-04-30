@@ -78,7 +78,7 @@
   - _Requirements: 0.2, 0.4, 0.11, 0.12, 0.13, 0.14, 0.18_
   - _Boundary: AnnotationBorderParser_
 
-- [ ] 4.2 (P) Parse appearance dictionaries and appearance state descriptors
+- [x] 4.2 (P) Parse appearance dictionaries and appearance state descriptors
   - Validate normal, rollover, and down appearance entries as streams or state maps.
   - Apply rollover and down fallback to normal appearance when optional entries are absent.
   - Preserve selected appearance state names and raw form XObject or state-map values without rendering.
