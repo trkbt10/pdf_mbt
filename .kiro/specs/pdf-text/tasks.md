@@ -93,7 +93,7 @@
   - _Boundary: EncodingResolver, FontResourceResolver_
   - _Depends: 3.1_
 
-- [ ] 3.3 Validate Type 3 font dictionaries and encoding rules
+- [x] 3.3 Validate Type 3 font dictionaries and encoding rules
   - Require Type 3 font bbox, font matrix, CharProcs, Encoding, character range, and widths while accepting optional resources, descriptors, and ToUnicode streams.
   - Enforce the complete Encoding requirement and the absence of a default glyph name for missing CharProcs entries.
   - Compute Type 3 widths through the font matrix while preserving horizontal simple-font displacement semantics.
