@@ -75,7 +75,7 @@
   - _Boundary: FormXObjectInterpreter_
 
 - [ ] 4. Optional-content semantics
-- [ ] 4.1 (P) Parse optional content groups and membership policies
+- [x] 4.1 (P) Parse optional content groups and membership policies
   - Validate optional content groups with Type, Name, Intent, and Usage and optional content membership dictionaries with OCGs, P, and VE.
   - Ignore null or deleted group references, apply VE precedence over OCGs/P, and evaluate AllOn, AnyOn, AnyOff, AllOff, And, Or, and Not policies.
   - Done: the visibility evaluator returns visible or hidden decisions for OCG and OCMD inputs under active intent filtering.
