@@ -33,7 +33,7 @@
   - _Requirements: 2, 2.10, 2.16, 2.25, 2.26, 2.29, 2.34, 2.35_
   - _Boundary: GraphicsInterpreter_
 
-- [ ] 2. Build rendering transparency primitives
+- [x] 2. Build rendering transparency primitives
 - [x] 2.1 Prepare renderer contracts for transparency providers and bounded execution
   - Define caller-supplied capabilities for colour conversion, PDF function execution, transfer functions, tint transforms, halftone handling, and glyph masks.
   - Route unsupported provider work into explicit rendering errors instead of silent approximation.
