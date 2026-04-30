@@ -19,7 +19,7 @@
   - The byte boundary is complete when tests show prefixed PDF data uses the `%PDF-` percent byte as offset zero and invalid offsets raise reader errors before slicing.
   - _Requirements: 1.5, 2.1, 2.4, 9.2_
 
-- [ ] 2. Read the file envelope
+- [x] 2. Read the file envelope
 - [x] 2.1 (P) Parse the PDF header and binary indicator
   - Locate the `%PDF-` marker, extract accepted versions `1.0` through `1.7` and `2.0`, and require CR, LF, or CRLF immediately after the version digits.
   - Detect a following binary-indicator comment when it contains at least four high-bit bytes.
