@@ -163,7 +163,7 @@
   - Completion: subtype tests cover printer mark records, trap network records, deprecated subtype preservation, and no trapping execution.
   - _Requirements: 0.25, 0.26_
 
-- [ ] 5.10 Parse watermark fixed-print descriptors
+- [x] 5.10 Parse watermark fixed-print descriptors
   - Parse fixed-print type, matrix, horizontal translation, and vertical translation defaults.
   - Preserve watermark appearance data as raw appearance descriptors without applying print-time transforms.
   - Completion: watermark tests cover absent fixed-print data, valid fixed-print dictionaries, defaults, malformed matrix or translation values, and non-rendering behavior.
