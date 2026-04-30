@@ -76,7 +76,7 @@
   - _Boundary: ActionsIntegration, FormActionParser_
 
 - [x] 4. Add standalone FDF reader support
-- [ ] 4.1 Parse FDF file structure from caller-supplied bytes
+- [x] 4.1 Parse FDF file structure from caller-supplied bytes
   - Validate the FDF header, body objects, optional xref table, trailer Root, generation-zero rule, duplicate object numbers, and direct or indirect root catalog.
   - Keep FDF parsing separate from normal PDF document opening and incremental-update semantics.
   - Completed state: valid FDF bytes produce an object store and root catalog, while malformed FDF file structure raises InvalidFDF.
