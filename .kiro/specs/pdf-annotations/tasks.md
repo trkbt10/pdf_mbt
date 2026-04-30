@@ -190,7 +190,7 @@
   - _Depends: 2.1, 3.1, 4.1, 4.2, 4.3, 4.4, 4.5, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.11, 5.12_
   - _Requirements: 0.1, 0.2, 0.6, 0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29_
 
-- [ ] 6.2 Connect document-level typed annotation enumeration and page-level trap network validation
+- [x] 6.2 Connect document-level typed annotation enumeration and page-level trap network validation
   - Return typed document annotations by traversing validated document annotation sources and invoking page-level typed parsing.
   - Preserve document page order and page-local annotation order in the flattened result.
   - Enforce trap network annotations as no more than one per page and only as the final page annotation entry.
