@@ -113,7 +113,7 @@
   - Completion: subtype tests cover text defaults, state-bearing text replies, stamp defaults, custom names, and invalid stamp intent/name combinations.
   - _Requirements: 0.8, 0.9, 0.17_
 
-- [ ] 5.2 Parse link annotations without executing navigation or actions
+- [x] 5.2 Parse link annotations without executing navigation or actions
   - Preserve action, previous URI action, and destination values according to the raw hand-off boundary.
   - Parse highlight mode defaults, link activation quadrilaterals, and link border style data.
   - Completion: link tests cover action-only, destination-only, highlight defaults, quadrilateral validation, and non-execution of action payloads.
