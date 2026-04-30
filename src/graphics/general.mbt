@@ -34,6 +34,39 @@ pub(all) struct PdfGraphics {
 } derive(Eq, Debug)
 
 ///|
+/// Six main groups of PDF graphics operators per Section 8.1
+/// General of ISO 32000-2 Graphics clause 8.
+///
+/// PDF content streams describe page appearance using graphics
+/// operators that group into:
+///
+/// - GraphicsState: graphics state operators manipulate the
+///   current transformation matrix CTM, current colour, current
+///   clipping path, and other implicit operands.
+/// - PathConstruction: path construction operators specify paths
+///   that define shapes, line trajectories, and regions.
+/// - PathPainting: path-painting operators fill, stroke, or use a
+///   path as a clipping boundary.
+/// - OtherPainting: paint sampled images, geometrically defined
+///   shadings, and form XObjects containing other operators.
+/// - Text: text operators select and show character glyphs from
+///   fonts. See clause 9 Text for full font handling.
+/// - MarkedContent: marked-content operators associate higher-
+///   level logical information with content stream objects for
+///   PDF document interchange.
+///
+/// See clause 11 for the transparent imaging model that consumes these
+/// graphics objects after content stream interpretation.
+pub(all) enum PdfGraphicsOperatorGroup {
+  GraphicsState
+  PathConstruction
+  PathPainting
+  OtherPainting
+  Text
+  MarkedContent
+} derive(Eq, Debug)
+
+///|
 /// Reports whether the final graphics state carries document-level
 /// transparency features from ISO 32000-2 Section 11.1. This is an abstract
 /// graphics-side predicate: it observes blend/composite vocabulary, soft masks,
