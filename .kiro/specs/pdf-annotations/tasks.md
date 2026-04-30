@@ -107,7 +107,7 @@
   - _Requirements: 0.7, 0.8, 0.9, 0.19, 0.29_
 
 - [x] 5. Parse standard annotation subtype families
-- [ ] 5.1 Parse text and stamp annotation metadata
+- [x] 5.1 Parse text and stamp annotation metadata
   - Parse text annotation open state, icon name defaults, and implicit no-zoom/no-rotate behavior as structural data.
   - Parse rubber stamp icon names and PDF 2.0 stamp intents, including the invalid combination where a non-stamp intent also supplies an icon name.
   - Completion: subtype tests cover text defaults, state-bearing text replies, stamp defaults, custom names, and invalid stamp intent/name combinations.
