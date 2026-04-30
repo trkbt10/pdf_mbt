@@ -1,4 +1,19 @@
 ///|
+/// Type 2 shading pattern per Section 8.7.4.1 General of ISO 32000-2.
+///
+/// Shading patterns (PDF 1.3) provide a smooth transition between
+/// colours across an area to be painted, independent of the
+/// resolution of any particular output device and without
+/// specifying the number of steps in the colour transition.
+/// Patterns of this type shall be described by pattern dictionaries
+/// with a pattern type of 2. Table 75 — Entries in a Type 2 pattern
+/// dictionary shows the contents of this type of dictionary.
+///
+/// Table 75 entries: Type (Pattern), PatternType (2 for shading
+/// pattern), Shading (dictionary or stream defining gradient fill),
+/// Matrix (pattern matrix, default identity [1 0 0 1 0 0]),
+/// ExtGState (graphics state parameter dictionary).
+///
 /// ISO 32000-2 8.7.4.1 Type 2 shading pattern dictionary.
 /// A shading pattern is a Pattern colour value whose Shading entry defines a
 /// smooth gradient fill; Matrix maps pattern space and ExtGState applies
@@ -86,6 +101,11 @@ pub(all) struct Shading {
 } derive(Eq, Debug)
 
 ///|
+/// Section 8.7.4.5.1 General defines the shading types represented by the
+/// ShadingType entry in shading dictionaries. Table 77 — Entries common to all
+/// shading dictionaries lists entries shared by all shading dictionaries, while
+/// later tables add entries specific to individual shading types.
+///
 /// ISO 32000-2 8.7.4.5.1 shading types selected by ShadingType.
 /// Type 1 is function-based, Type 2 is axial, Type 3 is radial, Types 4 and 5
 /// are Gouraud-shaded triangle meshes, Type 6 is a Coons patch mesh, and Type
@@ -130,6 +150,12 @@ pub(all) struct FunctionBasedShading {
 } derive(Eq, Debug)
 
 ///|
+/// Type 2 axial shading per Section 8.7.4.5.3 of ISO 32000-2.
+/// A Type 2 axial shading defines a blend of two colours along a linear axis.
+/// Coords identifies the axis endpoints, Domain supplies the parameter range,
+/// Function maps parameter values to colour values, and Extend controls colour
+/// continuation beyond either endpoint.
+///
 /// ISO 32000-2 8.7.4.5.3 Type 2 axial shading.
 /// Coords stores the starting and ending axis coordinates; Domain provides
 /// the parametric variable t; Function maps t to colour components; Extend
@@ -243,6 +269,29 @@ pub fn ShadingPattern::type2_shading_pattern_dictionary_shading_matrix_ext_gstat
 }
 
 ///|
+/// Requirement 0.6 / Section 8.7.4.1 General shading pattern vocabulary.
+/// Shading patterns PDF 1.3 provide a smooth transition between colours
+/// across an area to be painted, independent of the resolution of any
+/// particular output device and without specifying the number of steps in the
+/// colour transition. Patterns of this type shall be described by pattern
+/// dictionaries with a pattern type of 2. Table 75 — Entries in a Type 2
+/// pattern dictionary shows Type Pattern, PatternType 2, Shading, Matrix, and
+/// ExtGState entries.
+///
+/// The most significant entry is Shading, whose value shall be a shading
+/// object defining the properties of the shading pattern's gradient fill. This
+/// complex paint determines the type of colour transition the shading pattern
+/// produces when painted across an area. By setting a shading pattern as the
+/// current colour in the graphics state, a PDF content stream may use painting
+/// operators such as f fill, S stroke, Tj show text, or Do paint external
+/// object with an image mask to paint a path, character glyph, or mask with a
+/// smooth colour transition. The geometry of the gradient fill is independent
+/// of that of the object being painted.
+pub fn pdf_patterns_requirement_0_6_shading_patterns_general_vocabulary() -> String {
+  "0.6 8.7.4.1 General Shading patterns PDF 1.3 smooth transition between colours across an area to be painted independent of the resolution of any particular output device without specifying the number of steps in the colour transition pattern dictionaries pattern type 2 Table 75 Entries in a Type 2 pattern dictionary Type Pattern PatternType 2 Shading dictionary stream gradient fill Table 77 Table 78 Table 83 Matrix identity ExtGState graphics state parameter dictionary clause 11.6.7 Patterns and transparency current colour graphics state f fill S stroke Tj show text Do paint external object image mask smooth colour transition geometry independent object being painted"
+}
+
+///|
 /// Reports the ISO 32000-2 ShadingType number selected by a shading kind. This
 /// is the common dispatch vocabulary for all shading dictionaries: entries
 /// specific to the represented shading type are indicated by ShadingType, with
@@ -301,6 +350,18 @@ pub fn AxialShading::type2_axial_shading_coords_domain_function_extend(
   _self : AxialShading,
 ) -> Bool {
   true
+}
+
+///|
+/// Requirement 0.12 / Section 8.7.4.5.3 Type 2 axial shadings vocabulary.
+/// Type 2 axial shading defines a colour blend along a line between two
+/// endpoints and can extend the boundary colours beyond either endpoint.
+/// Table 79 entries include Coords, Domain, Function, and Extend. Coords gives
+/// x0 y0 x1 y1; Domain gives t0 t1; Function maps one input value to colour
+/// components; Extend indicates whether to extend the shading beyond the
+/// starting and ending points.
+pub fn pdf_patterns_requirement_0_12_type2_axial_shadings_vocabulary() -> String {
+  "0.12 8.7.4.5.3 Type 2 axial shadings Type 2 axial shading blend of two colours colour blend along a line between two endpoints Coords Domain Function Extend Table 79 x0 y0 x1 y1 t0 t1 extend starting point ending point boundary colours"
 }
 
 ///|
