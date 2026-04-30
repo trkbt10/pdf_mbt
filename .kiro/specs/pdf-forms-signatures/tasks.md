@@ -208,7 +208,7 @@
   - _Depends: 1.2_
 
 - [x] 8. Wire public reader APIs and cross-boundary integrations
-- [ ] 8.1 Expose document, catalog, and page entry points
+- [x] 8.1 Expose document, catalog, and page entry points
   - Add public reader APIs for AcroForm access, field enumeration, field lookup, FDF access, signatures, validation plans, permissions, legal attestations, DSS, page viewports, point lookup, measurements, geospatial data, and requirements.
   - Preserve lazy object resolution and no persistent mutation of document state.
   - Completed state: callers can reach each new feature through the reader objects named in the design without depending on raw Catalog dictionary traversal.
