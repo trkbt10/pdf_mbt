@@ -19,13 +19,77 @@ pub fn compare_file_id_reference(PdfFileId?, PdfFileId) -> @interchange.PdfFileI
 
 pub fn compare_version_arrays(PdfVersionArray, PdfVersionArray) -> Int
 
+pub fn evaluate_rendition_viability(PdfRendition, PdfSoftwareIdentity?) -> PdfViabilityReport
+
 pub fn media_player_may_be_used(PdfMediaPlayerPolicy, PdfSoftwareIdentity, Bytes?) -> PdfViabilityDecision
 
 pub fn normalize_file_spec_path(PdfFileSpecPath) -> PdfFileSpecPath
 
 pub fn parse_file_spec_path(Bytes) -> PdfFileSpecPath
 
+pub fn parse_media_clip(PdfFile, @objects.PdfObject) -> PdfMediaClip raise PdfDocumentError
+
+pub fn parse_media_duration(PdfFile, @objects.PdfObject, @objects.ObjectId?) -> PdfMediaDuration raise PdfDocumentError
+
+pub fn parse_media_offset(PdfFile, @objects.PdfObject, @objects.ObjectId?) -> PdfMediaOffset raise PdfDocumentError
+
+pub fn parse_media_permissions(PdfFile, @objects.PdfObject, @objects.ObjectId?) -> PdfMediaPermissions raise PdfDocumentError
+
+pub fn parse_media_play_params(PdfFile, @objects.PdfObject?) -> PdfMediaPlayParams raise PdfDocumentError
+
+pub fn parse_media_player_info(PdfFile, @objects.PdfObject) -> PdfMediaPlayerInfo raise PdfDocumentError
+
+pub fn parse_media_player_policy(PdfFile, @objects.PdfObject) -> PdfMediaPlayerPolicy raise PdfDocumentError
+
+pub fn parse_media_screen_params(PdfFile, @objects.PdfObject?) -> PdfMediaScreenParams raise PdfDocumentError
+
+pub fn parse_movie_activation(Map[@objects.PdfName, @objects.PdfObject], @objects.ObjectId?) -> PdfMovieActivation raise PdfDocumentError
+
+pub fn parse_movie_dictionary(PdfFile, @objects.PdfObject) -> PdfMovieDictionary raise PdfDocumentError
+
+pub fn parse_multimedia_annotation(PdfFile, PdfAnnotation) -> PdfMultimediaAnnotation? raise PdfDocumentError
+
+pub fn parse_multimedia_object(PdfFile, @objects.PdfObject) -> PdfMultimediaObject raise PdfDocumentError
+
 pub fn parse_object_stream(@objects.PdfStream, offset~ : Int64) -> ObjectStreamTable raise PdfReaderError
+
+pub fn parse_rendition(PdfFile, @objects.PdfObject) -> PdfRendition raise PdfDocumentError
+
+pub fn parse_richmedia_animation(Map[@objects.PdfName, @objects.PdfObject], @objects.ObjectId?) -> PdfRichMediaAnimation raise PdfDocumentError
+
+pub fn parse_richmedia_annotation(PdfFile, @objects.PdfObject) -> PdfRichMediaAnnotation? raise PdfDocumentError
+
+pub fn parse_richmedia_assets(PdfFile, @objects.PdfObject, @objects.ObjectId?) -> Array[PdfRichMediaAsset] raise PdfDocumentError
+
+pub fn parse_richmedia_configuration(PdfFile, @objects.PdfObject) -> PdfRichMediaConfiguration raise PdfDocumentError
+
+pub fn parse_richmedia_content(PdfFile, @objects.PdfObject) -> PdfRichMediaContent raise PdfDocumentError
+
+pub fn parse_richmedia_instance(PdfFile, @objects.PdfObject) -> PdfRichMediaInstance raise PdfDocumentError
+
+pub fn parse_richmedia_presentation(PdfFile, @objects.PdfObject) -> PdfRichMediaPresentation raise PdfDocumentError
+
+pub fn parse_richmedia_settings(PdfFile, @objects.PdfObject?) -> PdfRichMediaSettings raise PdfDocumentError
+
+pub fn parse_richmedia_view(PdfFile, @objects.PdfObject) -> PdfRichMediaView raise PdfDocumentError
+
+pub fn parse_richmedia_view_params(PdfFile, @objects.PdfObject) -> PdfRichMediaViewParams raise PdfDocumentError
+
+pub fn parse_slideshow(PdfFile, @objects.PdfObject) -> PdfSlideShow raise PdfDocumentError
+
+pub fn parse_software_identifier(PdfFile, @objects.PdfObject) -> PdfSoftwareIdentifier raise PdfDocumentError
+
+pub fn parse_sound_object(PdfFile, @objects.PdfObject) -> PdfSoundObject raise PdfDocumentError
+
+pub fn parse_three_d_annotation(PdfFile, @objects.PdfObject) -> PdfThreeDAnnotation? raise PdfDocumentError
+
+pub fn parse_three_d_reference(PdfFile, @objects.PdfObject) -> PdfThreeDReference raise PdfDocumentError
+
+pub fn parse_three_d_stream(PdfFile, @objects.PdfObject) -> PdfThreeDStream raise PdfDocumentError
+
+pub fn parse_three_d_view(PdfFile, @objects.PdfObject) -> PdfThreeDView raise PdfDocumentError
+
+pub fn parse_timespan(PdfFile, @objects.PdfObject, @objects.ObjectId?) -> PdfTimespan raise PdfDocumentError
 
 pub fn pdf_1_2_deprecated_pdf_2_0_movie_annotation_table_189_subtype_movie_t_title_movie_dictionary_a_activation_default_true_anchor() -> Int
 
@@ -88,6 +152,12 @@ pub fn pdf_annotations_section_12_5_6_3_annotation_table_174_anchor() -> Int
 pub fn pdf_annotations_section_12_5_6_3_table_174_anchor() -> Int
 
 pub fn pdf_annotations_section_12_5_6_8_square_circle_anchor() -> Int
+
+pub fn pdf_multimedia_section_13_1_general_anchor() -> PdfMultimediaSection131GeneralVocabulary
+
+pub fn pdf_multimedia_section_13_3_sounds_anchor() -> PdfMultimediaSection133SoundsVocabulary
+
+pub fn pdf_multimedia_section_13_5_alternate_presentations_anchor() -> PdfMultimediaSection135AlternatePresentationsVocabulary
 
 pub fn resolve_file_spec_path(PdfFileSpecPath, PdfFileSpecPath) -> PdfFileSpecPath raise PdfDocumentError
 
@@ -831,6 +901,7 @@ pub fn PdfDeveloperExtension::targets_pdf2_or_later(Self) -> Bool
 pub struct PdfDocument {
   // private fields
 }
+pub fn PdfDocument::alternate_presentations(Self) -> Array[PdfAlternatePresentation] raise PdfDocumentError
 pub fn PdfDocument::annotation_action(Self, PdfAnnotation) -> PdfAction? raise PdfDocumentError
 pub fn PdfDocument::annotation_additional_actions(Self, PdfAnnotation) -> PdfAnnotationAdditionalActions? raise PdfDocumentError
 pub fn PdfDocument::annotation_previous_uri_action(Self, PdfAnnotation) -> PdfAction? raise PdfDocumentError
@@ -1645,6 +1716,47 @@ pub(all) enum PdfMultimediaPayload {
   Stream(PdfRawStreamPayload)
 } derive(Eq, @debug.Debug)
 pub fn PdfMultimediaPayload::is_opaque_payload(Self) -> Bool
+
+pub(all) struct PdfMultimediaSection131GeneralVocabulary {
+  clause : String
+  multimedia_framework : String
+  deprecated_sounds : String
+  deprecated_movies : String
+  three_d_artwork : String
+  rich_media : String
+  structural_metadata_only : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfMultimediaSection133SoundsVocabulary {
+  clause : String
+  deprecated_pdf_2_0 : Bool
+  sound_annotation_table : String
+  sound_action_table : String
+  sound_object_table : String
+  required_sampling_rate : String
+  portable_rate_8000 : String
+  portable_rate_11025 : String
+  portable_rate_22050 : String
+  default_channels : Int
+  default_bits_per_sample : Int
+  default_encoding : @objects.PdfName
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfMultimediaSection135AlternatePresentationsVocabulary {
+  clause : String
+  deprecated_pdf_2_0 : Bool
+  name_dictionary_entry : @objects.PdfName
+  slideshow_table : String
+  pdf_1_4_entry : String
+  pdf_1_5_only_type : String
+  ecmascript_actions : String
+  interactive_form_element : String
+  required_type : @objects.PdfName
+  required_subtype : @objects.PdfName
+  required_resources : @objects.PdfName
+  required_start_resource : @objects.PdfName
+  virtual_file_system_flat : Bool
+} derive(Eq, @debug.Debug)
 
 pub(all) struct PdfMultimediaUnknownName {
   name : @objects.PdfName
