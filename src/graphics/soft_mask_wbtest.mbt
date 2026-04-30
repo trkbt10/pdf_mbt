@@ -30,6 +30,61 @@ test "SoftMask dictionaries accept direct groups and unresolved references" {
 }
 
 ///|
+test "SoftMask transfer functions preserve typed direct and unresolved sources" {
+  let direct_dict = soft_mask_dictionary(
+    @objects.PdfObject::Stream(soft_mask_group_stream()),
+    [0.0, 0.0, 0.0],
+  )
+  direct_dict[pdf_name(b"TR")] = soft_mask_type2_function()
+  match
+    SoftMaskSource::from_pdf_object(
+      @objects.PdfObject::Dictionary(direct_dict),
+      12L,
+    ) {
+    AlphaMask(mask) =>
+      match mask.transfer_function {
+        DirectTransferFunction(@functions.FunctionSource::DirectFunction(_)) =>
+          ()
+        _ => fail("expected direct typed soft-mask transfer function")
+      }
+    _ => fail("expected alpha soft mask")
+  }
+
+  let object_id = @objects.ObjectId::{ object_number: 12, generation_number: 0 }
+  let unresolved_dict = soft_mask_dictionary(
+    @objects.PdfObject::Stream(soft_mask_group_stream()),
+    [0.0, 0.0, 0.0],
+  )
+  unresolved_dict[pdf_name(b"TR")] = @objects.PdfObject::Ref(object_id)
+  match
+    SoftMaskSource::from_pdf_object(
+      @objects.PdfObject::Dictionary(unresolved_dict),
+      13L,
+    ) {
+    AlphaMask(mask) =>
+      match mask.transfer_function {
+        UnresolvedTransferFunction(found) => assert_eq(found == object_id, true)
+        _ => fail("expected unresolved soft-mask transfer function")
+      }
+    _ => fail("expected alpha soft mask")
+  }
+
+  let invalid_dict = soft_mask_dictionary(
+    @objects.PdfObject::Stream(soft_mask_group_stream()),
+    [0.0, 0.0, 0.0],
+  )
+  invalid_dict[pdf_name(b"TR")] = @objects.PdfObject::Dictionary(Map::new())
+  let invalid : Result[SoftMaskSource, PdfGraphicsError] = try? SoftMaskSource::from_pdf_object(
+    @objects.PdfObject::Dictionary(invalid_dict),
+    14L,
+  )
+  match invalid {
+    Err(FunctionFailure(_)) => ()
+    _ => fail("expected function-domain failure for soft-mask TR")
+  }
+}
+
+///|
 test "SoftMask rejects malformed dictionaries and backdrop component mismatch" {
   let bad : @objects.PdfDictionary = Map::new()
   bad[pdf_name(b"S")] = @objects.PdfObject::Name(pdf_name(b"Luminosity"))
@@ -142,6 +197,24 @@ fn soft_mask_dictionary(
   dict[pdf_name(b"BC")] = @objects.PdfObject::Array(bc)
   dict[pdf_name(b"TR")] = @objects.PdfObject::Name(pdf_name(b"Identity"))
   dict
+}
+
+///|
+fn soft_mask_type2_function() -> @objects.PdfObject {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[pdf_name(b"FunctionType")] = @objects.PdfObject::Integer(2L)
+  dict[pdf_name(b"Domain")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Integer(0L),
+    @objects.PdfObject::Integer(1L),
+  ])
+  dict[pdf_name(b"C0")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Integer(0L),
+  ])
+  dict[pdf_name(b"C1")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Integer(1L),
+  ])
+  dict[pdf_name(b"N")] = @objects.PdfObject::Integer(1L)
+  @objects.PdfObject::Dictionary(dict)
 }
 
 ///|

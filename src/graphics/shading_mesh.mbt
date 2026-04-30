@@ -89,7 +89,7 @@ fn parse_mesh_shading_kind(
   dict : @objects.PdfDictionary,
   stream : @objects.PdfStream,
   space : ColourSpace,
-  function : @objects.PdfObject?,
+  function : @functions.FunctionSource?,
   offset : Int64,
 ) -> ShadingKind raise PdfGraphicsError {
   let params = parse_mesh_common(dict, stream, space, function, offset)
@@ -153,7 +153,7 @@ fn parse_mesh_common(
   dict : @objects.PdfDictionary,
   stream : @objects.PdfStream,
   space : ColourSpace,
-  function : @objects.PdfObject?,
+  function : @functions.FunctionSource?,
   offset : Int64,
 ) -> MeshCommonParams raise PdfGraphicsError {
   let bpc = require_positive_mesh_int(

@@ -23,7 +23,7 @@ fn type2_function(
   c0 : Double,
   c1 : Double,
   exponent : Double,
-) -> @graphics.ColourTransformFunction {
+) -> @graphics.ColourTransformFunction raise @functions.PdfFunctionError {
   let dict : @objects.PdfDictionary = Map::new()
   dict[colour_test_pdf_name(b"FunctionType")] = @objects.PdfObject::Integer(2L)
   dict[colour_test_pdf_name(b"Domain")] = @objects.PdfObject::Array([
@@ -34,7 +34,11 @@ fn type2_function(
   dict[colour_test_pdf_name(b"C1")] = @objects.PdfObject::Array([pdf_real(c1)])
   dict[colour_test_pdf_name(b"N")] = pdf_real(exponent)
   @graphics.ColourTransformFunction::DirectTransformFunction(
-    @objects.PdfObject::Dictionary(dict),
+    @functions.parse_function_object(
+      @objects.PdfObject::Dictionary(dict),
+      @functions.FunctionLimits::default(),
+      0L,
+    ),
   )
 }
 

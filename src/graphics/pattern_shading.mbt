@@ -59,7 +59,7 @@ pub(all) enum ShadingKind {
 pub(all) struct FunctionBasedShading {
   domain : Array[Double]
   matrix : GraphicsMatrix
-  function : @objects.PdfObject
+  function : @functions.FunctionSource
 } derive(Eq, Debug)
 
 ///|
@@ -71,7 +71,7 @@ pub(all) struct FunctionBasedShading {
 pub(all) struct AxialShading {
   coords : Array[Double]
   domain : Array[Double]
-  function : @objects.PdfObject
+  function : @functions.FunctionSource
   extend_start : Bool
   extend_end : Bool
   coincident_axis : Bool
@@ -81,7 +81,7 @@ pub(all) struct AxialShading {
 pub(all) struct RadialShading {
   coords : Array[Double]
   domain : Array[Double]
-  function : @objects.PdfObject
+  function : @functions.FunctionSource
   extend_start : Bool
   extend_end : Bool
 } derive(Eq, Debug)
@@ -92,7 +92,7 @@ pub(all) struct FreeFormMeshShading {
   bits_per_component : Int
   bits_per_flag : Int
   decode : Array[Double]
-  function : @objects.PdfObject?
+  function : @functions.FunctionSource?
   summary : MeshSummary
 } derive(Eq, Debug)
 
@@ -102,7 +102,7 @@ pub(all) struct LatticeMeshShading {
   bits_per_component : Int
   vertices_per_row : Int
   decode : Array[Double]
-  function : @objects.PdfObject?
+  function : @functions.FunctionSource?
   summary : MeshSummary
 } derive(Eq, Debug)
 
@@ -112,7 +112,7 @@ pub(all) struct CoonsPatchMeshShading {
   bits_per_component : Int
   bits_per_flag : Int
   decode : Array[Double]
-  function : @objects.PdfObject?
+  function : @functions.FunctionSource?
   summary : PatchMeshSummary
 } derive(Eq, Debug)
 
@@ -126,7 +126,7 @@ pub(all) struct TensorPatchMeshShading {
   bits_per_component : Int
   bits_per_flag : Int
   decode : Array[Double]
-  function : @objects.PdfObject?
+  function : @functions.FunctionSource?
   summary : PatchMeshSummary
 } derive(Eq, Debug)
 
@@ -352,14 +352,15 @@ fn parse_shading_kind(
   function : @objects.PdfObject?,
   offset : Int64,
 ) -> ShadingKind raise PdfGraphicsError {
+  let parsed_function = parse_optional_shading_function(function, offset)
   if shading_type == 1L {
     ShadingKind::FunctionBased(
-      parse_function_based_shading(dict, function, offset),
+      parse_function_based_shading(dict, parsed_function, offset),
     )
   } else if shading_type == 2L {
-    ShadingKind::Axial(parse_axial_shading(dict, function, offset))
+    ShadingKind::Axial(parse_axial_shading(dict, parsed_function, offset))
   } else if shading_type == 3L {
-    ShadingKind::Radial(parse_radial_shading(dict, function, offset))
+    ShadingKind::Radial(parse_radial_shading(dict, parsed_function, offset))
   } else {
     let mesh_stream = match stream {
       Some(value) => value
@@ -369,7 +370,7 @@ fn parse_shading_kind(
         )
     }
     parse_mesh_shading_kind(
-      shading_type, dict, mesh_stream, space, function, offset,
+      shading_type, dict, mesh_stream, space, parsed_function, offset,
     )
   }
 }
@@ -377,7 +378,7 @@ fn parse_shading_kind(
 ///|
 fn parse_function_based_shading(
   dict : @objects.PdfDictionary,
-  function : @objects.PdfObject?,
+  function : @functions.FunctionSource?,
   offset : Int64,
 ) -> FunctionBasedShading raise PdfGraphicsError {
   FunctionBasedShading::{
@@ -390,14 +391,14 @@ fn parse_function_based_shading(
       "Domain",
     ),
     matrix: optional_graphics_matrix(dict, offset, "Function shading Matrix"),
-    function: require_shading_function(function, offset),
+    function: require_shading_function_source(function, offset),
   }
 }
 
 ///|
 fn parse_axial_shading(
   dict : @objects.PdfDictionary,
-  function : @objects.PdfObject?,
+  function : @functions.FunctionSource?,
   offset : Int64,
 ) -> AxialShading raise PdfGraphicsError {
   let coords = require_number_array_value(
@@ -416,7 +417,7 @@ fn parse_axial_shading(
       offset,
       "Domain",
     ),
-    function: require_shading_function(function, offset),
+    function: require_shading_function_source(function, offset),
     extend_start: optional_extend(dict, offset)[0],
     extend_end: optional_extend(dict, offset)[1],
     coincident_axis: coords[0] == coords[2] && coords[1] == coords[3],
@@ -426,7 +427,7 @@ fn parse_axial_shading(
 ///|
 fn parse_radial_shading(
   dict : @objects.PdfDictionary,
-  function : @objects.PdfObject?,
+  function : @functions.FunctionSource?,
   offset : Int64,
 ) -> RadialShading raise PdfGraphicsError {
   let coords = require_number_array_value(
@@ -450,17 +451,41 @@ fn parse_radial_shading(
       offset,
       "Domain",
     ),
-    function: require_shading_function(function, offset),
+    function: require_shading_function_source(function, offset),
     extend_start: optional_extend(dict, offset)[0],
     extend_end: optional_extend(dict, offset)[1],
   }
 }
 
 ///|
-fn require_shading_function(
+fn parse_optional_shading_function(
   function : @objects.PdfObject?,
   offset : Int64,
-) -> @objects.PdfObject raise PdfGraphicsError {
+) -> @functions.FunctionSource? raise PdfGraphicsError {
+  match function {
+    Some(value) =>
+      Some(
+        try
+          @functions.parse_function_object(
+            value,
+            @functions.FunctionLimits::default(),
+            offset,
+          )
+        catch {
+          error => raise PdfGraphicsError::FunctionFailure(error)
+        } noraise {
+          source => source
+        },
+      )
+    None => None
+  }
+}
+
+///|
+fn require_shading_function_source(
+  function : @functions.FunctionSource?,
+  offset : Int64,
+) -> @functions.FunctionSource raise PdfGraphicsError {
   match function {
     Some(value) => value
     None =>

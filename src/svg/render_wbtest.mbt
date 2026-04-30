@@ -1072,6 +1072,7 @@ fn diagnostic_graphics_error_message(
       "InvalidImage(" + offset.to_string() + "): " + message
     @graphics.PdfGraphicsError::InvalidOptionalContent(offset, message) =>
       "InvalidOptionalContent(" + offset.to_string() + "): " + message
+    @graphics.PdfGraphicsError::FunctionFailure(_) => "FunctionFailure"
     @graphics.PdfGraphicsError::InterchangeFailure(_) => "InterchangeFailure"
     @graphics.PdfGraphicsError::ContentFailure(_) => "ContentFailure"
   }

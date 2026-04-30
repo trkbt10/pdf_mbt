@@ -104,7 +104,7 @@
   - _Boundary: FunctionParser_
 
 - [ ] 3. Integrate function sources with consumers
-- [ ] 3.1 Wire graphics models to typed function sources
+- [x] 3.1 Wire graphics models to typed function sources
   - Convert direct tint transforms, shading functions, mesh optional functions, and soft-mask transfer functions into typed function sources at graphics parsing boundaries.
   - Preserve unresolved indirect references explicitly where graphics cannot materialize them and wrap function-domain failures in graphics diagnostics.
   - Graphics integration tests show direct function-bearing dictionaries parse successfully, indirect references remain visible, and invalid function payloads fail at the graphics boundary.

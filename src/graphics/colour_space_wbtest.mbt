@@ -166,6 +166,65 @@ test "special colour spaces reject invalid alternates and DeviceN attributes" {
 }
 
 ///|
+test "special colour spaces expose typed tint transform sources" {
+  let direct = parse_colour_space_object(
+    @objects.PdfObject::Array([
+      @objects.PdfObject::Name(@objects.PdfName::new(b"Separation")),
+      @objects.PdfObject::Name(@objects.PdfName::new(b"Spot")),
+      @objects.PdfObject::Name(@objects.PdfName::new(b"DeviceGray")),
+      colour_space_type2_function(),
+    ]),
+    ColourDefaults::empty(),
+    43L,
+  )
+  match direct {
+    Separation(params) =>
+      match params.tint_transform {
+        DirectTransformFunction(@functions.FunctionSource::DirectFunction(_)) =>
+          ()
+        _ => fail("expected direct typed tint transform")
+      }
+    _ => fail("expected Separation colour space")
+  }
+
+  let object_id = @objects.ObjectId::{ object_number: 9, generation_number: 0 }
+  let unresolved = parse_colour_space_object(
+    @objects.PdfObject::Array([
+      @objects.PdfObject::Name(@objects.PdfName::new(b"Separation")),
+      @objects.PdfObject::Name(@objects.PdfName::new(b"Spot")),
+      @objects.PdfObject::Name(@objects.PdfName::new(b"DeviceGray")),
+      @objects.PdfObject::Ref(object_id),
+    ]),
+    ColourDefaults::empty(),
+    44L,
+  )
+  match unresolved {
+    Separation(params) =>
+      match params.tint_transform {
+        UnresolvedTransformFunction(found) =>
+          assert_eq(found == object_id, true)
+        _ => fail("expected unresolved tint transform")
+      }
+    _ => fail("expected Separation colour space")
+  }
+
+  let invalid : Result[ColourSpace, PdfGraphicsError] = try? parse_colour_space_object(
+    @objects.PdfObject::Array([
+      @objects.PdfObject::Name(@objects.PdfName::new(b"Separation")),
+      @objects.PdfObject::Name(@objects.PdfName::new(b"Spot")),
+      @objects.PdfObject::Name(@objects.PdfName::new(b"DeviceGray")),
+      @objects.PdfObject::Dictionary(Map::new()),
+    ]),
+    ColourDefaults::empty(),
+    45L,
+  )
+  match invalid {
+    Err(FunctionFailure(_)) => ()
+    _ => fail("expected function-domain failure at colour boundary")
+  }
+}
+
+///|
 test "ICCBased direct profile streams validate header and component count" {
   let rgb = parse_colour_space_object(
     @objects.PdfObject::Array([
@@ -307,6 +366,17 @@ fn number_array(values : Array[Double]) -> @objects.PdfObject {
 }
 
 ///|
+fn colour_space_type2_function() -> @objects.PdfObject {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"FunctionType")] = @objects.PdfObject::Integer(2L)
+  dict[@objects.PdfName::new(b"Domain")] = number_array([0.0, 1.0])
+  dict[@objects.PdfName::new(b"C0")] = number_array([0.0, 0.0, 0.0, 0.0])
+  dict[@objects.PdfName::new(b"C1")] = number_array([1.0, 1.0, 1.0, 1.0])
+  dict[@objects.PdfName::new(b"N")] = @objects.PdfObject::Integer(1L)
+  @objects.PdfObject::Dictionary(dict)
+}
+
+///|
 fn device_n_object(
   names : Array[@objects.PdfName],
   attributes : @objects.PdfDictionary?,
@@ -319,7 +389,7 @@ fn device_n_object(
     @objects.PdfObject::Name(@objects.PdfName::new(b"DeviceN")),
     @objects.PdfObject::Array(name_objects),
     @objects.PdfObject::Name(@objects.PdfName::new(b"DeviceCMYK")),
-    @objects.PdfObject::Dictionary(Map::new()),
+    colour_space_type2_function(),
   ]
   if attributes is Some(dict) {
     values.push(@objects.PdfObject::Dictionary(dict))
@@ -368,7 +438,7 @@ fn separation_object(name : @objects.PdfName) -> @objects.PdfObject {
     @objects.PdfObject::Name(@objects.PdfName::new(b"Separation")),
     @objects.PdfObject::Name(name),
     @objects.PdfObject::Name(@objects.PdfName::new(b"DeviceCMYK")),
-    @objects.PdfObject::Dictionary(Map::new()),
+    colour_space_type2_function(),
   ])
 }
 

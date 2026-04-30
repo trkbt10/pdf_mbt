@@ -235,7 +235,24 @@ fn optional_ht_transfer(
         )
       }
     Some(value) =>
-      Some(@graphics.ColourTransformFunction::DirectTransformFunction(value))
+      Some(
+        @graphics.ColourTransformFunction::DirectTransformFunction(
+          try
+            @functions.parse_function_object(
+              value,
+              @functions.FunctionLimits::default(),
+              0L,
+            )
+          catch {
+            _ =>
+              raise PdfRenderingError::ProviderFailure(
+                "halftone", "transfer function could not be parsed",
+              )
+          } noraise {
+            source => source
+          },
+        ),
+      )
   }
 }
 

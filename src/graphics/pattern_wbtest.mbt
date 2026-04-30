@@ -92,6 +92,45 @@ test "mesh shading validates packed Type 4 records" {
 }
 
 ///|
+test "mesh shading optional Function becomes a typed source" {
+  let base = type4_mesh_stream()
+  base.dict[name(b"Function")] = pattern_type2_function()
+  base.dict[name(b"Decode")] = @objects.PdfObject::Array([
+    int(0L),
+    int(1L),
+    int(0L),
+    int(1L),
+    int(0L),
+    int(1L),
+  ])
+  let stream = @objects.PdfStream::{
+    dict: base.dict,
+    data: Bytes::from_array([
+      b'\x00', b'\x00', b'\x00', b'\x00', b'\x00', b'\x00', b'\x00', b'\x00', b'\x00',
+      b'\x00', b'\x00', b'\x00',
+    ]),
+  }
+  let resource = parse_shading_object(
+    Some(name(b"MeshFn")),
+    @objects.PdfObject::Stream(stream),
+    ColourDefaults::empty(),
+    10L,
+  )
+  match resource {
+    DirectShading(_, shading) =>
+      match shading.kind {
+        FreeFormMesh(mesh) =>
+          match mesh.function {
+            Some(@functions.FunctionSource::DirectFunction(_)) => ()
+            _ => fail("expected typed mesh function")
+          }
+        _ => fail("expected free-form mesh")
+      }
+    _ => fail("expected direct mesh shading")
+  }
+}
+
+///|
 test "Pattern colour selection validates uncoloured tiling operands and emits event" {
   let resources = resources_with_pattern_and_space(
     tiling_stream(PatternPaintType::Uncoloured, 10.0, 10.0),
@@ -197,7 +236,18 @@ fn axial_shading_object() -> @objects.PdfObject {
     int(1L),
     int(0L),
   ])
-  dict[name(b"Function")] = @objects.PdfObject::Dictionary(Map::new())
+  dict[name(b"Function")] = pattern_type2_function()
+  @objects.PdfObject::Dictionary(dict)
+}
+
+///|
+fn pattern_type2_function() -> @objects.PdfObject {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[name(b"FunctionType")] = int(2L)
+  dict[name(b"Domain")] = @objects.PdfObject::Array([int(0L), int(1L)])
+  dict[name(b"C0")] = @objects.PdfObject::Array([int(0L), int(0L), int(0L)])
+  dict[name(b"C1")] = @objects.PdfObject::Array([int(1L), int(1L), int(1L)])
+  dict[name(b"N")] = int(1L)
   @objects.PdfObject::Dictionary(dict)
 }
 

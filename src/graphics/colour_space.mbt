@@ -100,7 +100,7 @@ pub(all) struct IndexedParams {
 pub(all) struct SeparationParams {
   colorant : @objects.PdfName
   alternate : ColourSpace
-  tint_transform : @objects.PdfObject
+  tint_transform : ColourTransformFunction
 } derive(Eq, Debug)
 
 ///|
@@ -123,7 +123,7 @@ pub(all) struct DeviceNAttributes {
 pub(all) struct DeviceNParams {
   colorants : Array[@objects.PdfName]
   alternate : ColourSpace
-  tint_transform : @objects.PdfObject
+  tint_transform : ColourTransformFunction
   attributes : DeviceNAttributes?
 } derive(Eq, Debug)
 
@@ -531,11 +531,11 @@ fn parse_separation(
     offset,
   )
   validate_alternate_colour_space(alternate, offset, "Separation alternate")
-  validate_tint_transform(values[3], offset)
+  let tint_transform = parse_colour_transform_function(values[3], offset)
   ColourSpace::Separation(SeparationParams::{
     colorant,
     alternate,
-    tint_transform: values[3],
+    tint_transform,
   })
 }
 
@@ -559,7 +559,7 @@ fn parse_device_n(
     offset,
   )
   validate_alternate_colour_space(alternate, offset, "DeviceN alternate")
-  validate_tint_transform(values[3], offset)
+  let tint_transform = parse_colour_transform_function(values[3], offset)
   let attributes = if values.length() == 5 {
     Some(parse_device_n_attributes(values[4], colorants, defaults, offset))
   } else {
@@ -568,7 +568,7 @@ fn parse_device_n(
   ColourSpace::DeviceN(DeviceNParams::{
     colorants,
     alternate,
-    tint_transform: values[3],
+    tint_transform,
     attributes,
   })
 }
@@ -814,16 +814,33 @@ fn validate_alternate_colour_space(
 }
 
 ///|
-fn validate_tint_transform(
+fn parse_colour_transform_function(
   object : @objects.PdfObject,
   offset : Int64,
-) -> Unit raise PdfGraphicsError {
+) -> ColourTransformFunction raise PdfGraphicsError {
   match object {
+    @objects.PdfObject::Name(name) if name == pdf_name(b"Identity") =>
+      ColourTransformFunction::IdentityTransformFunction
+    @objects.PdfObject::Ref(id) =>
+      ColourTransformFunction::UnresolvedTransformFunction(id)
     @objects.PdfObject::Null =>
       raise PdfGraphicsError::InvalidGraphicsState(
         offset, "tint transform must be present",
       )
-    _ => ()
+    _ => {
+      let source = try
+        @functions.parse_function_object(
+          object,
+          @functions.FunctionLimits::default(),
+          offset,
+        )
+      catch {
+        error => raise PdfGraphicsError::FunctionFailure(error)
+      } noraise {
+        value => value
+      }
+      ColourTransformFunction::DirectTransformFunction(source)
+    }
   }
 }
 

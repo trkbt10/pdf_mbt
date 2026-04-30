@@ -98,9 +98,7 @@ fn interpreter_test_shading_resources() -> @content.ContentResources {
     @objects.PdfObject::Integer(1L),
     @objects.PdfObject::Integer(0L),
   ])
-  shading_dict[@objects.PdfName::new(b"Function")] = @objects.PdfObject::Dictionary(
-    Map::new(),
-  )
+  shading_dict[@objects.PdfName::new(b"Function")] = interpreter_type2_function()
   let shadings : @objects.PdfDictionary = Map::new()
   shadings[@objects.PdfName::new(b"Shade")] = @objects.PdfObject::Dictionary(
     shading_dict,
@@ -133,4 +131,26 @@ fn interpreter_test_shading_resources() -> @content.ContentResources {
     xobjects,
   )
   @content.ContentResources::from_dictionary(resources)
+}
+
+///|
+fn interpreter_type2_function() -> @objects.PdfObject {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"FunctionType")] = @objects.PdfObject::Integer(2L)
+  dict[@objects.PdfName::new(b"Domain")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Integer(0L),
+    @objects.PdfObject::Integer(1L),
+  ])
+  dict[@objects.PdfName::new(b"C0")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Integer(0L),
+    @objects.PdfObject::Integer(0L),
+    @objects.PdfObject::Integer(0L),
+  ])
+  dict[@objects.PdfName::new(b"C1")] = @objects.PdfObject::Array([
+    @objects.PdfObject::Integer(1L),
+    @objects.PdfObject::Integer(1L),
+    @objects.PdfObject::Integer(1L),
+  ])
+  dict[@objects.PdfName::new(b"N")] = @objects.PdfObject::Integer(1L)
+  @objects.PdfObject::Dictionary(dict)
 }

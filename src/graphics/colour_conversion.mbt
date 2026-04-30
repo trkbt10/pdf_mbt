@@ -34,7 +34,7 @@ pub(all) struct CieXyzColour {
 /// load reader-owned objects.
 pub(all) enum ColourTransformFunction {
   IdentityTransformFunction
-  DirectTransformFunction(@objects.PdfObject)
+  DirectTransformFunction(@functions.FunctionSource)
   UnresolvedTransformFunction(@objects.ObjectId)
 } derive(Eq, Debug)
 
@@ -243,7 +243,7 @@ pub fn SeparationParams::alternate_colour_value(
   tint : Double,
   offset? : Int64 = 0L,
 ) -> ColourValue raise PdfGraphicsError {
-  let outputs = DirectTransformFunction(self.tint_transform).apply(
+  let outputs = self.tint_transform.apply(
     [colour_component(tint)],
     self.alternate.component_count(),
     offset~,
@@ -266,7 +266,7 @@ pub fn DeviceNParams::alternate_colour_value(
   for tint in tints {
     normalized.push(colour_component(tint))
   }
-  let outputs = DirectTransformFunction(self.tint_transform).apply(
+  let outputs = self.tint_transform.apply(
     normalized,
     self.alternate.component_count(),
     offset~,
@@ -448,8 +448,8 @@ pub fn ColourTransformFunction::apply(
       raise PdfGraphicsError::InvalidGraphicsState(
         offset, "indirect colour function must be resolved before evaluation",
       )
-    DirectTransformFunction(object) =>
-      evaluate_direct_colour_function(object, inputs, expected_outputs, offset)
+    DirectTransformFunction(source) =>
+      evaluate_typed_colour_function(source, inputs, expected_outputs, offset)
   }
 }
 
@@ -553,52 +553,29 @@ fn ColourRange::clip(self : ColourRange, value : Double) -> Double {
 }
 
 ///|
-fn evaluate_direct_colour_function(
-  object : @objects.PdfObject,
+fn evaluate_typed_colour_function(
+  source : @functions.FunctionSource,
   inputs : Array[Double],
   expected_outputs : Int,
   offset : Int64,
 ) -> Array[Double] raise PdfGraphicsError {
-  match object {
-    @objects.PdfObject::Name(name) =>
-      if name == @objects.PdfName::new(b"Identity") {
-        ColourTransformFunction::IdentityTransformFunction.apply(
-          inputs,
-          expected_outputs,
-          offset~,
-        )
-      } else {
-        raise PdfGraphicsError::InvalidGraphicsState(
-          offset, "unsupported named colour transform",
-        )
-      }
-    @objects.PdfObject::Dictionary(dict) =>
-      evaluate_colour_function_dictionary(
-        dict,
-        None,
-        inputs,
-        expected_outputs,
-        offset,
-      )
-    @objects.PdfObject::Stream(stream) =>
-      evaluate_colour_function_dictionary(
-        stream.dict,
-        Some(decode_colour_function_stream(stream, offset)),
-        inputs,
-        expected_outputs,
-        offset,
-      )
-    @objects.PdfObject::Ref(id) =>
-      ColourTransformFunction::UnresolvedTransformFunction(id).apply(
-        inputs,
-        expected_outputs,
-        offset~,
-      )
-    _ =>
-      raise PdfGraphicsError::InvalidGraphicsState(
-        offset, "colour transform must be a function dictionary, stream, or Identity name",
-      )
+  let outputs = try
+    @functions.evaluate_function_source(
+      source,
+      inputs,
+      @functions.FunctionLimits::default(),
+    )
+  catch {
+    error => raise PdfGraphicsError::FunctionFailure(error)
+  } noraise {
+    values => values
   }
+  if outputs.length() != expected_outputs {
+    raise PdfGraphicsError::InvalidGraphicsState(
+      offset, "colour function output count does not match expected component count",
+    )
+  }
+  outputs
 }
 
 ///|

@@ -12,6 +12,7 @@ pub(all) suberror PdfGraphicsError {
   InvalidXObject(Int64, String)
   InvalidImage(Int64, String)
   InvalidOptionalContent(Int64, String)
+  FunctionFailure(@functions.PdfFunctionError)
   InterchangeFailure(@interchange.PdfInterchangeError)
   ContentFailure(@content.PdfContentError)
 } derive(Eq, Debug)

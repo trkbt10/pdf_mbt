@@ -7,7 +7,7 @@ pub(all) enum SoftMaskSubtype {
 ///|
 pub(all) enum SoftMaskTransferFunction {
   IdentityTransferFunction
-  DirectTransferFunction(@objects.PdfObject)
+  DirectTransferFunction(@functions.FunctionSource)
   UnresolvedTransferFunction(@objects.ObjectId)
 } derive(Eq, Debug)
 
@@ -111,7 +111,7 @@ fn soft_mask_from_dictionary(
     soft_mask_group_component_count(group),
     offset,
   )
-  let transfer_function = parse_soft_mask_transfer(dict)
+  let transfer_function = parse_soft_mask_transfer(dict, offset)
   let mask = SoftMaskDictionary::{
     subtype,
     group,
@@ -223,13 +223,27 @@ fn parse_soft_mask_backdrop(
 ///|
 fn parse_soft_mask_transfer(
   dict : @objects.PdfDictionary,
-) -> SoftMaskTransferFunction {
+  offset : Int64,
+) -> SoftMaskTransferFunction raise PdfGraphicsError {
   match optional_entry(dict, b"TR") {
     None => SoftMaskTransferFunction::IdentityTransferFunction
     Some(@objects.PdfObject::Name(name)) if name == pdf_name(b"Identity") =>
       SoftMaskTransferFunction::IdentityTransferFunction
     Some(@objects.PdfObject::Ref(id)) =>
       SoftMaskTransferFunction::UnresolvedTransferFunction(id)
-    Some(value) => SoftMaskTransferFunction::DirectTransferFunction(value)
+    Some(value) =>
+      SoftMaskTransferFunction::DirectTransferFunction(
+        try
+          @functions.parse_function_object(
+            value,
+            @functions.FunctionLimits::default(),
+            offset,
+          )
+        catch {
+          error => raise PdfGraphicsError::FunctionFailure(error)
+        } noraise {
+          source => source
+        },
+      )
   }
 }

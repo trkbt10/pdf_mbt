@@ -35,6 +35,24 @@ fn type2_colour_function(
 }
 
 ///|
+fn typed_colour_function(
+  object : @objects.PdfObject,
+) -> @functions.FunctionSource raise @functions.PdfFunctionError {
+  @functions.parse_function_object(
+    object,
+    @functions.FunctionLimits::default(),
+    0L,
+  )
+}
+
+///|
+fn direct_colour_transform(
+  object : @objects.PdfObject,
+) -> ColourTransformFunction raise @functions.PdfFunctionError {
+  DirectTransformFunction(typed_colour_function(object))
+}
+
+///|
 fn assert_close(actual : Double, expected : Double) -> Unit raise {
   assert_eq(actual.is_close(expected, absolute_tolerance=0.000001), true)
 }
@@ -71,10 +89,10 @@ test "device gray and cmyk rgb conversions follow classic formulas" {
 test "rgb to cmyk applies direct black generation and undercolour removal" {
   let cmyk = device_rgb_to_cmyk(
     DeviceRgbColour::{ red: 0.2, green: 0.5, blue: 0.75 },
-    black_generation=DirectTransformFunction(
+    black_generation=direct_colour_transform(
       type2_colour_function([0.0], [0.5], 1.0),
     ),
-    undercolour_removal=DirectTransformFunction(
+    undercolour_removal=direct_colour_transform(
       type2_colour_function([0.0], [0.1], 1.0),
     ),
   )
@@ -145,7 +163,9 @@ test "Separation and DeviceN apply tint transforms to alternate spaces" {
   let separation = SeparationParams::{
     colorant: colour_fn_name(b"Spot"),
     alternate: ColourSpace::Device(DeviceColourSpace::DeviceGray),
-    tint_transform: type2_colour_function([1.0], [0.0], 1.0),
+    tint_transform: direct_colour_transform(
+      type2_colour_function([1.0], [0.0], 1.0),
+    ),
   }
   let alternate = separation.alternate_colour_value(0.25)
   assert_close(alternate.components[0], 0.75)
@@ -157,7 +177,7 @@ test "Separation and DeviceN apply tint transforms to alternate spaces" {
       colour_fn_name(b"Yellow"),
     ],
     alternate: ColourSpace::Device(DeviceColourSpace::DeviceRGB),
-    tint_transform: @objects.PdfObject::Name(colour_fn_name(b"Identity")),
+    tint_transform: IdentityTransformFunction,
     attributes: None,
   }
   let rgb = device_n.alternate_colour_value([0.1, 0.2, 0.3])
@@ -185,10 +205,12 @@ test "Separation applies sampled tint transform stream to alternate space" {
   let separation = SeparationParams::{
     colorant: colour_fn_name(b"Spot"),
     alternate: ColourSpace::Device(DeviceColourSpace::DeviceGray),
-    tint_transform: @objects.PdfObject::Stream(@objects.PdfStream::{
-      dict,
-      data: Bytes::from_array([b'\x00', b'\xff']),
-    }),
+    tint_transform: direct_colour_transform(
+      @objects.PdfObject::Stream(@objects.PdfStream::{
+        dict,
+        data: Bytes::from_array([b'\x00', b'\xff']),
+      }),
+    ),
   }
   let alternate = separation.alternate_colour_value(0.25)
   assert_close(alternate.components[0], 0.25)
@@ -196,7 +218,7 @@ test "Separation applies sampled tint transform stream to alternate space" {
 
 ///|
 test "transfer functions apply one in one out transforms to components" {
-  let gamma = DirectTransformFunction(type2_colour_function([0.0], [1.0], 2.0))
+  let gamma = direct_colour_transform(type2_colour_function([0.0], [1.0], 2.0))
   let single = apply_transfer_functions([0.5, 0.25], SingleTransfer(gamma))
   assert_close(single[0], 0.25)
   assert_close(single[1], 0.0625)
@@ -204,8 +226,8 @@ test "transfer functions apply one in one out transforms to components" {
   let component = apply_transfer_functions(
     [0.2, 0.7],
     ComponentTransfers([
-      DirectTransformFunction(type2_colour_function([0.0], [1.0], 1.0)),
-      DirectTransformFunction(type2_colour_function([1.0], [0.0], 1.0)),
+      direct_colour_transform(type2_colour_function([0.0], [1.0], 1.0)),
+      direct_colour_transform(type2_colour_function([1.0], [0.0], 1.0)),
     ]),
   )
   assert_close(component[0], 0.2)
