@@ -164,7 +164,7 @@
   - Done: graphics package tests pass for form and optional-content behavior across visible and hidden states.
   - _Depends: 5.1, 5.3_
   - _Requirements: 0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29, 0.30_
-- [ ] 7.3 Test reader integration, regression behavior, formatting, and public API surface
+- [x] 7.3 Test reader integration, regression behavior, formatting, and public API surface
   - Cover Catalog OCProperties, indirect image and form XObjects, nested form resources, recursive form rejection, optional-content use contexts, document error wrapping, and unchanged legacy graphics behavior.
   - Run formatting, package tests, and public interface generation so generated interface files reflect intentional API changes only.
   - Done: project checks pass, generated public interfaces are updated where required, and reader tests demonstrate typed events from materialized page resources.
