@@ -82,7 +82,7 @@ pub fn PdfFunction::evaluate(
 ) -> Array[Double] raise PdfFunctionError {
   let common = self.common()
   let clipped_inputs = common.clip_inputs(inputs)
-  limits.max_evaluation_steps |> ignore
+  check_limit("function evaluation steps", 1, limits.max_evaluation_steps)
   match self {
     SampledFunction(function) =>
       evaluate_sampled_function(function, clipped_inputs)

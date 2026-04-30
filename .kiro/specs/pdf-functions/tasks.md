@@ -79,7 +79,7 @@
   - _Requirements: 0.5, 0.6_
   - _Boundary: CalculatorFunctionModel_
 
-- [ ] 2.9 Assemble the shared evaluator for direct non-stitching functions
+- [x] 2.9 Assemble the shared evaluator for direct non-stitching functions
   - Validate input arity, clip inputs once before type-specific execution, dispatch to sampled, exponential, and calculator functions, clip outputs when a range exists, and reject unresolved sources during evaluation.
   - Apply common evaluation-step accounting to direct non-stitching functions without claiming nested recursion behavior before stitching exists.
   - Public evaluation tests show sampled, exponential, and calculator functions share the same arity, clipping, output-count, and error behavior.
