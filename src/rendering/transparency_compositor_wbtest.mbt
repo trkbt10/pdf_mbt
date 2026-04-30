@@ -118,6 +118,63 @@ test "combined fill stroke paint is composited as an implicit knockout group" {
 }
 
 ///|
+test "soft mask alpha and image samples route through opacity by default" {
+  let alpha = evaluate_transparency_mask(TransparencyMaskEvaluationInput::{
+    source: TransparencyMaskSampleSource::AlphaMaskSamples([0.25]),
+    sample_index: 0,
+    backdrop: [1.0, 1.0, 1.0],
+    matte: None,
+    transfer_scale: 1.0,
+    alpha_is_shape: false,
+  })
+  let image = evaluate_transparency_mask(TransparencyMaskEvaluationInput::{
+    source: TransparencyMaskSampleSource::ImageMaskSamples([0.75]),
+    sample_index: 0,
+    backdrop: [1.0, 1.0, 1.0],
+    matte: None,
+    transfer_scale: 1.0,
+    alpha_is_shape: false,
+  })
+  assert_eq(alpha.opacity_multiplier, 0.25)
+  assert_eq(image.opacity_multiplier, 0.75)
+}
+
+///|
+test "soft mask luminosity uses backdrop outside bounds and transfer scale" {
+  let mask = evaluate_transparency_mask(TransparencyMaskEvaluationInput::{
+    source: TransparencyMaskSampleSource::LuminosityMaskSamples([
+      [1.0, 0.0, 0.0],
+    ]),
+    sample_index: 5,
+    backdrop: [0.0, 1.0, 0.0],
+    matte: None,
+    transfer_scale: 0.5,
+    alpha_is_shape: true,
+  })
+  assert_eq(mask.mask_value, 0.295)
+  assert_eq(mask.shape_multiplier, 0.295)
+  assert_eq(mask.opacity_multiplier, 1.0)
+}
+
+///|
+test "embedded soft mask matte keeps zero alpha division defined" {
+  let mask = evaluate_transparency_mask(TransparencyMaskEvaluationInput::{
+    source: TransparencyMaskSampleSource::EmbeddedImageMaskSamples([0.0]),
+    sample_index: 0,
+    backdrop: [0.0, 0.0, 0.0],
+    matte: Some([1.0, 1.0, 1.0]),
+    transfer_scale: 1.0,
+    alpha_is_shape: false,
+  })
+  let object = apply_transparency_mask_to_object(
+    elementary_test_object([1.0, 0.0, 0.0], 1.0),
+    mask,
+  )
+  assert_eq(object.mask_opacity, 0.0)
+  assert_eq(object.mask_shape, 1.0)
+}
+
+///|
 fn elementary_test_object(
   colour : Array[Double],
   opacity : Double,

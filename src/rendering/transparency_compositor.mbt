@@ -63,6 +63,31 @@ pub(all) struct CombinedPaintCompositeInput {
 } derive(Eq, Debug)
 
 ///|
+pub(all) enum TransparencyMaskSampleSource {
+  AlphaMaskSamples(Array[Double])
+  LuminosityMaskSamples(Array[Array[Double]])
+  ImageMaskSamples(Array[Double])
+  EmbeddedImageMaskSamples(Array[Double])
+} derive(Eq, Debug)
+
+///|
+pub(all) struct TransparencyMaskEvaluationInput {
+  source : TransparencyMaskSampleSource
+  sample_index : Int
+  backdrop : Array[Double]
+  matte : Array[Double]?
+  transfer_scale : Double
+  alpha_is_shape : Bool
+} derive(Eq, Debug)
+
+///|
+pub(all) struct TransparencyMaskApplication {
+  mask_value : Double
+  shape_multiplier : Double
+  opacity_multiplier : Double
+} derive(Eq, Debug)
+
+///|
 pub fn composite_elementary_object(
   input : ElementaryObjectCompositeInput,
 ) -> TransparencyCompositeSample {
@@ -197,6 +222,54 @@ pub fn composite_combined_paint(
 }
 
 ///|
+pub fn evaluate_transparency_mask(
+  input : TransparencyMaskEvaluationInput,
+) -> TransparencyMaskApplication {
+  let raw = match input.source {
+    AlphaMaskSamples(values) => mask_sample_at(values, input.sample_index)
+    ImageMaskSamples(values) => mask_sample_at(values, input.sample_index)
+    EmbeddedImageMaskSamples(values) =>
+      embedded_mask_sample_at(values, input.sample_index, input.matte)
+    LuminosityMaskSamples(values) =>
+      luminosity_mask_sample_at(values, input.sample_index, input.backdrop)
+  }
+  let value = transparency_component(raw * input.transfer_scale)
+  if input.alpha_is_shape {
+    TransparencyMaskApplication::{
+      mask_value: value,
+      shape_multiplier: value,
+      opacity_multiplier: 1.0,
+    }
+  } else {
+    TransparencyMaskApplication::{
+      mask_value: value,
+      shape_multiplier: 1.0,
+      opacity_multiplier: value,
+    }
+  }
+}
+
+///|
+pub fn apply_transparency_mask_to_object(
+  object : ElementaryObjectCompositeInput,
+  mask : TransparencyMaskApplication,
+) -> ElementaryObjectCompositeInput {
+  ElementaryObjectCompositeInput::{
+    backdrop: object.backdrop,
+    source_colour: object.source_colour,
+    backdrop_colour: object.backdrop_colour,
+    source_shape: object.source_shape,
+    mask_shape: object.mask_shape * mask.shape_multiplier,
+    constant_shape: object.constant_shape,
+    source_opacity: object.source_opacity,
+    mask_opacity: object.mask_opacity * mask.opacity_multiplier,
+    constant_opacity: object.constant_opacity,
+    blend_mode: object.blend_mode,
+    subtractive_space: object.subtractive_space,
+  }
+}
+
+///|
 pub fn TransparencyCompositeSample::transparent() -> TransparencyCompositeSample {
   TransparencyCompositeSample::{
     colour: None,
@@ -216,6 +289,50 @@ pub fn TransparencyCompositeSample::opaque(
     opacity: 1.0,
     alpha: 1.0,
   }
+}
+
+///|
+fn mask_sample_at(values : Array[Double], index : Int) -> Double {
+  if index < 0 || index >= values.length() {
+    0.0
+  } else {
+    transparency_component(values[index])
+  }
+}
+
+///|
+fn embedded_mask_sample_at(
+  values : Array[Double],
+  index : Int,
+  matte : Array[Double]?,
+) -> Double {
+  let sample = mask_sample_at(values, index)
+  match matte {
+    Some(matte_values) =>
+      if sample == 0.0 && matte_values.length() > 0 {
+        0.0
+      } else {
+        sample
+      }
+    None => sample
+  }
+}
+
+///|
+fn luminosity_mask_sample_at(
+  values : Array[Array[Double]],
+  index : Int,
+  backdrop : Array[Double],
+) -> Double {
+  let colour = if index < 0 || index >= values.length() {
+    backdrop
+  } else {
+    values[index]
+  }
+  let components = vector_with_component_count(colour, 3, 0.0)
+  transparency_component(
+    0.3 * components[0] + 0.59 * components[1] + 0.11 * components[2],
+  )
 }
 
 ///|

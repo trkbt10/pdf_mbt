@@ -105,7 +105,7 @@
   - _Requirements: 2.17, 2.19, 2.21, 2.28, 2.42_
   - _Boundary: TransparencyCompositor_
   - _Depends: 2.2, 2.3, 3.2, 3.3_
-- [ ] 3.5 Evaluate soft masks during compositing
+- [x] 3.5 Evaluate soft masks during compositing
   - Derive mask values from group alpha and group luminosity, including transfer function dispatch and outside-bounds backdrop behavior.
   - Apply alpha-is-shape routing so each mask modifies either shape or opacity for the current compositing operation.
   - Soft-mask rendering tests cover alpha masks, luminosity masks, image masks, embedded masks, matte inversion, and zero-alpha matte division.
