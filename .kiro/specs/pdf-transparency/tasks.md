@@ -172,7 +172,7 @@
   - _Requirements: 2.20, 2.25, 2.30, 2.32, 2.33, 2.34, 2.35, 2.36, 2.46_
   - _Boundary: ReaderValidation_
   - _Depends: 4.3_
-- [ ] 5.4 Run final project validation
+- [x] 5.4 Run final project validation
   - Format the changed MoonBit packages and run project-wide check, targeted tests, and public API generation.
   - Confirm generated package interfaces are updated for graphics, rendering, and reader where public contracts changed.
   - Final validation output records passing formatting, checks, tests, and API generation for the transparency implementation.
