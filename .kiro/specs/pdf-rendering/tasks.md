@@ -236,7 +236,7 @@
   - _Requirements: 1, 2, 3, 3.1, 3.11, 3.14_
   - _Boundary: RenderSceneBuilder, ColourPipeline, TransferFunctionPipeline, HalftoneProcessor, ScanConverter_
 
-- [ ] 7. Implement separation rendering and simulation
+- [x] 7. Implement separation rendering and simulation
 - [ ] 7.1 (P) Model separation targets and independent planes
   - Determine simulated process and spot colourants from the raster device and available output-intent metadata.
   - Allocate independent subtractive planes within render limits.
