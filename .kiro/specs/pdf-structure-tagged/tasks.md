@@ -53,7 +53,7 @@
   - _Boundary: StructureTreeReader_
   - _Depends: 2.2_
 
-- [ ] 2.4 Support element identifier lookup and parent relationship validation
+- [x] 2.4 Support element identifier lookup and parent relationship validation
   - Compare ID tree keys as exact byte strings and map element identifiers back to parsed structure elements.
   - Validate that parent entries point to the structure tree root or another parsed structure element.
   - Report duplicate, missing, or mismatched identifier and parent relationships through structure diagnostics.
