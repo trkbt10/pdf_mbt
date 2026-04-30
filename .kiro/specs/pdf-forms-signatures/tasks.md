@@ -246,7 +246,7 @@
   - Completed state: signature tests prove PDF-owned validation inputs are gathered while cryptographic validity remains external.
   - _Requirements: 0.30, 0.31, 0.32, 0.33, 0.34, 0.35, 0.36, 0.37, 0.38, 0.39, 0.40, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.49, 0.50, 0.51, 0.52, 0.53, 0.54, 0.55, 0.56_
   - _Boundary: SignatureReader, SignatureValidationPlanner, LTVReader, PermissionsReader_
-- [ ] 9.4 Test measurement, geospatial, and requirement parsing
+- [x] 9.4 Test measurement, geospatial, and requirement parsing
   - Cover viewport reverse-order selection, annotation measures, rectilinear measure dictionaries, number-format decimal and fraction output, geospatial Bounds, GCS, DCS, PDU, GPTS, LPTS, PCSM priority, coordinate-system exclusivity, point-data tuples, and Catalog requirement support assessment.
   - Include malformed fixtures for invalid BBox arrays, missing rectilinear number formats, invalid GEO cardinality, conflicting EPSG/WKT descriptors, invalid point tuple arity, and malformed requirement dictionaries.
   - Completed state: measurement and requirement tests prove structural parsing and formatting behavior with no GIS transformation or requirement enforcement.
