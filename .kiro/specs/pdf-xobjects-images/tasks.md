@@ -59,7 +59,7 @@
   - _Depends: 1.1, 1.2_
   - _Requirements: 0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21_
   - _Boundary: FormXObjectInterpreter_
-- [ ] 3.2 Interpret form invocations as scoped nested graphics content
+- [x] 3.2 Interpret form invocations as scoped nested graphics content
   - Save the invocation graphics state, concatenate the form matrix, apply BBox clipping, select scoped resources, interpret loaded form content, and restore the parent state.
   - Preserve event ordering so form begin precedes nested events and form end follows state restoration.
   - Done: repeated form invocation leaves the parent graphics state unchanged after restore, while nested content events appear inside the form event boundaries.
