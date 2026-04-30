@@ -152,7 +152,7 @@
   - _Boundary: ReaderXObjectMaterializer, GraphicsInterpreterIntegration_
 
 - [ ] 7. Validation and API review
-- [ ] 7.1 Test XObject, image, mask, and inline-image semantics
+- [x] 7.1 Test XObject, image, mask, and inline-image semantics
   - Cover missing resources, non-stream resources, invalid Type/Subtype, direct image resources, unresolved references, required image entries, bit depths, colour spaces, Decode defaults, masks, alternates, interpolation, and inline-image restrictions.
   - Include public event assertions for visible images, hidden images, and inline-image descriptor emission.
   - Done: graphics package tests pass for image and XObject cases and fail on the malformed cases described by the requirements.
