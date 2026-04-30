@@ -119,7 +119,7 @@
   - _Requirements: 2.35, 2.38, 2.39, 2.40, 2.41, 2.42, 2.43_
   - _Boundary: TransparencySceneBuilder, SpotOverprintPolicy, TransparencyCompositor_
   - _Depends: 2.5, 3.1, 3.2, 3.3, 3.4_
-- [ ] 3.7 Route page rendering through the transparency compositor
+- [x] 3.7 Route page rendering through the transparency compositor
   - Render graphics programs by building a transparency scene, compositing it onto bounded raster surfaces, and applying page medium/backdrop rules.
   - Return explicit rendering errors for missing providers, unsupported conversions, recursion limits, and allocation limits.
   - Public renderer tests produce deterministic alpha-aware surfaces for opaque compatibility, semi-transparent stacks, groups, masks, and page colour conversion cases.
