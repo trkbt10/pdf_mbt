@@ -210,7 +210,7 @@
   - Completion: interface review and compatibility tests show existing reader, navigation, graphics, xobject, optional-content, and page-structure behavior remains unchanged.
   - _Requirements: 0.1, 0.2_
 
-- [ ] 7. Run final validation and formatting
+- [x] 7. Run final validation and formatting
   - Run the full checker, targeted reader tests, full test suite, formatter, and public interface generation.
   - Confirm generated interface changes match the annotation API plan and no lower-layer package dependency direction changed.
   - Completion: validation commands pass, formatting is clean, and the final diff contains only annotation feature work plus intended generated interface updates.
