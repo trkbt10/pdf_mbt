@@ -157,7 +157,7 @@
   - _Requirements: 0.6_
   - _Boundary: CalculatorFunctionModel_
 
-- [ ] 4.5 Complete calculator control-flow, stack, and limit coverage
+- [x] 4.5 Complete calculator control-flow, stack, and limit coverage
   - Cover comments, braces, if and ifelse blocks, nested conditionals, every stack operator, output-count errors, unsupported syntax, token limits, stack depth limits, nested block limits, and evaluation-step limits.
   - Include fixtures that prove PDF brace syntax is accepted only as calculator conditional syntax and not as full PostScript procedures.
   - Targeted calculator tests pass for control flow, stack behavior, parser rejection, and bounded execution.

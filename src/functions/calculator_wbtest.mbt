@@ -344,6 +344,36 @@ test "calculator stack operators manipulate typed stack entries" {
 }
 
 ///|
+test "calculator stack operators reject invalid counts and depths" {
+  let negative_copy : Result[Array[Double], PdfFunctionError] = try? calc_stack_numbers(
+    b"{ 1 -1 copy }",
+  )
+  match negative_copy {
+    Err(EvaluationFailure(_, reason)) =>
+      assert_eq(reason, "calculator copy requires a non-negative count")
+    _ => fail("expected negative copy failure")
+  }
+
+  let deep_index : Result[Array[Double], PdfFunctionError] = try? calc_stack_numbers(
+    b"{ 1 1 index }",
+  )
+  match deep_index {
+    Err(EvaluationFailure(_, reason)) =>
+      assert_eq(reason, "calculator index exceeds stack depth")
+    _ => fail("expected index depth failure")
+  }
+
+  let deep_roll : Result[Array[Double], PdfFunctionError] = try? calc_stack_numbers(
+    b"{ 1 2 3 roll }",
+  )
+  match deep_roll {
+    Err(EvaluationFailure(_, reason)) =>
+      assert_eq(reason, "calculator roll exceeds stack depth")
+    _ => fail("expected roll depth failure")
+  }
+}
+
+///|
 test "calculator limits cover stack depth evaluation steps and final arity" {
   let mut stack_limits = FunctionLimits::default()
   stack_limits = FunctionLimits::{
