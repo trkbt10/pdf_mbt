@@ -252,7 +252,7 @@
   - Completed state: measurement and requirement tests prove structural parsing and formatting behavior with no GIS transformation or requirement enforcement.
   - _Requirements: 0.57, 0.58, 0.59, 0.60, 0.61, 0.62, 0.63, 0.64_
   - _Boundary: MeasurementReader, NumberFormatFormatter, GeospatialMeasureParser, RequirementReader_
-- [ ] 9.5 Run package-wide validation and regression checks
+- [x] 9.5 Run package-wide validation and regression checks
   - Run the project validation commands for type checking, reader tests, formatting, and generated interface review.
   - Confirm existing reader annotation, action, page, name-tree, graphics, and document-structure tests remain passing after typed reader extensions.
   - Completed state: validation commands complete successfully and any intentional public API changes are visible in the generated interface diff.
