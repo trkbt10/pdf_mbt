@@ -102,7 +102,7 @@
   - _Requirements: 0.19, 0.27_
   - _Boundary: NamedPageReader, FDFPageParser, FDFTemplateParser_
   - _Depends: 4.2_
-- [ ] 4.5 (P) Parse FDF annotation dictionaries
+- [x] 4.5 (P) Parse FDF annotation dictionaries
   - Parse FDF annotation dictionaries using existing annotation structure where possible and require the FDF Page entry.
   - Reject annotation types that FDF excludes while preserving allowed annotation payloads structurally.
   - Completed state: FDF annotations include zero-based page numbers and malformed or excluded annotation dictionaries raise InvalidFDF.
