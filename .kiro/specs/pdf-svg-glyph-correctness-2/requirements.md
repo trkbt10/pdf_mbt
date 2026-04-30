@@ -35,7 +35,7 @@ so the regression was invisible.
 
 ## Requirements
 
-### Requirement 1: Expand visual harness coverage
+#### Test harness expectation: Expand visual harness coverage
 
 #### 1.1: local-fixture baseline
 `npm/test/visual_baselines.json` SHALL include diff numbers for
@@ -49,7 +49,7 @@ against every entry in `visual_baselines.json`, not just local-fixture.
 The locked harness already supports this; enforce via a test that
 iterates the baselines.
 
-### Requirement 2: Diagnostic for local-fixture page 6
+#### Diagnostic expectation: local-fixture page 6
 
 #### 2.1: Glyph trace on the failing page
 A whitebox test SHALL trace, for the first 20 glyphs of
