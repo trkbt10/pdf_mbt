@@ -52,7 +52,7 @@
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 4.1_
   - _Boundary: XrefTableParser_
 
-- [ ] 4. Parse stream-based reference sections and section chains
+- [x] 4. Parse stream-based reference sections and section chains
 - [x] 4.1 (P) Provide the structural stream decoding boundary
   - Treat unfiltered structural streams as decoded bytes while keeping general PDF filter support outside this feature.
   - Reject encrypted, `/Crypt`-filtered, or otherwise unsupported structural streams with explicit reader errors.
