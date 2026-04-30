@@ -40,7 +40,7 @@
   - Rendering package configuration builds with the required internal dependencies and still introduces no external dependency.
   - _Requirements: 1, 2.4, 2.24, 2.36, 2.44, 2.46_
   - _Boundary: RenderingProviderContracts_
-- [ ] 2.2 (P) Implement stable compositing math primitives
+- [x] 2.2 (P) Implement stable compositing math primitives
   - Implement alpha products, union, safe division with the 0 divided by 0 convention, shape and opacity normalization, and vector helpers.
   - Keep shape, opacity, and alpha independently representable for knockout groups and soft masks.
   - Math tests cover zero alpha, undefined colour inputs, source/result shape, and formula ordering edge cases.
