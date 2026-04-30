@@ -186,7 +186,7 @@
   - _Requirements: 3.14_
   - _Boundary: ScanConverter_
 
-- [ ] 5.5 Approximate shadings with smoothness limits and provider failures
+- [x] 5.5 Approximate shadings with smoothness limits and provider failures
   - Use smoothness tolerance to bound shading approximation where provider-backed shading evaluation is available.
   - Report strict unsupported outcomes or best-effort skipped paint when required shading evaluation is unavailable.
   - The completed shading path respects smoothness limits and records provider gaps without corrupting the raster surface.
