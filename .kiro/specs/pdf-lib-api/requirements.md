@@ -3,9 +3,11 @@
 ## Requirements
 
 ### Requirement 1: High-level document access
-The library SHALL provide a single-import public API package (`trkbt10/pdf`)
-that re-exports the essential types and functions for opening and inspecting
-PDF documents without requiring users to import internal subpackages.
+The `src/lib` package SHALL provide the public `open`, `PdfDocument`,
+`PdfPage`, `PdfImage`, `OutlineItem`, `PdfCapabilityReport`,
+`PdfCapabilityStatus`, and `PdfWarning` API surface for opening and inspecting
+PDF documents without requiring users to import lower-level reader, text,
+graphics, or objects packages for common operations.
 
 #### 1.1: Document opening
 `Pdf::open(bytes : Bytes) -> PdfDocument` SHALL open a PDF from raw bytes,
@@ -103,11 +105,11 @@ This allows partial results with visibility into what was skipped.
 SHALL enumerate images and collect warnings for images that could not be
 fully decoded (unsupported filter, unsupported colour space, etc.).
 
-### Requirement 7: Structured text helper function
-The library SHALL expose `text_spans(page : PdfPage) -> Array[TextSpan]` as a
-top-level helper equivalent to `PdfPage::text_spans()` for callers that prefer
-function-style access. It SHALL return the same text spans with positional
-metadata, text matrix, and font name.
+### Requirement 7: text_spans
+The library SHALL expose the function-style alias
+`text_spans(page : PdfPage) -> Array[TextSpan]`. It SHALL return text spans
+with positional metadata, including text matrix and font name, for layout-aware
+consumers.
 
 ### Requirement 8: Public page facade type
 The library SHALL expose `PdfPage` as the public page handle returned by
