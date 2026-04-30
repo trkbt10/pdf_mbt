@@ -53,7 +53,7 @@
   - _Requirements: 2, 2.1, 2.2, 2.3, 2.4_
   - _Boundary: ColourPipeline_
 
-- [ ] 2.4 Resolve black generation and undercolour removal for RGB to CMYK conversion
+- [x] 2.4 Resolve black generation and undercolour removal for RGB to CMYK conversion
   - Select BG2 over BG and UCR2 over UCR from graphics-state rendering parameters or device defaults.
   - Evaluate the selected functions through the provider contract and clamp final CMYK values where the formula requires it.
   - The completed RGB-to-CMYK path observes BG and UCR effects in deterministic tests.
