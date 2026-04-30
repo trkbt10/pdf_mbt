@@ -77,7 +77,7 @@
   - _Requirements: 2.3, 5.1, 8.1, 8.2_
   - _Boundary: XrefSectionReader_
 
-- [ ] 5. Build active index and lazy object access
+- [x] 5. Build active index and lazy object access
 - [x] 5.1 (P) Merge section entries into the active cross-reference index
   - Apply latest-first priority, including current table entries before hybrid stream entries and both before `Prev` sections.
   - Keep the winning entry for each object and generation, remove active locations when the winning entry is free, ignore entries above the effective trailer `Size`, and produce compressed or uncompressed locations for active entries.
