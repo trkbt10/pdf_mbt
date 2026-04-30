@@ -128,7 +128,7 @@
   - _Requirements: 0.1, 0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21, 0.28, 0.30_
   - _Boundary: GraphicsInterpreterIntegration_
 
-- [ ] 6. Reader materialization and page API integration
+- [x] 6. Reader materialization and page API integration
 - [x] 6.1 (P) Load Catalog optional-content properties into page-level state
   - Resolve Catalog OCProperties and all listed OCG references through reader-owned object loading.
   - Wrap malformed optional-content structures in document errors while preserving missing OCProperties as visible defaults.
