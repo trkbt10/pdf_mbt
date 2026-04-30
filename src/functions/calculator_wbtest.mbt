@@ -262,6 +262,8 @@ test "calculator relational boolean and bitwise operators evaluate typed operand
   inspect(calc_eval(b"{ 6 3 and }"), content="[2]")
   inspect(calc_eval(b"{ 4 1 or }"), content="[5]")
   inspect(calc_eval(b"{ 6 3 xor }"), content="[5]")
+  inspect(calc_eval(b"{ 2 not }"), content="[-3]")
+  inspect(calc_eval(b"{ 6.9 3.1 and }"), content="[2]")
   inspect(calc_eval(b"{ 1 3 bitshift }"), content="[8]")
   inspect(calc_eval(b"{ 8 -2 bitshift }"), content="[2]")
 }
@@ -284,6 +286,24 @@ test "calculator relational boolean and bitwise operators reject mismatched oper
     Err(EvaluationFailure(_, reason)) =>
       assert_eq(reason, "calculator operands must have matching types")
     _ => fail("expected matching type failure")
+  }
+
+  let comparison_type : Result[Array[Double], PdfFunctionError] = try? calc_eval(
+    b"{ true false gt }",
+  )
+  match comparison_type {
+    Err(EvaluationFailure(_, reason)) =>
+      assert_eq(reason, "calculator operator requires numeric operands")
+    _ => fail("expected comparison numeric type failure")
+  }
+
+  let bitshift_underflow : Result[Array[Double], PdfFunctionError] = try? calc_eval(
+    b"{ 1 bitshift }",
+  )
+  match bitshift_underflow {
+    Err(EvaluationFailure(_, reason)) =>
+      assert_eq(reason, "calculator stack underflow")
+    _ => fail("expected bitshift underflow")
   }
 }
 

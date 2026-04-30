@@ -150,7 +150,7 @@
   - _Requirements: 0.3, 0.4_
   - _Boundary: ExponentialFunctionModel, StitchingFunctionModel, FunctionEvaluator_
 
-- [ ] 4.4 Complete calculator numeric and logical operator coverage
+- [x] 4.4 Complete calculator numeric and logical operator coverage
   - Cover all arithmetic operators, all relational operators, boolean literals, logical operators, bitwise operators, numeric domain failures, operand type failures, and stack underflow failures.
   - Include success and failure fixtures for integer-only behavior used by bitwise and shift operators.
   - Targeted calculator tests pass for numeric, comparison, boolean, and bitwise behavior.
