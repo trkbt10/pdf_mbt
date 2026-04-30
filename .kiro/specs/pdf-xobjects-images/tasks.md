@@ -66,7 +66,7 @@
   - _Depends: 2.1, 3.1_
   - _Requirements: 0.15, 0.16, 0.17, 0.19_
   - _Boundary: FormXObjectInterpreter_
-- [ ] 3.3 Preserve reference proxy behavior during form execution
+- [x] 3.3 Preserve reference proxy behavior during form execution
   - Treat reference XObjects as ordinary proxy forms when imported target content is unavailable.
   - Keep reference printing and special-consideration metadata visible on the interpreted form event model.
   - Done: reference forms can be invoked through Do without attempting external document loading, and proxy metadata remains inspectable for later print/import features.
