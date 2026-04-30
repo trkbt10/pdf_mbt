@@ -247,7 +247,7 @@
   - _Boundary: MarkInfoReader, StructureTreeReader, StructureContentResolver tests_
   - _Depends: 2.4, 3.4_
 
-- [ ] 8.2 (P) Verify role maps, namespaces, and standard structure metadata
+- [x] 8.2 (P) Verify role maps, namespaces, and standard structure metadata
   - Cover root role maps, namespace dictionaries, namespace role maps, default and PDF 2.0 standard namespaces, MathML, custom namespace role mapping, circular chains, and unknown custom roles.
   - Cover every standard structure category, heading-name validation, supplemental list/table/caption/ruby/warichu/link/figure/formula/artifact diagnostics, and namespace membership reporting.
   - Done when targeted reader tests prove standard role and namespace behavior without XML schema parsing or PDF/UA certification.
