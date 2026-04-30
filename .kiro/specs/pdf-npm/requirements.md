@@ -2,111 +2,85 @@
 
 ## Requirements
 
-### Requirement 1: npm package structure
-The project SHALL provide an npm-publishable package under `npm/` that
-exposes the PDF library to JavaScript and TypeScript consumers.
+### Requirement 1: pdf_open
+The `src/npm` bridge SHALL expose `pdf_open(data : JSUint8Array) -> Int` for
+document handle creation from JavaScript byte arrays.
 
-#### 1.1: Package layout
-```
-npm/
-  package.json        — npm metadata, main/module/types entry points
-  tsconfig.json       — TypeScript configuration
-  src/
-    index.ts          — TypeScript API surface (re-exports)
-    pdf.ts            — High-level API: open, extractText, extractImages
-    low-level.ts      — Low-level API: PdfFile, PdfObject, streams
-    types.ts          — TypeScript type definitions
-  wasm/
-    pdf.wasm          — Built wasm-gc binary (gitignored, built by script)
-  scripts/
-    build.sh          — moon build --target wasm-gc + wasm post-processing
-  README.md           — npm package documentation
-```
+#### 1.1: Handle lifecycle
+`pdf_open(JSUint8Array) -> Int` SHALL create a document handle.
+`pdf_close(Int) -> Unit` SHALL release the handle. `HandleCounter` is an
+implementation detail for stable handle allocation.
 
 #### 1.2: MoonBit JS FFI bridge
-Create `src/npm/` MoonBit package with `--target js` or `--target wasm-gc`
-that exports functions callable from JavaScript via MoonBit's FFI system.
+The `src/npm` package SHALL be checkable for the JavaScript/wasm bridge and
+SHALL export functions callable from JavaScript through MoonBit FFI.
 
-### Requirement 2: High-level JavaScript API
-The npm package SHALL expose a high-level API for common PDF operations.
+### Requirement 2: pdf_extract_text
+The npm bridge SHALL expose high-level page text operations through
+`pdf_extract_text(handle : Int, page : Int) -> String` and
+`pdf_extract_text_layout(handle : Int, page : Int) -> String`.
 
 #### 2.1: Document opening
-```typescript
-import { openPdf } from '@trkbt10/pdf';
-const doc = openPdf(buffer: Uint8Array);
-```
+`pdf_open(JSUint8Array) -> Int` SHALL open a PDF document handle.
 
 #### 2.2: Text extraction
-```typescript
-const text = doc.extractText();           // all pages
-const pageText = doc.page(0).extractText(); // single page
-const layout = doc.page(0).extractTextLayout(); // with layout
-```
+`pdf_extract_text(Int, Int) -> String` SHALL extract one page of text.
+`pdf_extract_text_layout(Int, Int) -> String` SHALL extract one page of layout
+text. `pdf_page_text_positions_json(Int, Int) -> String` SHALL expose text
+position data.
 
 #### 2.3: Image extraction
-```typescript
-const images = doc.page(0).images();
-const rgba = images[0].toRGBA(); // Uint8Array of RGBA pixels
-```
+`pdf_page_image_count`, `pdf_page_image_info_json`, and
+`pdf_page_image_rgba` SHALL expose page images and RGBA pixel data.
 
 #### 2.4: Document info
-```typescript
-const info = doc.info();
-// { title, author, pageCount, version, encrypted }
-```
+`pdf_info_json(Int) -> String` and `pdf_page_geometry_json(Int, Int) -> String`
+SHALL expose document info and page geometry.
 
 #### 2.5: Capability check
-```typescript
-const report = doc.check();
-// Array of { feature, status, description }
-```
+`pdf_check_json(Int) -> String` SHALL expose the capability report.
 
-### Requirement 3: Low-level JavaScript API
-The npm package SHALL also expose low-level PDF object access.
+### Requirement 3: SVG and image data JavaScript API
+The npm bridge SHALL expose page SVG and deferred image access through
+`pdf_page_to_svg`, `pdf_page_to_svg_deferred`, `pdf_page_svg_image_count`,
+`pdf_page_svg_image_info`, `pdf_page_svg_image_mime`, and
+`pdf_page_svg_image_data`.
 
 #### 3.1: Object access
-```typescript
-const file = openPdfFile(buffer);
-const obj = file.loadObject(objectId);
-```
+`pdf_page_to_svg(Int, Int) -> String` SHALL return an SVG string for a page.
 
 #### 3.2: Stream decoding
-```typescript
-const decoded = file.decodeStream(streamObj);
-```
+`pdf_page_to_svg_deferred(Int, Int) -> String` SHALL return SVG with deferred
+image entries.
 
 #### 3.3: Content stream parsing
-```typescript
-const instructions = page.contentInstructions();
-```
+`pdf_page_svg_image_data(Int, Int, Int) -> JSUint8Array` SHALL return deferred
+image bytes and the companion info/mime functions SHALL describe them.
 
-### Requirement 4: PdfContext for JS
-The npm package SHALL expose PdfContext for document creation and editing.
+### Requirement 4: ctx_new
+The npm bridge SHALL expose context handles through `ctx_new() -> Int`,
+`ctx_from_document(Int) -> Int`, `ctx_add_page(Int, Double, Double) -> Int`,
+`ctx_set_title(Int, String) -> Unit`, `ctx_to_bytes(Int) -> JSUint8Array`, and
+`ctx_close(Int) -> Unit`.
 
 #### 4.1: Create new PDF
-```typescript
-const ctx = PdfContext.create();
-const page = ctx.addPage(612, 792);
-ctx.setTitle('My Document');
-const bytes = ctx.toBytes(); // Uint8Array
-```
+`ctx_new() -> Int`, `ctx_add_page(Int, Double, Double) -> Int`,
+`ctx_set_title(Int, String) -> Unit`, and `ctx_to_bytes(Int) -> JSUint8Array`
+SHALL support creating a PDF byte array.
 
 #### 4.2: Edit existing PDF
-```typescript
-const ctx = PdfContext.fromDocument(doc);
-ctx.setTitle('Updated');
-const bytes = ctx.toBytes();
-```
+`ctx_from_document(Int) -> Int` SHALL create an editing context from an
+existing document handle, and `ctx_close(Int) -> Unit` SHALL release it.
 
-### Requirement 5: Build system
-The npm package SHALL have a build script that compiles MoonBit to
-wasm-gc and produces the JavaScript wrapper.
+### Requirement 5: test_graphics_walk_counter
+The npm bridge SHALL expose lightweight wasm API test hooks through
+`test_graphics_walk_counter() -> Int` and
+`test_reset_graphics_walk_counter() -> Unit`.
 
 #### 5.1: Build command
-`npm run build` in `npm/` SHALL:
-1. Run `moon build --target wasm-gc` for the wasm binary
-2. Generate TypeScript type definitions
-3. Bundle the wasm + JS wrapper for npm publishing
+`test_reset_graphics_walk_counter() -> Unit` SHALL reset the graphics walk
+counter used by wasm API tests.
 
 #### 5.2: TypeScript types
-The package SHALL ship `.d.ts` type definitions for all public APIs.
+`test_graphics_walk_counter() -> Int` SHALL return the graphics walk counter
+used by wasm API tests.
