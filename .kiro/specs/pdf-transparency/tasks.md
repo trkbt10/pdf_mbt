@@ -26,7 +26,7 @@
   - Group validation tests cover non-transparency passthrough, invalid colour spaces, page group rules, and isolated/knockout defaults.
   - _Requirements: 2.14, 2.15, 2.16, 2.17, 2.18, 2.19, 2.20, 2.21, 2.34, 2.35, 2.37_
   - _Boundary: TransparencyGroupModel_
-- [ ] 1.5 Emit transparency-aware graphics program events
+- [x] 1.5 Emit transparency-aware graphics program events
   - Interpret transparency state changes, transparency group invocation, pattern transparency setup, and image mask overrides without performing raster compositing.
   - Preserve paint order and state snapshots so rendering can reconstruct the transparency stack later.
   - Public graphics event regression tests show existing events remain stable and transparency-specific metadata appears on relevant paint events.
