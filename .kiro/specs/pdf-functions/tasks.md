@@ -136,7 +136,7 @@
   - _Requirements: 0.1_
   - _Boundary: FunctionParser, FunctionEvaluator_
 
-- [ ] 4.2 Complete sampled-function conformance coverage
+- [x] 4.2 Complete sampled-function conformance coverage
   - Cover every supported bit width, default encode and decode values, multidimensional ordering, insufficient stream bytes, limit failures, linear interpolation, cubic `Order 3`, ignored cubic order for small dimensions, and range clipping.
   - Include representative fixtures based on the sampled-function mapping examples and verify outputs numerically within the package's tolerance policy.
   - Targeted sampled-function tests pass and demonstrate that the full declared sample array is consumed without byte-boundary padding assumptions.

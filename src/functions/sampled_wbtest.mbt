@@ -152,6 +152,28 @@ test "sampled parser preserves first-dimension-fastest values and defaults" {
 }
 
 ///|
+test "sampled parser consumes declared bit count and ignores trailing padding bits" {
+  let object = sampled_stream(
+    [3L],
+    1L,
+    [0.0, 1.0],
+    Bytes::from_array([b'\x5f']),
+  )
+  let function = parse_direct_function(object, FunctionLimits::default(), 45L)
+  match function {
+    SampledFunction(sampled) => {
+      assert_eq(sampled.table.sample_count(), 3)
+      inspect(sampled.table.values, content="[0, 1, 0]")
+      inspect(
+        SampledFunction(sampled).evaluate([0.5], FunctionLimits::default()),
+        content="[1]",
+      )
+    }
+    _ => fail("expected sampled function")
+  }
+}
+
+///|
 test "sampled parser rejects invalid declarations and insufficient stream data" {
   let invalid_width : Result[PdfFunction, PdfFunctionError] = try? parse_direct_function(
     sampled_stream([1L], 3L, [0.0, 1.0], Bytes::from_array([b'\x00'])),
