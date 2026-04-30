@@ -54,7 +54,7 @@
   - _Requirements: 2.3, 2.4, 2.6, 2.7, 2.40, 2.43_
   - _Boundary: RenderingBlendFunctions_
   - _Depends: 1.1, 2.1_
-- [ ] 2.4 (P) Resolve blending colour spaces and conversion policy
+- [x] 2.4 (P) Resolve blending colour spaces and conversion policy
   - Resolve page, parent, isolated group, non-isolated group, and soft-mask group colour spaces with default device remapping.
   - Dispatch required CIE, ICC, DeviceRGB, DeviceCMYK, luminosity, black generation, and undercolour-removal conversions through providers.
   - Colour-policy tests show inherited group spaces, nearest compatible CIE ancestor substitution, and unsupported conversion errors.
