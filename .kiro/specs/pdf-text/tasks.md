@@ -194,7 +194,7 @@
   - _Boundary: UnicodeMapper_
   - _Depends: 2.5, 4.6, 5.1_
 
-- [ ] 5.3 Build extracted text spans from showing operations
+- [x] 5.3 Build extracted text spans from showing operations
   - Group Unicode and unknown mappings into extraction spans in content order while preserving source operator grouping, matrix snapshots, source bytes, and font identity.
   - Treat empty strings as valid events that do not force invented text content.
   - Keep extraction independent of ActualText, structure-tree reading order, reverse-order show strings, and paragraph reconstruction.
