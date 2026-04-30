@@ -54,7 +54,7 @@
   - Completion: document-source tests show valid multi-page sources flatten deterministically and reused indirect annotations across pages are rejected before typed subtype parsing.
   - _Requirements: 0.1, 0.2_
 
-- [ ] 2.3 Parse page annotation tab-order metadata as structure
+- [x] 2.3 Parse page annotation tab-order metadata as structure
   - Parse row, column, structure, annotation-array, and widget tab-order names.
   - Preserve unknown tab-order names and return no value when the entry is absent.
   - Avoid sorting annotations, consulting viewer preferences, traversing logical structure, or computing keyboard focus order.
