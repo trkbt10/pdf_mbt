@@ -21,7 +21,7 @@
   - Preserve unresolved indirect resources as named references without attempting object loading in graphics.
   - Done when direct pattern dictionaries or streams produce typed pattern definitions and indirect entries produce named reference summaries.
   - _Requirements: 0.1, 0.2, 0.6_
-- [ ] 2.2 Validate Type 1 tiling pattern stream dictionaries
+- [x] 2.2 Validate Type 1 tiling pattern stream dictionaries
   - Require stream-backed tiling patterns with valid paint type, tiling type, bounding box, nonzero horizontal and vertical steps, direct resource dictionary, and matrix defaulting.
   - Preserve zero-width or zero-height bounding boxes as legal structural values while still rejecting malformed rectangle arrays.
   - Reject invalid paint types, tiling types, missing resources, non-stream Type 1 objects, and zero step values with graphics errors.
