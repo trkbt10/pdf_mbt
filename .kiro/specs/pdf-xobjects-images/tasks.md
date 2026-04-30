@@ -158,7 +158,7 @@
   - Done: graphics package tests pass for image and XObject cases and fail on the malformed cases described by the requirements.
   - _Depends: 5.2_
   - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14_
-- [ ] 7.2 Test form and optional-content semantics
+- [x] 7.2 Test form and optional-content semantics
   - Cover form dictionary defaults, BBox clipping, matrix concatenation order, scoped resources, nested form ordering, state restoration, group metadata, reference metadata, OCG parsing, OCMD policies, VE precedence, intent filtering, marked-content side effects, DP resources, and XObject OC skipping.
   - Include tests that hidden marked content still applies persistent state while hidden XObjects are skipped as encapsulated objects.
   - Done: graphics package tests pass for form and optional-content behavior across visible and hidden states.
