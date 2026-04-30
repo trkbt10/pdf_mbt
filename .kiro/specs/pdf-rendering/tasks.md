@@ -266,7 +266,7 @@
   - _Requirements: 3.16, 3.17, 3.18_
   - _Boundary: SeparationRenderer_
 
-- [ ] 8. Connect page rendering through the reader
+- [x] 8. Connect page rendering through the reader
 - [ ] 8.1 Add reader-side rendering error wrapping and package imports
   - Extend reader errors so rendering failures are preserved as document-level failures.
   - Add only the imports needed for rendering and optional text materialization.
