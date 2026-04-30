@@ -183,7 +183,7 @@
   - _Depends: 2.1, 5.1_
 
 - [x] 6. Resolve accessibility properties and Tagged PDF reports
-- [ ] 6.1 Resolve accessibility text properties and effective language
+- [x] 6.1 Resolve accessibility text properties and effective language
   - Resolve effective language from catalog and structure ancestors while preserving absent-language state.
   - Expose alternate description, replacement text, abbreviation expansion, phoneme, and phonetic alphabet properties on elements.
   - Default the phonetic alphabet to `ipa` only where a phoneme property is in effect, and leave text-string language escape parsing to future consumers.
