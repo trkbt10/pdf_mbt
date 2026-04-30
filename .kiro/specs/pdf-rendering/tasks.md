@@ -164,7 +164,7 @@
   - _Boundary: RenderSceneBuilder_
   - _Depends: 1.2_
 
-- [ ] 5.2 (P) Fill paths and clips using half-open device-pixel rules
+- [x] 5.2 (P) Fill paths and clips using half-open device-pixel rules
   - Flatten curves within the configured flatness tolerance and render-limit bounds.
   - Mark every affected fill pixel whose half-open square intersects the shape and build clipping masks with the same fill rule.
   - The completed fill and clip conversion paints zero-width or zero-height rectangles as visible one-pixel lines where required.
