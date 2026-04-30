@@ -104,7 +104,7 @@
   - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17_
   - _Depends: 5.1, 5.2_
 
-- [ ] 6. Focused tests for pattern and shading behavior
+- [x] 6. Focused tests for pattern and shading behavior
 - [ ] 6.1 Cover Pattern and tiling validation cases
   - Test missing and wrong pattern type, optional type mismatch, invalid matrix, invalid bounding box, invalid paint type, invalid tiling type, missing resources, and zero steps.
   - Test coloured and uncoloured pattern colour selection operands against Pattern colour spaces with and without underlying colour spaces.
