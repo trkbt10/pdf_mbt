@@ -48,7 +48,7 @@
   - _Requirements: 0.14_
   - _Boundary: SignatureFieldParser, SignatureSeedParser_
   - _Depends: 2.2_
-- [ ] 2.6 Link widget annotations and non-interactive form markers
+- [x] 2.6 Link widget annotations and non-interactive form markers
   - Bridge widget annotation data to fields by raw object identity or merged dictionary provenance while preserving existing annotation enumeration semantics.
   - Expose non-interactive PrintField-related markers as raw parser metadata rather than widget-backed interactive form fields.
   - Completed state: fields list their associated widgets, signature fields diagnose multiple widgets, and non-interactive markers remain separate from AcroForm fields.
