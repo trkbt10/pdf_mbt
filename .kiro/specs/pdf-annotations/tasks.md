@@ -181,7 +181,7 @@
   - Completion: tests cover 3D raw, RichMedia raw, and unknown subtype records with exact raw dictionary preservation.
   - _Requirements: 0.6_
 
-- [ ] 6. Integrate subtype dispatch and public behavior
+- [x] 6. Integrate subtype dispatch and public behavior
 - [ ] 6.1 Connect source resolution, common parsing, markup parsing, and subtype-family parsing into page-level typed annotations
   - Dispatch all standard subtype names to the correct structural record and keep unknown names as typed unknown records.
   - Attach markup metadata only to subtypes classified as markup annotations while preserving common fields for all subtypes.
