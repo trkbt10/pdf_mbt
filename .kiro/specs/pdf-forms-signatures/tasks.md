@@ -155,7 +155,7 @@
   - Completed state: validation plans expose deterministic evidence search order and timestamp evidence metadata for external handlers.
   - _Requirements: 0.51, 0.52, 0.53, 0.54_
   - _Boundary: LTVReader, SignatureValidationPlanner_
-- [ ] 6.3 Parse permissions and legal attestation dictionaries
+- [x] 6.3 Parse permissions and legal attestation dictionaries
   - Parse Catalog permissions entries for DocMDP and UR3 along with legal attestation counters and explanatory attestation text.
   - Preserve permission-handler, security-handler, deprecated usage-rights, and legal trust decisions as caller-owned behavior.
   - Completed state: callers can inspect permissions and legal attestation metadata without enforcement or trust assertions.
