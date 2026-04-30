@@ -234,7 +234,7 @@
   - Completed state: reader white-box tests prove AcroForm structures parse deterministically and malformed forms raise InvalidForm.
   - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14, 0.29_
   - _Boundary: AcroFormReader, FieldTreeResolver, FieldTypeParser, WidgetBridge_
-- [ ] 9.2 Test form actions and FDF parsing
+- [x] 9.2 Test form actions and FDF parsing
   - Cover submit, reset, import action structures, field selection plans, NoExport precedence, include/exclude descendants, no-value fields, FDF header/body/trailer, FDF catalog, fields, pages, templates, annotations, JavaScript descriptors, embedded FDF descriptors, and differences streams.
   - Include malformed fixtures for invalid FDF headers, duplicate FDF object numbers, non-zero generations, missing trailer Root, missing annotation Page, and invalid field flag precedence.
   - Completed state: form action and FDF tests prove typed plans and standalone FDF parsing work without side effects.
