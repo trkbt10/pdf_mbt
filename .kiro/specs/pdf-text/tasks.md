@@ -286,7 +286,7 @@
   - _Boundary: TextStateMachine, TextInterpreter_
   - _Depends: 6.5_
 
-- [ ] 8.2 Complete font, encoding, CMap, Unicode, and Type 3 unit coverage
+- [x] 8.2 Complete font, encoding, CMap, Unicode, and Type 3 unit coverage
   - Cover simple fonts, standard 14 fallback metrics, Type 1 overrides, MMType1 naming, TrueType encoding plans, Type 3 CharProcs, CIDFonts, Type 0 fonts, embedded and predefined CMaps, ToUnicode, glyph-name Unicode, and unknown mappings.
   - Include malformed dictionaries, malformed widths, descriptor flag conflicts, CIDSystemInfo incompatibility, CMap undefined-character handling, surrogate pairs, ligature strings, subset tags, and embedded font stream metadata.
   - `moon test` for the text package passes with deterministic fixtures and no runtime network or system font dependency.
