@@ -31,7 +31,7 @@
   - Done: descriptors expose decode mappings and row layout, and tests show padded row bits do not affect subsequent rows.
   - _Requirements: 0.3, 0.4, 0.7_
   - _Boundary: ImageDescriptorModel_
-- [ ] 2.4 (P) Model image masks, explicit masks, colour-key masks, and soft-mask metadata
+- [x] 2.4 (P) Model image masks, explicit masks, colour-key masks, and soft-mask metadata
   - Enforce ImageMask true forbids ColorSpace and Mask and requires one-bit semantics when BitsPerComponent is present.
   - Validate direct or materialized explicit Mask streams, colour-key array count and ranges, SMask and SMaskInData exclusions, and soft-mask metadata preservation.
   - Done: mask descriptors distinguish stencil, explicit, colour-key, and soft-mask cases, with invalid combinations rejected before image events are emitted.
