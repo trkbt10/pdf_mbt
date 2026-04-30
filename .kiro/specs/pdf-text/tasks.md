@@ -166,7 +166,7 @@
   - _Boundary: FontResourceResolver, CMapResolver_
   - _Depends: 4.1, 4.2, 4.4_
 
-- [ ] 4.6 Decode composite show strings and undefined characters
+- [x] 4.6 Decode composite show strings and undefined characters
   - Decode one-to-four-byte character codes through CMap codespaces and mappings, selecting descendant 0 and CID values as required by PDF.
   - Apply notdef mappings, CID 0 fallback, invalid-code partial range consumption, and Type 2 CIDToGIDMap fallback behavior.
   - Preserve consumed source bytes and fallback reason in decoded glyph events.
