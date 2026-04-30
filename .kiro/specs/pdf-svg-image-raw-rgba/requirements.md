@@ -36,46 +36,20 @@ when the consumer can render RGBA directly.
 
 ## Requirements
 
-### Requirement 1: Platform-dispatched image encoding
+### Requirement 1: raw_rgba_image_mime sentinel
 
-#### 1.1: Web target skips in-wasm PNG encoding
-On the wasm-gc target, `page_image_entry_data` SHALL return the raw
-RGBA buffer together with width and height metadata for
-`DeviceRgbRaster` and `StencilMaskRaster` results, instead of
-encoding PNG bytes inside wasm. The MIME type for raw RGBA entries
-SHALL be a well-known sentinel understood by the JS consumer (e.g.
-`image/x-rgba8`).
+The SVG package SHALL retain `raw_rgba_image_mime` as the shared
+`image/x-rgba8` sentinel. The wasm-gc raster encoder returns raw
+RGBA bytes with width and height metadata for browser canvas
+decoding, while native target raster encoding continues to return
+`image/png` bytes.
 
-#### 1.2: Native target uses built-in PNG encoding
-On the native target, `page_image_entry_data` SHALL continue to use
-the built-in `encode_png_bytes` path, producing `image/png` entries
-that CLI consumers and file writers can use directly.
+#### 1.1: SvgImageEntry raw RGBA shape
 
-#### 1.3: JPEG and JPEG2000 pass-through unchanged
-`EncodedImageData` with `DCTDecode` or `JPXDecode` filters SHALL
-continue to return the original encoded bytes with `image/jpeg` or
-`image/jp2` MIME on both targets. These are browser-decodable
-without transformation.
-
-### Requirement 2: JavaScript consumer decoding
-
-#### 2.1: Raw RGBA entry shape
-`PdfDocument.pageSvgImageData(pageIndex, imageIndex)` SHALL, for a
-raw RGBA entry, return an object including the MIME sentinel plus
-the width and height required to interpret the byte buffer as
-`Uint8ClampedArray` of length `width * height * 4`.
-
-#### 2.2: Browser Canvas decoding
-The npm demo (`npm/demo/src/PdfViewer.tsx`) SHALL decode raw RGBA
-entries by constructing an `ImageData`, drawing it onto an
-`OffscreenCanvas` (or a temporary `<canvas>`), and obtaining a Blob
-URL via `canvas.toBlob` / `canvas.convertToBlob`. PNG and JPEG
-entries SHALL continue to go through the existing `Blob` path
-without canvas intervention.
-
-#### 2.3: Asynchronous decoding
-RGBA-to-Blob conversion SHALL use the async canvas API so the main
-thread is not blocked by large-pixel rasters.
+`SvgImageEntry` SHALL carry `mime_type`, `data`, `width`, and
+`height` so raw RGBA image data exposes the MIME sentinel plus
+width/height metadata for canvas decoding. PNG, JPEG, and JP2 entries
+continue to use encoded image bytes with no RGBA dimensions.
 
 ### Requirement 3: wasm API surface
 
@@ -89,18 +63,12 @@ SHALL return a JSON-encoded string with at least `mime`, `width`,
 - For PNG/JPEG/JP2: the encoded file bytes (unchanged)
 - For raw RGBA: `width * height * 4` bytes of RGBA (new)
 
-### Requirement 4: Cross-target test coverage
+### Requirement 4: encode_raster_image_entry target dispatch
 
-#### 4.1: Native test continues PNG encoding
-A whitebox test on the native target SHALL verify
-`page_image_entry_data` produces `image/png` entries for a
-DeviceRGB raster fixture.
-
-#### 4.2: Wasm-gc behaviour documented via test
-A whitebox test (runnable on native for unit verification) SHALL
-verify the raw RGBA branch returns the expected MIME sentinel,
-width, height, and RGBA byte count for the same fixture — selected
-via a feature flag, compile-time function dispatch, or equivalent.
+The target-specific `encode_raster_image_entry` implementations SHALL
+document cross-target behaviour: wasm-gc returns raw RGBA
+`image/x-rgba8` entries with dimensions, while native uses
+`encode_png_bytes` and returns PNG entries for file and CLI consumers.
 
 ### Requirement 5: Acceptance criteria
 
