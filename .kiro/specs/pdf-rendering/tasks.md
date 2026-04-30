@@ -134,7 +134,7 @@
   - _Requirements: 3.8, 3.9_
   - _Boundary: HalftoneProcessor_
 
-- [ ] 4.5 Implement colourant-specific halftone sets and transfer overrides
+- [x] 4.5 Implement colourant-specific halftone sets and transfer overrides
   - Dispatch Type 5 entries by process or spot colourant name and use Default for missing colourants.
   - Reject nested Type 5 component halftones and preserve component-specific transfer overrides.
   - The completed Type 5 dispatch selects the expected screen and override for primary, nonprimary, and fallback colourants.
