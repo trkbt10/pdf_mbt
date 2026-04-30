@@ -57,7 +57,7 @@
   - _Requirements: 0.10, 0.11, 0.12, 0.13_
   - _Boundary: ShadingModel_
   - _Depends: 3.2_
-- [ ] 4.2 (P) Build packed mesh stream reading and shared mesh dictionary validation
+- [x] 4.2 (P) Build packed mesh stream reading and shared mesh dictionary validation
   - Validate allowed bit widths for coordinates, components, and flags across mesh and patch shading streams.
   - Validate decode-array length from coordinate ranges plus either colour component ranges or a single parametric range when a function is present.
   - Read packed stream data from high-order to low-order bits and account for per-record byte padding without retaining rendered geometry.
