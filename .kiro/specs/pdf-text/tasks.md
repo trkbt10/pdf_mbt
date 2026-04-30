@@ -58,7 +58,7 @@
   - _Requirements: 2.3, 2.28_
   - _Boundary: Standard14Metrics, FontResourceResolver_
 
-- [ ] 2.4 (P) Implement named encodings and Differences processing
+- [x] 2.4 (P) Implement named encodings and Differences processing
   - Provide StandardEncoding, MacRomanEncoding, MacExpertEncoding, and WinAnsiEncoding code-to-glyph-name tables.
   - Apply encoding dictionaries with optional base encodings and non-overlapping Differences arrays in any allowed order.
   - Derive default base encodings from embedded font status and symbolic or nonsymbolic descriptor flags when no base encoding is supplied.
