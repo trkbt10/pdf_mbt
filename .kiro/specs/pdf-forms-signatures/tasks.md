@@ -129,7 +129,7 @@
   - Completed state: every recognized transform method produces deterministic parser data and invalid transform parameter shapes raise InvalidSignature.
   - _Requirements: 0.31, 0.32, 0.33, 0.34, 0.55_
   - _Boundary: SignatureTransformParser_
-- [ ] 5.3 Gather handler-facing validation work items
+- [x] 5.3 Gather handler-facing validation work items
   - Produce validation plans containing byte-range slices, contents bytes, subfilter, digest hints, transform constraints, revision-order inputs, revocation evidence references, timestamp candidates, and policy work items.
   - Represent PAdES, CMS, CAdES, PKCS #1, certificate-path, revocation, timestamp, and signature-policy checks as external handler work.
   - Completed state: validation plans describe all PDF-owned inputs and never mark signatures valid, invalid, trusted, or legally binding.
