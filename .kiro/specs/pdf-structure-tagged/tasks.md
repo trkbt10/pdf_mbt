@@ -263,7 +263,7 @@
   - _Boundary: AttributeResolver, AccessibilityPropertyResolver tests_
   - _Depends: 5.5, 6.1_
 
-- [ ] 8.4 Verify Tagged PDF reports and PDF 2.0 structure examples
+- [x] 8.4 Verify Tagged PDF reports and PDF 2.0 structure examples
   - Cover missing marked flags, missing structure roots, artifact declarations, unresolved custom roles, namespace membership failures, standard-type rule warnings, attribute owner misuse, text-related unchecked items, and accessibility metadata hints.
   - Parse bundled or synthetic PDF 2.0 logical-structure examples and confirm documents without structure trees still return absent structure rather than errors.
   - Done when report tests exercise errors, warnings, unchecked items, and summary flags across all Tagged PDF requirement groups.
