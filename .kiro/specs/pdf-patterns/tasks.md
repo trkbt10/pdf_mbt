@@ -137,7 +137,7 @@
   - _Depends: 5.3, 6.1, 6.2, 6.3_
 
 - [x] 7. Final validation and robustness gates
-- [ ] 7.1 Validate mesh robustness and allocation boundaries
+- [x] 7.1 Validate mesh robustness and allocation boundaries
   - Reject unreasonable component counts, decode arrays, record counts, and stream shapes before allocating large result structures.
   - Verify large but valid mesh streams produce structural summaries without per-pixel, tessellated, or rendered geometry.
   - Validate truncated streams and streams with legal padding bits as separate robustness cases.
