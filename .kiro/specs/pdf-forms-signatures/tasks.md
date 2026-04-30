@@ -123,7 +123,7 @@
   - Completed state: signature records expose bounded byte ranges, raw signature bytes, subfilter classification, and metadata without cryptographic validity claims.
   - _Requirements: 0.30, 0.35, 0.36, 0.37, 0.39, 0.40, 0.52, 0.53_
   - _Boundary: SignatureReader_
-- [ ] 5.2 Parse signature references and transform parameters
+- [x] 5.2 Parse signature references and transform parameters
   - Parse signature reference dictionaries, digest method names, DocMDP, UR, and FieldMDP transform parameters.
   - Expose DocMDP permissions, usage-rights permissions, FieldMDP lock selections, version names, and direct-object requirements as structural constraints.
   - Completed state: every recognized transform method produces deterministic parser data and invalid transform parameter shapes raise InvalidSignature.
