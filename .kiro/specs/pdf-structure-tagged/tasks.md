@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Establish logical-structure foundations
+- [x] 1. Establish logical-structure foundations
 - [ ] 1.1 Add structure-specific diagnostics and reusable reader parsing behavior
   - Add a dedicated logical-structure document error path for malformed mark information, structure roots, elements, namespaces, content references, attributes, and tagged-report inputs.
   - Support bounded indirect-object resolution, cycle reporting, dictionary/name/array/string/number/boolean checks, indirect-reference requirements, and ISO default handling.
