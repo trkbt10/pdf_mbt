@@ -169,7 +169,7 @@
   - _Boundary: SignatureValidationPlanner, LTVReader, PermissionsReader_
 
 - [x] 7. Parse measurement, geospatial, and Catalog requirement data
-- [ ] 7.1 Parse page viewports and measure dictionaries
+- [x] 7.1 Parse page viewports and measure dictionaries
   - Parse page viewport arrays, viewport rectangles, names, measure dictionaries, point-data references, annotation measure entries, and rectilinear measure dictionaries.
   - Select the last matching viewport for a point by reverse drawing order and use the first point viewport for multi-point measurements.
   - Completed state: page APIs expose viewports and measurement metadata, and point lookup returns the expected viewport or none.
