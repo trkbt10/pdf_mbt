@@ -26,7 +26,7 @@
   - _Boundary: StructureFixtureSupport_
 
 - [x] 2. Parse catalog mark data and the structure hierarchy
-- [ ] 2.1 (P) Read mark information and catalog language
+- [x] 2.1 (P) Read mark information and catalog language
   - Interpret absent mark information with ISO defaults for marked, user properties, and suspects.
   - Validate present mark information as a dictionary with boolean flags and preserve the deprecated suspects flag as data.
   - Expose catalog language as the document-level natural-language source without requiring a structure tree.
