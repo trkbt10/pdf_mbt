@@ -61,7 +61,7 @@
   - _Requirements: 2.4, 2.24, 2.26, 2.27, 2.36, 2.37, 2.38, 2.46_
   - _Boundary: TransparencyColourPolicy_
   - _Depends: 1.4, 2.1_
-- [ ] 2.5 Apply spot-colour and overprint policy
+- [x] 2.5 Apply spot-colour and overprint policy
   - Maintain process and spot component availability for groups, elementary objects, soft-mask groups, and unavailable spot contexts.
   - Substitute Normal for spot colours when the requested blend mode is not both separable and white-preserving.
   - Overprint tests cover compatible overprint behavior, Table 146 cases, group-object fallback, and additive/subtractive conversion boundaries.
