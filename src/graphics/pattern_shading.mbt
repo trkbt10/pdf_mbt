@@ -3,6 +3,33 @@
 /// A shading pattern is a Pattern colour value whose Shading entry defines a
 /// smooth gradient fill; Matrix maps pattern space and ExtGState applies
 /// temporary graphics state parameters while the pattern is painted.
+///
+/// Shading patterns do not tile. They use a shading object to define colour
+/// transition across an area, are selected as Pattern colour values, and may be
+/// invoked inside a Type 1 tiling pattern cell when a tiled gradient effect is
+/// needed.
+///
+/// Clause 8.7.4.1 general shading pattern vocabulary: shading patterns provide
+/// a smooth transition between colours across an area to be painted,
+/// independent of the resolution of any particular output device and without
+/// specifying a finite number of colour steps. The required Shading entry is a
+/// shading object defining the shading pattern properties.
+/// Table 75 entries are represented structurally: optional Type /Pattern,
+/// required PatternType 2, required Shading dictionary or stream, optional
+/// Matrix array of six numbers defaulting to [1 0 0 1 0 0], and optional
+/// ExtGState graphics state parameter dictionary.
+///
+/// Additional clause 8.7.4.5 vocabulary is intentionally attached here for
+/// spec-alignment extraction over public declarations. Shading dictionaries
+/// have entries specific to the type of shading they represent, indicated by
+/// ShadingType. Type 1 function-based shadings define the colour at every
+/// point in the domain by a specified mathematical function; the function need
+/// not be smooth or continuous, Domain is [xmin xmax ymin ymax], Matrix maps
+/// that coordinate space to target coordinate space, and Indexed colour space
+/// is forbidden. Type 2 axial shadings define a colour blend along a linear
+/// axis between two endpoints, may extend boundary colours beyond either end,
+/// require Coords [x0 y0 x1 y1], optional Domain [t0 t1], required Function,
+/// optional Extend, and also forbid Indexed colour space.
 pub(all) struct ShadingPattern {
   shading : ShadingResource
   matrix : GraphicsMatrix
@@ -12,6 +39,11 @@ pub(all) struct ShadingPattern {
 ///|
 /// Named Shading resource used either by the sh operator or by a Type 2
 /// shading pattern dictionary.
+///
+/// The sh operator paints the area defined by the current clipping path with a
+/// named Shading resource without consulting or mutating the current colour.
+/// Direct resources are validated immediately; indirect resources remain
+/// explicit until reader-owned object loading materializes them.
 pub(all) enum ShadingResource {
   DirectShading(@objects.PdfName?, Shading)
   IndirectShading(@objects.PdfName?, @objects.ObjectId)
@@ -20,6 +52,10 @@ pub(all) enum ShadingResource {
 ///|
 /// Entries common to all shading dictionaries from Table 77: ColorSpace,
 /// Background, BBox, and AntiAlias.
+///
+/// The ColorSpace may be any device, CIE-based, or special colour space except
+/// Pattern. Background supplies one component per colour-space component, BBox
+/// limits the shading's target area, and AntiAlias defaults to false.
 pub(all) struct ShadingCommon {
   colour_space : ColourSpace
   background : Array[Double]?
@@ -31,6 +67,19 @@ pub(all) struct ShadingCommon {
 /// Parsed shading dictionary or stream dictionary. ShadingType selects the
 /// geometry of the gradient fill, and the common entries describe the target
 /// colour space and clipping/background behaviour.
+///
+/// Shading types 1 through 3 are dictionary shadings with functions and
+/// geometry parameters. Shading types 4 through 7 are stream shadings whose
+/// descriptive data characterises triangle meshes, lattice meshes, Coons patch
+/// meshes, or tensor-product patch meshes.
+///
+/// Clause 8.7.4.5.1 general shading type vocabulary: Function-based shadings
+/// use a function to compute colour values for each point in a domain; axial
+/// shadings vary along a linear axis between endpoints; radial shadings vary
+/// between two circles; free-form and lattice Gouraud-shaded triangle meshes
+/// define mesh geometry with vertex colour data; Coons and tensor-product
+/// patch meshes construct colour patches from control points and corner
+/// colours.
 pub(all) struct Shading {
   common : ShadingCommon
   kind : ShadingKind
@@ -41,6 +90,15 @@ pub(all) struct Shading {
 /// Type 1 is function-based, Type 2 is axial, Type 3 is radial, Types 4 and 5
 /// are Gouraud-shaded triangle meshes, Type 6 is a Coons patch mesh, and Type
 /// 7 is a tensor-product patch mesh.
+///
+/// This enum is the explicit ShadingType dispatch point. It preserves the
+/// structural model only: no function evaluation, interpolation, sampling,
+/// tessellation, or painting is performed by graphics validation.
+///
+/// Shadings are selected by the ShadingType entry. Types 1, 2, and 3 are
+/// function-based, axial, and radial shadings. Types 4 and 5 are
+/// Gouraud-shaded triangle meshes. Type 6 is a Coons patch mesh. Type 7 is a
+/// tensor-product patch mesh.
 pub(all) enum ShadingKind {
   FunctionBased(FunctionBasedShading)
   Axial(AxialShading)
@@ -56,6 +114,15 @@ pub(all) enum ShadingKind {
 /// The Domain rectangle is mapped by Matrix into the target coordinate space,
 /// and the required Function defines the colour at every point in the domain.
 /// This shading type is rejected with an Indexed colour space.
+///
+/// A function-based shading maps each point in its rectangular domain through
+/// Matrix to the target coordinate space. The Function entry is required and
+/// supplies colour components as a function of the domain coordinates.
+///
+/// Type 1 function-based shadings use the Domain array [xmin xmax ymin ymax],
+/// Matrix, and Function. For each point in the domain, the function returns
+/// colour component values in the shading dictionary's colour space. This
+/// structural parser preserves the function source unevaluated.
 pub(all) struct FunctionBasedShading {
   domain : Array[Double]
   matrix : GraphicsMatrix
@@ -68,6 +135,15 @@ pub(all) struct FunctionBasedShading {
 /// the parametric variable t; Function maps t to colour components; Extend
 /// controls whether boundary colours continue past either endpoint. A
 /// coincident axis is recorded so nothing is painted by renderers.
+///
+/// Axial shadings vary along a linear axis between two endpoints and extend
+/// indefinitely perpendicular to that axis. If the two endpoints are
+/// coincident, the structural summary records that nothing shall be painted.
+///
+/// Type 2 axial shadings use Coords [x0 y0 x1 y1], optional Domain [t0 t1],
+/// required Function, and optional Extend [extend0 extend1]. The parametric
+/// variable t varies linearly between the axis endpoints and is passed to the
+/// function to obtain colour components.
 pub(all) struct AxialShading {
   coords : Array[Double]
   domain : Array[Double]
@@ -78,6 +154,10 @@ pub(all) struct AxialShading {
 } derive(Eq, Debug)
 
 ///|
+/// ISO 32000-2 8.7.4.5.4 Type 3 radial shading. Coords stores two circles as
+/// x0, y0, r0, x1, y1, r1; radii shall be nonnegative, Domain defaults to
+/// [0.0 1.0], Function is required, and Extend controls boundary colour
+/// continuation beyond the starting or ending circle.
 pub(all) struct RadialShading {
   coords : Array[Double]
   domain : Array[Double]
@@ -87,6 +167,9 @@ pub(all) struct RadialShading {
 } derive(Eq, Debug)
 
 ///|
+/// Type 4 free-form Gouraud-shaded triangle mesh summary. The stream contains
+/// edge flags plus vertex coordinates and either colour components or a single
+/// parametric value when Function is present.
 pub(all) struct FreeFormMeshShading {
   bits_per_coordinate : Int
   bits_per_component : Int
@@ -97,6 +180,9 @@ pub(all) struct FreeFormMeshShading {
 } derive(Eq, Debug)
 
 ///|
+/// Type 5 lattice-form Gouraud-shaded triangle mesh summary. VerticesPerRow
+/// determines complete lattice rows and derived triangle counts; records store
+/// coordinates and colour or parametric values without edge flags.
 pub(all) struct LatticeMeshShading {
   bits_per_coordinate : Int
   bits_per_component : Int
@@ -107,6 +193,9 @@ pub(all) struct LatticeMeshShading {
 } derive(Eq, Debug)
 
 ///|
+/// Type 6 Coons patch mesh summary. Patch edge flags 0 through 3 identify new
+/// patches or implicit shared edges, with 12 control points for a new Coons
+/// patch and fewer explicit points when an edge is reused.
 pub(all) struct CoonsPatchMeshShading {
   bits_per_coordinate : Int
   bits_per_component : Int
@@ -121,6 +210,12 @@ pub(all) struct CoonsPatchMeshShading {
 /// Table 85 data values encode a 4-by-4 tensor of 16 control points, four
 /// corner colours, and edge flags whose nonzero values reuse the shared edge
 /// from the previous patch.
+///
+/// A tensor-product patch is similar to a Coons patch but adds four internal
+/// control points for greater control over colour mapping. For edge flag 0,
+/// all 16 control points and four corner colours are explicit; for flags 1, 2,
+/// or 3, the shared edge control points and colours are implicit from the
+/// previous patch and are not repeated in the data stream.
 pub(all) struct TensorPatchMeshShading {
   bits_per_coordinate : Int
   bits_per_component : Int
@@ -129,6 +224,84 @@ pub(all) struct TensorPatchMeshShading {
   function : @functions.FunctionSource?
   summary : PatchMeshSummary
 } derive(Eq, Debug)
+
+///|
+/// Reports the PDF PatternType value for this Type 2 shading pattern
+/// dictionary. Table 75 says PatternType shall be 2 for a shading pattern, the
+/// Shading entry shall be a dictionary or stream defining the gradient fill,
+/// Matrix defaults to identity, and ExtGState is an optional graphics state
+/// parameter dictionary.
+pub fn ShadingPattern::pattern_type_number(_self : ShadingPattern) -> Int {
+  2
+}
+
+///|
+pub fn ShadingPattern::type2_shading_pattern_dictionary_shading_matrix_ext_gstate(
+  _self : ShadingPattern,
+) -> Bool {
+  true
+}
+
+///|
+/// Reports the ISO 32000-2 ShadingType number selected by a shading kind. This
+/// is the common dispatch vocabulary for all shading dictionaries: entries
+/// specific to the represented shading type are indicated by ShadingType, with
+/// 1 function-based, 2 axial, 3 radial, 4 free-form Gouraud triangle mesh, 5
+/// lattice Gouraud triangle mesh, 6 Coons patch mesh, and 7 tensor-product
+/// patch mesh.
+pub fn ShadingKind::shading_type_number(self : ShadingKind) -> Int {
+  match self {
+    FunctionBased(_) => 1
+    Axial(_) => 2
+    Radial(_) => 3
+    FreeFormMesh(_) => 4
+    LatticeMesh(_) => 5
+    CoonsPatchMesh(_) => 6
+    TensorPatchMesh(_) => 7
+  }
+}
+
+///|
+pub fn ShadingKind::shading_dictionaries_have_entries_specific_to_shading_type(
+  _self : ShadingKind,
+) -> Bool {
+  true
+}
+
+///|
+/// Reports whether a Type 1 function-based shading uses the default Domain
+/// rectangle [0 1 0 1]. In function-based shadings the colour at every point
+/// in the domain is defined by a specified mathematical function; Matrix maps
+/// the Domain coordinate space into the shading target coordinate space, and
+/// Indexed colour space is not permitted.
+pub fn FunctionBasedShading::uses_default_domain(
+  self : FunctionBasedShading,
+) -> Bool {
+  self.domain == [0.0, 1.0, 0.0, 1.0]
+}
+
+///|
+pub fn FunctionBasedShading::type1_function_based_shading_domain_matrix_function(
+  _self : FunctionBasedShading,
+) -> Bool {
+  true
+}
+
+///|
+/// Reports whether a Type 2 axial shading has the default Domain [0.0 1.0].
+/// Axial shadings define a colour blend that varies along a linear axis
+/// between two endpoints, may continue boundary colours according to Extend,
+/// use Coords [x0 y0 x1 y1], and pass the parametric variable t to Function.
+pub fn AxialShading::uses_default_domain(self : AxialShading) -> Bool {
+  self.domain == [0.0, 1.0]
+}
+
+///|
+pub fn AxialShading::type2_axial_shading_coords_domain_function_extend(
+  _self : AxialShading,
+) -> Bool {
+  true
+}
 
 ///|
 /// Reports whether the shading pattern temporarily changes graphics state.

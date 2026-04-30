@@ -6,6 +6,12 @@
 /// the pattern cell content stream, from uncoloured tiling patterns, which act
 /// as stencils painted with a separately supplied colour value from a Pattern
 /// colour space.
+///
+/// ISO 32000-2 8.7.1 general pattern vocabulary: patterns are paint values
+/// used by ordinary painting operators instead of a uniform current colour.
+/// Tiling patterns replicate a small graphical pattern cell at fixed
+/// horizontal and vertical intervals, while shading patterns define a smooth
+/// gradient fill whose colour is a function of position.
 pub(all) enum PatternPaintType {
   Coloured
   Uncoloured
@@ -23,6 +29,11 @@ pub fn PatternPaintType::is_coloured(self : PatternPaintType) -> Bool {
 ///|
 /// Pattern TilingType values controlling spacing relative to the device pixel
 /// grid for a Type 1 tiling pattern dictionary.
+///
+/// Tiling places copies of the pattern cell in an array covering the painted
+/// area and trims them to the painting boundary. Constant spacing, no
+/// distortion, and constant spacing with faster tiling mirror Table 74
+/// TilingType values.
 pub(all) enum TilingType {
   ConstantSpacing
   NoDistortion
@@ -45,6 +56,12 @@ pub fn TilingType::allows_distortion(self : TilingType) -> Bool {
 /// consists of a replicated pattern cell described by a content stream; BBox,
 /// XStep, YStep, Resources, and the pattern matrix are interpreted in pattern
 /// coordinate space.
+///
+/// The pattern matrix maps the pattern internal coordinate system to the
+/// default coordinate system of the parent content stream. The concatenation
+/// with the parent transformation establishes pattern coordinate space, while
+/// page CTM changes after resource definition do not redefine the pattern's
+/// relationship to the page or form.
 pub(all) struct TilingPattern {
   paint_type : PatternPaintType
   tiling_type : TilingType
@@ -76,6 +93,10 @@ pub fn TilingPattern::requires_underlying_colour(self : TilingPattern) -> Bool {
 /// a single colour and delegates pattern details to Clause 8.7:
 /// Type 1 tiling patterns replicate a pattern cell, while Type 2 shading
 /// patterns define a smooth gradient fill as a Pattern colour value.
+/// Pattern dictionaries all contain PatternType: Type 1 identifies a tiling
+/// pattern stream and Type 2 identifies a shading pattern dictionary. All
+/// patterns are treated as colours selected with SCN or scn after CS or cs
+/// establishes a Pattern colour space.
 ///
 /// Source excerpt:
 /// `spec/extracted/8.7-patterns.spec.txt`.

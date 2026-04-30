@@ -1,6 +1,10 @@
 ///|
 /// Validation summary for Type 4 and Type 5 Gouraud-shaded triangle mesh
 /// streams after decoding packed vertex records.
+///
+/// Mesh validation reads descriptive data only. Type 4 free-form records carry
+/// edge flags 0, 1, or 2 plus vertex coordinates and colour values; Type 5
+/// lattice records omit edge flags and derive triangles from complete rows.
 pub(all) struct MeshSummary {
   vertex_count : Int
   triangle_count : Int
@@ -10,6 +14,26 @@ pub(all) struct MeshSummary {
 ///|
 /// Validation summary for Type 6 Coons patch mesh and Type 7 tensor-product
 /// patch mesh streams after decoding Table 83 or Table 85 patch records.
+///
+/// Patch meshes require at least one complete patch. A Coons patch uses 12
+/// control points for an edge flag 0 record; a tensor-product patch uses 16
+/// control points including four internal controls. Edge flags 1, 2, and 3
+/// reuse an implicit shared edge from the previous patch and therefore carry
+/// fewer explicit control points and corner colour values.
+///
+/// Type 7 tensor-product patch mesh data follows Table 85: for a new patch,
+/// coordinates of control points p00 through p33 are specified, followed by
+/// colour values for the four corners. For a shared-edge patch, edge flags 1,
+/// 2, or 3 identify which previous edge supplies implicit control points and
+/// corner colours.
+///
+/// Clause 8.7.4.5.8 tensor-product patch mesh vocabulary: the tensor-product
+/// patch affords greater control over colour mapping than a Coons patch. The
+/// mapping is controlled by the location and shape of four cubic Bezier curves
+/// marking patch boundaries plus four additional internal control points. The
+/// 16 control points form a 4-by-4 array p00, p10, p20, p30 through p03, p13,
+/// p23, p33. Geometry is a surface over parametric variables u and v over the
+/// unit square, using Bernstein polynomials for each tensor control point.
 pub(all) struct PatchMeshSummary {
   patch_count : Int
   decoded_length : Int

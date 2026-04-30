@@ -105,6 +105,16 @@ pub fn GraphicsInterpretOptions::default() -> GraphicsInterpretOptions {
 /// properties, and colour-space/rendering interactions while leaving the exact
 /// processor implementation strategy to the rendering package as long as the
 /// resulting behaviour is equivalent.
+///
+/// ISO 32000-2 8.7.1 pattern semantics are represented as interpretation
+/// events rather than renderer output. A pattern is paint that may consist of
+/// a repeating graphical figure or a smoothly varying colour gradient instead
+/// of a simple colour. Pattern colour spaces use pattern objects as colour
+/// values; those objects are dictionaries or streams. Tiling patterns consist
+/// of a small graphical figure called a pattern cell replicated at fixed
+/// horizontal and vertical intervals to fill the area to be painted. Shading
+/// patterns define a gradient fill that produces a smooth transition between
+/// colours across the area, with colour specified as a function of position.
 pub(all) struct GraphicsProgram {
   events : Array[GraphicsEvent]
   final_state : GraphicsState
