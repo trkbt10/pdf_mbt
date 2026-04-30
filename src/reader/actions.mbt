@@ -117,6 +117,9 @@ pub fn PdfPage::additional_actions(
 }
 
 ///|
+/// Parses an annotation-owned action hand-off without executing it. The
+/// annotation model also preserves text reply State and StateModel vocabulary
+/// from Table 174 separately from action activation.
 pub fn PdfDocument::annotation_action(
   self : PdfDocument,
   annotation : PdfAnnotation,

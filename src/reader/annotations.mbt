@@ -1665,7 +1665,8 @@ fn parse_page_annotation(
 /// Parses the page Annots array from ISO 32000-2 12.5.1 and 12.5.2 into
 /// typed annotations. Missing Annots returns an empty array; present Annots
 /// must be an array of direct or indirect annotation dictionaries, preserving
-/// annotation array order and page-local positions.
+/// annotation array order and page-local positions. Text annotation replies
+/// may also carry State and StateModel values from Table 174.
 pub fn PdfPage::annotations(
   self : PdfPage,
 ) -> Array[PdfAnnotation] raise PdfDocumentError {

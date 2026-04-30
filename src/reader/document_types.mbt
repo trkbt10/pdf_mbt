@@ -885,17 +885,29 @@ pub(all) struct PdfFileAttachmentAnnotation {
 } derive(Eq, Debug)
 
 ///|
-/// Sound annotation data from ISO 32000-2 12.5.6.16 and Table 188. The
-/// deprecated PDF 2.0 Sound stream is preserved as raw structure with Name
-/// icon defaults such as Speaker, without playing audio.
+/// Sound annotations from ISO 32000-2 12.5.6.16, deprecated in PDF 2.0 and
+/// superseded by the general multimedia framework. Table 188 additional
+/// entries specific to a sound annotation are represented structurally:
+/// Subtype Sound, required Sound stream defining the sound object from 13.3
+/// Sounds, and optional Name icon used for displaying the annotation with
+/// standard names Speaker and Mic. A sound annotation is analogous to a text
+/// annotation except that instead of a text note it contains sound recorded
+/// from the computer microphone or imported from a file. This reader exposes
+/// the entries but does not play sound when the annotation is activated.
 pub(all) struct PdfSoundAnnotation {
   sound : @objects.PdfObject
   icon_name : @objects.PdfName
 } derive(Eq, Debug)
 
 ///|
-/// Movie annotation data from ISO 32000-2 12.5.6.17 and Table 189. T title,
-/// Movie dictionary, and A activation are preserved without movie playback.
+/// Movie annotations from ISO 32000-2 12.5.6.17, deprecated in PDF 2.0 and
+/// superseded by the general multimedia framework. Table 189 additional
+/// entries specific to a movie annotation are represented structurally:
+/// Subtype Movie, optional T text string title, required Movie dictionary
+/// describing the movie static characteristics from 13.4 Movies, and optional
+/// A boolean or movie activation dictionary controlling whether and how the
+/// movie shall be played when the annotation is activated. This reader exposes
+/// the entries but does not play animated graphics or sound.
 pub(all) struct PdfMovieAnnotation {
   title : Bytes?
   movie : @objects.PdfObject

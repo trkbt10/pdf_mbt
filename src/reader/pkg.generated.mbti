@@ -27,6 +27,10 @@ pub fn parse_file_spec_path(Bytes) -> PdfFileSpecPath
 
 pub fn parse_object_stream(@objects.PdfStream, offset~ : Int64) -> ObjectStreamTable raise PdfReaderError
 
+pub fn pdf_1_2_deprecated_pdf_2_0_movie_annotation_table_189_subtype_movie_t_title_movie_dictionary_a_activation_default_true_anchor() -> Int
+
+pub fn pdf_1_2_deprecated_pdf_2_0_sound_annotation_table_188_subtype_sound_sound_stream_name_speaker_mic_anchor() -> Int
+
 pub fn pdf_actions_section_12_6_3_trigger_events_tables_197_200() -> Int
 
 pub fn pdf_actions_section_12_6_4_10_movie_actions_table_213() -> Int
@@ -50,6 +54,40 @@ pub fn pdf_actions_section_12_6_4_4_embedded_go_to_actions_tables_204_205() -> I
 pub fn pdf_actions_section_12_6_4_5_gotodp_action_table_206() -> Int
 
 pub fn pdf_actions_section_12_6_4_8_uri_actions_tables_210_211() -> Int
+
+pub fn pdf_annotations_section_12_5_1_general_tabs_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_11_caret_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_12_stamp_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_14_popup_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_15_file_attachment_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_16_sound_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_17_movie_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_17_movie_annotations_13_4_movies_literal_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_17_movie_annotations_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_18_screen_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_19_widget_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_20_printer_mark_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_21_trap_network_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_23_redaction_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_3_annotation_table_174_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_3_table_174_anchor() -> Int
+
+pub fn pdf_annotations_section_12_5_6_8_square_circle_anchor() -> Int
 
 pub fn resolve_file_spec_path(PdfFileSpecPath, PdfFileSpecPath) -> PdfFileSpecPath raise PdfDocumentError
 
@@ -433,6 +471,149 @@ pub(all) enum PdfAnnotationTabOrder {
   AnnotationArray
   Widget
   Unknown(@objects.PdfName)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAnnotationsSection1251GeneralVocabulary {
+  note_annotation : String
+  link_annotation : String
+  rich_media_annotation : String
+  location_on_page : String
+  mouse_keyboard_interaction : String
+  tab_key_navigation : String
+  row_order_r : String
+  column_order_c : String
+  structure_order_s : String
+  annotation_array_order_a : String
+  widgets_order_w : String
+  annotation_handler_extensible_type : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAnnotationsSection125611CaretVocabulary {
+  caret_annotation : String
+  difference_rectangle_rd : String
+  symbol_sy : String
+  paragraph_symbol_p : String
+  none_symbol : String
+  no_text_editing : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAnnotationsSection125612StampVocabulary {
+  stamp_annotation : String
+  rubber_stamp : String
+  name_icon_approved : String
+  name_icon_draft : String
+  custom_name : String
+  intent_stamp : String
+  intent_stamp_image : String
+  intent_stamp_snapshot : String
+  no_stamp_appearance_drawing : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAnnotationsSection125614PopupVocabulary {
+  popup_annotation : String
+  parent_markup_annotation : String
+  parent_reference : String
+  open_state : String
+  popup_window : String
+  comments_pane : String
+  no_user_interface_behavior : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAnnotationsSection125615FileAttachmentVocabulary {
+  file_attachment_annotation : String
+  fs_file_specification : String
+  name_icon_push_pin : String
+  raw_file_specification_payload : String
+  no_open_files : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAnnotationsSection125616SoundVocabulary {
+  sound_annotation : String
+  deprecated_sound_stream : String
+  name_icon_speaker : String
+  multimedia_payload : String
+  no_audio_playback : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAnnotationsSection125617MovieVocabulary {
+  movie_annotation : String
+  t_title : String
+  movie_dictionary : String
+  a_activation : String
+  activation_dictionary : String
+  no_movie_playback : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAnnotationsSection125618ScreenVocabulary {
+  screen_annotation : String
+  t_title : String
+  a_action : String
+  aa_additional_actions : String
+  mk_appearance_characteristics : String
+  rendition_action_context : String
+  page_reference_requirement : String
+  no_action_execution : String
+  no_media_playback : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAnnotationsSection125619WidgetVocabulary {
+  widget_annotation : String
+  h_highlighting_mode : String
+  mk_appearance_characteristics : String
+  a_action : String
+  aa_additional_actions : String
+  bs_border_style : String
+  parent_field_reference : String
+  acro_form_field_semantics : String
+  no_field_dictionary_merging : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAnnotationsSection125620PrinterMarkVocabulary {
+  printer_mark_annotation : String
+  printermark_subtype : String
+  production_mark_context : String
+  pmd_payload : String
+  no_print_production_execution : String
+  no_renderer_behavior : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAnnotationsSection125623RedactionVocabulary {
+  redact_annotation : String
+  quad_points : String
+  interior_colour_ic : String
+  rollover_appearance_ro : String
+  overlay_text : String
+  repeat_flag : String
+  default_appearance_da : String
+  justification_q : String
+  non_destructive_redaction_intent : String
+  no_redaction_application : String
+  no_page_content_removal : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAnnotationsSection12563StateVocabulary {
+  table_174 : Int
+  state_model_marked : String
+  state_model_review : String
+  state_marked : String
+  state_unmarked : String
+  state_accepted : String
+  state_rejected : String
+  state_cancelled : String
+  state_completed : String
+  state_none : String
+  text_annotation_reply : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfAnnotationsSection12568SquareCircleVocabulary {
+  square_annotation : String
+  circle_annotation : String
+  border_style_bs : String
+  interior_colour_ic : String
+  border_effect_be : String
+  difference_rectangle_rd : String
+  cloudy_effect : String
+  no_shape_painting : String
 } derive(Eq, @debug.Debug)
 
 pub(all) enum PdfAppearanceEntry {

@@ -38,6 +38,8 @@ pub fn extract_image_xobject(@objects.PdfName?, @objects.PdfStream, Int64) -> Ex
 
 pub fn extract_inline_image(@content.PdfInlineImage) -> ExtractedImage raise PdfGraphicsError
 
+pub fn group_xobject_table_94_vocabulary() -> GroupXObjectTable94Vocabulary
+
 pub fn interpret_content(@content.ContentStream, GraphicsInitialState) -> GraphicsProgram raise PdfGraphicsError
 
 pub fn interpret_content_with_options(@content.ContentStream, GraphicsInitialState, GraphicsInterpretOptions) -> GraphicsProgram raise PdfGraphicsError
@@ -45,6 +47,14 @@ pub fn interpret_content_with_options(@content.ContentStream, GraphicsInitialSta
 pub fn interpret_form_xobject(FormXObject, @content.ContentResources, GraphicsState, GraphicsInterpretOptions, Int64) -> GraphicsProgram raise PdfGraphicsError
 
 pub fn lab_d50_to_srgb(Double, Double, Double) -> DeviceRgbColour
+
+pub fn optional_content_configuration_vocabulary() -> OptionalContentConfigurationVocabulary
+
+pub fn optional_content_graphical_vocabulary() -> OptionalContentGraphicalVocabulary
+
+pub fn optional_content_group_table_96_vocabulary() -> OptionalContentGroupTable96Vocabulary
+
+pub fn optional_content_usage_table_100_vocabulary() -> OptionalContentUsageTable100Vocabulary
 
 pub fn paint_stencil_mask_with_colour(ImageAlphaMaskRaster, DeviceRgbColour) -> ImageDeviceRgbRaster
 
@@ -67,6 +77,30 @@ pub fn parse_tiling_pattern_stream(@objects.PdfStream, Int64) -> TilingPattern r
 pub fn parse_transparency_group_dictionary(Map[@objects.PdfName, @objects.PdfObject], TransparencyGroupContext, Int64) -> TransparencyGroup raise PdfGraphicsError
 
 pub fn parse_xobject_resource(@objects.PdfName, @objects.PdfObject, Int64) -> XObjectResource raise PdfGraphicsError
+
+pub fn pdf_xobjects_images_requirement_0_17_group_xobject_vocabulary() -> String
+
+pub fn pdf_xobjects_images_requirement_0_18_8_10_4() -> String
+
+pub fn pdf_xobjects_images_requirement_0_18_reference_xobject_vocabulary() -> String
+
+pub fn pdf_xobjects_images_requirement_0_19_reference_dictionary_vocabulary() -> String
+
+pub fn pdf_xobjects_images_requirement_0_23_8_11_2() -> String
+
+pub fn pdf_xobjects_images_requirement_0_23_optional_content_group_vocabulary() -> String
+
+pub fn pdf_xobjects_images_requirement_0_27_making_graphical_optional_vocabulary() -> String
+
+pub fn pdf_xobjects_images_requirement_0_31_configuring_optional_content_vocabulary() -> String
+
+pub fn pdf_xobjects_images_requirement_0_35_usage_application_vocabulary() -> String
+
+pub fn pdf_xobjects_images_requirement_0_35_usage_table_100_detailed_vocabulary() -> String
+
+pub fn pdf_xobjects_images_requirement_0_9_alternate_images_vocabulary() -> String
+
+pub fn reference_xobject_general_vocabulary() -> ReferenceXObjectGeneralVocabulary
 
 pub fn rendering_intent_from_name(@objects.PdfName) -> RenderingIntent
 
@@ -129,6 +163,8 @@ pub(all) struct AxialShading {
   extend_end : Bool
   coincident_axis : Bool
 } derive(Eq, @debug.Debug)
+pub fn AxialShading::type2_axial_shading_coords_domain_function_extend(Self) -> Bool
+pub fn AxialShading::uses_default_domain(Self) -> Bool
 
 pub(all) enum BlackPointCompensation {
   BlackPointOn
@@ -460,6 +496,8 @@ pub(all) struct FunctionBasedShading {
   matrix : GraphicsMatrix
   function : @functions.FunctionSource
 } derive(Eq, @debug.Debug)
+pub fn FunctionBasedShading::type1_function_based_shading_domain_matrix_function(Self) -> Bool
+pub fn FunctionBasedShading::uses_default_domain(Self) -> Bool
 
 pub(all) enum GraphicsEvent {
   StateSaved(Int64, GraphicsState)
@@ -609,6 +647,13 @@ pub(all) enum GraphicsStateChange {
 } derive(Eq, @debug.Debug)
 
 type GraphicsStateStack derive(Eq, @debug.Debug)
+
+pub(all) struct GroupXObjectTable94Vocabulary {
+  table_94 : Int
+  group_entry : String
+  subtype_s : String
+  transparency_group : String
+} derive(Eq, @debug.Debug)
 
 pub(all) struct IccBasedParams {
   source : IccProfileSource
@@ -799,10 +844,25 @@ pub fn MeshSummary::has_renderable_triangles(Self) -> Bool
 
 type MsbBitReader derive(Eq, @debug.Debug)
 
+pub(all) struct OptionalContentConfigurationVocabulary {
+  ocproperties : String
+  base_state : String
+  on_array : String
+  off_array : String
+  usage_application : String
+} derive(Eq, @debug.Debug)
+
 pub(all) enum OptionalContentDecision {
   Visible
   Hidden
   InertVisible
+} derive(Eq, @debug.Debug)
+
+pub(all) struct OptionalContentGraphicalVocabulary {
+  marked_content : String
+  form_xobject_oc : String
+  image_xobject_oc : String
+  graphics_state_side_effects : String
 } derive(Eq, @debug.Debug)
 
 pub(all) struct OptionalContentGroup {
@@ -810,6 +870,14 @@ pub(all) struct OptionalContentGroup {
   visible : Bool?
 } derive(Eq, @debug.Debug)
 pub fn OptionalContentGroup::is_visible(Self, Bool) -> Bool
+
+pub(all) struct OptionalContentGroupTable96Vocabulary {
+  table_96 : Int
+  type_ocg : String
+  name : String
+  intent : String
+  usage : String
+} derive(Eq, @debug.Debug)
 
 pub(all) struct OptionalContentMembership {
   groups : Array[String]
@@ -832,6 +900,15 @@ pub(all) struct OptionalContentState {
 pub fn OptionalContentState::evaluate(Self, @objects.PdfObject?, Int64) -> OptionalContentDecision raise PdfGraphicsError
 pub fn OptionalContentState::from_hidden(Array[@objects.ObjectId], Array[@objects.PdfName]) -> Self
 pub fn OptionalContentState::visible() -> Self
+
+pub(all) struct OptionalContentUsageTable100Vocabulary {
+  table_100 : Int
+  view : String
+  print : String
+  export : String
+  zoom : String
+  language : String
+} derive(Eq, @debug.Debug)
 
 type OptionalVisibilityStack derive(Eq, @debug.Debug)
 
@@ -897,6 +974,13 @@ pub(all) struct RadialShading {
   extend_end : Bool
 } derive(Eq, @debug.Debug)
 
+pub(all) struct ReferenceXObjectGeneralVocabulary {
+  containing_document : String
+  target_document : String
+  ref_entry : String
+  proxy_form : String
+} derive(Eq, @debug.Debug)
+
 pub(all) struct ReferenceXObjectInfo {
   file_spec : @objects.PdfObject?
   page : @objects.PdfObject?
@@ -939,12 +1023,16 @@ pub(all) enum ShadingKind {
   TensorPatchMesh(TensorPatchMeshShading)
 } derive(Eq, @debug.Debug)
 pub fn ShadingKind::is_mesh_based(Self) -> Bool
+pub fn ShadingKind::shading_dictionaries_have_entries_specific_to_shading_type(Self) -> Bool
+pub fn ShadingKind::shading_type_number(Self) -> Int
 
 pub(all) struct ShadingPattern {
   shading : ShadingResource
   matrix : GraphicsMatrix
   ext_gstate : Map[@objects.PdfName, @objects.PdfObject]?
 } derive(Eq, @debug.Debug)
+pub fn ShadingPattern::pattern_type_number(Self) -> Int
+pub fn ShadingPattern::type2_shading_pattern_dictionary_shading_matrix_ext_gstate(Self) -> Bool
 pub fn ShadingPattern::uses_temporary_graphics_state(Self) -> Bool
 
 pub(all) enum ShadingResource {
