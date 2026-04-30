@@ -138,7 +138,7 @@
   - Completion: tests cover all text-markup variants, caret defaults and bounds, ink required paths, PDF 2.0 path alternatives, and malformed operand counts.
   - _Requirements: 0.15, 0.16, 0.18_
 
-- [ ] 5.6 Parse popup, file attachment, and sound annotations
+- [x] 5.6 Parse popup, file attachment, and sound annotations
   - Parse popup parent references and open-state defaults without creating UI behavior.
   - Preserve file specifications and sound streams as raw hand-off values.
   - Parse icon defaults for file attachment and sound metadata where owned by annotation dictionaries.
