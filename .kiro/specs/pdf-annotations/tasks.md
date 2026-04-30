@@ -86,7 +86,7 @@
   - _Requirements: 0.2, 0.5, 0.23, 0.24_
   - _Boundary: AnnotationAppearanceParser_
 
-- [ ] 4.3 (P) Parse annotation geometry and colour operands
+- [x] 4.3 (P) Parse annotation geometry and colour operands
   - Parse quadrilaterals, line coordinates, vertices, ink lists, PDF 2.0 path arrays, callout lines, caption offsets, difference rectangles, and fixed-print matrices.
   - Validate operand counts, numeric ranges, rectangle difference constraints, and colour component counts.
   - Completion: geometry tests cover valid operands and malformed counts or bounds for every geometry shape consumed by subtype parsers.
