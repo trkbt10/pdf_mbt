@@ -111,7 +111,7 @@
   - _Boundary: Type3GlyphModel_
   - _Depends: 3.3_
 
-- [ ] 3.5 Decode simple-font show strings to glyph metrics
+- [x] 3.5 Decode simple-font show strings to glyph metrics
   - Decode each source byte as one character code, map it through the font encoding, and attach glyph names, widths, `.notdef` fallback status, and word-spacing eligibility.
   - Apply Type 1 override behavior, Type 3 no-default-glyph behavior, and TrueType metadata-driven fallback behavior without executing font programs.
   - Keep decoded glyphs usable by both text matrix advancement and Unicode mapping.
