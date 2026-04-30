@@ -1,6 +1,9 @@
 ///|
 pub(all) enum HalftoneDefinition {
   TypeOneHalftone(TypeOneHalftone)
+  TypeFiveHalftone(TypeFiveHalftoneSet)
+  TypeSixHalftone(ThresholdHalftone)
+  TypeTenHalftone(ThresholdHalftone)
   TypeSixteenHalftone(TypeSixteenHalftone)
 } derive(Eq, Debug)
 
@@ -16,6 +19,24 @@ pub(all) struct TypeSixteenHalftone {
   primary_thresholds : ThresholdArray
   secondary_thresholds : ThresholdArray?
   transfer_function : @graphics.ColourTransformFunction?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct ThresholdHalftone {
+  thresholds : ThresholdArray
+  transfer_function : @graphics.ColourTransformFunction?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct TypeFiveHalftoneEntry {
+  colourant : @objects.PdfName
+  halftone : HalftoneDefinition
+} derive(Eq, Debug)
+
+///|
+pub(all) struct TypeFiveHalftoneSet {
+  entries : Array[TypeFiveHalftoneEntry]
+  default_halftone : HalftoneDefinition?
 } derive(Eq, Debug)
 
 ///|
@@ -58,6 +79,10 @@ fn parse_halftone_dictionary(
 ) -> HalftoneDefinition raise PdfRenderingError {
   match require_ht_int(dict, b"HalftoneType", offset) {
     1 => TypeOneHalftone(parse_type_one_halftone(dict, offset))
+    5 =>
+      TypeFiveHalftone(
+        parse_type_five_halftone(dict, limits=RenderLimits::default(), offset),
+      )
     16 =>
       raise PdfRenderingError::InvalidResource(
         "Type 16 halftones must be streams containing threshold bytes",
@@ -76,14 +101,31 @@ fn parse_halftone_stream(
   offset : Int64,
 ) -> HalftoneDefinition raise PdfRenderingError {
   match require_ht_int(stream.dict, b"HalftoneType", offset) {
+    6 => TypeSixHalftone(parse_threshold_halftone(stream, 8, limits, offset))
+    10 => TypeTenHalftone(parse_threshold_halftone(stream, 8, limits, offset))
     16 =>
       TypeSixteenHalftone(parse_type_sixteen_halftone(stream, limits, offset))
     1 => TypeOneHalftone(parse_type_one_halftone(stream.dict, offset))
+    5 =>
+      TypeFiveHalftone(parse_type_five_halftone(stream.dict, limits~, offset))
     value =>
       raise PdfRenderingError::UnsupportedCapability(
         "halftone type " + value.to_string() + " is not supported",
       )
   }
+}
+
+///|
+pub fn TypeFiveHalftoneSet::select(
+  self : TypeFiveHalftoneSet,
+  colourant : @objects.PdfName,
+) -> HalftoneDefinition? {
+  for entry in self.entries {
+    if entry.colourant == colourant {
+      return Some(entry.halftone)
+    }
+  }
+  self.default_halftone
 }
 
 ///|
@@ -102,6 +144,70 @@ fn parse_type_one_halftone(
     ),
     accurate_screens: optional_ht_bool(dict, b"AccurateScreens", false),
     transfer_function: optional_ht_transfer(dict),
+  }
+}
+
+///|
+fn parse_type_five_halftone(
+  dict : @objects.PdfDictionary,
+  limits~ : RenderLimits,
+  offset : Int64,
+) -> TypeFiveHalftoneSet raise PdfRenderingError {
+  let entries : Array[TypeFiveHalftoneEntry] = []
+  let mut default_halftone : HalftoneDefinition? = None
+  for key, value in dict {
+    if key == ht_name(b"HalftoneType") ||
+      key == ht_name(b"Type") ||
+      key == ht_name(b"HalftoneName") {
+      continue
+    }
+    let parsed = parse_halftone_object(value, limits~, offset~)
+    if parsed is TypeFiveHalftone(_) {
+      raise PdfRenderingError::InvalidResource(
+        "Type 5 halftone entries must not be nested Type 5 dictionaries",
+      )
+    }
+    if key == ht_name(b"Default") {
+      default_halftone = Some(parsed)
+    } else {
+      entries.push(TypeFiveHalftoneEntry::{ colourant: key, halftone: parsed })
+    }
+  }
+  TypeFiveHalftoneSet::{ entries, default_halftone }
+}
+
+///|
+fn parse_threshold_halftone(
+  stream : @objects.PdfStream,
+  bits_per_sample : Int,
+  limits : RenderLimits,
+  offset : Int64,
+) -> ThresholdHalftone raise PdfRenderingError {
+  let width = require_ht_int(stream.dict, b"Width", offset)
+  let height = require_ht_int(stream.dict, b"Height", offset)
+  let count = width * height
+  let decoded = decode_ht_stream(stream)
+  if decoded.length() != count * bytes_for_bits(bits_per_sample) {
+    raise PdfRenderingError::InvalidResource(
+      "threshold stream length does not match Width and Height",
+    )
+  }
+  if decoded.length() > limits.max_threshold_bytes {
+    raise PdfRenderingError::LimitExceeded(
+      "threshold bytes",
+      decoded.length(),
+      limits.max_threshold_bytes,
+    )
+  }
+  let values : Array[Int] = []
+  for index in 0..<count {
+    values.push(decoded[index].to_int())
+  }
+  let thresholds = ThresholdArray::{ width, height, bits_per_sample, values }
+  thresholds.validate()
+  ThresholdHalftone::{
+    thresholds,
+    transfer_function: optional_ht_transfer(stream.dict),
   }
 }
 

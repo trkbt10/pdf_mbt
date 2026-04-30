@@ -6,16 +6,47 @@ import {
   "trkbt10/pdf/src/functions",
   "trkbt10/pdf/src/graphics",
   "trkbt10/pdf/src/objects",
+  "trkbt10/pdf/src/text",
 }
 
 // Values
 pub fn apply_cie_rendering_intent(@graphics.RenderingIntent) -> CieRenderingIntentApplication
 
+pub fn apply_halftone(AdditiveNativeColour, DevicePixelPoint, ThresholdArray?, RasterDevice) -> DevicePixelMark raise PdfRenderingError
+
+pub fn apply_transfer_functions(NativeColour, @graphics.ColourSpace, TransferFunctionSet) -> AdditiveNativeColour raise PdfRenderingError
+
+pub fn build_render_scene(@graphics.GraphicsProgram, text? : @text.TextProgram, providers? : RenderingProviders) -> RenderScene
+
+pub fn choose_device_colour_policy(RasterDevice, @graphics.ColourSpace) -> DeviceColourPolicy
+
 pub fn convert_device_rgb_to_device_cmyk(@graphics.DeviceRgbColour, black_generation? : @graphics.ColourTransformFunction, undercolour_removal? : @graphics.ColourTransformFunction, offset? : Int64) -> DeviceRgbToCmykConversion raise PdfRenderingError
+
+pub fn fill_device_rect(RasterSurface, Int, Int, Int, Int, DevicePixelMark) -> Int raise PdfRenderingError
 
 pub fn gamut_mapping_strategy_for_intent(@graphics.RenderingIntent) -> GamutMappingStrategy
 
+pub fn image_source_sample_for_device_pixel(Int, Int, Int, Int, Int, Int) -> DevicePixelPoint raise PdfRenderingError
+
+pub fn native_component_to_additive(NativeColourSpace, Double) -> Double
+
+pub fn paint_device_pixel(RasterSurface, DevicePixelPoint, DevicePixelMark) -> Unit raise PdfRenderingError
+
 pub fn parse_halftone_object(@objects.PdfObject, limits? : RenderLimits, offset? : Int64) -> HalftoneDefinition raise PdfRenderingError
+
+pub fn render_colour_to_native(@graphics.ColourState, RasterDevice, RenderingProviders, offset? : Int64) -> NativeColour raise PdfRenderingError
+
+pub fn render_program(@graphics.GraphicsProgram, text? : @text.TextProgram, RasterDevice, options? : RenderOptions, providers? : RenderingProviders) -> RenderResult raise PdfRenderingError
+
+pub fn render_scene(RenderScene, RasterDevice, options? : RenderOptions, providers? : RenderingProviders) -> RenderResult raise PdfRenderingError
+
+pub fn resolve_graphics_state_transfer(@graphics.GraphicsState, RasterDevice, halftone_override? : TransferFunctionRef, offset? : Int64) -> ResolvedTransferFunctions raise PdfRenderingError
+
+pub fn simulate_separations(SeparationTarget) -> RasterSurface raise PdfRenderingError
+
+pub fn stroke_device_line(RasterSurface, DevicePixelPoint, DevicePixelPoint, Double, Bool, DevicePixelMark) -> Int raise PdfRenderingError
+
+pub fn wrap_provider_failure(RenderingProviderKind, String, String) -> PdfRenderingError
 
 // Errors
 pub(all) suberror PdfRenderingError {
@@ -28,12 +59,48 @@ pub(all) suberror PdfRenderingError {
 } derive(Eq, @debug.Debug)
 
 // Types and methods
+pub(all) struct AdditiveNativeColour {
+  colour_space : NativeColourSpace
+  components : Array[Double]
+} derive(Eq, @debug.Debug)
+pub fn AdditiveNativeColour::component_count(Self) -> Int
+
 pub(all) struct CieRenderingIntentApplication {
   intent : @graphics.RenderingIntent
   strategy : GamutMappingStrategy
   preserve_source_white : Bool
   preserve_saturation : Bool
   perceptual_compression : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ClauseTenRenderingSequence {
+  separates_graphics_specification_from_raster_rendering : Bool
+  converts_colour_to_native_colour_space : Bool
+  applies_transfer_functions_before_halftoning : Bool
+  scan_converts_shapes_to_device_pixels : Bool
+  applies_pdf_defined_halftoning : Bool
+} derive(Eq, @debug.Debug)
+pub fn ClauseTenRenderingSequence::general() -> Self
+
+pub(all) struct DeviceColourPolicy {
+  mode : DeviceConversionMode
+  requires_transform_provider : Bool
+  preserves_separation_colourants : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum DeviceConversionMode {
+  NativeDeviceComponents
+  ClassicDeviceFallback
+  ProviderManagedCieIccTransform
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DevicePixelMark {
+  components : Array[Byte]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DevicePixelPoint {
+  x : Int
+  y : Int
 } derive(Eq, @debug.Debug)
 
 pub(all) struct DeviceRgbToCmykConversion {
@@ -56,6 +123,9 @@ pub fn GamutMappingStrategy::map_component(Self, Double) -> Double
 
 pub(all) enum HalftoneDefinition {
   TypeOneHalftone(TypeOneHalftone)
+  TypeFiveHalftone(TypeFiveHalftoneSet)
+  TypeSixHalftone(ThresholdHalftone)
+  TypeTenHalftone(ThresholdHalftone)
   TypeSixteenHalftone(TypeSixteenHalftone)
 } derive(Eq, @debug.Debug)
 
@@ -101,6 +171,13 @@ pub(all) struct PixelAddress {
   byte_index : Int
   buffer_offset : Int
 } derive(Eq, @debug.Debug)
+
+pub(all) struct PixelCoverageRule {
+  half_open_device_pixels : Bool
+  centre_sampled_images : Bool
+  automatic_stroke_adjustment : Bool
+} derive(Eq, @debug.Debug)
+pub fn PixelCoverageRule::default() -> Self
 
 pub(all) struct PixelFormat {
   native_colour_space : NativeColourSpace
@@ -162,6 +239,17 @@ pub fn RasterSurface::pixel_address(Self, Int, Int, Int, Int) -> PixelAddress ra
 pub fn RasterSurface::read_component_byte(Self, Int, Int, Int, Int) -> Byte raise PdfRenderingError
 pub fn RasterSurface::write_component_byte(Self, Int, Int, Int, Int, Byte) -> Unit raise PdfRenderingError
 
+pub(all) struct RenderContext {
+  device : RasterDevice
+  options : RenderOptions
+  providers : RenderingProviders
+  scene : RenderScene
+  surface : RasterSurface
+  report : RenderReport
+} derive(Eq, @debug.Debug)
+pub fn RenderContext::execute(Self) -> RenderResult raise PdfRenderingError
+pub fn RenderContext::new(RasterDevice, RenderScene, options? : RenderOptions, providers? : RenderingProviders) -> Self raise PdfRenderingError
+
 pub(all) struct RenderLimitObservation {
   name : String
   observed : Int
@@ -190,6 +278,15 @@ pub fn RenderOptions::default() -> Self
 pub fn RenderOptions::is_strict(Self) -> Bool
 pub fn RenderOptions::strict() -> Self
 
+pub(all) enum RenderPaintOp {
+  FillPathOp(Int64, @graphics.GraphicsPath, @graphics.GraphicsState)
+  StrokePathOp(Int64, @graphics.GraphicsPath, @graphics.GraphicsState)
+  ImagePaintOp(Int64, @graphics.ImageDescriptor, @graphics.GraphicsState)
+  ShadingPaintOp(Int64, @graphics.ShadingResource, @graphics.GraphicsState)
+  GlyphMaskOp(Int64, @text.TextGlyphEvent)
+  UnsupportedPaintOp(Int64, String)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct RenderReport {
   mut paint_count : Int
   mut skipped_operations : Array[SkippedRenderOperation]
@@ -202,10 +299,69 @@ pub fn RenderReport::record_paint(Self) -> Unit
 pub fn RenderReport::record_provider_fallback(Self, String, String, String) -> Unit
 pub fn RenderReport::record_skip(Self, Int64, String, SkippedRenderReason) -> Unit
 
+pub(all) struct RenderResult {
+  surface : RasterSurface
+  report : RenderReport
+} derive(Eq, @debug.Debug)
+
+pub(all) struct RenderScene {
+  operations : Array[RenderPaintOp]
+} derive(Eq, @debug.Debug)
+pub fn RenderScene::paint_operation_count(Self) -> Int
+
 pub(all) enum RenderStrictness {
   Strict
   BestEffort
 } derive(Eq, @debug.Debug)
+
+pub(all) enum RenderingProviderKind {
+  ObjectResolverProvider
+  PdfFunctionEvaluatorProvider
+  ColourTransformProvider
+  GlyphRasterizerProvider
+} derive(Eq, @debug.Debug)
+
+pub(all) struct RenderingProviders {
+  object_resolver : Bool
+  function_evaluator : Bool
+  colour_transform : Bool
+  glyph_rasterizer : Bool
+} derive(Eq, @debug.Debug)
+pub fn RenderingProviders::all() -> Self
+pub fn RenderingProviders::has(Self, RenderingProviderKind) -> Bool
+pub fn RenderingProviders::none() -> Self
+pub fn RenderingProviders::require(Self, RenderingProviderKind, String) -> Unit raise PdfRenderingError
+pub fn RenderingProviders::strict_preflight(Self, needs_object_resolver? : Bool, needs_function_evaluator? : Bool, needs_colour_transform? : Bool, needs_glyph_rasterizer? : Bool) -> Unit raise PdfRenderingError
+pub fn RenderingProviders::with_colour_transform(Self, Bool) -> Self
+pub fn RenderingProviders::with_function_evaluator(Self, Bool) -> Self
+pub fn RenderingProviders::with_glyph_rasterizer(Self, Bool) -> Self
+pub fn RenderingProviders::with_object_resolver(Self, Bool) -> Self
+
+pub(all) struct ResolvedTransferFunctions {
+  source : TransferSource
+  functions : TransferFunctionSet
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SeparationPaintPolicy {
+  overprint : Bool
+  preserve_spots : Bool
+} derive(Eq, @debug.Debug)
+pub fn SeparationPaintPolicy::default() -> Self
+
+pub(all) struct SeparationPlane {
+  colourant : @objects.PdfName
+  surface : RasterSurface
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SeparationTarget {
+  simulated_device : RasterDevice
+  actual_device : RasterDevice
+  planes : Array[SeparationPlane]
+} derive(Eq, @debug.Debug)
+pub fn SeparationTarget::allocate(RasterDevice, RasterDevice) -> Self raise PdfRenderingError
+pub fn SeparationTarget::paint_colourant(Self, @objects.PdfName, Int, Int, Double) -> Unit raise PdfRenderingError
+pub fn SeparationTarget::plane_count(Self) -> Int
+pub fn SeparationTarget::plane_index(Self, @objects.PdfName) -> Int?
 
 pub(all) struct SkippedRenderOperation {
   offset : Int64
@@ -240,6 +396,11 @@ pub fn ThresholdArray::screen_component(Self, Double, Int, Int) -> Bool raise Pd
 pub fn ThresholdArray::threshold_at(Self, Int, Int) -> Int raise PdfRenderingError
 pub fn ThresholdArray::validate(Self) -> Unit raise PdfRenderingError
 
+pub(all) struct ThresholdHalftone {
+  thresholds : ThresholdArray
+  transfer_function : @graphics.ColourTransformFunction?
+} derive(Eq, @debug.Debug)
+
 pub(all) enum TransferFunctionRef {
   IdentityTransfer
   DirectTransfer(@functions.FunctionSource)
@@ -247,6 +408,31 @@ pub(all) enum TransferFunctionRef {
 } derive(Eq, @debug.Debug)
 pub fn TransferFunctionRef::apply_component(Self, Double, limits? : @functions.FunctionLimits) -> Double raise PdfRenderingError
 pub fn TransferFunctionRef::from_object(@objects.PdfObject, limits? : @functions.FunctionLimits, offset? : Int64) -> Self raise PdfRenderingError
+
+pub(all) enum TransferFunctionSet {
+  SingleTransferFunction(TransferFunctionRef)
+  ComponentTransferFunctions(Array[TransferFunctionRef])
+} derive(Eq, @debug.Debug)
+pub fn TransferFunctionSet::function_for_component(Self, Int) -> TransferFunctionRef raise PdfRenderingError
+pub fn TransferFunctionSet::identity() -> Self
+
+pub(all) enum TransferSource {
+  DeviceDefaultTransfer
+  GraphicsStateTR
+  GraphicsStateTR2
+  HalftoneTransferOverride
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TypeFiveHalftoneEntry {
+  colourant : @objects.PdfName
+  halftone : HalftoneDefinition
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TypeFiveHalftoneSet {
+  entries : Array[TypeFiveHalftoneEntry]
+  default_halftone : HalftoneDefinition?
+} derive(Eq, @debug.Debug)
+pub fn TypeFiveHalftoneSet::select(Self, @objects.PdfName) -> HalftoneDefinition?
 
 pub(all) struct TypeOneHalftone {
   screen : HalftoneScreen

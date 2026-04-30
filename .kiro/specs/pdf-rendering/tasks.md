@@ -30,7 +30,7 @@
   - _Boundary: RasterDeviceModel_
 
 - [ ] 2. Implement device colour rendering
-- [ ] 2.1 (P) Establish rendering provider contracts and resource resolution behavior
+- [x] 2.1 (P) Establish rendering provider contracts and resource resolution behavior
   - Accept caller-supplied providers for object resolution, PDF function evaluation, CIE/ICC colour transforms, and glyph masks without importing the reader.
   - Fail strict rendering before painting when a required provider is absent.
   - The completed provider layer wraps provider failures with enough operation or resource context for callers to diagnose them.

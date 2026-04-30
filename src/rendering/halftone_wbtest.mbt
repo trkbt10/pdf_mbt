@@ -141,3 +141,70 @@ test "type sixteen halftone stream parses big endian threshold rectangles" {
     _ => fail("expected Type 16 halftone")
   }
 }
+
+///|
+test "type six and ten threshold halftones parse exact byte counts" {
+  let dict6 : @objects.PdfDictionary = Map::new()
+  dict6[halftone_test_name(b"HalftoneType")] = @objects.PdfObject::Integer(6L)
+  dict6[halftone_test_name(b"Width")] = @objects.PdfObject::Integer(2L)
+  dict6[halftone_test_name(b"Height")] = @objects.PdfObject::Integer(2L)
+  let stream6 = @objects.PdfStream::{
+    dict: dict6,
+    data: Bytes::from_array([b'\x01', b'\x02', b'\x03', b'\x04']),
+  }
+
+  match parse_halftone_object(@objects.PdfObject::Stream(stream6)) {
+    TypeSixHalftone(halftone) => {
+      assert_eq(halftone.thresholds.width, 2)
+      assert_eq(halftone.thresholds.values[3], 4)
+    }
+    _ => fail("expected Type 6 halftone")
+  }
+
+  let dict10 : @objects.PdfDictionary = Map::new()
+  dict10[halftone_test_name(b"HalftoneType")] = @objects.PdfObject::Integer(10L)
+  dict10[halftone_test_name(b"Width")] = @objects.PdfObject::Integer(1L)
+  dict10[halftone_test_name(b"Height")] = @objects.PdfObject::Integer(2L)
+  let stream10 = @objects.PdfStream::{
+    dict: dict10,
+    data: Bytes::from_array([b'\x08', b'\x09']),
+  }
+
+  match parse_halftone_object(@objects.PdfObject::Stream(stream10)) {
+    TypeTenHalftone(halftone) => {
+      assert_eq(halftone.thresholds.height, 2)
+      assert_eq(halftone.thresholds.values[1], 9)
+    }
+    _ => fail("expected Type 10 halftone")
+  }
+}
+
+///|
+test "type five halftone dispatch selects colourant and default entries" {
+  let type1 : @objects.PdfDictionary = Map::new()
+  type1[halftone_test_name(b"HalftoneType")] = @objects.PdfObject::Integer(1L)
+  type1[halftone_test_name(b"Frequency")] = @objects.PdfObject::Real(100.0)
+  type1[halftone_test_name(b"Angle")] = @objects.PdfObject::Real(15.0)
+  type1[halftone_test_name(b"SpotFunction")] = @objects.PdfObject::Name(
+    halftone_test_name(b"Line"),
+  )
+  let type5 : @objects.PdfDictionary = Map::new()
+  type5[halftone_test_name(b"HalftoneType")] = @objects.PdfObject::Integer(5L)
+  type5[halftone_test_name(b"Cyan")] = @objects.PdfObject::Dictionary(type1)
+  type5[halftone_test_name(b"Default")] = @objects.PdfObject::Dictionary(type1)
+
+  match parse_halftone_object(@objects.PdfObject::Dictionary(type5)) {
+    TypeFiveHalftone(set) => {
+      assert_eq(set.entries.length(), 1)
+      match set.select(halftone_test_name(b"Cyan")) {
+        Some(TypeOneHalftone(_)) => ()
+        _ => fail("expected cyan Type 1 halftone")
+      }
+      match set.select(halftone_test_name(b"Spot")) {
+        Some(TypeOneHalftone(_)) => ()
+        _ => fail("expected default Type 1 halftone")
+      }
+    }
+    _ => fail("expected Type 5 halftone")
+  }
+}

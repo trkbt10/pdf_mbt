@@ -33,6 +33,20 @@ pub(all) struct DeviceRgbToCmykConversion {
 } derive(Eq, Debug)
 
 ///|
+pub(all) enum DeviceConversionMode {
+  NativeDeviceComponents
+  ClassicDeviceFallback
+  ProviderManagedCieIccTransform
+} derive(Eq, Debug)
+
+///|
+pub(all) struct DeviceColourPolicy {
+  mode : DeviceConversionMode
+  requires_transform_provider : Bool
+  preserves_separation_colourants : Bool
+} derive(Eq, Debug)
+
+///|
 pub fn NativeColour::component_count(self : NativeColour) -> Int {
   self.components.length()
 }
@@ -169,6 +183,62 @@ pub fn RasterDevice::convert_colour(
       rgb_to_native_colour(self.native_colour_space, rgb)
     }
   }
+}
+
+///|
+pub fn choose_device_colour_policy(
+  device : RasterDevice,
+  source_space : @graphics.ColourSpace,
+) -> DeviceColourPolicy {
+  match source_space {
+    @graphics.ColourSpace::Device(source) =>
+      if source == device.native_colour_space.to_device_colour_space() {
+        DeviceColourPolicy::{
+          mode: NativeDeviceComponents,
+          requires_transform_provider: false,
+          preserves_separation_colourants: false,
+        }
+      } else {
+        DeviceColourPolicy::{
+          mode: ClassicDeviceFallback,
+          requires_transform_provider: false,
+          preserves_separation_colourants: false,
+        }
+      }
+    @graphics.ColourSpace::Separation(_) | @graphics.ColourSpace::DeviceN(_) =>
+      DeviceColourPolicy::{
+        mode: ProviderManagedCieIccTransform,
+        requires_transform_provider: true,
+        preserves_separation_colourants: true,
+      }
+    _ =>
+      DeviceColourPolicy::{
+        mode: ProviderManagedCieIccTransform,
+        requires_transform_provider: true,
+        preserves_separation_colourants: false,
+      }
+  }
+}
+
+///|
+pub fn render_colour_to_native(
+  colour_state : @graphics.ColourState,
+  device : RasterDevice,
+  providers : RenderingProviders,
+  offset? : Int64 = 0L,
+) -> NativeColour raise PdfRenderingError {
+  let policy = choose_device_colour_policy(device, colour_state.colour_space)
+  if policy.requires_transform_provider && !providers.colour_transform {
+    raise PdfRenderingError::ProviderFailure(
+      "CIE/ICC colour transform",
+      "missing colour transform provider at offset " + offset.to_string(),
+    )
+  }
+  device.convert_colour(
+    colour_state.colour_value,
+    colour_state.colour_space,
+    offset~,
+  )
 }
 
 ///|
