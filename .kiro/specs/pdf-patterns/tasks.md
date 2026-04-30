@@ -128,7 +128,7 @@
   - _Requirements: 0.14, 0.15, 0.16, 0.17_
   - _Boundary: MeshDataParser tests_
   - _Depends: 4.4_
-- [ ] 6.4 Cover interpreter and reader integration flows
+- [x] 6.4 Cover interpreter and reader integration flows
   - Test content streams that select direct Pattern resources and assert final colour state plus typed pattern events.
   - Test direct shading paint operations and assert the current colour state is unchanged while a shading event is emitted.
   - Test reader helpers that load indirect Pattern and Shading resources from page resources and delegate validation to graphics.
