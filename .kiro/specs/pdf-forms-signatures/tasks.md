@@ -55,7 +55,7 @@
   - _Requirements: 0.1, 0.2, 0.10, 0.11, 0.14, 0.29_
   - _Boundary: WidgetBridge, NonInteractiveMarker_
 
-- [ ] 3. Promote form action parsing and selection plans
+- [x] 3. Promote form action parsing and selection plans
 - [ ] 3.1 Parse typed submit, reset, and import action structures
   - Promote submit, reset, and import action dictionaries from raw payloads to typed structures that preserve file specifications, fields arrays, flags, character set, and raw dictionaries.
   - Preserve compatibility with existing raw form action inspection while typed action kinds are introduced.
