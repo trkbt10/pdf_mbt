@@ -46,7 +46,7 @@
   - _Boundary: ColourPipeline_
   - _Depends: 1.3_
 
-- [ ] 2.3 Apply device colour policy and CIE/ICC transform dispatch
+- [x] 2.3 Apply device colour policy and CIE/ICC transform dispatch
   - Decide when source device spaces can be used directly, when they need CIE-based definitions, and when strict transforms are required.
   - Dispatch CIE-based and ICCBased colours through the configured transform provider using the device output profile policy.
   - The completed policy either returns native device values or reports a strict missing-transform error before scan conversion begins.
