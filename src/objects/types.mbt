@@ -19,8 +19,9 @@ pub fn PdfName::to_text(self : PdfName) -> String {
 }
 
 ///|
-/// ISO 32000-2 section 7.3.7 Dictionary object map from Name object keys to
-/// values; null values are omitted by the parser.
+/// ISO 32000-2 section 7.3.7 Dictionary objects are delimited by `<<` and
+/// `>>` and store key-value pairs with name keys; null values are omitted by
+/// the parser.
 pub type PdfDictionary = Map[PdfName, PdfObject]
 
 ///|
@@ -33,7 +34,9 @@ pub(all) struct PdfStream {
 
 ///|
 /// Identifier for an ISO 32000-2 section 7.3.10 indirect object or indirect
-/// reference, made from object number and generation number.
+/// reference, made from object number and generation number. The `N G R`
+/// notation forms an indirect reference from object number N and generation
+/// number G to an indirect object.
 pub(all) struct ObjectId {
   object_number : Int
   generation_number : Int
@@ -50,11 +53,20 @@ pub(all) struct IndirectObject {
 } derive(Eq, Debug)
 
 ///|
-/// Type-safe ISO 32000-2 section 7.3 object model:
+/// Type-safe ISO 32000-2 section 7.3 object model. A Comment or PDF comment
+/// starts with % and extends to end-of-line; it is lexically-significant only
+/// inside content streams; otherwise treated as whitespace and not represented
+/// as a PdfObject. Outside strings and streams, CR, LF, and CRLF are
+/// end-of-line (EOL) markers, consecutive white-space is one separator, and a
+/// delimiter terminates the preceding token before an object is built.
+///
 /// Boolean object true/false, Integer object as a signed decimal integer,
 /// Real object with PERIOD decimal point, literal string or hexadecimal string
-/// bytes, Name object, Array, Dictionary object, Stream object, Null object,
-/// and indirect reference.
+/// bytes, Name object, Array, Dictionary objects delimited by `<<` and `>>`
+/// with key-value pairs and name keys, Stream object, Null object, and
+/// indirect reference. An indirect reference uses `N G R`, where N is the
+/// object number and G is the generation number, to refer to an indirect
+/// object.
 pub(all) enum PdfObject {
   Boolean(Bool)
   Integer(Int64)
