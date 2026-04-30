@@ -138,7 +138,7 @@
   - _Requirements: 1.4, 5.1, 5.2, 5.3, 5.4_
   - _Boundary: InlineImageReader, ContentStreamParser_
 
-- [ ] 5.4 (P) Verify resource lookup and Form XObject scope
+- [x] 5.4 (P) Verify resource lookup and Form XObject scope
   - Cover every supported resource category, absent categories, absent names, and malformed category values.
   - Cover exact name lookup without indirect object loading.
   - Cover Form XObject resource override and parent fallback behavior.
