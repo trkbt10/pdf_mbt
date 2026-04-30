@@ -35,7 +35,7 @@
   - _Requirements: 0.3, 0.5_
 
 - [x] 3. Shading pattern and common shading validation
-- [ ] 3.1 Validate Type 2 shading pattern wrappers
+- [x] 3.1 Validate Type 2 shading pattern wrappers
   - Require Type 2 pattern dictionaries to contain a shading object or reference and accept optional matrix and graphics-state dictionaries.
   - Default the shading pattern matrix to identity and preserve direct graphics-state dictionaries without applying transparency or rendering behavior.
   - Preserve indirect shading entries inside shading patterns as references when graphics cannot load them.
