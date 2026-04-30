@@ -14,7 +14,7 @@
   - Completion: public API review shows descriptor records are available for parser results without adding rendering, action, form, or media execution contracts.
   - _Requirements: 0.4, 0.5, 0.7, 0.8, 0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.18, 0.24, 0.27, 0.28_
 
-- [ ] 1.3 Define visual and markup subtype model contracts
+- [x] 1.3 Define visual and markup subtype model contracts
   - Add externally inspectable records for text, link, free text, line, square, circle, polygon, polyline, text markup, caret, stamp, ink, and popup subtype payloads.
   - Preserve extensible names and raw subtype dictionaries where the specification allows implementation-specific behavior.
   - Completion: API review shows each visual or markup subtype can carry its owned fields and raw dictionary without requiring adjacent-domain parsing.
