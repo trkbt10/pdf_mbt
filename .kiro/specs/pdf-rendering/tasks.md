@@ -155,7 +155,7 @@
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10_
   - _Boundary: HalftoneProcessor_
 
-- [ ] 5. Implement scene building and scan conversion
+- [x] 5. Implement scene building and scan conversion
 - [ ] 5.1 (P) Build ordered render scenes from graphics and optional text semantics
   - Preserve graphics event order and source offsets while turning paint events into renderer operations.
   - Include text glyph paint operations only when compatible text events and glyph providers are supplied.
