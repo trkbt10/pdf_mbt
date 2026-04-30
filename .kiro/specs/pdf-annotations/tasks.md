@@ -62,7 +62,7 @@
   - _Requirements: 0.1_
 
 - [x] 3. Parse common annotation dictionaries
-- [ ] 3.1 Parse common fields, defaults, flags, and common raw values
+- [x] 3.1 Parse common fields, defaults, flags, and common raw values
   - Require a subtype name and annotation rectangle before subtype parsing begins.
   - Accept the annotation type marker only when absent or valid, and preserve byte strings without text normalization.
   - Parse page reference, annotation name, modification date, flags with default zero, appearance state, common colour, structure parent, optional content, associated files, opacity, blend mode, language, and raw dictionary data.
