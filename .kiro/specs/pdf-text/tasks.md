@@ -139,7 +139,7 @@
   - _Boundary: FontResourceResolver_
   - _Depends: 4.1_
 
-- [ ] 4.3 (P) Model CMaps, predefined CMaps, and Identity mappings
+- [x] 4.3 (P) Model CMaps, predefined CMaps, and Identity mappings
   - Represent codespace ranges, character mappings, notdef mappings, writing mode, CMap names, and CIDSystemInfo summaries.
   - Support Identity-H and Identity-V directly, including two-byte big-endian CID decoding and writing-mode selection.
   - Register predefined CMap metadata and character-collection support without runtime downloads.
