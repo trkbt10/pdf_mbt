@@ -17,7 +17,7 @@
   - _Requirements: 4.4_
   - _Boundary: PdfContentError_
 
-- [ ] 2. Core content syntax parsing
+- [x] 2. Core content syntax parsing
 - [x] 2.1 (P) Recognize the standard content operator vocabulary
   - Define the public standard operator model and map exact operator keywords from Annex A to stable variants.
   - Include graphics state, path construction, path painting, clipping, text, color, XObject, inline image, marked content, compatibility, shading, and glyph-width operators.
