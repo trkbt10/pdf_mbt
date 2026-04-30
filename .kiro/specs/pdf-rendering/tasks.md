@@ -75,7 +75,7 @@
   - _Boundary: ColourPipeline_
 
 - [x] 3. Implement transfer functions
-- [ ] 3.1 (P) Resolve graphics-state transfer references and precedence
+- [x] 3.1 (P) Resolve graphics-state transfer references and precedence
   - Select TR2 over TR and support single-function or per-component transfer sets.
   - Resolve Identity and provider-backed PDF functions with strict errors for unsupported required functions.
   - The completed resolver chooses the expected transfer source for RGB, Gray, and CMYK devices in isolation tests.
