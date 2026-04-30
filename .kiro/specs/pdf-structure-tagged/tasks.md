@@ -192,7 +192,7 @@
   - _Boundary: AccessibilityPropertyResolver_
   - _Depends: 2.1, 2.3, 5.3_
 
-- [ ] 6.2 Produce core Tagged PDF diagnostics
+- [x] 6.2 Produce core Tagged PDF diagnostics
   - Check the tagged mark flag, structure root presence, real content versus artifact declarations, logical order metadata, annotation sequencing, role-map coverage, and namespace membership.
   - Report conformance issues as errors or warnings without blocking raw structure inspection.
   - Preserve references to affected elements, content items, namespaces, and attributes where available.
