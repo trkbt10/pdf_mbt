@@ -82,7 +82,7 @@
   - _Depends: 1.1, 1.2_
   - _Requirements: 0.22, 0.23, 0.24, 0.25, 0.26_
   - _Boundary: OptionalContentEvaluator_
-- [ ] 4.2 Build optional-content configuration state
+- [x] 4.2 Build optional-content configuration state
   - Parse OCProperties, OCGs, default and alternate configurations, BaseState, ON, OFF, Intent, Order, ListMode, RBGroups, and Locked entries.
   - Apply the default configuration to initialize group state, while missing OCProperties makes optional-content structures inert and visible.
   - Done: default configuration state reflects BaseState and ON/OFF overrides, with configuration presentation metadata preserved.
