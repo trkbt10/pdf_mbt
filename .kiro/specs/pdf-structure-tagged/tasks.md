@@ -72,7 +72,7 @@
   - _Boundary: StructureContentResolver_
   - _Depends: 2.3_
 
-- [ ] 3.2 Parse object references and annotation/form content links
+- [x] 3.2 Parse object references and annotation/form content links
   - Interpret object reference dictionaries with required object references and optional page overrides.
   - Preserve references to annotations, XObjects, widget annotations, link annotations, and form-related content without executing actions or rendering.
   - Model logical sequencing for annotation, link, and form content through structure children.
