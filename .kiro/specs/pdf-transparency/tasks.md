@@ -165,7 +165,7 @@
   - _Requirements: 1, 2, 2.1, 2.2, 2.3, 2.4, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.14, 2.15, 2.16, 2.17, 2.18, 2.19, 2.20, 2.21, 2.22, 2.23, 2.24, 2.36, 2.37, 2.38, 2.39, 2.40, 2.41, 2.42, 2.43, 2.44, 2.45, 2.46_
   - _Boundary: RenderingValidation_
   - _Depends: 3.7_
-- [ ] 5.3 Validate reader integration and package boundaries
+- [x] 5.3 Validate reader integration and package boundaries
   - Run focused reader tests for indirect ExtGState, soft masks, transparency groups, page groups, patterns, shadings, and XObject resource materialization.
   - Verify reader wraps lower-level errors while graphics and rendering remain independent of reader imports.
   - Validation output shows reader integration tests pass and package boundary checks still enforce the design dependency direction.

@@ -10,6 +10,7 @@ import {
   "trkbt10/pdf/src/graphics",
   "trkbt10/pdf/src/interchange",
   "trkbt10/pdf/src/objects",
+  "trkbt10/pdf/src/rendering",
   "trkbt10/pdf/src/text",
 }
 
@@ -81,6 +82,7 @@ pub(all) suberror PdfDocumentError {
   InterchangeError(@interchange.PdfInterchangeError)
   ContentError(@content.PdfContentError)
   GraphicsError(@graphics.PdfGraphicsError)
+  RenderingError(@rendering.PdfRenderingError)
   FunctionError(@objects.ObjectId, @functions.PdfFunctionError)
   TextError(@text.PdfTextError)
   PageIndexOutOfRange(Int, Int)
@@ -1576,6 +1578,7 @@ pub fn PdfPage::index(Self) -> Int
 pub fn PdfPage::inherited_entry(Self, @objects.PdfName) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfPage::materialized_content_resources(Self) -> @content.ContentResources raise PdfDocumentError
 pub fn PdfPage::materialized_content_stream(Self) -> @content.ContentStream raise PdfDocumentError
+pub fn PdfPage::materialized_transparency_inputs(Self) -> PdfPageTransparencyInputs raise PdfDocumentError
 pub fn PdfPage::media_box(Self) -> PdfRectangle? raise PdfDocumentError
 pub fn PdfPage::navigation_node_backward_action(Self, PdfNavigationNode) -> PdfAction? raise PdfDocumentError
 pub fn PdfPage::navigation_node_forward_action(Self, PdfNavigationNode) -> PdfAction? raise PdfDocumentError
@@ -1587,6 +1590,7 @@ pub fn PdfPage::pattern_resource(Self, @objects.PdfName) -> @graphics.PatternRes
 pub fn PdfPage::pattern_resources(Self) -> Array[@graphics.PatternResource] raise PdfDocumentError
 pub fn PdfPage::piece_info(Self) -> @interchange.PdfPagePieceDictionary? raise PdfDocumentError
 pub fn PdfPage::presentation(Self) -> PdfPresentation raise PdfDocumentError
+pub fn PdfPage::render_transparency_page(Self, @rendering.RasterDevice, options? : @rendering.RenderOptions, providers? : @rendering.RenderingProviders) -> @rendering.RenderResult raise PdfDocumentError
 pub fn PdfPage::resolve_entry(Self, @objects.PdfName) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfPage::resources(Self) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfPage::rotate(Self) -> Int? raise PdfDocumentError
@@ -1594,6 +1598,7 @@ pub fn PdfPage::shading_resource(Self, @objects.PdfName) -> @graphics.ShadingRes
 pub fn PdfPage::text_program(Self, TextPageOptions) -> @text.TextProgram raise PdfDocumentError
 pub fn PdfPage::text_resources(Self) -> @text.TextResources raise PdfDocumentError
 pub fn PdfPage::thumbnail(Self) -> PdfThumbnail? raise PdfDocumentError
+pub fn PdfPage::transparency_group(Self) -> @graphics.TransparencyGroup? raise PdfDocumentError
 pub fn PdfPage::user_unit(Self) -> Double? raise PdfDocumentError
 
 pub(all) struct PdfPageAdditionalActions {
@@ -1648,6 +1653,11 @@ pub(all) enum PdfPageMode {
 pub(all) struct PdfPageRange {
   first : Int
   last : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfPageTransparencyInputs {
+  page_group : @graphics.TransparencyGroup?
+  resources : @content.ContentResources
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfPermissionsDictionary {
