@@ -259,7 +259,7 @@
   - _Boundary: ReaderTextBridge_
   - _Depends: 3.4, 4.5, 5.1, 6.5_
 
-- [ ] 7.2 Expose page text program and extracted text APIs
+- [x] 7.2 Expose page text program and extracted text APIs
   - Add page-level APIs that return materialized text resources, interpreted text programs, and extracted text using caller-supplied text options.
   - Wrap text failures as document errors while preserving existing content parsing, page content, object loading, and stream decoding errors.
   - Keep reader-to-text dependency one-way and avoid changes to content, graphics, object parser, page tree traversal, or xref loading semantics.
