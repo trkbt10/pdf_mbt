@@ -67,7 +67,7 @@
   - _Requirements: 2, 3.16, 3.17_
   - _Boundary: ColourPipeline_
 
-- [ ] 2.6 Cover colour rendering with deterministic unit tests
+- [x] 2.6 Cover colour rendering with deterministic unit tests
   - Verify each classic conversion formula, strict provider fallback, CIE/ICC dispatch, BG/UCR behavior, clamping, and spot preservation.
   - Include tests for both matching and nonmatching native device colour spaces.
   - The completed colour test suite fails on formula regressions and passes under `moon test` for the rendering package.
