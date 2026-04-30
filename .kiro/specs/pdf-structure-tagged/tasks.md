@@ -182,7 +182,7 @@
   - _Boundary: AttributeResolver, MarkInfoReader_
   - _Depends: 2.1, 5.1_
 
-- [ ] 6. Resolve accessibility properties and Tagged PDF reports
+- [x] 6. Resolve accessibility properties and Tagged PDF reports
 - [ ] 6.1 Resolve accessibility text properties and effective language
   - Resolve effective language from catalog and structure ancestors while preserving absent-language state.
   - Expose alternate description, replacement text, abbreviation expansion, phoneme, and phonetic alphabet properties on elements.
