@@ -105,7 +105,7 @@
   - _Depends: 5.1, 5.2_
 
 - [x] 6. Focused tests for pattern and shading behavior
-- [ ] 6.1 Cover Pattern and tiling validation cases
+- [x] 6.1 Cover Pattern and tiling validation cases
   - Test missing and wrong pattern type, optional type mismatch, invalid matrix, invalid bounding box, invalid paint type, invalid tiling type, missing resources, and zero steps.
   - Test coloured and uncoloured pattern colour selection operands against Pattern colour spaces with and without underlying colour spaces.
   - Test tiling cell validation with decoded content and uncoloured colour-operator restrictions.
