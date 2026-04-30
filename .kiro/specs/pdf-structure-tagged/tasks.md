@@ -63,7 +63,7 @@
   - _Depends: 2.3_
 
 - [x] 3. Model structure content items and reverse associations
-- [ ] 3.1 Parse marked-content identifiers and marked-content references
+- [x] 3.1 Parse marked-content identifiers and marked-content references
   - Interpret integer children as MCID content items using the containing element page context.
   - Interpret marked-content reference dictionaries with page overrides, stream references, stream-owner references, and required MCID values.
   - Enforce indirect-reference requirements for page, stream, and stream-owner entries while preserving raw references.
