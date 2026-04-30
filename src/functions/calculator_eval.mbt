@@ -103,6 +103,44 @@ fn calculator_values_equal(
 }
 
 ///|
+fn calculator_value_copy(value : CalculatorValue) -> CalculatorValue {
+  match value {
+    Number(number) => Number(number)
+    Boolean(boolean) => Boolean(boolean)
+  }
+}
+
+///|
+fn require_stack_extent(
+  runtime : CalculatorRuntime,
+  count : Int,
+  operation : String,
+) -> Unit raise PdfFunctionError {
+  if count < 0 {
+    raise PdfFunctionError::EvaluationFailure(
+      0L,
+      "calculator \{operation} requires a non-negative count",
+    )
+  }
+  if count > runtime.stack.length() {
+    raise PdfFunctionError::EvaluationFailure(
+      0L,
+      "calculator \{operation} exceeds stack depth",
+    )
+  }
+}
+
+///|
+fn positive_mod(value : Int, modulus : Int) -> Int {
+  let result = value % modulus
+  if result < 0 {
+    result + modulus
+  } else {
+    result
+  }
+}
+
+///|
 fn eval_arithmetic_operator(
   runtime : CalculatorRuntime,
   operator : CalculatorOperator,
@@ -376,6 +414,70 @@ fn eval_relational_boolean_bitwise_operator(
 }
 
 ///|
+fn eval_stack_operator(
+  runtime : CalculatorRuntime,
+  operator : CalculatorOperator,
+) -> Bool raise PdfFunctionError {
+  match operator {
+    Pop => {
+      runtime.pop() |> ignore
+      true
+    }
+    Dup => {
+      let value = runtime.pop()
+      runtime.push(calculator_value_copy(value))
+      runtime.push(value)
+      true
+    }
+    Exch => {
+      let top = runtime.pop()
+      let below = runtime.pop()
+      runtime.push(top)
+      runtime.push(below)
+      true
+    }
+    Copy => {
+      let count = calculator_int(runtime.pop_number())
+      require_stack_extent(runtime, count, "copy")
+      let start = runtime.stack.length() - count
+      for index in start..<runtime.stack.length() {
+        runtime.push(calculator_value_copy(runtime.stack[index]))
+      }
+      true
+    }
+    Index => {
+      let depth = calculator_int(runtime.pop_number())
+      require_stack_extent(runtime, depth + 1, "index")
+      let source = runtime.stack.length() - depth - 1
+      runtime.push(calculator_value_copy(runtime.stack[source]))
+      true
+    }
+    Roll => {
+      let shift = calculator_int(runtime.pop_number())
+      let count = calculator_int(runtime.pop_number())
+      require_stack_extent(runtime, count, "roll")
+      if count > 0 {
+        let start = runtime.stack.length() - count
+        let values : Array[CalculatorValue] = []
+        for index in start..<runtime.stack.length() {
+          values.push(calculator_value_copy(runtime.stack[index]))
+        }
+        for _ in 0..<count {
+          runtime.pop() |> ignore
+        }
+        let amount = positive_mod(shift, count)
+        for offset in 0..<count {
+          let source = positive_mod(offset - amount, count)
+          runtime.push(calculator_value_copy(values[source]))
+        }
+      }
+      true
+    }
+    _ => false
+  }
+}
+
+///|
 fn CalculatorRuntime::execute_instruction(
   self : CalculatorRuntime,
   instruction : CalculatorInstruction,
@@ -386,7 +488,8 @@ fn CalculatorRuntime::execute_instruction(
     CalculatorBoolean(value) => self.push(Boolean(value))
     CalculatorOperator(operator) =>
       if !eval_arithmetic_operator(self, operator) &&
-        !eval_relational_boolean_bitwise_operator(self, operator) {
+        !eval_relational_boolean_bitwise_operator(self, operator) &&
+        !eval_stack_operator(self, operator) {
         raise PdfFunctionError::EvaluationFailure(
           0L, "calculator operator is not implemented yet",
         )
@@ -399,15 +502,77 @@ fn CalculatorRuntime::execute_instruction(
 }
 
 ///|
+fn CalculatorRuntime::execute_instructions(
+  self : CalculatorRuntime,
+  instructions : Array[CalculatorInstruction],
+) -> Unit raise PdfFunctionError {
+  let mut index = 0
+  while index < instructions.length() {
+    match instructions[index] {
+      CalculatorBlock(block) =>
+        if index + 1 < instructions.length() &&
+          is_operator(instructions[index + 1], If) {
+          self.step()
+          match self.pop() {
+            Boolean(condition) =>
+              if condition {
+                self.execute_instructions(block)
+              }
+            Number(_) =>
+              raise PdfFunctionError::EvaluationFailure(
+                0L, "calculator if requires boolean condition",
+              )
+          }
+          index = index + 2
+        } else if index + 2 < instructions.length() {
+          match instructions[index + 1] {
+            CalculatorBlock(other) =>
+              if is_operator(instructions[index + 2], Ifelse) {
+                self.step()
+                match self.pop() {
+                  Boolean(condition) =>
+                    if condition {
+                      self.execute_instructions(block)
+                    } else {
+                      self.execute_instructions(other)
+                    }
+                  Number(_) =>
+                    raise PdfFunctionError::EvaluationFailure(
+                      0L, "calculator ifelse requires boolean condition",
+                    )
+                }
+                index = index + 3
+              } else {
+                raise PdfFunctionError::EvaluationFailure(
+                  0L, "calculator conditional block is malformed",
+                )
+              }
+            _ =>
+              raise PdfFunctionError::EvaluationFailure(
+                0L, "calculator conditional block is malformed",
+              )
+          }
+        } else {
+          raise PdfFunctionError::EvaluationFailure(
+            0L, "calculator conditional block is malformed",
+          )
+        }
+      _ => {
+        self.execute_instruction(instructions[index])
+        index = index + 1
+      }
+    }
+  }
+}
+
+///|
 fn evaluate_calculator_function(
   function : CalculatorFunction,
   clipped_inputs : Array[Double],
   limits : FunctionLimits,
 ) -> Array[Double] raise PdfFunctionError {
   let runtime = CalculatorRuntime::new(clipped_inputs, limits)
-  for instruction in function.program.instructions {
-    runtime.execute_instruction(instruction)
-  }
+  runtime.execute_instructions(function.program.instructions)
   let output_count = require_range(function.common, 0L, "Type 4").length()
   if runtime.stack.length() != output_count {
     raise PdfFunctionError::EvaluationFailure(

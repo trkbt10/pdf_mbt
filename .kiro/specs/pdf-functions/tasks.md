@@ -72,7 +72,7 @@
   - _Requirements: 0.6_
   - _Boundary: CalculatorFunctionModel_
 
-- [ ] 2.8 Execute calculator conditionals, stack operators, and limits
+- [x] 2.8 Execute calculator conditionals, stack operators, and limits
   - Execute `if` and `ifelse` blocks using parsed brace expressions without exposing PostScript procedure objects.
   - Implement stack operators and enforce calculator token, stack depth, nested block, evaluation-step, and final output-count limits.
   - Tests cover conditional branch selection, nested conditionals, every stack operator, bounded execution failures, and exact final numeric output arity.
