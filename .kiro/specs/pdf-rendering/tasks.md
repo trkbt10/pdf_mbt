@@ -83,7 +83,7 @@
   - _Boundary: TransferFunctionPipeline_
   - _Depends: 1.2, 2.1_
 
-- [ ] 3.2 Apply transfer functions in additive native component form
+- [x] 3.2 Apply transfer functions in additive native component form
   - Apply transfers after native colour conversion and before halftoning.
   - Convert subtractive components to additive form before function evaluation and keep transferred output in additive form.
   - The completed transfer step processes each native component independently and exposes additive values for halftone input.
