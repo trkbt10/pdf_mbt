@@ -41,7 +41,7 @@
   - Preserve indirect shading entries inside shading patterns as references when graphics cannot load them.
   - Done when Type 2 pattern wrappers validate direct shading objects, preserve indirect shading references, and reject malformed wrapper fields.
   - _Requirements: 0.6_
-- [ ] 3.2 Validate common shading dictionary entries and colour-space rules
+- [x] 3.2 Validate common shading dictionary entries and colour-space rules
   - Require shading type and colour space, reject Pattern colour spaces, and validate background component counts, bounding boxes, and anti-alias defaults.
   - Apply Indexed colour-space restrictions whenever a function-bearing shading or shading type forbids Indexed interpolation.
   - Preserve function objects unevaluated while validating their required presence by shading type.
