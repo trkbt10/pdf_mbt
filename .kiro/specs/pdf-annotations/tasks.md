@@ -204,7 +204,7 @@
   - Completion: security and boundary tests exercise representative raw payloads and prove only object parsing and validation occur.
   - _Requirements: 0.1, 0.5, 0.10, 0.20, 0.21, 0.22, 0.23, 0.24, 0.27, 0.28, 0.29_
 
-- [ ] 6.4 Review the exported reader API and preserve existing compatibility
+- [x] 6.4 Review the exported reader API and preserve existing compatibility
   - Regenerate and inspect the public reader interface so only intended annotation and tab-order additions appear.
   - Confirm the raw page annotation accessor still returns the original page entry while the typed accessors perform structural parsing lazily.
   - Completion: interface review and compatibility tests show existing reader, navigation, graphics, xobject, optional-content, and page-structure behavior remains unchanged.
