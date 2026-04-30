@@ -135,7 +135,7 @@
   - _Requirements: 2.20, 2.25, 2.32, 2.34, 2.35_
   - _Boundary: ReaderTransparencyBridge_
   - _Depends: 1.2, 1.3, 1.4_
-- [ ] 4.2 Resolve soft-mask and group resource graphs safely
+- [x] 4.2 Resolve soft-mask and group resource graphs safely
   - Materialize soft-mask group XObjects, subsidiary image masks, nested Form XObjects, and transparency-related resource dictionaries with cycle detection.
   - Wrap graphics and rendering failures in document-level errors without evaluating blend formulas in the reader.
   - Reader tests reject recursive transparency resources and preserve package boundaries so graphics and rendering do not import reader.

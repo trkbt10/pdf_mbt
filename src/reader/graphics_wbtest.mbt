@@ -129,6 +129,27 @@ test "page transparency inputs materialize group resources and ExtGState" {
 }
 
 ///|
+test "page transparency materialization rejects recursive soft mask resources" {
+  let document = PdfDocument::open(
+    build_page_graphics_recursive_soft_mask_fixture(),
+  )
+  let page = document.page(0)
+  let result : Result[@graphics.GraphicsProgram, PdfDocumentError] = try? page.graphics_program(
+    GraphicsPageOptions::with_materialized_resources(None),
+  )
+  match result {
+    Err(CycleDetected(id, reason)) => {
+      assert_eq(
+        id == @objects.ObjectId::{ object_number: 5, generation_number: 0 },
+        true,
+      )
+      assert_eq(reason.contains("recursive"), true)
+    }
+    _ => fail("expected recursive soft mask materialization failure")
+  }
+}
+
+///|
 fn build_page_graphics_metadata_fixture() -> Bytes {
   let (bytes, header_base) = build_document_structure_fixture_prefix()
 
@@ -263,6 +284,31 @@ fn build_page_graphics_transparency_fixture() -> Bytes {
   finish_page_content_fixture(bytes, header_base, [
     catalog_offset, pages_offset, page_offset, content_offset, group_offset, extgstate_offset,
     pattern_offset, shading_offset,
+  ])
+}
+
+///|
+fn build_page_graphics_recursive_soft_mask_fixture() -> Bytes {
+  let (bytes, header_base) = build_document_structure_fixture_prefix()
+
+  let (bytes, catalog_offset) = append_indirect_object(
+    bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R >>",
+  )
+  let (bytes, pages_offset) = append_indirect_object(
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+  )
+  let (bytes, page_offset) = append_indirect_object(
+    bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /ExtGState << /GS1 5 0 R >> >> /Contents 4 0 R >>",
+  )
+  let content_stream = build_stream_object_body(b"<< /Length 7 >>", b"/GS1 gs")
+  let (bytes, content_offset) = append_indirect_object(
+    bytes, header_base, 4, 0, content_stream,
+  )
+  let (bytes, extgstate_offset) = append_indirect_object(
+    bytes, header_base, 5, 0, b"<< /SMask << /S /Alpha /G 5 0 R >> >>",
+  )
+  finish_page_content_fixture(bytes, header_base, [
+    catalog_offset, pages_offset, page_offset, content_offset, extgstate_offset,
   ])
 }
 

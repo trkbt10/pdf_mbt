@@ -156,7 +156,8 @@ fn materialize_resource_object(
         materialize_xobject_stream(file, loaded, id, form_stack, page_id)
       } else if category == b"ColorSpace" ||
         category == b"Pattern" ||
-        category == b"Shading" {
+        category == b"Shading" ||
+        category == b"ExtGState" {
         materialize_nested_resource_object(file, loaded, [id], page_id)
       } else {
         loaded
@@ -164,7 +165,8 @@ fn materialize_resource_object(
     }
     _ if category == b"ColorSpace" ||
       category == b"Pattern" ||
-      category == b"Shading" =>
+      category == b"Shading" ||
+      category == b"ExtGState" =>
       materialize_nested_resource_object(file, object, [], page_id)
     @objects.PdfObject::Stream(stream) if category == b"XObject" =>
       materialize_direct_xobject_stream(file, stream, form_stack, page_id)
@@ -195,7 +197,7 @@ fn materialize_xobject_stream(
         )
       } else if xobject_subtype_is(stream, b"Image") {
         @objects.PdfObject::Stream(
-          materialize_image_stream_resources(file, stream),
+          materialize_image_stream_resources(file, stream, [id]),
         )
       } else {
         object
@@ -223,7 +225,9 @@ fn materialize_direct_xobject_stream(
       materialize_form_stream_resources(file, stream, form_stack, page_id),
     )
   } else if xobject_subtype_is(stream, b"Image") {
-    @objects.PdfObject::Stream(materialize_image_stream_resources(file, stream))
+    @objects.PdfObject::Stream(
+      materialize_image_stream_resources(file, stream, []),
+    )
   } else {
     @objects.PdfObject::Stream(stream)
   }
@@ -233,11 +237,12 @@ fn materialize_direct_xobject_stream(
 fn materialize_image_stream_resources(
   file : PdfFile,
   stream : @objects.PdfStream,
+  object_stack : Array[@objects.ObjectId],
 ) -> @objects.PdfStream raise PdfDocumentError {
   let dict = stream.dict.copy()
-  materialize_image_stream_entry(file, dict, b"ColorSpace")
-  materialize_image_stream_entry(file, dict, b"Mask")
-  materialize_image_stream_entry(file, dict, b"SMask")
+  materialize_image_stream_entry(file, dict, b"ColorSpace", object_stack)
+  materialize_image_stream_entry(file, dict, b"Mask", object_stack)
+  materialize_image_stream_entry(file, dict, b"SMask", object_stack)
   @objects.PdfStream::{ dict, data: stream.data }
 }
 
@@ -246,10 +251,12 @@ fn materialize_image_stream_entry(
   file : PdfFile,
   dict : @objects.PdfDictionary,
   key_bytes : Bytes,
+  object_stack : Array[@objects.ObjectId],
 ) -> Unit raise PdfDocumentError {
   let key = @objects.PdfName::new(key_bytes)
   match dict.get(key) {
-    Some(object) => dict[key] = materialize_nested_image_object(file, object)
+    Some(object) =>
+      dict[key] = materialize_nested_image_object(file, object, object_stack)
     None => ()
   }
 }
@@ -258,27 +265,44 @@ fn materialize_image_stream_entry(
 fn materialize_nested_image_object(
   file : PdfFile,
   object : @objects.PdfObject,
+  object_stack : Array[@objects.ObjectId],
 ) -> @objects.PdfObject raise PdfDocumentError {
   match object {
-    @objects.PdfObject::Ref(id) =>
-      materialize_nested_image_object(file, load_document_object(file, id))
+    @objects.PdfObject::Ref(id) => {
+      if contains_object_id(object_stack, id) {
+        raise PdfDocumentError::CycleDetected(
+          id, "recursive image transparency resource reference",
+        )
+      }
+      let next_stack = object_stack.copy()
+      next_stack.push(id)
+      materialize_nested_image_object(
+        file,
+        load_document_object(file, id),
+        next_stack,
+      )
+    }
     @objects.PdfObject::Array(values) => {
       let materialized : Array[@objects.PdfObject] = []
       for value in values {
-        materialized.push(materialize_nested_image_object(file, value))
+        materialized.push(
+          materialize_nested_image_object(file, value, object_stack),
+        )
       }
       @objects.PdfObject::Array(materialized)
     }
     @objects.PdfObject::Dictionary(dict) => {
       let materialized : @objects.PdfDictionary = Map::new()
       for key, value in dict {
-        materialized[key] = materialize_nested_image_object(file, value)
+        materialized[key] = materialize_nested_image_object(
+          file, value, object_stack,
+        )
       }
       @objects.PdfObject::Dictionary(materialized)
     }
     @objects.PdfObject::Stream(stream) =>
       @objects.PdfObject::Stream(
-        materialize_image_stream_resources(file, stream),
+        materialize_image_stream_resources(file, stream, object_stack),
       )
     _ => object
   }
