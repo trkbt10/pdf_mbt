@@ -51,7 +51,7 @@
   - _Requirements: 0.2, 0.3, 0.4, 0.6, 0.14_
   - _Boundary: InlineImageSemanticValidator_
 
-- [ ] 3. Form XObject semantics
+- [x] 3. Form XObject semantics
 - [x] 3.1 (P) Validate form dictionaries, group attributes, and reference metadata
   - Validate Type 1 form requirements, BBox, Matrix defaults, Resources, structural parent exclusivity, group Type and subtype metadata, and reference F/Page/ID entries.
   - Preserve proxy form behavior, printing selection metadata, annotation caveats, logical-structure caveats, and PDF 2.0 associated metadata without external PDF import.
