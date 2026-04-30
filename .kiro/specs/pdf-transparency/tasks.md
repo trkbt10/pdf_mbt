@@ -91,7 +91,7 @@
   - _Requirements: 1, 2, 2.1, 2.2, 2.3, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.28, 2.29, 2.30, 2.31_
   - _Boundary: TransparencyCompositor_
   - _Depends: 2.2, 2.3, 2.4, 3.1_
-- [ ] 3.3 Composite transparency groups recursively
+- [x] 3.3 Composite transparency groups recursively
   - Composite nested group stacks with group backdrop, initial backdrop, immediate backdrop, inherited colour spaces, group result colour, group shape, and group alpha.
   - Support isolated and non-isolated groups and page groups without applying backdrop contribution twice.
   - Group rendering tests cover nested groups, isolated groups, non-isolated groups, and page backdrop scenarios.
