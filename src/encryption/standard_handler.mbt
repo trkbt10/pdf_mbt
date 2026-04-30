@@ -22,7 +22,15 @@ pub fn authenticate(
 
 ///|
 /// Parsed Standard security handler dictionary used by authentication helpers.
-struct StandardEncryptionDictionary {
+///
+/// This is the Standard security handler input from the encryption dictionary:
+/// revision R, O, U, OE, UE, P permissions, Perms, EncryptMetadata, V/Length,
+/// and crypt filter configuration. Revision 6 O and U entries are 48 bytes,
+/// with 32 hash bytes, 8 validation-salt bytes, and 8 key-salt bytes. It is
+/// intentionally byte-oriented so
+/// Algorithms 2 through 13 can derive the file encryption key without reader
+/// state.
+pub(all) struct StandardEncryptionDictionary {
   revision : Int
   cipher_version : CipherVersion
   key_length_bytes : Int
@@ -122,7 +130,10 @@ fn encryption_context(
 }
 
 ///|
-fn parse_standard_encryption_dictionary(
+/// Parses the Standard encryption dictionary fields used for password
+/// authentication, file-key derivation, permission interpretation, and crypt
+/// filter selection. Revision 6 O and U entries must be exactly 48 bytes.
+pub fn parse_standard_encryption_dictionary(
   dict : @objects.PdfDictionary,
 ) -> StandardEncryptionDictionary raise PdfEncryptionError {
   require_standard_filter(dict)
@@ -408,6 +419,62 @@ pub fn verify_aes256_owner_password(
 }
 
 ///|
+/// Computes revision 6 Algorithm 8 U entry and UE file-key wrapper from a
+/// user password, validation salt, key salt, and 32-byte file encryption key.
+/// The caller supplies salts so tests and fixtures can be deterministic.
+pub fn compute_aes256_user_entries(
+  revision : Int,
+  user_password : Bytes,
+  user_validation_salt : Bytes,
+  user_key_salt : Bytes,
+  file_key : Bytes,
+) -> (Bytes, Bytes) raise PdfEncryptionError {
+  validate_aes256_entry_inputs(user_validation_salt, user_key_salt, file_key)
+  let password = truncate_password_127(user_password)
+  let hash = aes256_hash(revision, password, user_validation_salt, None)
+  let user_entry = hash + user_validation_salt + user_key_salt
+  let wrapping_key = aes256_hash(revision, password, user_key_salt, None)
+  let user_encrypted_file_key = encrypt_aes256_file_key(wrapping_key, file_key)
+  (user_entry, user_encrypted_file_key)
+}
+
+///|
+/// Computes revision 6 Algorithm 9 O entry and OE file-key wrapper from an
+/// owner password, the 48-byte U entry, validation salt, key salt, and
+/// 32-byte file encryption key.
+pub fn compute_aes256_owner_entries(
+  revision : Int,
+  owner_password : Bytes,
+  owner_validation_salt : Bytes,
+  owner_key_salt : Bytes,
+  user_entry : Bytes,
+  file_key : Bytes,
+) -> (Bytes, Bytes) raise PdfEncryptionError {
+  if user_entry.length() != 48 {
+    raise PdfEncryptionError::MalformedEncryptionDictionary(
+      "U", "revision 6 U entry must contain 48 bytes",
+    )
+  }
+  validate_aes256_entry_inputs(owner_validation_salt, owner_key_salt, file_key)
+  let password = truncate_password_127(owner_password)
+  let hash = aes256_hash(
+    revision,
+    password,
+    owner_validation_salt,
+    Some(user_entry),
+  )
+  let owner_entry = hash + owner_validation_salt + owner_key_salt
+  let wrapping_key = aes256_hash(
+    revision,
+    password,
+    owner_key_salt,
+    Some(user_entry),
+  )
+  let owner_encrypted_file_key = encrypt_aes256_file_key(wrapping_key, file_key)
+  (owner_entry, owner_encrypted_file_key)
+}
+
+///|
 /// Computes the revision 5 or 6 Standard security handler password hash.
 ///
 /// Revision 5 uses SHA-256 directly. Revision 6 uses the iterative AES-CBC
@@ -472,7 +539,40 @@ fn decrypt_aes256_file_key(
 }
 
 ///|
-fn parse_filters(
+fn encrypt_aes256_file_key(
+  wrapping_key : Bytes,
+  file_key : Bytes,
+) -> Bytes raise PdfEncryptionError {
+  crypto_aes_cbc_encrypt(
+    wrapping_key,
+    Bytes::make(16, b'\x00'),
+    file_key,
+    @crypto.PaddingMode::NoPadding,
+  )
+}
+
+///|
+fn validate_aes256_entry_inputs(
+  validation_salt : Bytes,
+  key_salt : Bytes,
+  file_key : Bytes,
+) -> Unit raise PdfEncryptionError {
+  if validation_salt.length() != 8 || key_salt.length() != 8 {
+    raise PdfEncryptionError::MalformedEncryptionDictionary(
+      "salt", "revision 6 validation and key salts must contain 8 bytes",
+    )
+  }
+  if file_key.length() != 32 {
+    raise PdfEncryptionError::MalformedEncryptionDictionary(
+      "file key", "revision 6 file encryption key must contain 32 bytes",
+    )
+  }
+}
+
+///|
+/// Parses CF, StmF, StrF, and EFF crypt filter references from an encryption
+/// dictionary and returns string, stream, and embedded-file defaults.
+pub fn parse_filters(
   dict : @objects.PdfDictionary,
   cipher_version : CipherVersion,
   length_bits : Int,
@@ -513,7 +613,9 @@ fn parse_filters(
 }
 
 ///|
-fn parse_crypt_filter(
+/// Parses one crypt filter dictionary referenced by StmF, StrF, EFF, or a
+/// stream-level Crypt decode parameter.
+pub fn parse_crypt_filter(
   name : @objects.PdfName,
   cf_dict : @objects.PdfDictionary?,
   default_method : CryptFilterMethod,
@@ -600,7 +702,10 @@ fn parse_auth_event(name : @objects.PdfName) -> CryptFilterAuthEvent {
 }
 
 ///|
-fn parse_cipher_version(
+/// Parses the encryption dictionary V entry into the supported cipher version
+/// vocabulary, rejecting undocumented or unsupported values before
+/// authentication begins.
+pub fn parse_cipher_version(
   value : Int64,
 ) -> CipherVersion raise PdfEncryptionError {
   match value {
@@ -756,7 +861,9 @@ fn read_optional_dictionary(
 }
 
 ///|
-fn pad_password_legacy(password : Bytes) -> Bytes {
+/// Applies revision 4 and earlier Standard security handler password padding,
+/// truncation to 32 bytes, and empty-password substitution bytes.
+pub fn pad_password_legacy(password : Bytes) -> Bytes {
   let out : Array[Byte] = []
   let copy_len = if password.length() > 32 { 32 } else { password.length() }
   for index in 0..<copy_len {
@@ -771,7 +878,9 @@ fn pad_password_legacy(password : Bytes) -> Bytes {
 }
 
 ///|
-fn truncate_password_127(password : Bytes) -> Bytes {
+/// Applies revision 6 password byte truncation to 127 bytes after the caller
+/// has supplied UTF-8/PDFDocEncoding-compatible bytes.
+pub fn truncate_password_127(password : Bytes) -> Bytes {
   if password.length() <= 127 {
     password
   } else {

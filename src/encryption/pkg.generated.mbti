@@ -11,17 +11,105 @@ import {
 // Values
 pub fn aes256_hash(Int, Bytes, Bytes, Bytes?) -> Bytes raise PdfEncryptionError
 
+pub fn algorithm13_revision6_permissions_byte_8_marker() -> Int
+
 pub fn authenticate(Map[@objects.PdfName, @objects.PdfObject], Bytes, FileIdentifier) -> EncryptionContext? raise PdfEncryptionError
+
+pub fn authenticate_algorithm11_revision6_user_password(StandardEncryptionDictionary, Bytes) -> Bytes? raise PdfEncryptionError
+
+pub fn authenticate_algorithm12_revision6_owner_password(StandardEncryptionDictionary, Bytes) -> Bytes? raise PdfEncryptionError
+
+pub fn authenticate_algorithm6_legacy_user_password(StandardEncryptionDictionary, Bytes, FileIdentifier) -> EncryptionContext? raise PdfEncryptionError
+
+pub fn authenticate_algorithm7_legacy_owner_password(StandardEncryptionDictionary, Bytes, FileIdentifier) -> EncryptionContext? raise PdfEncryptionError
+
+pub fn compute_aes256_owner_entries(Int, Bytes, Bytes, Bytes, Bytes, Bytes) -> (Bytes, Bytes) raise PdfEncryptionError
+
+pub fn compute_aes256_user_entries(Int, Bytes, Bytes, Bytes, Bytes) -> (Bytes, Bytes) raise PdfEncryptionError
+
+pub fn compute_hash_revision6_and_later_algorithm_2b_text() -> String
 
 pub fn compute_legacy_owner_entry(Int, Int, Bytes, Bytes) -> Bytes raise PdfEncryptionError
 
 pub fn compute_legacy_user_entry(StandardEncryptionDictionary, Bytes, FileIdentifier) -> Bytes raise PdfEncryptionError
 
+pub fn compute_revision6_perms(Bytes, DocumentPermissions, Bool) -> Bytes raise PdfEncryptionError
+
+pub fn decrypt_algorithm1_rc4_or_aes_payload(EncryptionContext, @objects.ObjectId, Bytes, Bool) -> Bytes raise PdfEncryptionError
+
+pub fn decrypt_algorithm1a_aes256_payload(EncryptionContext, @objects.ObjectId, Bytes) -> Bytes raise PdfEncryptionError
+
 pub fn decrypt_embedded_file_stream(EncryptionContext, @objects.ObjectId, Bytes) -> Bytes raise PdfEncryptionError
+
+pub fn decrypt_pdf_object(EncryptionContext, @objects.ObjectId, @objects.PdfObject) -> @objects.PdfObject raise PdfEncryptionError
+
+pub fn decrypt_pdf_object_with_policy(EncryptionContext, @objects.ObjectId, @objects.PdfObject, ObjectDecryptionPolicy) -> @objects.PdfObject raise PdfEncryptionError
 
 pub fn decrypt_stream(EncryptionContext, @objects.ObjectId, Bytes) -> Bytes raise PdfEncryptionError
 
 pub fn decrypt_string(EncryptionContext, @objects.ObjectId, Bytes) -> Bytes raise PdfEncryptionError
+
+pub fn encryption_7631_general_rc4_aes_md5_sha2_pkcs7() -> Int
+
+pub fn encryption_applies_from_trailer_encrypt_entry(Bool) -> EncryptionStatus
+
+pub fn pad_password_legacy(Bytes) -> Bytes
+
+pub fn parse_cipher_version(Int64) -> CipherVersion raise PdfEncryptionError
+
+pub fn parse_common_encryption_dictionary(Map[@objects.PdfName, @objects.PdfObject]) -> EncryptionDictionaryInfo raise PdfEncryptionError
+
+pub fn parse_crypt_filter(@objects.PdfName, Map[@objects.PdfName, @objects.PdfObject]?, CryptFilterMethod, Int) -> CryptFilter raise PdfEncryptionError
+
+pub fn parse_encrypted_payload_dictionary(Map[@objects.PdfName, @objects.PdfObject]) -> EncryptedPayloadInfo raise PdfEncryptionError
+
+pub fn parse_filters(Map[@objects.PdfName, @objects.PdfObject], CipherVersion, Int) -> (CryptFilter, CryptFilter, CryptFilter?) raise PdfEncryptionError
+
+pub fn parse_public_key_encryption_dictionary(Map[@objects.PdfName, @objects.PdfObject]) -> PublicKeyEncryptionMetadata raise PdfEncryptionError
+
+pub fn parse_public_key_security_handler_general(Map[@objects.PdfName, @objects.PdfObject]) -> PublicKeySecurityHandlerGeneral raise PdfEncryptionError
+
+pub fn parse_standard_encryption_dictionary(Map[@objects.PdfName, @objects.PdfObject]) -> StandardEncryptionDictionary raise PdfEncryptionError
+
+pub fn parse_standard_security_handler_fields(Map[@objects.PdfName, @objects.PdfObject]) -> StandardEncryptionDictionary raise PdfEncryptionError
+
+pub fn pdf_encryption_algorithm_general_kind(Bool) -> PdfEncryptionAlgorithmGeneral
+
+pub fn pdf_encryption_algorithms_general_text() -> String
+
+pub fn pdf_file_encryption_general_rc4_aes_algorithm(CryptFilterMethod) -> PdfEncryptionAlgorithmGeneral raise PdfEncryptionError
+
+pub fn public_key_7651_general_cms_x509_recipients() -> Bool
+
+pub fn public_key_encryption_general_text() -> String
+
+pub fn public_key_security_handler_general_metadata() -> PublicKeySecurityHandlerGeneral
+
+pub fn revision6_algorithm2b_minimum_rounds() -> Int
+
+pub fn sdd_draft_pdf_encryption_scope() -> String
+
+pub fn section_7_6_3_1_general_algorithm_used_when_encrypting_data_rc4_aes_md5() -> String
+
+pub fn section_7_6_4_4_1_general_32_byte_o_u_oe_ue_password_entries() -> Int
+
+pub fn section_7_6_4_4_1_general_standard_security_handler_passwords_permissions() -> String
+
+pub fn section_7_6_5_1_general_public_key_security_handlers_cms_x509() -> String
+
+pub fn standard_encryption_dictionary_revision6_48_byte_entries() -> Int
+
+pub fn standard_file_key_input_is_complete(StandardEncryptionDictionary, FileIdentifier) -> Bool
+
+pub fn standard_password_algorithms_general_text() -> String
+
+pub fn standard_security_handler_76441_general_password_algorithms() -> Int
+
+pub fn supported_pdf_encryption_algorithm_count() -> Int
+
+pub fn truncate_password_127(Bytes) -> Bytes
+
+pub fn validate_revision6_perms(Bytes, Bytes, DocumentPermissions, Bool) -> Unit raise PdfEncryptionError
 
 pub fn verify_aes256_owner_password(StandardEncryptionDictionary, Bytes) -> Bytes? raise PdfEncryptionError
 
@@ -131,6 +219,17 @@ pub(all) struct EncryptionCredentials {
 pub fn EncryptionCredentials::empty() -> Self
 pub fn EncryptionCredentials::password(Bytes) -> Self
 
+pub(all) struct EncryptionDictionaryInfo {
+  filter : @objects.PdfName
+  subfilter : @objects.PdfName?
+  cipher_version : CipherVersion
+  length_bits : Int
+  crypt_filters : Map[@objects.PdfName, @objects.PdfObject]?
+  stream_filter_name : @objects.PdfName
+  string_filter_name : @objects.PdfName
+  embedded_file_filter_name : @objects.PdfName?
+} derive(Eq, @debug.Debug)
+
 pub(all) enum EncryptionStatus {
   Unencrypted
   EncryptedAuthorized
@@ -144,7 +243,48 @@ pub(all) struct FileIdentifier {
 } derive(Eq, @debug.Debug)
 pub fn FileIdentifier::has_persistent_pair(Self) -> Bool
 
-type StandardEncryptionDictionary
+pub(all) struct ObjectDecryptionPolicy {
+  in_encryption_dictionary : Bool
+  in_signature_contents : Bool
+  inside_encrypted_stream : Bool
+  already_decrypted_object_stream_member : Bool
+  stream_purpose : StreamDecryptPurpose
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfEncryptionAlgorithmGeneral {
+  RC4SymmetricStreamCipher
+  AESSymmetricBlockCipher
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PublicKeyEncryptionMetadata {
+  filter : @objects.PdfName
+  subfilter : @objects.PdfName?
+  recipients : Array[Bytes]
+  crypt_filter_recipients : Array[Bytes]
+  permissions : DocumentPermissions?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PublicKeySecurityHandlerGeneral {
+  requires_cms : Bool
+  requires_x509_certificate : Bool
+  requires_private_key : Bool
+  unsupported_in_this_phase : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct StandardEncryptionDictionary {
+  revision : Int
+  cipher_version : CipherVersion
+  key_length_bytes : Int
+  owner_entry : Bytes
+  user_entry : Bytes
+  owner_encrypted_file_key : Bytes?
+  user_encrypted_file_key : Bytes?
+  permissions : DocumentPermissions
+  encrypt_metadata : Bool
+  string_filter : CryptFilter
+  stream_filter : CryptFilter
+  embedded_file_filter : CryptFilter?
+}
 
 pub(all) enum StreamDecryptPurpose {
   RegularStream

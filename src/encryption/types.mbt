@@ -113,6 +113,19 @@ pub(all) enum CryptFilterMethod {
 } derive(Eq, Debug)
 
 ///|
+/// 7.6.3.1 General algorithms used when encrypting data in a PDF file: RC4
+/// is a symmetric stream cipher where the same algorithm encrypts and
+/// decrypts without changing data length; AES Advanced Encryption Standard is
+/// a symmetric block cipher with a fixed 16 byte block size from FIPS 197;
+/// AES strings and streams use RFC 8018 padding, Encrypt versions 1 to 4 use
+/// the MD5 message-digest algorithm for key generation, and Encrypt version 5
+/// does not use MD5.
+pub(all) enum PdfEncryptionAlgorithmGeneral {
+  RC4SymmetricStreamCipher
+  AESSymmetricBlockCipher
+} derive(Eq, Debug)
+
+///|
 /// Reports whether the crypt filter method requires a per-object key.
 pub fn CryptFilterMethod::uses_object_key(self : CryptFilterMethod) -> Bool {
   match self {
@@ -140,6 +153,21 @@ pub(all) enum CryptFilterAuthEvent {
 } derive(Eq, Debug)
 
 ///|
+/// Common encryption dictionary entries from Table 20: Filter, SubFilter, V,
+/// Length, CF, StmF, StrF, and EFF. Trailer absence is reader state; this
+/// parsed value requires a resolved encryption dictionary.
+pub(all) struct EncryptionDictionaryInfo {
+  filter : @objects.PdfName
+  subfilter : @objects.PdfName?
+  cipher_version : CipherVersion
+  length_bits : Int
+  crypt_filters : @objects.PdfDictionary?
+  stream_filter_name : @objects.PdfName
+  string_filter_name : @objects.PdfName
+  embedded_file_filter_name : @objects.PdfName?
+} derive(Eq, Debug)
+
+///|
 /// Parsed crypt filter selected by StrF, StmF, or EFF. The method determines
 /// whether the per-object encryption key uses RC4, AESV2, AESV3, or Identity.
 pub(all) struct CryptFilter {
@@ -160,6 +188,19 @@ pub(all) enum StreamDecryptPurpose {
   MetadataStream
   EmbeddedFileStream
   ExternalFileStream
+} derive(Eq, Debug)
+
+///|
+/// Exception context for recursive encrypted object transformation. Trailer
+/// ID values, strings inside the Encrypt dictionary, signature Contents
+/// hexadecimal strings, encrypted stream contents, and object-stream members
+/// can be marked to remain byte-identical or avoid double decryption.
+pub(all) struct ObjectDecryptionPolicy {
+  in_encryption_dictionary : Bool
+  in_signature_contents : Bool
+  inside_encrypted_stream : Bool
+  already_decrypted_object_stream_member : Bool
+  stream_purpose : StreamDecryptPurpose
 } derive(Eq, Debug)
 
 ///|
@@ -203,9 +244,39 @@ pub(all) struct DocumentPermissions {
 } derive(Eq, Debug)
 
 ///|
+/// Public-key security handler dictionary metadata: Filter/SubFilter,
+/// Recipients placement, crypt-filter recipient dictionaries, and public-key
+/// permission bits. CMS, X.509, private-key matching, and actual public-key
+/// decryption remain unsupported diagnostics in this phase.
+pub(all) struct PublicKeyEncryptionMetadata {
+  filter : @objects.PdfName
+  subfilter : @objects.PdfName?
+  recipients : Array[Bytes]
+  crypt_filter_recipients : Array[Bytes]
+  permissions : DocumentPermissions?
+} derive(Eq, Debug)
+
+///|
+/// 7.6.5.1 General public-key security handler scope: public-key encryption
+/// dictionaries identify recipients. Public-key security handlers use CMS
+/// enveloped data, X.509 certificates, private-key matching, PKCS#7
+/// recipient lists, certificate security, and public-key encryption
+/// algorithms. This phase validates metadata and returns unsupported
+/// decryption diagnostics without attempting CMS decoding or private-key
+/// discovery.
+pub(all) struct PublicKeySecurityHandlerGeneral {
+  requires_cms : Bool
+  requires_x509_certificate : Bool
+  requires_private_key : Bool
+  unsupported_in_this_phase : Bool
+} derive(Eq, Debug)
+
+///|
 /// Standard security-handler file key plus reader-visible policy derived from
 /// the Encrypt dictionary. Kept as an alias so callers can use the requested
 /// encryption-key vocabulary without duplicating EncryptionContext state.
+/// Standard handlers of revision 4 and revision 6 support crypt filters
+/// limited to the Table 26 Identity filter and StdCF with AuthEvent DocOpen.
 pub type EncryptionKey = EncryptionContext
 
 ///|

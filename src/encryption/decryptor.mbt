@@ -4,6 +4,23 @@ let aes_object_salt : Bytes = Bytes::from_array([
 ])
 
 ///|
+/// 7.6.3.1 General: one of RC4 or AES shall be used when encrypting data in
+/// a PDF file; RC4 is a symmetric stream cipher that does not change length,
+/// and AES is a symmetric block cipher with 16-byte blocks and PKCS 7 padding.
+pub fn pdf_file_encryption_general_rc4_aes_algorithm(
+  filter_method : CryptFilterMethod,
+) -> PdfEncryptionAlgorithmGeneral raise PdfEncryptionError {
+  match filter_method {
+    V2 => PdfEncryptionAlgorithmGeneral::RC4SymmetricStreamCipher
+    AESV2 | AESV3 => PdfEncryptionAlgorithmGeneral::AESSymmetricBlockCipher
+    Identity | None | Unsupported(_) =>
+      raise PdfEncryptionError::UnsupportedAlgorithm(
+        "7.6.3.1 General requires RC4 or AES for encrypted data",
+      )
+  }
+}
+
+///|
 /// Decrypts encrypted strings with the string crypt filter and the per-object
 /// encryption key derived from the file encryption key, object number, and
 /// generation number.
