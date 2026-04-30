@@ -65,7 +65,7 @@
   - _Requirements: 0.14, 0.15, 0.16, 0.17_
   - _Boundary: MeshDataParser_
   - _Depends: 3.2_
-- [ ] 4.3 Validate Type 4 and Type 5 triangle mesh semantics
+- [x] 4.3 Validate Type 4 and Type 5 triangle mesh semantics
   - Validate Type 4 free-form mesh edge flags, whole-triangle record sequences, and continuation rules for flags 0, 1, and 2.
   - Validate Type 5 lattice meshes with at least two vertices per row, complete row records, and derived triangle counts.
   - Preserve function-backed parametric values separately from full colour component records.
