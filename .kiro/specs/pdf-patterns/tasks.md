@@ -15,7 +15,7 @@
   - _Requirements: 0.1, 0.2, 0.6, 0.7_
 
 - [x] 2. Pattern resource and tiling validation
-- [ ] 2.1 Implement common Pattern resource dispatch
+- [x] 2.1 Implement common Pattern resource dispatch
   - Validate the required pattern type, optional `/Pattern` type marker, pattern matrix defaulting, and direct versus indirect source representation.
   - Dispatch direct Type 1 resources to tiling validation and direct Type 2 resources to shading pattern validation.
   - Preserve unresolved indirect resources as named references without attempting object loading in graphics.
