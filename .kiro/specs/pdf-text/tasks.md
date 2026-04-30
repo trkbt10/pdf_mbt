@@ -204,7 +204,7 @@
   - _Depends: 5.2_
 
 - [x] 6. Implement text state and interpreter semantics
-- [ ] 6.1 Store text state defaults, stack behavior, and state operators
+- [x] 6.1 Store text state defaults, stack behavior, and state operators
   - Initialize character spacing, word spacing, horizontal scaling, leading, missing current font, rendering mode, text rise, and text knockout defaults at page interpretation start.
   - Apply `Tc`, `Tw`, `Tz`, `TL`, `Tf`, `Tr`, and `Ts` inside or outside text objects and retain their values across text objects in one content stream.
   - Save and restore text state through graphics state stack operations and ignore ExtGState `/TK` changes between `BT` and `ET`.
