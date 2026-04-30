@@ -87,6 +87,12 @@ fn materialize_resource_dictionary(
     file, output, b"ColorSpace", form_stack, page_id,
   )
   materialize_named_resource_category(
+    file, output, b"Pattern", form_stack, page_id,
+  )
+  materialize_named_resource_category(
+    file, output, b"Shading", form_stack, page_id,
+  )
+  materialize_named_resource_category(
     file, output, b"Properties", form_stack, page_id,
   )
   output
@@ -148,13 +154,17 @@ fn materialize_resource_object(
       let loaded = load_document_object(file, id)
       if category == b"XObject" {
         materialize_xobject_stream(file, loaded, id, form_stack, page_id)
-      } else if category == b"ColorSpace" {
+      } else if category == b"ColorSpace" ||
+        category == b"Pattern" ||
+        category == b"Shading" {
         materialize_nested_resource_object(file, loaded, [id], page_id)
       } else {
         loaded
       }
     }
-    _ if category == b"ColorSpace" =>
+    _ if category == b"ColorSpace" ||
+      category == b"Pattern" ||
+      category == b"Shading" =>
       materialize_nested_resource_object(file, object, [], page_id)
     @objects.PdfObject::Stream(stream) if category == b"XObject" =>
       materialize_direct_xobject_stream(file, stream, form_stack, page_id)

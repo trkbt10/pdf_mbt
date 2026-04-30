@@ -128,7 +128,7 @@
   - _Depends: 2.5, 2.6, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
 - [ ] 4. Materialize transparency resources in the reader
-- [ ] 4.1 Load page groups and direct transparency resource dictionaries
+- [x] 4.1 Load page groups and direct transparency resource dictionaries
   - Materialize page Group entries, ExtGState dictionaries, Form XObject group dictionaries, Pattern resources, Shading resources, and image transparency entries before graphics interpretation needs them.
   - Preserve reader ownership of indirect object loading while passing only materialized structures across the graphics boundary.
   - Reader tests show indirect page groups and ExtGState transparency entries become visible through page graphics APIs.

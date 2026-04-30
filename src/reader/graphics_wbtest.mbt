@@ -111,6 +111,24 @@ test "page graphics materialization rejects recursive form XObjects" {
 }
 
 ///|
+test "page transparency inputs materialize group resources and ExtGState" {
+  let document = PdfDocument::open(build_page_graphics_transparency_fixture())
+  let page = document.page(0)
+  let inputs = page.materialized_transparency_inputs()
+  match inputs.page_group {
+    Some(group) => {
+      assert_eq(group.isolated, true)
+      assert_eq(group.knockout, false)
+    }
+    None => fail("expected page transparency group")
+  }
+  let program = page.graphics_program(
+    GraphicsPageOptions::with_materialized_resources(None),
+  )
+  assert_eq(program.final_state.alpha_nonstroking, 0.5)
+}
+
+///|
 fn build_page_graphics_metadata_fixture() -> Bytes {
   let (bytes, header_base) = build_document_structure_fixture_prefix()
 
@@ -207,6 +225,45 @@ fn build_page_graphics_image_xobject_fixture(hidden : Bool) -> Bytes {
       catalog_offset, pages_offset, page_offset, content_offset, image_offset,
     ])
   }
+}
+
+///|
+fn build_page_graphics_transparency_fixture() -> Bytes {
+  let (bytes, header_base) = build_document_structure_fixture_prefix()
+
+  let (bytes, catalog_offset) = append_indirect_object(
+    bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R >>",
+  )
+  let (bytes, pages_offset) = append_indirect_object(
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+  )
+  let (bytes, page_offset) = append_indirect_object(
+    bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Group 5 0 R /Resources << /ExtGState << /GS1 6 0 R >> /Pattern << /P1 7 0 R >> /Shading << /S1 8 0 R >> >> /Contents 4 0 R >>",
+  )
+  let content_stream = build_stream_object_body(b"<< /Length 7 >>", b"/GS1 gs")
+  let (bytes, content_offset) = append_indirect_object(
+    bytes, header_base, 4, 0, content_stream,
+  )
+  let (bytes, group_offset) = append_indirect_object(
+    bytes, header_base, 5, 0, b"<< /S /Transparency /CS /DeviceRGB >>",
+  )
+  let (bytes, extgstate_offset) = append_indirect_object(
+    bytes, header_base, 6, 0, b"<< /ca 0.5 >>",
+  )
+  let pattern_stream = build_stream_object_body(
+    b"<< /Type /Pattern /PatternType 1 /PaintType 1 /TilingType 1 /BBox [0 0 10 10] /XStep 10 /YStep 10 /Resources <<>> /Length 0 >>",
+    b"",
+  )
+  let (bytes, pattern_offset) = append_indirect_object(
+    bytes, header_base, 7, 0, pattern_stream,
+  )
+  let (bytes, shading_offset) = append_indirect_object(
+    bytes, header_base, 8, 0, b"<< /ShadingType 2 /ColorSpace /DeviceRGB /Coords [0 0 1 0] /Function << /FunctionType 2 /Domain [0 1] /C0 [0 0 0] /C1 [1 1 1] /N 1 >> >>",
+  )
+  finish_page_content_fixture(bytes, header_base, [
+    catalog_offset, pages_offset, page_offset, content_offset, group_offset, extgstate_offset,
+    pattern_offset, shading_offset,
+  ])
 }
 
 ///|
