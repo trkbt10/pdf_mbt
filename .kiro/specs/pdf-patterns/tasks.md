@@ -48,7 +48,7 @@
   - Done when common shading validation accepts complete dictionaries, applies defaults, and rejects Pattern or forbidden Indexed colour spaces.
   - _Requirements: 0.8, 0.9, 0.10_
 
-- [ ] 4. Shading type and mesh validation
+- [x] 4. Shading type and mesh validation
 - [ ] 4.1 (P) Validate function-based, axial, and radial shading geometry
   - Validate Type 1 domains, matrices, and required functions with default domain and matrix behavior.
   - Validate Type 2 axis coordinates, domain defaults, required functions, and extend defaults, including the coincident-axis no-paint structural case.
