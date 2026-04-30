@@ -213,7 +213,7 @@
   - _Boundary: TextStateMachine_
   - _Depends: 1.2_
 
-- [ ] 6.2 Enforce text object lifecycle and positioning operators
+- [x] 6.2 Enforce text object lifecycle and positioning operators
   - Begin text objects with identity text matrix and line matrix and end text objects by discarding object-local matrices.
   - Reject nested `BT`, `ET` outside a text object, positioning outside a text object, and improperly interleaved q/Q with text objects.
   - Apply `Td`, `TD`, `Tm`, and `T*` exactly as matrix replacement or line movement operations require.
