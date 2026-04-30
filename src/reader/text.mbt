@@ -1,4 +1,7 @@
 ///|
+/// Options for downstream text extraction from a page after the file reader
+/// has used random-access object loading to resolve page resources and
+/// content streams from cross-reference data.
 pub(all) struct TextPageOptions {
   initial_ctm : @text.TextMatrix?
   materialize_resources : Bool
@@ -10,6 +13,8 @@ pub fn TextPageOptions::default() -> TextPageOptions {
 }
 
 ///|
+/// Builds text resources from document-structure page resources that were
+/// resolved through the opened `PdfFile` and its random-access object loading.
 pub fn PdfPage::text_resources(
   self : PdfPage,
 ) -> @text.TextResources raise PdfDocumentError {
@@ -22,6 +27,9 @@ pub fn PdfPage::text_resources(
 }
 
 ///|
+/// Parses a page content stream into a text program after the file-structure
+/// reader has loaded the required indirect objects by object number and
+/// generation number.
 pub fn PdfPage::text_program(
   self : PdfPage,
   options : TextPageOptions,
@@ -50,6 +58,9 @@ pub fn PdfPage::text_program(
 }
 
 ///|
+/// Extracts text spans from a page using the file reader's resolved page
+/// resources and content stream objects; malformed downstream content returns
+/// an empty extraction rather than changing cross-reference or trailer state.
 pub fn PdfPage::extracted_text(
   self : PdfPage,
   options : TextPageOptions,
@@ -69,6 +80,8 @@ pub fn PdfPage::extracted_text(
 }
 
 ///|
+/// Returns a layout string from extracted text spans for sample validation
+/// after `PdfFile` has parsed the header, trailer, and cross-reference data.
 pub fn PdfPage::extract_text_layout(self : PdfPage) -> String {
   let result : Result[@text.ExtractedText, PdfDocumentError] = try? self.extracted_text(
     TextPageOptions::default(),
