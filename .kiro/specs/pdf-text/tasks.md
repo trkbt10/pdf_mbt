@@ -34,7 +34,7 @@
   - _Boundary: CMapResolver, FontResourceResolver, UnicodeMapper_
 
 - [x] 2. Build font descriptor, static data, and encoding foundations
-- [ ] 2.1 (P) Parse common font descriptors, flags, and embedded program metadata
+- [x] 2.1 (P) Parse common font descriptors, flags, and embedded program metadata
   - Validate common font descriptor entries, required metrics, optional style metrics, and the mutual exclusion of embedded font program streams.
   - Interpret descriptor flags for symbolic and nonsymbolic classification, fixed pitch, serif, script, italic, all-cap, small-cap, and force-bold characteristics.
   - Preserve embedded font stream organization and subtype metadata without interpreting Type 1, TrueType, CFF, or OpenType programs.
