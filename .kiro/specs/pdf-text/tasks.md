@@ -249,7 +249,7 @@
   - _Boundary: TextInterpreter_
   - _Depends: 6.4_
 
-- [ ] 7. Integrate page-level reader text APIs
+- [x] 7. Integrate page-level reader text APIs
 - [ ] 7.1 Materialize page text resource graphs
   - Resolve inherited page Resources and materialize Font and ExtGState entries needed for text interpretation through the reader boundary.
   - Load indirect FontDescriptor, DescendantFonts, Encoding, ToUnicode, CMap, CharProcs, Type 3 Resources, and embedded font streams before calling the text package.
