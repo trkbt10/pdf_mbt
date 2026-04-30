@@ -38,7 +38,7 @@
   - _Depends: 2.2_
   - _Requirements: 0.6, 0.10, 0.11, 0.12, 0.13_
   - _Boundary: ImageMaskModel_
-- [ ] 2.5 Preserve image interpolation, intent, alternates, and PDF 2.0 associated metadata
+- [x] 2.5 Preserve image interpolation, intent, alternates, and PDF 2.0 associated metadata
   - Preserve Interpolate hints, rendering intent, Alternates entries, DefaultForPrinting, and alternate optional-content selection inputs without raster decisions.
   - Record associated files, measure dictionaries, point data, name, structural parent, identifier, OPI, and metadata entries as structural image metadata where present.
   - Done: base and alternate image dictionaries are represented structurally, alternate images cannot recursively contain Alternates, and print or optional-content selection inputs are observable.
