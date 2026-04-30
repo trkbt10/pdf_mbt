@@ -157,7 +157,7 @@
   - _Requirements: 3.1, 4.3, 4.4, 6.1, 6.2, 6.3_
   - _Boundary: ReaderPageContentBridge, PdfDocumentError_
 
-- [ ] 6.2 Add PDF 2.0 fixture and synthetic content smoke coverage
+- [x] 6.2 Add PDF 2.0 fixture and synthetic content smoke coverage
   - Parse bundled PDF 2.0 example page content and assert recognized drawing or text instructions are emitted.
   - Parse a synthetic inline-image page and verify one inline image instruction is emitted.
   - Parse a synthetic Form XObject resource scenario and verify form-local resources are selected.
