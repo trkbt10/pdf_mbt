@@ -200,7 +200,7 @@
   - _Requirements: 3.11, 3.14, 3.15_
   - _Boundary: ScanConverter, RenderingResourceContracts_
 
-- [ ] 5.7 Verify scan conversion and scene behavior
+- [x] 5.7 Verify scan conversion and scene behavior
   - Test half-open fill rules, clipping intersections, flatness expansion, stroke adjustment, image centre sampling, smoothness handling, and glyph mask routing.
   - Include small deterministic surfaces so pixel-level expectations are easy to inspect.
   - The completed tests catch one-pixel regressions in fills, clips, strokes, images, and glyph masks.
