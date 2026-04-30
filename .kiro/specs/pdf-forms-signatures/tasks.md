@@ -135,7 +135,7 @@
   - Completed state: validation plans describe all PDF-owned inputs and never mark signatures valid, invalid, trusted, or legally binding.
   - _Requirements: 0.30, 0.33, 0.37, 0.38, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46_
   - _Boundary: SignatureValidationPlanner_
-- [ ] 5.4 Order signature fields and document timestamps
+- [x] 5.4 Order signature fields and document timestamps
   - Determine signature ordering by ByteRange length and classify document timestamp dictionaries with complete-file byte-range expectations.
   - Expose timestamp chain metadata, signed-revision boundaries, and ignored DSS or timestamp update inputs for DocMDP assessment.
   - Completed state: signature validation plans include document timestamp candidates and chain order without validating timestamp tokens.
