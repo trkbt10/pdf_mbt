@@ -34,7 +34,7 @@
   - _Requirements: 0.3, 0.6_
   - _Boundary: VariableTextParser_
   - _Depends: 2.2_
-- [ ] 2.4 (P) Classify button, text, and choice field types
+- [x] 2.4 (P) Classify button, text, and choice field types
   - Decode common and field-specific flags for button, text, and choice fields while preserving unknown and reserved bits.
   - Parse push-button value restrictions, check box and radio state data, text MaxLen and file-select metadata, and choice Opt, TI, I, and multi-select values.
   - Completed state: every terminal Btn, Tx, and Ch field is represented as the correct typed variant with raw values preserved where behavior is outside parser scope.
