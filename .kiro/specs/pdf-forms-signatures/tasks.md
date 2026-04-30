@@ -95,7 +95,7 @@
   - _Requirements: 0.15, 0.16, 0.17, 0.18, 0.26_
   - _Boundary: FDFFieldParser_
   - _Depends: 4.2_
-- [ ] 4.4 (P) Parse named pages, FDF pages, and templates
+- [x] 4.4 (P) Parse named pages, FDF pages, and templates
   - Read document named pages and templates name trees as references for FDF import plans.
   - Parse FDF page dictionaries, template dictionaries, named page references, template fields, and rename flags.
   - Completed state: FDF page and template data exposes named page references and conflict-rename intent without instantiating pages.
