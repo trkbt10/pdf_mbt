@@ -89,7 +89,7 @@
   - _Depends: 4.1_
   - _Requirements: 0.31, 0.32, 0.33, 0.34, 0.36_
   - _Boundary: OptionalContentEvaluator_
-- [ ] 4.3 Apply usage dictionaries and use-context state adjustments
+- [x] 4.3 Apply usage dictionaries and use-context state adjustments
   - Parse usage dictionary categories and usage application dictionaries for View, Print, Export, Zoom, User, and Language contexts.
   - Apply matching automatic state recommendations while leaving non-matching or missing categories unchanged as specified.
   - Done: state construction can produce view, print, and export states and can apply zoom, user, and language recommendations deterministically.
