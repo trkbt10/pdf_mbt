@@ -38,7 +38,7 @@
   - _Boundary: RenderingResourceContracts_
   - _Depends: 1.2_
 
-- [ ] 2.2 (P) Implement classic DeviceGray, DeviceRGB, and DeviceCMYK conversion rules
+- [x] 2.2 (P) Implement classic DeviceGray, DeviceRGB, and DeviceCMYK conversion rules
   - Convert Gray, RGB, and CMYK values with the ISO classic formulas and required clamping behavior.
   - Support the less-capable classic fallback path independently from strict CIE/ICC conversion.
   - The completed conversions return deterministic native component values for Gray-to-RGB, RGB-to-Gray, Gray-to-CMYK, CMYK-to-Gray, and CMYK-to-RGB cases.
