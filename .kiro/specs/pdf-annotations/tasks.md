@@ -93,7 +93,7 @@
   - _Requirements: 0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.18, 0.27, 0.28_
   - _Boundary: AnnotationGeometryParser_
 
-- [ ] 4.4 Establish raw hand-off preservation helpers
+- [x] 4.4 Establish raw hand-off preservation helpers
   - Preserve action, destination, additional action, file specification, sound, movie, widget parent, icon fit, measure, overlay, external data, 3D, RichMedia, optional content, and appearance payloads exactly as raw objects where this feature does not own deep semantics.
   - Store named raw fields in subtype-specific records as well as retaining the original annotation dictionary for audit and future reparsing.
   - Completion: raw hand-off tests compare preserved objects object-for-object and show no filesystem, network, media, action, or rendering behavior is invoked.
