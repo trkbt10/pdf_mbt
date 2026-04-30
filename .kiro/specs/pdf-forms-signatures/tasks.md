@@ -68,7 +68,7 @@
   - Completed state: submit and reset plan APIs return selected field names, omitted field reasons, and raw values needed by caller-owned effects.
   - _Requirements: 0.4, 0.5, 0.16, 0.17, 0.18_
   - _Boundary: FieldSelectionPlanner_
-- [ ] 3.3 Integrate form actions with existing action parsing boundaries
+- [x] 3.3 Integrate form actions with existing action parsing boundaries
   - Keep network transport, filesystem import, serialization, XFDF, HTML encoding, and value mutation outside the reader.
   - Ensure typed form actions remain available through existing action traversal, triggers, and annotation action paths.
   - Completed state: form actions are typed everywhere existing action APIs can surface them, and no action path performs side effects.
