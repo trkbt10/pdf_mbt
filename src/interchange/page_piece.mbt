@@ -57,11 +57,16 @@ pub fn validate_optional_page_piece_entry(
 }
 
 ///|
+/// Compares 14.5 page-piece dictionary LastModified dates by equality only.
+/// Modification dates for private PDF processor data are not ordered because
+/// platforms may have approximate times or differing time zones.
 pub fn page_piece_dates_equal(left : Bytes, right : Bytes) -> Bool {
   left == right
 }
 
 ///|
+/// Reports whether two 14.5 page-piece data dictionaries have the same
+/// LastModified date for the document, page, or form content they describe.
 pub fn PdfPagePieceData::same_last_modified(
   self : PdfPagePieceData,
   other : PdfPagePieceData,

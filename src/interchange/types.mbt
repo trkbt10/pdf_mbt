@@ -8,7 +8,9 @@ pub(all) struct PdfMetadataStream {
 } derive(Eq, Debug)
 
 ///|
-/// Document information Trapped status. Absence is reported as `Unknown`.
+/// 14.3.3 Document information dictionary /Trapped status. `True`, `False`,
+/// and `Unknown` are name objects for whether trapping information is present;
+/// absence defaults to `Unknown` and pdf:Trapped can also appear in metadata.
 pub(all) enum PdfTrappedStatus {
   True
   False
@@ -16,8 +18,10 @@ pub(all) enum PdfTrappedStatus {
 } derive(Eq, Debug)
 
 ///|
-/// Raw-preserving document information dictionary view. Known text entries are
-/// exposed as exact byte strings; dates are not parsed or normalized.
+/// 14.3 Document information dictionary view for trailer Info metadata.
+/// Deprecated descriptive text entries are preserved as text strings, while
+/// CreationDate, ModDate, and Trapped remain available for metadata streams and
+/// page-piece dictionary reconciliation.
 pub(all) struct PdfDocumentInfo {
   object_id : @objects.ObjectId?
   title : Bytes?
@@ -33,7 +37,8 @@ pub(all) struct PdfDocumentInfo {
 } derive(Eq, Debug)
 
 ///|
-/// Reports whether at least one descriptive document-info text field is set.
+/// Reports whether 14.3.3 deprecated descriptive document information
+/// dictionary text entries such as Title, Author, Subject, or Keywords are set.
 pub fn PdfDocumentInfo::has_descriptive_entries(self : PdfDocumentInfo) -> Bool {
   if self.title is Some(_) {
     true
@@ -58,7 +63,9 @@ pub(all) enum PdfMetadataDateComparison {
 } derive(Eq, Debug)
 
 ///|
-/// Metadata source presence and exact-byte date comparison diagnostics.
+/// 14.3.2 Metadata streams diagnostics for the available document metadata
+/// sources: document-level metadata stream presence, document information
+/// dictionary presence, and CreationDate / ModDate equivalence state.
 pub(all) struct PdfMetadataSourceDiagnostics {
   has_metadata_stream : Bool
   has_document_info : Bool
@@ -67,7 +74,10 @@ pub(all) struct PdfMetadataSourceDiagnostics {
 } derive(Eq, Debug)
 
 ///|
-/// Reports whether either metadata source was present on the inspected object.
+/// Reports whether any 14.3.1 document metadata source is present. Metadata
+/// can be stored for document data in a 14.3.2 metadata stream associated with
+/// the document, or for document metadata only in a 14.3.3 document
+/// information dictionary associated with the document.
 pub fn PdfMetadataSourceDiagnostics::has_any_source(
   self : PdfMetadataSourceDiagnostics,
 ) -> Bool {
@@ -88,8 +98,10 @@ pub(all) struct PdfDocumentMetadataSources {
 } derive(Eq, Debug)
 
 ///|
-/// Exact byte-comparison result for a current file identifier and a reference
-/// identifier supplied by a caller.
+/// 14.4 File identifiers comparison result for a trailer ID array. Matching
+/// both the first permanent original ID byte string and second changing
+/// current ID byte string means the same file and version; matching only the
+/// original ID means a different version of the correct PDF file.
 pub(all) enum PdfFileIdMatch {
   ExactFileAndVersion
   SameOriginalDifferentVersion
@@ -98,8 +110,9 @@ pub(all) enum PdfFileIdMatch {
 } derive(Eq, Debug)
 
 ///|
-/// One producer/data-type entry in a Page-Piece dictionary. `Private` remains
-/// an opaque object owned by the producer.
+/// 14.5 Page-piece dictionary data dictionary for one PDF processor or
+/// well-known data type. LastModified is the required modification date for
+/// document, page, or form content; Private remains opaque processor data.
 pub(all) struct PdfPagePieceData {
   owner_name : @objects.PdfName
   last_modified : Bytes
@@ -126,8 +139,9 @@ pub(all) enum PdfProcedureSetName {
 } derive(Eq, Debug)
 
 ///|
-/// Normalized marked-content property list. Named properties preserve both the
-/// name and the raw resource object for later consumers.
+/// 14.6.2 Property lists for marked content. DP and BDC operators may use an
+/// inline direct dictionary, or a name object that resolves through the
+/// Properties subdictionary of the current resource dictionary.
 pub(all) enum MarkedContentProperty {
   Inline(@objects.PdfDictionary)
   Named(@objects.PdfName, @objects.PdfObject)
@@ -135,8 +149,9 @@ pub(all) enum MarkedContentProperty {
 } derive(Eq, Debug)
 
 ///|
-/// Marked-content point or sequence. Points use `begin_offset` as the operator
-/// offset and `end_offset` is set to the same offset.
+/// 14.6 Marked content point or sequence. MP and DP designate a single
+/// marked-content point; BMC and BDC begin a marked-content sequence that is
+/// terminated by a balancing EMC operator in the same content stream.
 pub(all) struct MarkedContentScope {
   tag : @objects.PdfName
   property : MarkedContentProperty?
@@ -145,15 +160,20 @@ pub(all) struct MarkedContentScope {
 } derive(Eq, Debug)
 
 ///|
-/// Structural marked-content analysis report preserving point and sequence
-/// entries in the order they are encountered.
+/// 14.6 Marked content analysis report for content stream operators. It keeps
+/// MP and DP marked-content points plus BMC, BDC, and EMC marked-content
+/// sequences, including tag operands and property lists, in content stream
+/// order.
 pub(all) struct MarkedContentReport {
   points : Array[MarkedContentScope]
   sequences : Array[MarkedContentScope]
 } derive(Eq, Debug)
 
 ///|
-/// Reports whether analysis found no marked-content points or sequences.
+/// Reports whether the 14.6 marked content state is empty. Marked-content
+/// operators may identify a portion of a PDF content stream; empty means no MP
+/// or DP single marked-content point and no BMC, BDC, or EMC bracketed
+/// marked-content sequence was encountered.
 pub fn MarkedContentReport::is_empty(self : MarkedContentReport) -> Bool {
   if self.points.length() > 0 {
     false

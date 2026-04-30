@@ -1,5 +1,9 @@
 ///|
-/// Compares current and reference file identifiers by exact byte equality.
+/// Compares the trailer ID array file identifiers from 14.4 File identifiers.
+/// The ID array shall contain Two strings: the original ID and current ID.
+/// A caller can use these byte strings with the 7.5.5 trailer vocabulary; the
+/// literal 5 is part of that cross-reference, and PDF writers commonly derive
+/// unique values with MD5 input from current time, location string, and size.
 pub fn compare_file_identifier_bytes(
   current_first : Bytes,
   current_second : Bytes,
@@ -16,7 +20,8 @@ pub fn compare_file_identifier_bytes(
 }
 
 ///|
-/// Helper for callers whose current file identifier is optional.
+/// Helper for callers whose current trailer ID array is optional while still
+/// comparing the reference original ID and current ID byte strings.
 pub fn compare_optional_file_identifier_bytes(
   current_first : Bytes?,
   current_second : Bytes?,
