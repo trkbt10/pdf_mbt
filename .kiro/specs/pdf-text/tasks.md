@@ -240,7 +240,7 @@
   - _Boundary: TextInterpreter, TextStateMachine, Type3GlyphModel, UnicodeMapper_
   - _Depends: 5.3, 6.3_
 
-- [ ] 6.5 Handle text-relevant graphics operators during interpretation
+- [x] 6.5 Handle text-relevant graphics operators during interpretation
   - Interpret text-relevant `q`, `Q`, `cm`, and `gs` effects while ignoring non-text graphics, color, marked-content, image, and path semantics outside the text boundary.
   - Apply ExtGState `/TK` only when permitted and preserve inherited CTM-like state needed for text rendering matrices.
   - Report bad operands and malformed resources with source offsets without changing content parser behavior.
