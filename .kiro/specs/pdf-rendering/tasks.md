@@ -296,7 +296,7 @@
   - _Boundary: ReaderRenderingBridge_
 
 - [x] 9. Complete cross-package validation and generated API review
-- [ ] 9.1 Add end-to-end raster fixtures and stable snapshot checks
+- [x] 9.1 Add end-to-end raster fixtures and stable snapshot checks
   - Render bundled simple PDF fixtures with deterministic device configuration.
   - Cover simple paths, image centre sampling, clipping, colour conversion, and text only when a stub glyph rasterizer is supplied.
   - The completed end-to-end tests produce stable small raster snapshots across repeated runs.
