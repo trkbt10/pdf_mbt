@@ -44,7 +44,7 @@
   - _Requirements: 0.2_
   - _Boundary: SampledFunctionModel_
 
-- [ ] 2.4 (P) Implement exponential interpolation functions
+- [x] 2.4 (P) Implement exponential interpolation functions
   - Validate the one-input domain, default and explicit coefficient arrays, required exponent, inferred output count, and optional output range.
   - Evaluate each output component using the exponential interpolation formula and reject invalid numeric preconditions for negative or non-integer exponents.
   - Tests cover defaults, multi-output coefficients, range clipping, non-integer exponent domain failures, negative exponent zero-input failures, and arity errors.

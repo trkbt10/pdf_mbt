@@ -86,6 +86,8 @@ pub fn PdfFunction::evaluate(
   match self {
     SampledFunction(function) =>
       evaluate_sampled_function(function, clipped_inputs)
+    ExponentialFunction(function) =>
+      evaluate_exponential_function(function, clipped_inputs)
     _ =>
       raise PdfFunctionError::EvaluationFailure(
         0L, "function type evaluator is not implemented yet",
