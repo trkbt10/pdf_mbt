@@ -9,7 +9,7 @@
   - _Requirements: 0.1, 0.2, 0.5, 0.10, 0.11_
   - _Boundary: StructureSharedFoundation_
 
-- [ ] 1.2 Define raw-preserving logical-structure value models
+- [x] 1.2 Define raw-preserving logical-structure value models
   - Represent mark information, structure trees, elements, ordered children, content items, parent lookups, role maps, namespaces, attributes, standard type metadata, accessibility properties, and tagged diagnostics as inspectable read-side values.
   - Preserve raw dictionaries, streams, names, byte strings, arrays, object references, associated-file references, schema references, and pronunciation lexicon references.
   - Exclude writer mutation, rendering, text extraction, XML parsing, PDF/UA certification, external file access, and structure repair from the value vocabulary.
