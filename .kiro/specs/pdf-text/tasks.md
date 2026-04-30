@@ -102,7 +102,7 @@
   - _Boundary: Type3GlyphModel, FontResourceResolver_
   - _Depends: 2.4_
 
-- [ ] 3.4 Validate Type 3 glyph streams and resource scope
+- [x] 3.4 Validate Type 3 glyph streams and resource scope
   - Decode Type 3 CharProcs streams through the existing content and filter pipeline supplied by the caller.
   - Require `d0` or `d1` as the first glyph operator, validate declared widths and bounding boxes, and preserve color-bearing versus shape-only glyph behavior.
   - Resolve glyph resource scope from Type 3 font resources first and page resources when font resources are absent.
