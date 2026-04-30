@@ -54,85 +54,36 @@ required.
 
 ## Requirements
 
-### Requirement 1: Failing test that reproduces the revisit bug
+### Requirement 1: Demo application integration alignment
 
-#### 1.1: Node-driven DOM simulation test
-A test SHALL simulate (via jsdom or Node with DOM emulation) the
-viewer component lifecycle:
-- mount PdfViewer with a document whose page 0 has 1 image
-- trigger isNearViewport=true for page 0 ⇒ assert `<image>` has
-  non-empty href
-- trigger isNearViewport=false ⇒ placeholder shown
-- trigger isNearViewport=true again ⇒ assert `<image>` again has
-  non-empty href with the same Blob URL (or a re-created one)
+The MoonBit SVG package SHALL expose the existing
+`demo_application_integration_alignment` marker. Its documentation
+connects the deferred SVG renderer to the demo app flow:
+`pageToSvgDeferred`, `<image>` href patching, `URL.createObjectURL`,
+Blob URLs, document change cleanup, and top-level unmount cleanup.
 
-The test is expected to FAIL on the current implementation. Fix
-work proceeds only after the test reproduces the bug.
+### Requirement 2: Viewer cache blob URL lifecycle alignment
 
-#### 1.2: Blob URL liveness assertion
-After the revisit, the test SHALL assert the Blob URL's content
-is still fetchable (via `fetch(url).then(r => r.blob())`). If the
-URL has been revoked, the fetch rejects. This discriminates F3
-from F1/F2/F4/F5.
+The MoonBit SVG package SHALL retain the
+`viewer_cache_blob_url_lifecycle_alignment` marker. The marker
+documents that Blob URLs are stored with the page SVG cache, reused
+across page remounts, never revoked on per-page unmount, and revoked
+only on document change or top-level unmount.
 
-### Requirement 2: Identify failure mode
+### Requirement 3: Viewer cache application lifetime alignment
 
-#### 2.1: Diagnostic counter
-Add per-page counters exposed on window (dev build only):
-- `patchInvocations[pageIndex]` — times `patchDeferredSvgImages`
-  was called
-- `patchSuccesses[pageIndex]` — times a non-empty image URL was
-  applied
+The MoonBit SVG package SHALL retain the
+`viewer_cache_application_lifetime_alignment` marker. The marker
+documents the document-scoped page SVG cache, deferred image entries,
+zero-based page index keys, scroll revisit survival, and document
+change discard behaviour.
 
-On revisit the invocations counter MUST increment; the successes
-counter MUST increment by `imageCount`. If invocations increments
-but successes does not, F2 or F1. If neither increments, F5. If
-both increment but image still blank in DOM, F3 or F4.
+### Requirement 4: Viewer cache loadPageSvg stable identity alignment
 
-#### 2.2: Blob URL re-creation fallback
-Independent of the diagnostic, implement a fallback: when revisit
-triggers patch, validate the URL via a HEAD or fetch; if invalid,
-re-create the Blob URL from the wasm accessor and update the
-cache. This removes F3 as a failure mode regardless of which
-other mode applies.
-
-### Requirement 3: Fix the failure mode
-
-Apply the fix corresponding to whichever mode Requirement 2.1
-identifies:
-
-- **F1 fix**: in the patch effect, use layoutEffect (runs after
-  DOM commit, before browser paint) or chain via
-  `useEffect` with `surfaceRef.current` as a dep so the effect
-  always sees the latest DOM.
-- **F2 fix**: replace `requestAnimationFrame` indirection with a
-  synchronous DOM walk inside the effect body. Defer the actual
-  `setAttribute` to `requestIdleCallback` only if the walk found
-  no images.
-- **F3 fix**: validate Blob URLs before patch; recreate if
-  invalidated.
-- **F4 fix**: use React `key={isNearViewport ? svg : ""}` on the
-  surface div to force remount, plus `dangerouslySetInnerHTML`
-  key. Or replace the whole pattern with manual DOM manipulation
-  that owns the image href attribute.
-- **F5 fix**: depend on `isNearViewport && svgState.status === "ready"
-  ? svgState.imageUrls : null` in the effect deps, so the image
-  URL map reference drives the effect independent of svgState.
-
-### Requirement 4: Regression tests
-
-#### 4.1: Revisit passes
-The test from Requirement 1 SHALL pass after the fix.
-
-#### 4.2: Scroll-past-and-back 10 times
-A stress test: simulate 10 cycles of scroll past / back on a
-multi-image page. Every revisit SHALL restore all images. No
-Blob URL leaks (counter of active URL.createObjectURL calls
-stays bounded).
-
-#### 4.3: No regression on other demo flows
-Existing demo features (search, zoom, page jump) SHALL continue
-to work.
+The MoonBit SVG package SHALL retain the
+`viewer_cache_load_page_svg_stable_identity_alignment` marker. The
+marker documents stable `loadPageSvg` identity, `useRef` cache reads,
+and idempotent repeated calls for pages already cached or loading.
 
 ### Requirement 5: Acceptance
 
