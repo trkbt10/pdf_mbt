@@ -615,6 +615,7 @@ pub(all) struct PdfDeveloperExtension {
   extension_revision : Bytes?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfDeveloperExtension::extension_url(Self) -> Bytes?
 pub fn PdfDeveloperExtension::targets_pdf2_or_later(Self) -> Bool
 
 pub struct PdfDocument {
@@ -2646,6 +2647,8 @@ pub(all) enum XrefSectionSource {
 } derive(Eq, @debug.Debug)
 
 // Type aliases
+pub type PdfDeveloperExtensionURL = Bytes
+
 pub using @encryption {type DocumentPermissions as PdfPermissions}
 
 pub type XrefIndex = Map[@objects.ObjectId, ObjectLocation]
