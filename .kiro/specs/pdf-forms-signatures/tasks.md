@@ -143,7 +143,7 @@
   - _Boundary: SignatureReader, DocumentTimestampReader_
 
 - [x] 6. Add LTV, permissions, and legal attestation readers
-- [ ] 6.1 Parse DSS and VRI evidence stores
+- [x] 6.1 Parse DSS and VRI evidence stores
   - Parse Catalog DSS entries, VRI dictionaries, certificate streams, OCSP streams, CRL streams, timestamps, creation dates, and uppercase signature hash keys.
   - Preserve all certificate, OCSP, CRL, CMS, CAdES, and timestamp bytes raw and avoid logging sensitive evidence.
   - Completed state: DSS and VRI records expose evidence references and malformed evidence dictionaries raise InvalidSignature.
