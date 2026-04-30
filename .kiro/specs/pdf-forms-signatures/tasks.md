@@ -62,7 +62,7 @@
   - Completed state: action parsing yields typed SubmitForm, ResetForm, and ImportData data without changing non-form action behavior.
   - _Requirements: 0.15, 0.16, 0.17, 0.18_
   - _Boundary: FormActionParser_
-- [ ] 3.2 Build deterministic field-selection plans
+- [x] 3.2 Build deterministic field-selection plans
   - Resolve action Fields entries by indirect field reference or fully qualified field name against the AcroForm field-name index.
   - Apply include/exclude rules, descendant inclusion, NoExport precedence, no-value field handling, and reset default-value targets without mutating field values.
   - Completed state: submit and reset plan APIs return selected field names, omitted field reasons, and raw values needed by caller-owned effects.
