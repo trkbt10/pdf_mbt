@@ -34,7 +34,7 @@
   - Done when uncoloured cell validation ignores colour-setting operators and coloured cells retain explicit colour operations in their validated content flow.
   - _Requirements: 0.3, 0.5_
 
-- [ ] 3. Shading pattern and common shading validation
+- [x] 3. Shading pattern and common shading validation
 - [ ] 3.1 Validate Type 2 shading pattern wrappers
   - Require Type 2 pattern dictionaries to contain a shading object or reference and accept optional matrix and graphics-state dictionaries.
   - Default the shading pattern matrix to identity and preserve direct graphics-state dictionaries without applying transparency or rendering behavior.
