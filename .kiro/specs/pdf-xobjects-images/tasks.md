@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. Foundation: shared semantic validation baseline
-- [ ] 1.1 Establish typed graphics diagnostics and reusable dictionary validation for XObjects, images, forms, and optional content
+- [x] 1.1 Establish typed graphics diagnostics and reusable dictionary validation for XObjects, images, forms, and optional content
   - Normalize how malformed dictionaries, missing required entries, unknown subtypes, and unsupported resource shapes are reported at the closest content or object offset.
   - Preserve existing content and resource errors at package boundaries while giving XObject and optional-content failures distinguishable graphics diagnostics.
   - Done: malformed direct image, form, and optional-content inputs fail with deterministic graphics diagnostics without importing document loading into graphics.
