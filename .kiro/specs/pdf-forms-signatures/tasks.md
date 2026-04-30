@@ -161,7 +161,7 @@
   - Completed state: callers can inspect permissions and legal attestation metadata without enforcement or trust assertions.
   - _Requirements: 0.32, 0.55, 0.56_
   - _Boundary: PermissionsReader, LegalAttestationReader_
-- [ ] 6.4 Integrate signature validation plans with LTV and permissions
+- [x] 6.4 Integrate signature validation plans with LTV and permissions
   - Attach DSS, VRI, document timestamps, permissions, legal attestations, and transform constraints to signature validation plans.
   - Keep DocMDP and FieldMDP modification analysis as constraints and revision inputs, not object-diff validation.
   - Completed state: a document-level signature plan exposes all PDF-owned signature, LTV, permission, and legal metadata through one deterministic contract.
