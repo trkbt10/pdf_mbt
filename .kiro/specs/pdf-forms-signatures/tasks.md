@@ -41,7 +41,7 @@
   - _Requirements: 0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13_
   - _Boundary: FieldTypeParser, ButtonFieldParser, TextFieldParser, ChoiceFieldParser_
   - _Depends: 2.2_
-- [ ] 2.5 (P) Parse signature fields, locks, and seed value constraints
+- [x] 2.5 (P) Parse signature fields, locks, and seed value constraints
   - Parse signature field dictionaries, visibility constraints, single-widget constraints, signature field locks, seed values, certificate seed values, and required-versus-optional seed flags.
   - Preserve handler, certificate, digest, timestamp, legal attestation, lock-document, and appearance-filter constraints as structural data only.
   - Completed state: signature fields expose lock and seed metadata without claiming any signing or validation behavior.
