@@ -109,7 +109,7 @@
   - _Boundary: RoleNamespaceResolver_
   - _Depends: 2.3_
 
-- [ ] 4.2 Parse namespaces and namespace role maps
+- [x] 4.2 Parse namespaces and namespace role maps
   - Interpret namespace dictionaries, namespace names, optional schema file specifications, and namespace-specific role maps.
   - Support direct role-map targets and role-map targets that identify another namespace dictionary.
   - Apply the default standard namespace when an element has no namespace and validate that explicit namespaces are declared by the structure tree root.
