@@ -27,7 +27,7 @@
   - Reject invalid paint types, tiling types, missing resources, non-stream Type 1 objects, and zero step values with graphics errors.
   - Done when valid coloured and uncoloured tiling streams produce complete tiling summaries and each malformed required entry has a failing test case.
   - _Requirements: 0.3_
-- [ ] 2.3 Validate tiling cell prerequisites and uncoloured tiling restrictions
+- [x] 2.3 Validate tiling cell prerequisites and uncoloured tiling restrictions
   - Decode tiling pattern streams through the existing filter pipeline when cell content validation is requested.
   - Validate cell content using the pattern's own resource dictionary while keeping the parent graphics state isolated.
   - Apply the uncoloured tiling restriction so colour-related operators inside the cell are ignored without corrupting surrounding interpretation.
