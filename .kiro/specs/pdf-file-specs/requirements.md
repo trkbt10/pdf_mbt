@@ -263,19 +263,12 @@ to the bytes of the embedded file stream.
 NOTE     This is strictly a checksum, and is not used for security purposes.
 
 #### 0.6: 7.11.4.2          Related files arrays
-In some circumstances, a PDF file can refer to a group of related files, such as the set of five files that
-make up a DCS 1.0 colour-separated image. The file specification explicitly names only one of the files;
-the rest shall be identified by some systematic variation of that file name (such as by altering the
-extension). When such a file is to be embedded in a PDF file, the related files shall be embedded as well.
-This is accomplished by including a related files array (PDF 1.3) as the value of the RF entry in the file
-specification dictionary. The array shall have 2 × n elements, which shall be paired in the form
-[        string1 stream1
-string2 stream2
-…
-stringn streamn
-]
-The first element of each pair shall be a string giving the name of one of the related files; the second
-element shall be an embedded file stream holding the file’s contents.
+A PDF file specification dictionary may include a related files array (PDF 1.3) as the value of its RF
+entry. The related files array contains pairs of (related file name string, embedded file stream),
+representing related files that shall be embedded alongside the primary file. PdfRelatedFile holds each
+pair: the name field carries the related file's name and embedded_file references the embedded file
+stream containing the file's contents. Related files arrays are used for groups such as DCS 1.0
+colour-separated images where systematic file name variation identifies the related file set.
 
 #### 0.7: 7.11.5          URL specifications
 When the FS entry in a file specification dictionary has the value URL, the value of the F entry in that
