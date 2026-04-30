@@ -157,7 +157,7 @@
   - _Boundary: CMapResolver_
   - _Depends: 4.3_
 
-- [ ] 4.5 Validate Type 0 font dictionaries and descendant integration
+- [x] 4.5 Validate Type 0 font dictionaries and descendant integration
   - Parse Type 0 root font dictionaries with required base font, Encoding CMap, single descendant CIDFont, and optional ToUnicode stream.
   - Enforce CMap and CIDFont compatibility, descendant count, predefined CMap constraints for non-embedded Type 2 CIDFonts, and Type 0 font naming expectations.
   - Connect the Type 0 root to descendant metrics and composite character decoding without making `src/text` load indirect objects.
