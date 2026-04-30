@@ -303,7 +303,7 @@
   - _Requirements: 1, 2, 3, 3.1, 3.11, 3.14_
   - _Boundary: ReaderRenderingBridge, RenderSceneBuilder, ScanConverter_
 
-- [ ] 9.2 Validate allocation, threshold, path, and provider limits
+- [x] 9.2 Validate allocation, threshold, path, and provider limits
   - Exercise maximum surface dimensions, threshold byte limits, path flattening expansion limits, halftone cache limits, and provider cache limits.
   - Confirm failures occur before excessive allocation or unsafe indexing.
   - The completed limit tests fail safely for oversized surfaces, threshold streams, path expansion, and unavailable provider capabilities.
