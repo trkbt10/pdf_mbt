@@ -6,7 +6,7 @@
   - Preserve existing content and resource errors at package boundaries while giving XObject and optional-content failures distinguishable graphics diagnostics.
   - Done: malformed direct image, form, and optional-content inputs fail with deterministic graphics diagnostics without importing document loading into graphics.
   - _Requirements: 0.1, 0.6, 0.16, 0.24, 0.25, 0.33, 0.34_
-- [ ] 1.2 Create reusable semantic fixtures for direct streams, resource dictionaries, forms, and optional-content references
+- [x] 1.2 Create reusable semantic fixtures for direct streams, resource dictionaries, forms, and optional-content references
   - Provide test construction paths for direct image and form streams, unresolved references, inline images, and Catalog optional-content dictionaries.
   - Keep fixtures byte-oriented and standard-library-only so they can be reused across graphics and reader tests.
   - Done: graphics and reader tests can exercise direct and materialized resource paths without duplicating large PDF byte fixtures.
