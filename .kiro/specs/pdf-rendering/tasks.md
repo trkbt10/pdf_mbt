@@ -156,7 +156,7 @@
   - _Boundary: HalftoneProcessor_
 
 - [x] 5. Implement scene building and scan conversion
-- [ ] 5.1 (P) Build ordered render scenes from graphics and optional text semantics
+- [x] 5.1 (P) Build ordered render scenes from graphics and optional text semantics
   - Preserve graphics event order and source offsets while turning paint events into renderer operations.
   - Include text glyph paint operations only when compatible text events and glyph providers are supplied.
   - The completed scene builder returns stable ordered paint operations without mutating graphics or text input values.
