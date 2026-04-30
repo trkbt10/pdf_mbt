@@ -78,6 +78,18 @@ pub fn parse_transparency_group_dictionary(Map[@objects.PdfName, @objects.PdfObj
 
 pub fn parse_xobject_resource(@objects.PdfName, @objects.PdfObject, Int64) -> XObjectResource raise PdfGraphicsError
 
+pub fn pdf_colour_spaces_requirement_0_18_8_6_6_1_indexed_colour_spaces_anchor() -> String
+
+pub fn pdf_colour_spaces_requirement_0_18_special_colour_spaces_general_vocabulary() -> String
+
+pub fn pdf_colour_spaces_requirement_0_19_pattern_colour_spaces_vocabulary() -> String
+
+pub fn pdf_colour_spaces_requirement_0_19_pattern_indexed_transition_anchor() -> String
+
+pub fn pdf_patterns_requirement_0_12_type2_axial_shadings_vocabulary() -> String
+
+pub fn pdf_patterns_requirement_0_6_shading_patterns_general_vocabulary() -> String
+
 pub fn pdf_xobjects_images_requirement_0_17_group_xobject_vocabulary() -> String
 
 pub fn pdf_xobjects_images_requirement_0_18_8_10_4() -> String
@@ -961,10 +973,30 @@ pub(all) enum PatternResource {
 } derive(Eq, @debug.Debug)
 pub fn PatternResource::requires_resolution(Self) -> Bool
 
+pub(all) struct PdfColourSpacesRequirement018General {
+  pattern_colour_space_pdf_1_2 : String
+  painted_with_pattern_rather_than_single_colour : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfColourSpacesRequirement019PatternColourSpaces {
+  patterns_discusses_patterns_in_detail : String
+  indexed_colour_spaces : String
+  colour_map_or_colour_table_of_arbitrary_colours : String
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PdfGraphics {
   program : GraphicsProgram
 } derive(Eq, @debug.Debug)
 pub fn PdfGraphics::uses_transparency_features(Self) -> Bool
+
+pub(all) enum PdfGraphicsOperatorGroup {
+  GraphicsState
+  PathConstruction
+  PathPainting
+  OtherPainting
+  Text
+  MarkedContent
+} derive(Eq, @debug.Debug)
 
 pub(all) struct RadialShading {
   coords : Array[Double]

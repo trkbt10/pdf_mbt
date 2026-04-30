@@ -257,8 +257,23 @@ pub fn pdf_xobjects_images_requirement_0_23_8_11_2() -> String {
 
 ///|
 /// Requirement 0.19 reference dictionary Table 95 vocabulary.
+/// Section 8.10.4.1 General says the document in which the reference occurs
+/// is called the containing document and the one whose content is being
+/// imported is the target document. The target document may reside in a file
+/// external to the containing document or may be included within it as an
+/// embedded file stream. The reference XObject in the containing document
+/// shall be a form XObject containing the Ref entry in its form dictionary.
+/// This form XObject shall serve as a proxy that should be processed by a PDF
+/// processor when the referenced content is not available. The proxy can be a
+/// low-resolution image of the imported content, descriptive text, a gray box,
+/// or another placeholder. The imported content shall consist of a single,
+/// complete PDF page in the target document and shall be designated by a
+/// reference dictionary, the value of the Ref entry. The presence of the Ref
+/// entry shall distinguish reference XObjects from other types of form
+/// XObjects. Table 95 — Entries in a reference dictionary includes F, Page,
+/// and ID.
 pub fn pdf_xobjects_images_requirement_0_19_reference_dictionary_vocabulary() -> String {
-  "Table 95 reference dictionary F file Page integer ID byte strings reference XObject Ref entry target document complete PDF page proxy low-resolution image descriptive text gray box"
+  "0.19 8.10.4.1 General reference XObject containing document target document imported content external file embedded file stream form XObject containing the Ref entry form dictionary proxy processed when referenced content is not available low-resolution image descriptive text gray box ordinary form XObject imported content single complete PDF page reference dictionary value of Ref entry Table 95 Entries in a reference dictionary F file specification Page integer text string page index page label ID array byte strings target document Matrix BBox Group entry"
 }
 
 ///|

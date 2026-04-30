@@ -28,6 +28,14 @@ pub(all) struct FormGroupInfo {
 /// appearance, logical structure, named destinations, article threads, actions,
 /// and other special considerations are preserved for higher layers instead of
 /// being loaded by graphics.
+///
+/// Section 8.10.4.1 General: a reference XObject is a form XObject containing
+/// the Ref entry in its form dictionary and serves as a proxy that should be
+/// displayed or printed in place of the imported page. The presence of the Ref
+/// entry shall distinguish reference XObjects from other types of form
+/// XObjects. Table 95 — Entries in a reference dictionary identifies F, Page,
+/// ID, Metadata, and optional printing reference entries for the imported
+/// content.
 pub(all) struct ReferenceXObjectInfo {
   file_spec : @objects.PdfObject?
   page : @objects.PdfObject?
