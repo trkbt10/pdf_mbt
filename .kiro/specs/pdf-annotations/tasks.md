@@ -157,7 +157,7 @@
   - Completion: widget tests cover highlight defaults, appearance-characteristic fields, parent validation, icon raw preservation, and no form-field semantic merging beyond annotation-owned entries.
   - _Requirements: 0.24_
 
-- [ ] 5.9 Parse printer mark and trap network annotation records
+- [x] 5.9 Parse printer mark and trap network annotation records
   - Parse printer mark as a structural subtype with raw production-mark context preserved.
   - Parse trap network as a deprecated structural subtype while leaving page-placement enforcement to integration.
   - Completion: subtype tests cover printer mark records, trap network records, deprecated subtype preservation, and no trapping execution.
