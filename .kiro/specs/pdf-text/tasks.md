@@ -120,7 +120,7 @@
   - _Boundary: FontResourceResolver, EncodingResolver_
   - _Depends: 3.1, 3.2, 3.3_
 
-- [ ] 4. Implement CIDFonts, CMaps, and Type 0 composite fonts
+- [x] 4. Implement CIDFonts, CMaps, and Type 0 composite fonts
 - [ ] 4.1 (P) Validate CIDSystemInfo and CIDFont dictionaries
   - Parse Registry, Ordering, and Supplement values and validate compatibility rules used between CMaps and CIDFonts.
   - Validate CIDFontType0 and CIDFontType2 dictionary entries, descriptor requirements, base names, and descendant-only usage.
