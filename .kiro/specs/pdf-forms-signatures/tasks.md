@@ -187,7 +187,7 @@
   - Completed state: geospatial measures expose coordinate metadata and malformed cardinality or required-entry failures raise InvalidMeasure.
   - _Requirements: 0.59, 0.60_
   - _Boundary: GeospatialMeasureParser_
-- [ ] 7.4 Parse geographic and projected coordinate systems
+- [x] 7.4 Parse geographic and projected coordinate systems
   - Parse GEOGCS and PROJCS dictionaries from GCS and DCS positions with Type, EPSG, and WKT entries.
   - Validate that each coordinate system has exactly one supported coordinate-system descriptor according to its required shape.
   - Completed state: coordinate-system records distinguish geographic and projected systems and reject conflicting or missing EPSG/WKT descriptors.
