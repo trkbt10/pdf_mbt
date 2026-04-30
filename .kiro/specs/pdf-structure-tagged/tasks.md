@@ -255,7 +255,7 @@
   - _Boundary: RoleNamespaceResolver, StandardStructureCatalog tests_
   - _Depends: 4.4_
 
-- [ ] 8.3 (P) Verify attributes, user properties, and accessibility metadata
+- [x] 8.3 (P) Verify attributes, user properties, and accessibility metadata
   - Cover direct attributes, streams, class maps, revision pairs, owner and namespace owner validation, precedence, inheritance, defaults, standard attribute groups, user properties, and mark-information correlation.
   - Cover catalog and element language inheritance, alternate descriptions, replacement text, abbreviation expansion, phoneme values, and phonetic alphabet defaulting.
   - Done when targeted reader tests prove attribute and accessibility resolution with raw value preservation and source provenance.
