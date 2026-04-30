@@ -40,7 +40,7 @@
   - _Requirements: 0.1, 0.2, 0.26_
 
 - [x] 2. Resolve page/document annotation sources and tab metadata
-- [ ] 2.1 Resolve page annotation source entries for later typed parsing
+- [x] 2.1 Resolve page annotation source entries for later typed parsing
   - Treat an absent page annotation entry as an empty annotation source list.
   - Require a present annotation entry to be an array and require each direct or resolved entry to be an annotation dictionary.
   - Preserve page annotation array order, page index, array position, and source indirect object identity when present.
