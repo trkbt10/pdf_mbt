@@ -50,11 +50,7 @@ fn parse_registered_direct_function(
       SampledFunction(parse_sampled_function(input))
     }
     Exponential => ExponentialFunction(parse_exponential_function(input))
-    Stitching =>
-      raise PdfFunctionError::InvalidFunction(
-        input.offset,
-        "Type 3 function parser is not registered yet",
-      )
+    Stitching => StitchingFunction(parse_stitching_function(input))
     Calculator => {
       require_range(input.common, input.offset, "Type 4") |> ignore
       CalculatorFunction(parse_calculator_function(input))

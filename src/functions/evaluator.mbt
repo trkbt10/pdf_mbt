@@ -80,19 +80,30 @@ pub fn PdfFunction::evaluate(
   inputs : Array[Double],
   limits : FunctionLimits,
 ) -> Array[Double] raise PdfFunctionError {
-  let common = self.common()
+  evaluate_function_with_depth(self, inputs, limits, 1)
+}
+
+///|
+fn evaluate_function_with_depth(
+  function : PdfFunction,
+  inputs : Array[Double],
+  limits : FunctionLimits,
+  depth : Int,
+) -> Array[Double] raise PdfFunctionError {
+  check_limit("function recursion depth", depth, limits.max_recursion_depth)
+  let common = function.common()
   let clipped_inputs = common.clip_inputs(inputs)
   check_limit("function evaluation steps", 1, limits.max_evaluation_steps)
-  match self {
-    SampledFunction(function) =>
-      evaluate_sampled_function(function, clipped_inputs)
-    ExponentialFunction(function) =>
-      evaluate_exponential_function(function, clipped_inputs)
-    CalculatorFunction(function) =>
-      evaluate_calculator_function(function, clipped_inputs, limits)
-    _ =>
-      raise PdfFunctionError::EvaluationFailure(
-        0L, "function type evaluator is not implemented yet",
+  match function {
+    SampledFunction(sampled) =>
+      evaluate_sampled_function(sampled, clipped_inputs)
+    ExponentialFunction(exponential) =>
+      evaluate_exponential_function(exponential, clipped_inputs)
+    CalculatorFunction(calculator) =>
+      evaluate_calculator_function(calculator, clipped_inputs, limits)
+    StitchingFunction(stitching) =>
+      evaluate_stitching_function_with_depth(
+        stitching, clipped_inputs, limits, depth,
       )
   }
 }
@@ -103,8 +114,19 @@ pub fn evaluate_function_source(
   inputs : Array[Double],
   limits : FunctionLimits,
 ) -> Array[Double] raise PdfFunctionError {
+  evaluate_function_source_with_depth(source, inputs, limits, 1)
+}
+
+///|
+fn evaluate_function_source_with_depth(
+  source : FunctionSource,
+  inputs : Array[Double],
+  limits : FunctionLimits,
+  depth : Int,
+) -> Array[Double] raise PdfFunctionError {
   match source {
-    DirectFunction(function) => function.evaluate(inputs, limits)
+    DirectFunction(function) =>
+      evaluate_function_with_depth(function, inputs, limits, depth)
     IndirectFunction(object_id) =>
       raise PdfFunctionError::UnresolvedFunctionReference(object_id)
   }

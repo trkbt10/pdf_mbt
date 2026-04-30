@@ -97,16 +97,16 @@ test "direct parser handoff validates common entries before type parser ownershi
   }
 
   let type3 = parser_base_dict(3L)
-  let pending_type_parser : Result[PdfFunction, PdfFunctionError] = try? parse_direct_function(
+  let missing_type3_entries : Result[PdfFunction, PdfFunctionError] = try? parse_direct_function(
     @objects.PdfObject::Dictionary(type3),
     FunctionLimits::default(),
     25L,
   )
-  match pending_type_parser {
+  match missing_type3_entries {
     Err(InvalidFunction(offset, reason)) => {
       assert_eq(offset, 25L)
-      assert_eq(reason, "Type 3 function parser is not registered yet")
+      assert_eq(reason, "missing required /b\"Functions\" entry")
     }
-    _ => fail("expected registered parser handoff point")
+    _ => fail("expected Type 3 owned parser failure")
   }
 }
