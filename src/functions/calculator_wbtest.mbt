@@ -23,7 +23,7 @@ fn calc_stream(program : Bytes) -> @objects.PdfObject {
   let dict : @objects.PdfDictionary = Map::new()
   dict[calc_name(b"FunctionType")] = calc_int(4L)
   dict[calc_name(b"Domain")] = calc_array([calc_num(0.0), calc_num(1.0)])
-  dict[calc_name(b"Range")] = calc_array([calc_num(0.0), calc_num(1.0)])
+  dict[calc_name(b"Range")] = calc_array([calc_num(-1000.0), calc_num(1000.0)])
   @objects.PdfObject::Stream(@objects.PdfStream::{ dict, data: program })
 }
 
@@ -124,5 +124,77 @@ test "calculator parser rejects procedure-like brace blocks and token limits" {
       assert_eq(maximum, 2)
     }
     _ => fail("expected token limit failure")
+  }
+}
+
+///|
+fn calc_eval(program : Bytes) -> Array[Double] raise PdfFunctionError {
+  let function = parse_direct_function(
+    calc_stream(program),
+    FunctionLimits::default(),
+    100L,
+  )
+  match function {
+    CalculatorFunction(calculator) =>
+      evaluate_calculator_function(calculator, [], FunctionLimits::default())
+    _ =>
+      raise PdfFunctionError::EvaluationFailure(
+        0L, "expected calculator function",
+      )
+  }
+}
+
+///|
+test "calculator arithmetic operators evaluate numeric stack operands" {
+  inspect(calc_eval(b"{ -3 abs }"), content="[3]")
+  inspect(calc_eval(b"{ 2 3 add }"), content="[5]")
+  inspect(calc_eval(b"{ 1 1 atan }"), content="[45]")
+  inspect(calc_eval(b"{ 1.2 ceiling }"), content="[2]")
+  inspect(calc_eval(b"{ 60 cos }"), content="[0.5000000000000001]")
+  inspect(calc_eval(b"{ 3.8 cvi }"), content="[3]")
+  inspect(calc_eval(b"{ 3 cvr }"), content="[3]")
+  inspect(calc_eval(b"{ 7 2 div }"), content="[3.5]")
+  inspect(calc_eval(b"{ 2 3 exp }"), content="[8]")
+  inspect(calc_eval(b"{ 1.8 floor }"), content="[1]")
+  inspect(calc_eval(b"{ 7 2 idiv }"), content="[3]")
+  inspect(calc_eval(b"{ 2.718281828459045 ln }"), content="[1]")
+  inspect(calc_eval(b"{ 100 log }"), content="[2]")
+  inspect(calc_eval(b"{ 7 4 mod }"), content="[3]")
+  inspect(calc_eval(b"{ 6 7 mul }"), content="[42]")
+  inspect(calc_eval(b"{ 5 neg }"), content="[-5]")
+  inspect(calc_eval(b"{ 1.5 round }"), content="[2]")
+  inspect(calc_eval(b"{ 90 sin }"), content="[1]")
+  inspect(calc_eval(b"{ 9 sqrt }"), content="[3]")
+  inspect(calc_eval(b"{ 7 2 sub }"), content="[5]")
+  inspect(calc_eval(b"{ -1.8 truncate }"), content="[-1]")
+}
+
+///|
+test "calculator arithmetic operators report numeric failures" {
+  let underflow : Result[Array[Double], PdfFunctionError] = try? calc_eval(
+    b"{ add }",
+  )
+  match underflow {
+    Err(EvaluationFailure(_, reason)) =>
+      assert_eq(reason, "calculator stack underflow")
+    _ => fail("expected stack underflow")
+  }
+
+  let division : Result[Array[Double], PdfFunctionError] = try? calc_eval(
+    b"{ 1 0 div }",
+  )
+  match division {
+    Err(EvaluationFailure(_, reason)) =>
+      assert_eq(reason, "calculator division by zero")
+    _ => fail("expected division failure")
+  }
+
+  let type_error : Result[Array[Double], PdfFunctionError] = try? calc_eval(
+    b"{ true abs }",
+  )
+  match type_error {
+    Err(EvaluationFailure(_, reason)) =>
+      assert_eq(reason, "calculator operator requires numeric operands")
+    _ => fail("expected numeric type failure")
   }
 }

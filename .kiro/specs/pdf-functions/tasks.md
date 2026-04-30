@@ -58,7 +58,7 @@
   - _Requirements: 0.5, 0.6_
   - _Boundary: CalculatorFunctionModel_
 
-- [ ] 2.6 Execute calculator arithmetic and numeric operators
+- [x] 2.6 Execute calculator arithmetic and numeric operators
   - Evaluate required numeric stack values for arithmetic operators, conversions, rounding, trigonometry, logarithms, exponentiation, roots, and division behavior.
   - Enforce numeric domain, type, stack underflow, and result validity errors for arithmetic operations.
   - Operator tests cover every arithmetic operator and show numeric failures are reported without accepting unsupported PostScript features.
