@@ -80,7 +80,7 @@
   - _Requirements: 0.16, 0.17_
   - _Depends: 4.2_
 
-- [ ] 5. Graphics interpreter and resource integration
+- [x] 5. Graphics interpreter and resource integration
 - [ ] 5.1 Connect Pattern colour selection to validated Pattern resources
   - Resolve Pattern resources for special colour operators when direct resources or unresolved references are available.
   - Accept coloured tiling and shading patterns only with a bare pattern name in a Pattern colour space without an underlying colour space.
