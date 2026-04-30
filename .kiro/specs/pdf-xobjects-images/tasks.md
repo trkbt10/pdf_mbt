@@ -136,7 +136,7 @@
   - _Depends: 4.1, 4.2, 4.3_
   - _Requirements: 0.22, 0.23, 0.24, 0.25, 0.26, 0.31, 0.32, 0.33, 0.34, 0.35, 0.36_
   - _Boundary: ReaderXObjectMaterializer_
-- [ ] 6.2 Materialize indirect XObject resources and detect recursive forms
+- [x] 6.2 Materialize indirect XObject resources and detect recursive forms
   - Load page and nested form XObject references on demand and prepare reader-owned materialized resource maps for graphics interpretation.
   - Track form object identities during nested interpretation and fail before handing a repeated form cycle back to graphics.
   - Done: reader materialization returns loaded image and form streams with recursion metadata, and recursive form references are rejected before graphics interpretation re-enters the same form.
