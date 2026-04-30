@@ -193,7 +193,7 @@
   - _Requirements: 3.13_
   - _Boundary: ScanConverter, ColourPipeline_
 
-- [ ] 5.6 Render supplied glyph masks through common paint handling
+- [x] 5.6 Render supplied glyph masks through common paint handling
   - Request glyph masks through the configured glyph provider instead of interpreting font programs in the renderer.
   - Apply glyph coverage through the same colour, transfer, halftone, and clipping path used for other paint operations.
   - The completed glyph path renders supplied masks and fails strict rendering when required masks are unavailable.
