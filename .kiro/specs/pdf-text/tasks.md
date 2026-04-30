@@ -294,7 +294,7 @@
   - _Boundary: FontResourceResolver, EncodingResolver, CMapResolver, UnicodeMapper, Type3GlyphModel, FontDescriptorModel_
   - _Depends: 5.3, 6.4_
 
-- [ ] 8.3 Complete reader bridge integration coverage
+- [x] 8.3 Complete reader bridge integration coverage
   - Cover inherited page Resources, indirect font graph materialization, FontDescriptor, ToUnicode stream, DescendantFonts, CharProcs, Type 3 Resources, ExtGState `/TK`, and page content parsing through text APIs.
   - Assert document-error wrapping for text failures while preserving existing reader and content failures.
   - `moon test` for the reader package passes with page-level text program and extracted text coverage.
