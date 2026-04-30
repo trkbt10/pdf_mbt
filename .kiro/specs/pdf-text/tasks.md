@@ -130,7 +130,7 @@
   - _Boundary: FontResourceResolver_
   - _Depends: 2.1, 2.2_
 
-- [ ] 4.2 Compute CIDFont horizontal and vertical metrics
+- [x] 4.2 Compute CIDFont horizontal and vertical metrics
   - Parse default horizontal widths, explicit W arrays, default vertical metrics, explicit W2 arrays, duplicate-CID first-wins behavior, and CIDToGIDMap stream or Identity metadata.
   - Provide horizontal and vertical displacement plus vertical origin vectors according to the active writing mode.
   - Substitute CID 0 metrics when a CID or GID cannot be selected.
