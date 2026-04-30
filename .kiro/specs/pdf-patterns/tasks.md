@@ -89,7 +89,7 @@
   - Done when valid coloured and uncoloured selections update state and events, while paint-type and operand mismatches fail deterministically.
   - _Requirements: 0.1, 0.4, 0.5, 0.6_
   - _Depends: 2.1, 2.2, 3.1_
-- [ ] 5.2 Connect the shading paint operator to validated Shading resources
+- [x] 5.2 Connect the shading paint operator to validated Shading resources
   - Resolve named Shading resources from the current content resources and validate direct dictionaries or streams immediately.
   - Emit a typed shading paint event for direct and unresolved indirect resources without using or mutating the current colour state.
   - Ignore the shading background for direct shading-operator painting while preserving the parsed background for pattern usage.
