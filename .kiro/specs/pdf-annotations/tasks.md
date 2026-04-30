@@ -182,7 +182,7 @@
   - _Requirements: 0.6_
 
 - [x] 6. Integrate subtype dispatch and public behavior
-- [ ] 6.1 Connect source resolution, common parsing, markup parsing, and subtype-family parsing into page-level typed annotations
+- [x] 6.1 Connect source resolution, common parsing, markup parsing, and subtype-family parsing into page-level typed annotations
   - Dispatch all standard subtype names to the correct structural record and keep unknown names as typed unknown records.
   - Attach markup metadata only to subtypes classified as markup annotations while preserving common fields for all subtypes.
   - Return typed page annotations lazily from resolved page annotation sources.
