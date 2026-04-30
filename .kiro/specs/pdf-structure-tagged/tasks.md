@@ -136,7 +136,7 @@
   - _Boundary: StandardStructureCatalog, RoleNamespaceResolver_
   - _Depends: 3.2, 4.1, 4.2, 4.3_
 
-- [ ] 5. Resolve structure attributes
+- [x] 5. Resolve structure attributes
 - [ ] 5.1 Parse direct attribute objects and revision-number pairs
   - Interpret direct attributes as dictionaries or streams with required owners and optional namespace-owner references.
   - Parse attribute arrays with optional revision-number pairs and later-entry precedence for duplicate attributes.
