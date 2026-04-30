@@ -119,6 +119,8 @@ pub fn pdf_actions_section_12_6_4_5_gotodp_action_table_206() -> Int
 
 pub fn pdf_actions_section_12_6_4_8_uri_actions_tables_210_211() -> Int
 
+pub fn pdf_annotations_requirement_0_22_movie_annotations_vocabulary() -> String
+
 pub fn pdf_annotations_section_12_5_1_general_tabs_anchor() -> Int
 
 pub fn pdf_annotations_section_12_5_6_11_caret_anchor() -> Int

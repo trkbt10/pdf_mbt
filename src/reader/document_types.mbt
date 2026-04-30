@@ -900,14 +900,16 @@ pub(all) struct PdfSoundAnnotation {
 } derive(Eq, Debug)
 
 ///|
-/// Movie annotations from ISO 32000-2 12.5.6.17, deprecated in PDF 2.0 and
-/// superseded by the general multimedia framework. Table 189 additional
-/// entries specific to a movie annotation are represented structurally:
-/// Subtype Movie, optional T text string title, required Movie dictionary
-/// describing the movie static characteristics from 13.4 Movies, and optional
-/// A boolean or movie activation dictionary controlling whether and how the
-/// movie shall be played when the annotation is activated. This reader exposes
-/// the entries but does not play animated graphics or sound.
+/// Movie annotation per Section 12.5.6.17 "Movie annotations" of
+/// ISO 32000-2 (deprecated in PDF 2.0).
+///
+/// A movie annotation (PDF 1.2) contains animated graphics and sound to be
+/// presented on the computer screen and through the speakers. When the
+/// annotation is activated, the movie shall be played. Table 189 — Additional
+/// entries specific to a movie annotation shows the dictionary entries
+/// specific to this type: Subtype (Movie), T (title), Movie (movie
+/// dictionary), A (activation flag or movie activation dictionary). Superseded
+/// by the general multimedia framework in clause 13.2.
 pub(all) struct PdfMovieAnnotation {
   title : Bytes?
   movie : @objects.PdfObject

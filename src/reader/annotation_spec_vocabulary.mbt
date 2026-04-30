@@ -241,6 +241,19 @@ pub fn pdf_annotations_section_12_5_6_17_movie_annotations_13_4_movies_literal_a
 }
 
 ///|
+/// Stable vocabulary anchor for ISO 32000-2 12.5.6.17 Movie annotations.
+pub fn pdf_annotations_requirement_0_22_movie_annotations_vocabulary() -> String {
+  "12.5.6.17 Movie annotations The features described in this subclause are deprecated in PDF 2.0 and superseded by the general multimedia framework described in 13.2 Multimedia. " +
+  "A movie annotation PDF 1.2 contains animated graphics and sound to be presented on the computer screen and through the speakers. " +
+  "When the annotation is activated, the movie shall be played. " +
+  "Table 189 Additional entries specific to a movie annotation shows the annotation dictionary entries specific to this type of annotation. Movies are discussed in 13.4 Movies. " +
+  "Subtype name required shall be Movie for a movie annotation. T text string optional title of the movie annotation. " +
+  "Movie dictionary required shall describe the movie static characteristics. " +
+  "A boolean or dictionary optional activation flag specifies whether and how to play the movie when activated. " +
+  "A dictionary value shall be a movie activation dictionary, true uses default activation parameters, false means the movie shall not be played, default value true."
+}
+
+///|
 pub(all) struct PdfAnnotationsSection125617MovieVocabulary {
   movie_annotation : String
   t_title : String
