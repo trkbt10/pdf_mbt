@@ -125,7 +125,7 @@
   - Completion: tests cover required free-text and line fields, defaults, malformed callouts or leader data, caption options, and raw measure preservation.
   - _Requirements: 0.11, 0.12_
 
-- [ ] 5.4 Parse square, circle, polygon, and polyline annotations
+- [x] 5.4 Parse square, circle, polygon, and polyline annotations
   - Parse shape border styles, interior colours, border effects, and difference rectangles.
   - Parse polygon and polyline vertices, line endings, intents, measure raw data, and PDF 2.0 paths with the documented vertices/path exclusivity rule.
   - Completion: tests cover square, circle, polygon, and polyline defaults, required geometry, path precedence, malformed geometry, and raw measure preservation.
