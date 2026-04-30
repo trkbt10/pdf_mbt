@@ -47,7 +47,7 @@
   - Completion: source-entry tests show empty pages yield no sources, direct and indirect dictionaries are collected in array order, and malformed present entries raise annotation diagnostics before subtype parsing.
   - _Requirements: 0.1, 0.2, 0.26_
 
-- [ ] 2.2 Resolve document annotation sources with cross-page ownership validation
+- [x] 2.2 Resolve document annotation sources with cross-page ownership validation
   - Traverse pages in document order and reuse page-level source entry resolution.
   - Reject the same indirect annotation dictionary when it is referenced from more than one page.
   - Preserve page grouping and page-local order in the flattened source list.
