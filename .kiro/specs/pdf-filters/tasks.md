@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Establish the filter decoding foundation
+- [x] 1. Establish the filter decoding foundation
 - [x] 1.1 Set up the reusable filter package boundary
   - Add the package configuration needed for a standard-library-only filter layer that depends on the object model and no runtime compression bindings.
   - Provide stream-decoding entry points that can accept a parsed stream or an equivalent dictionary plus raw bytes.
