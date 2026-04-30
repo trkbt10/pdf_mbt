@@ -311,7 +311,7 @@
   - _Boundary: TextInterpreter, CMapResolver, UnicodeMapper, ReaderTextBridge_
   - _Depends: 8.1, 8.2, 8.3_
 
-- [ ] 8.5 Regenerate interfaces and run full project validation
+- [x] 8.5 Regenerate interfaces and run full project validation
   - Run formatting, type checking, targeted text and reader tests, full test coverage, and public interface generation after the feature is integrated.
   - Review generated interfaces to confirm only intended text and reader API additions are exposed.
   - Preserve existing content, graphics, filters, objects, parser, and reader behavior outside the documented text bridge.
