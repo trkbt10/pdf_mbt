@@ -112,7 +112,7 @@
   - Done when valid and invalid Pattern and tiling fixtures assert both typed summaries and expected graphics failures.
   - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5_
   - _Depends: 2.3, 5.1_
-- [ ] 6.2 (P) Cover shading pattern, common shading, and Type 1 through Type 3 cases
+- [x] 6.2 (P) Cover shading pattern, common shading, and Type 1 through Type 3 cases
   - Test Type 2 shading pattern wrapper defaults, direct shading entries, indirect references, and graphics-state dictionary shape.
   - Test common shading entries, Pattern colour-space rejection, background component counts, Indexed restrictions, and required function presence.
   - Test Type 1, Type 2, and Type 3 defaults plus malformed domains, coordinates, extend arrays, and radii.
