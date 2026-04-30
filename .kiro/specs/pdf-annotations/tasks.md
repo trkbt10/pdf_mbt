@@ -119,7 +119,7 @@
   - Completion: link tests cover action-only, destination-only, highlight defaults, quadrilateral validation, and non-execution of action payloads.
   - _Requirements: 0.10_
 
-- [ ] 5.3 Parse free text and line annotations
+- [x] 5.3 Parse free text and line annotations
   - Parse default appearance strings, justification, rich text, default style, free-text callouts, intents, border effects, difference rectangles, border styles, and callout line endings.
   - Parse line endpoints, line ending styles, interior colour, leader lines, caption settings, measure raw data, and caption offsets.
   - Completion: tests cover required free-text and line fields, defaults, malformed callouts or leader data, caption options, and raw measure preservation.
