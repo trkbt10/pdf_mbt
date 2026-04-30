@@ -84,7 +84,7 @@
   - _Requirements: 2, 2.10, 2.16, 2.26, 2.29, 2.35, 2.42, 2.45_
   - _Boundary: TransparencySceneBuilder_
   - _Depends: 1.5, 2.1_
-- [ ] 3.2 Composite elementary object stacks
+- [x] 3.2 Composite elementary object stacks
   - Composite individual objects against their immediate backdrop using source shape, mask shape, constant shape, object opacity, mask opacity, constant opacity, alpha, and blend mode.
   - Clamp final sample components while preserving undefined-colour semantics when alpha is zero.
   - Rendering tests for layered semi-transparent fills match the expected colour, shape, opacity, and alpha samples.
