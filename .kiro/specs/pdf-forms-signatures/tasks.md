@@ -240,7 +240,7 @@
   - Completed state: form action and FDF tests prove typed plans and standalone FDF parsing work without side effects.
   - _Requirements: 0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28_
   - _Boundary: FormActionParser, FieldSelectionPlanner, FDFReader_
-- [ ] 9.3 Test signatures, LTV, permissions, and legal attestations
+- [x] 9.3 Test signatures, LTV, permissions, and legal attestations
   - Cover signature dictionaries, byte ranges, subfilter classification, PKCS #1 metadata, CMS and PAdES descriptors, transform parameters, DocMDP, UR, FieldMDP, validation work items, DSS, VRI, evidence ordering, document timestamps, permissions, and legal attestation counters.
   - Include malformed fixtures for invalid byte ranges, invalid direct-object constraints, malformed transform parameters, invalid DSS or VRI references, and timestamp ordering edge cases.
   - Completed state: signature tests prove PDF-owned validation inputs are gathered while cryptographic validity remains external.
