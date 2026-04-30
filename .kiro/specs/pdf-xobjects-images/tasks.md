@@ -13,7 +13,7 @@
   - _Requirements: 0.1, 0.14, 0.15, 0.22, 0.33_
 
 - [ ] 2. XObject and image semantics
-- [ ] 2.1 Resolve Do XObject resources into image, form, unresolved, or typed failure outcomes
+- [x] 2.1 Resolve Do XObject resources into image, form, unresolved, or typed failure outcomes
   - Validate name operands, XObject resource lookup, stream requirement, optional Type, and required Subtype rules.
   - Preserve indirect references explicitly when no materialized object is available.
   - Done: direct image and form resources produce typed resource outcomes, while missing names, non-stream resources, and unknown subtypes raise graphics resource failures.
