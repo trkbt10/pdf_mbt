@@ -76,7 +76,7 @@ glyph. Currently identity fallback may silently succeed because
 the CFF has an outline at the identity index that happens to be
 non-empty.
 
-### Requirement 2: End-to-end render verification
+#### Test harness expectation: End-to-end render verification
 
 #### 2.1: Render golden crop
 A whitebox or Node-driven test SHALL render local-fixture page 6, extract a
