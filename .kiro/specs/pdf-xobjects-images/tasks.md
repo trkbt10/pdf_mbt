@@ -44,7 +44,7 @@
   - Done: base and alternate image dictionaries are represented structurally, alternate images cannot recursively contain Alternates, and print or optional-content selection inputs are observable.
   - _Requirements: 0.6, 0.8, 0.9_
   - _Boundary: ImageDescriptorModel_
-- [ ] 2.6 Validate inline images as image descriptors
+- [x] 2.6 Validate inline images as image descriptors
   - Normalize inline image entries and abbreviations, require PDF 2.0 Length semantics, enforce inline colour-space restrictions, and reject forbidden inline filters.
   - Reconcile Length with captured image data and preserve the 4096-byte recommendation as a diagnostic or metadata according to local error conventions.
   - Done: inline images produce the same descriptor family as XObject images, and invalid inline-only constraints fail before graphics image events are emitted.
