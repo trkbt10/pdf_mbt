@@ -26,7 +26,7 @@
 - `Filter` null entries are rejected as malformed input; only an absent `Filter` entry is treated as an identity decode path.
 - Pipeline normalization completes before any filter is applied, so malformed later entries fail before partial output can be produced.
 
-- [ ] 2. Implement independent byte-oriented filters
+- [x] 2. Implement independent byte-oriented filters
 - [x] 2.1 (P) Decode ASCII hexadecimal streams
   - Decode uppercase and lowercase hexadecimal digit pairs into bytes while ignoring PDF white-space bytes.
   - Stop decoding at the `>` end marker and pad an odd final digit with zero.
