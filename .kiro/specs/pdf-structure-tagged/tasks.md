@@ -220,7 +220,7 @@
   - _Depends: 6.2, 6.3_
 
 - [x] 7. Integrate public reader APIs
-- [ ] 7.1 Expose explicit logical-structure access through the reader facade
+- [x] 7.1 Expose explicit logical-structure access through the reader facade
   - Add public entry points for mark information, document language, optional structure tree access, identifier lookup, parent lookup, role resolution, resolved attributes, accessibility properties, standard-structure diagnostics, and Tagged PDF reports.
   - Keep existing raw catalog, page, annotation, XObject, content, and resource APIs compatible and lazy.
   - Regenerate and review the reader package interface so public additions are limited to the designed logical-structure surface.
