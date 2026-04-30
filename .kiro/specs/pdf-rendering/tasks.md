@@ -113,7 +113,7 @@
   - _Boundary: HalftoneProcessor_
   - _Depends: 1.2, 2.1_
 
-- [ ] 4.2 Parse single-screen halftones and named/default fallback
+- [x] 4.2 Parse single-screen halftones and named/default fallback
   - Parse single-screen frequency, angle, accurate-screen flag, spot function, and optional transfer override.
   - Honor named device halftone lookup and default device halftone fallback when explicit parameters are absent or unsupported.
   - The completed parser accepts valid Type 1 halftones and rejects malformed required entries with rendering errors.
