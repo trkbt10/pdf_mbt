@@ -148,7 +148,7 @@
   - _Boundary: CMapResolver, PredefinedCMapTables_
   - _Depends: 1.4_
 
-- [ ] 4.4 Parse embedded CMap streams and UseCMap composition
+- [x] 4.4 Parse embedded CMap streams and UseCMap composition
   - Decode embedded CMap streams and parse stream dictionaries, CMapName, CIDSystemInfo, WMode, codespace ranges, character mappings, notdef mappings, and UseCMap references.
   - Compose differing mappings over referenced CMaps while respecting recursion limits and caller-supplied materialization.
   - Reject overlapping codespaces, invalid code lengths, malformed mapping ranges, and incompatible CIDSystemInfo values.
