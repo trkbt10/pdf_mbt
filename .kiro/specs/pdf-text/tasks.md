@@ -66,7 +66,7 @@
   - _Requirements: 2.7, 2.8, 2.9, 2.24_
   - _Boundary: EncodingResolver_
 
-- [ ] 2.5 (P) Provide glyph-name Unicode lookup data
+- [x] 2.5 (P) Provide glyph-name Unicode lookup data
   - Add Adobe glyph-name lookup coverage needed for standard Latin names, symbolic names, ligatures, and names used by Differences arrays.
   - Represent missing glyph-name mappings as unknown extraction results rather than text interpretation failures.
   - Keep lookup tables deterministic across native and wasm targets.
