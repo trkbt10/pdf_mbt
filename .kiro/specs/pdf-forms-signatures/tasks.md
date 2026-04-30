@@ -88,7 +88,7 @@
   - Completed state: the FDF catalog exposes typed FDF dictionary payloads with raw differences and embedded descriptors intact.
   - _Requirements: 0.25_
   - _Boundary: FDFCatalogParser_
-- [ ] 4.3 (P) Parse FDF fields and button appearance metadata
+- [x] 4.3 (P) Parse FDF fields and button appearance metadata
   - Parse FDF field hierarchy, values, field flags, set/clear flag plans, widget annotation flags, appearance dictionaries, external appearance references, icon fit dictionaries, actions, additional actions, and rich text.
   - Respect Ff and F precedence over SetFf, ClrFf, SetF, and ClrF while leaving import mutation to callers.
   - Completed state: FDF field records expose import-ready structural data and malformed field dictionaries raise InvalidFDF.
