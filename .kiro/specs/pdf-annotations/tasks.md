@@ -175,7 +175,7 @@
   - Completion: tests cover redaction precedence rules, required overlay appearance string when needed, projection external data, zero-area appearance rejection, and non-destructive behavior.
   - _Requirements: 0.28, 0.29_
 
-- [ ] 5.12 Preserve 3D, RichMedia, and unknown subtype records
+- [x] 5.12 Preserve 3D, RichMedia, and unknown subtype records
   - Recognize 3D and RichMedia subtype names as adjacent-clause raw hand-off records.
   - Preserve unknown subtype names and dictionaries when common annotation fields are valid.
   - Completion: tests cover 3D raw, RichMedia raw, and unknown subtype records with exact raw dictionary preservation.
