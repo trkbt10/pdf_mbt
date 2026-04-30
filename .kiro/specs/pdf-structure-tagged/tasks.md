@@ -155,7 +155,7 @@
   - _Boundary: AttributeResolver_
   - _Depends: 2.2, 5.1_
 
-- [ ] 5.3 Model standard attribute owners, inheritance, and defaults
+- [x] 5.3 Model standard attribute owners, inheritance, and defaults
   - Recognize standard owners, export-format owners, user-property owners, and namespace owners.
   - Apply format-specific, standard direct, class-map, inherited, and default precedence with source provenance.
   - Preserve arbitrary custom attribute values while validating known standard attribute shapes.
