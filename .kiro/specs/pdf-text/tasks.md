@@ -302,7 +302,7 @@
   - _Boundary: ReaderTextBridge_
   - _Depends: 7.3_
 
-- [ ] 8.4 Validate sample extraction, performance boundaries, and security constraints
+- [x] 8.4 Validate sample extraction, performance boundaries, and security constraints
   - Extract text from Annex-style Type 1 examples and synthetic Type 0 Identity-H examples with ToUnicode ligatures and surrogate pairs.
   - Smoke-test bundled PDF 2.0 examples by invoking text APIs without regressing existing page parsing.
   - Cover large TJ arrays, large mapping tables, bounded UseCMap recursion, excessive range expansion, and absence of font-program execution or runtime network access.
