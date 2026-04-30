@@ -222,7 +222,7 @@
   - _Boundary: TextStateMachine_
   - _Depends: 6.1_
 
-- [ ] 6.3 Execute text showing operators and glyph advancement
+- [x] 6.3 Execute text showing operators and glyph advancement
   - Require a current font before showing text and apply `Tj`, quote, double quote, and `TJ` operators within text objects only.
   - Decode simple and composite strings through the selected font, apply character spacing, word spacing eligibility, horizontal scaling, writing mode, font size, and TJ numeric adjustments.
   - Update the text matrix for visible, invisible, clipping, empty, and fallback glyph cases while preserving source string grouping neutrality.
