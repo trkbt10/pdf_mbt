@@ -100,7 +100,7 @@
   - _Depends: 3.1, 3.2, 3.3_
 
 - [x] 4. Resolve roles, namespaces, and standard structure types
-- [ ] 4.1 Resolve root role maps and custom structure type chains
+- [x] 4.1 Resolve root role maps and custom structure type chains
   - Interpret root role-map entries as name-to-name mappings and follow transitive chains.
   - Preserve original custom roles, terminal custom roles, standard targets, and circular chains without forcing a parse failure.
   - Always apply a role-map entry when it exists, including entries whose source name matches a standard type name.
