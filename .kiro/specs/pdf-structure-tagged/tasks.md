@@ -35,7 +35,7 @@
   - _Boundary: MarkInfoReader_
   - _Depends: 1.1, 1.2, 1.3_
 
-- [ ] 2.2 Resolve the structure tree root and root-level maps
+- [x] 2.2 Resolve the structure tree root and root-level maps
   - Return absence when the catalog has no structure tree root and validate `/Type /StructTreeRoot` when one is present.
   - Normalize root children while preserving root dictionaries, role maps, class maps, namespaces, pronunciation lexicons, associated files, and parent-tree next-key values.
   - Enumerate ID trees and parent trees through existing bounded tree traversal policies with structure-specific errors.
