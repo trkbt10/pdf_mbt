@@ -168,7 +168,7 @@
   - _Requirements: 0.30, 0.33, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.49, 0.50, 0.51, 0.52, 0.53, 0.54, 0.55, 0.56_
   - _Boundary: SignatureValidationPlanner, LTVReader, PermissionsReader_
 
-- [ ] 7. Parse measurement, geospatial, and Catalog requirement data
+- [x] 7. Parse measurement, geospatial, and Catalog requirement data
 - [ ] 7.1 Parse page viewports and measure dictionaries
   - Parse page viewport arrays, viewport rectangles, names, measure dictionaries, point-data references, annotation measure entries, and rectilinear measure dictionaries.
   - Select the last matching viewport for a point by reverse drawing order and use the first point viewport for multi-point measurements.
