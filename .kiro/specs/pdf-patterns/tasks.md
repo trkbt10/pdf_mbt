@@ -96,7 +96,7 @@
   - Done when the shading paint operator produces a validated event and before/after colour states compare equal.
   - _Requirements: 0.7, 0.8, 0.9_
   - _Depends: 3.2, 4.1, 4.3, 4.4_
-- [ ] 5.3 Add reader bridge helpers for indirect Pattern and Shading resources
+- [x] 5.3 Add reader bridge helpers for indirect Pattern and Shading resources
   - Use page resources and object loading to materialize Pattern and Shading resource entries before delegating to graphics validation.
   - Provide name-specific resource inspection and collection helpers with document-level error mapping for missing resources, loading failures, and malformed definitions.
   - Keep recursive pattern execution, renderer planning, and general resource preloading out of reader helpers.
