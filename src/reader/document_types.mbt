@@ -4,6 +4,13 @@
 /// keeps the root Pages node internal, and lazily enumerates page objects from
 /// the page tree when page count or index access is first requested.
 ///
+/// ISO 32000-2 Section 12.1 General groups interactive navigation features
+/// under the document reader surface: viewer preferences, outlines, page
+/// labels, thumbnails, presentations, destinations, annotations, actions,
+/// forms, signatures, measurement properties, geospatial features, and
+/// document requirements are exposed through typed accessors without executing
+/// processor UI behavior.
+///
 /// The public surface tracks the vocabulary in
 /// spec/extracted/7.7-document-structure.spec.txt and sample validation for
 /// spec/pdf20examples/Simple PDF 2.0 file.pdf.
@@ -38,6 +45,30 @@ pub struct PdfPage {
   priv file : PdfFile
   priv record : PageTreeRecord
 }
+
+///|
+/// ISO 32000-2 Section 12.1 General summary for interactive navigation
+/// features that allow a user to interact with a document on the screen.
+/// This includes viewer preferences for presentation settings, outlines,
+/// page labels, thumbnails, presentations, destinations, annotations,
+/// actions, forms, signatures, measurement properties, geospatial features,
+/// and document requirements. Multimedia feature execution is outside this
+/// reader surface; this type reports discovered document structure only.
+pub(all) struct PdfInteractiveNavigation {
+  viewer_preferences : Bool
+  outlines : Bool
+  page_labels : Bool
+  thumbnails : Bool
+  presentations : Bool
+  destinations : Bool
+  annotations : Bool
+  actions : Bool
+  forms : Bool
+  signatures : Bool
+  measurement_properties : Bool
+  geospatial_features : Bool
+  document_requirements : Bool
+} derive(Eq, Debug)
 
 ///|
 /// Four-number page rectangle normalized from MediaBox or CropBox arrays.
@@ -141,8 +172,12 @@ pub(all) struct PdfPageRange {
 
 ///|
 /// Typed ViewerPreferences dictionary with ISO defaults for absent booleans
-/// and boundary names. Implementation-dependent entries remain optional data;
-/// no viewer behavior is executed.
+/// and boundary names. ISO 32000-2 Section 12.2 Viewer preferences, Table 148
+/// - Entries in a viewer preferences dictionary, defines ViewerPreferences
+/// controls for page layout, page mode, FullScreen behavior, HideToolbar,
+/// HideMenubar, HideWindowUI, page boundaries, print policy, and Enforce names.
+/// Implementation-dependent entries remain optional data; no viewer behavior
+/// is executed.
 pub(all) struct PdfViewerPreferences {
   hide_toolbar : Bool
   hide_menubar : Bool

@@ -635,6 +635,7 @@ pub fn PdfDocument::embedded_files(Self) -> Array[PdfEmbeddedFileEntry] raise Pd
 pub fn PdfDocument::extensions(Self) -> PdfExtensions? raise PdfDocumentError
 pub fn PdfDocument::file(Self) -> PdfFile
 pub fn PdfDocument::form_field_values(Self) -> Map[String, String] raise PdfDocumentError
+pub fn PdfDocument::interactive_navigation(Self) -> PdfInteractiveNavigation raise PdfDocumentError
 pub fn PdfDocument::is_encrypted(Self) -> Bool
 pub fn PdfDocument::lookup_name(Self, NameTreeCategory, Bytes) -> @objects.PdfObject? raise PdfDocumentError
 pub fn PdfDocument::mark_info(Self) -> PdfMarkInfo raise PdfDocumentError
@@ -1074,6 +1075,22 @@ pub(all) enum PdfHighlightMode {
 pub(all) struct PdfInkAnnotation {
   ink_list : Array[PdfAnnotationPath]
   paths : Array[PdfAnnotationPath]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PdfInteractiveNavigation {
+  viewer_preferences : Bool
+  outlines : Bool
+  page_labels : Bool
+  thumbnails : Bool
+  presentations : Bool
+  destinations : Bool
+  annotations : Bool
+  actions : Bool
+  forms : Bool
+  signatures : Bool
+  measurement_properties : Bool
+  geospatial_features : Bool
+  document_requirements : Bool
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PdfJavaScriptAction {
