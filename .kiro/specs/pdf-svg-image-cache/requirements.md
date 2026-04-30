@@ -65,7 +65,7 @@ identifies `deferred_svg_pages`. The cache SHALL survive across
 calls for the same document handle and invalidate only when the
 document handle is closed.
 
-### Requirement 2: Documented accessor complexity
+#### Implementation note: documented accessor complexity
 
 #### 2.1: Single graphics walk per page
 The accessor implementation SHALL be documented (in code comments
@@ -79,7 +79,7 @@ The wasm entry points (`pdf_page_svg_image_data`,
 `pdf_page_svg_image_count`) SHALL retain their current signatures.
 Only their internals change.
 
-### Requirement 3: Regression test (compensation)
+#### Test compensation: regression coverage
 
 #### 3.1: Per-page timing test
 A whitebox test SHALL open <local-fixture> (guarded by
