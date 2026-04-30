@@ -1,8 +1,11 @@
 ///|
-/// Pattern PaintType values for ISO 32000-2 8.7.3 tiling patterns.
-/// Coloured tiling patterns specify colour in the pattern cell content stream;
-/// uncoloured tiling patterns act as stencils painted with a separately
-/// supplied colour value from a Pattern colour space.
+/// Section 8.6.6.2 Pattern colour spaces: a Pattern colour space specifies
+/// that an area is to be painted with a pattern rather than a single colour,
+/// and "Patterns" discusses patterns in detail. PaintType values from ISO
+/// 32000-2 8.7.3 distinguish coloured tiling patterns, which specify colour in
+/// the pattern cell content stream, from uncoloured tiling patterns, which act
+/// as stencils painted with a separately supplied colour value from a Pattern
+/// colour space.
 pub(all) enum PatternPaintType {
   Coloured
   Uncoloured
@@ -36,10 +39,12 @@ pub fn TilingType::allows_distortion(self : TilingType) -> Bool {
 }
 
 ///|
-/// ISO 32000-2 8.7.1 and 8.7.2 Type 1 tiling pattern object.
-/// A tiling pattern consists of a replicated pattern cell described by a
-/// content stream. BBox, XStep, YStep, Resources, and the pattern matrix are
-/// interpreted in the pattern coordinate space of the parent content stream.
+/// Section 8.6.6.2 Pattern colour spaces and ISO 32000-2 8.7.1/8.7.2 Type 1
+/// tiling pattern object. A Pattern colour space (PDF 1.2) specifies that an
+/// area is painted with a pattern rather than a single colour. A tiling pattern
+/// consists of a replicated pattern cell described by a content stream; BBox,
+/// XStep, YStep, Resources, and the pattern matrix are interpreted in pattern
+/// coordinate space.
 pub(all) struct TilingPattern {
   paint_type : PatternPaintType
   tiling_type : TilingType
@@ -61,7 +66,14 @@ pub fn TilingPattern::requires_underlying_colour(self : TilingPattern) -> Bool {
 }
 
 ///|
-/// Pattern dictionary varieties from ISO 32000-2 8.7.1 General:
+/// Section 8.6.6.1 General, "Special colour spaces": Pattern is one of the
+/// special colour spaces, along with Indexed, Separation, and DeviceN, that add
+/// features or properties to an underlying colour space for patterns, colour
+/// mapping, separations, high-fidelity colour, and multitone colour. There are
+/// four special colour space families: Pattern, Indexed, Separation, and
+/// DeviceN. Section 8.6.6.2 Pattern colour spaces says a Pattern colour space
+/// (PDF 1.2) specifies that an area is to be painted with a pattern rather than
+/// a single colour and delegates pattern details to Clause 8.7:
 /// Type 1 tiling patterns replicate a pattern cell, while Type 2 shading
 /// patterns define a smooth gradient fill as a Pattern colour value.
 ///
@@ -83,7 +95,13 @@ pub fn PatternDefinition::is_shading(self : PatternDefinition) -> Bool {
 
 ///|
 /// Named Pattern resource entry used by CS/cs and SCN/scn colour operators.
-/// Pattern dictionaries are stored in the Pattern subdictionary of a resource
+/// Section 8.6.6.1 General identifies Pattern as a special colour space:
+/// special colour spaces add features or properties to an underlying colour
+/// space, and the four special families are Pattern, Indexed, Separation, and
+/// DeviceN. Section 8.6.6.2 Pattern colour spaces says a Pattern colour space
+/// (PDF 1.2) specifies that an area is to be painted with a pattern rather than
+/// a single colour; "Patterns" discusses patterns in detail. Pattern
+/// dictionaries are stored in the Pattern subdictionary of a resource
 /// dictionary and are treated as colour values in a Pattern colour space.
 pub(all) enum PatternResource {
   DirectPattern(@objects.PdfName, PatternDefinition)

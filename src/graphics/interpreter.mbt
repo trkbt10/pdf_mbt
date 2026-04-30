@@ -81,13 +81,18 @@ pub fn GraphicsInterpretOptions::default() -> GraphicsInterpretOptions {
 }
 
 ///|
-/// Complete device-independent graphics description for a PDF content stream.
-/// The ordered graphics events describe PDF colour specification and abstract
-/// page appearance for printer and display applications, while the final
-/// graphics state snapshot records the global framework left after all content
-/// stream instructions are accepted. Colour rendering to an output device,
-/// including colour conversion, gamma correction, halftoning, and scan
-/// conversion, remains outside this program.
+/// Section 8.6.1 General, "Colour spaces": complete device-independent colour
+/// specification for a PDF content stream. PDF colour facilities are divided
+/// into colour specification and colour rendering. This program records
+/// abstract colours in colour spaces related to device colour representation
+/// (grayscale, RGB, CMYK), human visual perception (CIE-based), and special
+/// features modelled as colour spaces (patterns, colour mapping, separations,
+/// high-fidelity and multitone colour). Device-dependent colour rendering to a
+/// raster output device, including colour conversion, gamma correction,
+/// halftoning, scan conversion, rendering for separations, separation
+/// simulation, and overprinting, remains outside the page description. Figure
+/// 20 illustrates colour specification and Figure 21 illustrates colour
+/// rendering.
 pub(all) struct GraphicsProgram {
   events : Array[GraphicsEvent]
   final_state : GraphicsState

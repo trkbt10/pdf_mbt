@@ -41,8 +41,15 @@ pub(all) struct GraphicsInitialState {
 /// current clipping path, and other parameters that act as implicit operands
 /// of painting operators. It also preserves rendering intent, black point
 /// compensation, overprint flags, and non-zero overprint mode state needed by
-/// ISO 32000-2 8.6 colour semantics. Current path construction and pending
-/// clipping are intentionally excluded from this state.
+/// ISO 32000-2 8.6 colour semantics. Section 8.6.5.8 Rendering intents uses
+/// this rendering intent state to set colour-rendering priorities for an output
+/// device; Table 69 lists AbsoluteColorimetric, RelativeColorimetric,
+/// Saturation, and Perceptual, and unrecognised intent names default to
+/// RelativeColorimetric. These intents preserve different properties of a
+/// colour specification: exact in-gamut colour, nearest out-of-gamut mapping,
+/// saturation for business graphics, or pleasing perceptual appearance for
+/// photographs. Current path construction and pending clipping are
+/// intentionally excluded from this state.
 pub(all) struct GraphicsState {
   mut ctm : GraphicsMatrix
   mut clipping_path : ClipState

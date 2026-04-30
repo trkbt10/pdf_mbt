@@ -1,8 +1,12 @@
 ///|
-/// Device colour spaces from ISO 32000-2 8.6.4.1 General.
-/// DeviceGray controls achromatic light from black to white, DeviceRGB is the
-/// additive red-green-blue model for displays, and DeviceCMYK is the
-/// subtractive cyan-magenta-yellow-black process-colour model for printing.
+/// Section 8.6.4.1 General, "Device colour spaces": DeviceGray controls the
+/// intensity of achromatic light from black to white, DeviceRGB controls the
+/// additive red, green, and blue primary colourants used by displays, and
+/// DeviceCMYK controls subtractive cyan, magenta, yellow, and black process
+/// colourants used in printing. These device colour spaces map colour values
+/// directly, or by simple conversions, to output-device colourants; Figure 22
+/// describes additive and subtractive colour, and Table 61 lists DeviceGray,
+/// DeviceRGB, and DeviceCMYK among PDF colour space families.
 pub(all) enum DeviceColourSpace {
   DeviceGray
   DeviceRGB
@@ -19,8 +23,12 @@ pub(all) struct ColourRange {
 } derive(Eq, Debug)
 
 ///|
-/// CalGray CIE-based A colour space parameters. WhitePoint and BlackPoint are
-/// CIE 1931 XYZ tristimulus values; Gamma decodes the single A gray component.
+/// Section 8.6.5.1 General, "CIE-based colour spaces": calibrated colour
+/// families CalGray, CalRGB, Lab, and ICCBased describe colour values relative
+/// to human visual perception and CIE 1931 XYZ tristimulus values rather than
+/// a particular output device. CalGray is the CIE-based A form; Table 62 lists
+/// its WhitePoint, BlackPoint, and Gamma dictionary entries, and Figure 25
+/// shows the A-to-X,Y,Z component transformation.
 pub(all) struct CalGrayParams {
   white_point : Array[Double]
   black_point : Array[Double]
@@ -42,9 +50,11 @@ pub fn CalGrayParams::to_xyz(
 }
 
 ///|
-/// CalRGB CIE-based ABC colour space parameters. Gamma and Matrix define the
-/// one-stage nonlinear transformation from calibrated red, green, and blue
-/// components into the CIE 1931 XYZ representation.
+/// Section 8.6.5.1 General, "CIE-based colour spaces": CalRGB is a CIE-based
+/// ABC colour space for calibrated red, green, and blue components. Table 63
+/// lists WhitePoint, BlackPoint, Gamma, and Matrix entries; Figure 24 describes
+/// the CIE-based ABC transformation through A, B, C and L, M, N into CIE 1931
+/// XYZ, with Decode LMN and Matrix LMN identity for CalRGB.
 pub(all) struct CalRGBParams {
   white_point : Array[Double]
   black_point : Array[Double]
@@ -75,18 +85,30 @@ pub fn LabParams::clamp_ab(
 }
 
 ///|
-/// Parameters for the special ISO 32000-2 Pattern colour space family.
-/// A bare Pattern space selects coloured tiling patterns and shading patterns;
-/// a Pattern space with an underlying colour space supplies components for
-/// uncoloured tiling patterns.
+/// Section 8.6.6.1 General, "Special colour spaces": special colour spaces add
+/// features or properties to an underlying colour space, including Pattern,
+/// Indexed, Separation, and DeviceN for patterns, colour mapping, separations,
+/// high-fidelity colour, and multitone colour. Section 8.6.6.2 "Pattern
+/// colour spaces" says a Pattern colour space (PDF 1.2) specifies that an area
+/// is to be painted with a pattern rather than a single colour; Clause 8.7,
+/// "Patterns", discusses patterns in detail. A bare Pattern selects coloured
+/// tiling patterns and shading patterns, while Pattern with an underlying
+/// colour space supplies components for uncoloured tiling patterns.
 pub(all) struct PatternParams {
   underlying : ColourSpace?
 } derive(Eq, Debug)
 
 ///|
-/// Indexed colour space parameters from ISO 32000-2 8.6.6.3. The lookup colour
-/// table maps integer indices 0..hival to component values in the base colour
-/// space and may be supplied by a byte string, stream, or indirect object.
+/// Section 8.6.6.3 Indexed colour spaces. An Indexed colour space specifies a
+/// colour map or colour table of arbitrary colours in a base colour space; the
+/// lookup table maps integer indices 0..hival to component values and may be
+/// supplied by a byte string, stream, or indirect object. Section 8.6.6.2
+/// Pattern colour spaces is the adjacent special-colour-space family, where
+/// "Patterns" discusses Pattern colour spaces in detail. In the extracted
+/// requirements this follows the Pattern statement and begins "8.6.6.3 Indexed
+/// colour spaces: An Indexed colour space specifies a colour map or colour
+/// table of arbitrary colours in some other colour space"; the base parameter
+/// here is that other colour space.
 pub(all) struct IndexedParams {
   base : ColourSpace
   hival : Int
@@ -94,9 +116,16 @@ pub(all) struct IndexedParams {
 } derive(Eq, Debug)
 
 ///|
-/// Separation colour space parameters from ISO 32000-2 8.6.6.4. A single tint
-/// component controls one colourant, including the special All and None names;
-/// alternate and tintTransform are preserved for renderer policy.
+/// Section 8.6.6.4 Separation colour spaces: a Separation colour space is the
+/// four-element array [/Separation name alternateSpace tintTransform]. Its
+/// single tint component controls application of the given colourant or colour
+/// components only. Separation provides a means for specifying additional
+/// colourants beyond the process colourants of an output device, spot
+/// colourants, separations, metallic and fluorescent colours, and process
+/// colourants such as Cyan, Magenta, Yellow, and Black; special names All and
+/// None are preserved. The alternateSpace may be a device or CIE-based colour
+/// space, and the tintTransform function converts the tint to alternate colour
+/// components when the named colourant is unavailable.
 pub(all) struct SeparationParams {
   colorant : @objects.PdfName
   alternate : ColourSpace
@@ -104,10 +133,12 @@ pub(all) struct SeparationParams {
 } derive(Eq, Debug)
 
 ///|
-/// DeviceN attributes dictionary from ISO 32000-2 Table 70. Subtype may be
-/// DeviceN or NChannel; Colorants, Process, and MixingHints (Table 72) carry
-/// structural information for spot colourants, process colour components, and
-/// blending hints without evaluating colour conversions.
+/// Section 8.6.6.5 DeviceN colour spaces attributes. Table 70 defines the
+/// DeviceN colour space attributes dictionary: Subtype may be DeviceN or
+/// NChannel, Colorants describes spot colourants by Separation colour spaces,
+/// Process describes process colour components using Table 71, and MixingHints
+/// describes ink blending information using Table 72 entries such as
+/// Solidities, DotGain, and PrintingOrder.
 pub(all) struct DeviceNAttributes {
   subtype : @objects.PdfName?
   colorants : @objects.PdfDictionary?
@@ -116,10 +147,13 @@ pub(all) struct DeviceNAttributes {
 } derive(Eq, Debug)
 
 ///|
-/// DeviceN and NChannel colour space parameters from ISO 32000-2 8.6.6.5.
-/// DeviceN represents high-fidelity colour and multitone colour with multiple
-/// tint components, all initially 1.0. NChannel adds process/spot metadata for
-/// flexible downstream rendering.
+/// Section 8.6.6.5 DeviceN colour spaces: DeviceN is specified as
+/// [/DeviceN names alternateSpace tintTransform] or with an attributes
+/// dictionary. It represents high-fidelity colour and multitone colour with
+/// multiple tint components named in the names array, all initially 1.0;
+/// alternateSpace is a device or CIE-based colour space, tintTransform maps
+/// n tint values to m alternate components, and NChannel adds process/spot
+/// metadata described by Tables 70, 71, and 72.
 pub(all) struct DeviceNParams {
   colorants : Array[@objects.PdfName]
   alternate : ColourSpace
@@ -130,12 +164,18 @@ pub(all) struct DeviceNParams {
 ///|
 /// PDF colour space families used by graphics operators for ISO 32000-2 8.6
 /// colour specification, separated from device-dependent colour rendering.
-/// This model records device-independent abstract colours and the colour-space
-/// family data needed by downstream consumers; raster output device work such
-/// as colour conversion, gamma correction, halftoning, and scan conversion is
-/// intentionally outside graphics interpretation. CIE-based spaces preserve
-/// the data needed for implicit conversion of CIE-Based colour spaces by a
-/// renderer, but the conversion itself remains hidden renderer policy.
+/// Section 8.6.5.1 General covers CIE-based colour spaces CalGray, CalRGB, Lab,
+/// and ICCBased; Figure 23 illustrates uncalibrated colour variation and
+/// Figure 24 shows the CIE-based ABC transformation to CIE 1931 XYZ. Section
+/// 8.6.5.7, "Implicit conversion of CIE-Based colour spaces", allows a PDF
+/// processor to treat a matching CIE-based source colour space, including an
+/// ICCBased CMYK printing profile or a DefaultCMYK remap, as the native device
+/// colour space so source colours pass through unchanged without conversion to
+/// and from intermediate CIE 1931 XYZ; this hidden processor policy is not part
+/// of PDF colour-space interpretation. Section 8.6.6.1 General covers special
+/// colour spaces Pattern, Indexed, Separation, and DeviceN, which add pattern
+/// painting, colour mapping, separations, high-fidelity colour, and multitone
+/// colour.
 ///
 /// Source excerpt:
 /// `spec/extracted/8.6-colour-spaces.spec.txt`.
@@ -152,9 +192,14 @@ pub(all) enum ColourSpace {
 } derive(Eq, Debug)
 
 ///|
-/// DefaultGray, DefaultRGB, and DefaultCMYK resource entries used to remap
-/// DeviceGray, DeviceRGB, and DeviceCMYK colour spaces systematically into
-/// compatible default colour spaces.
+/// Section 8.6.5.6 Default colour spaces and Section 8.6.7 Overprint control:
+/// DefaultGray, DefaultRGB, and DefaultCMYK resource entries remap DeviceGray,
+/// DeviceRGB, and DeviceCMYK into compatible default colour spaces. When
+/// default remapping or implicit CIE-Based conversion makes a CIE-based source
+/// act like a device colour space, device-colour semantics can apply, including
+/// the non-zero overprint mode, Separation and DeviceN colourants, and the
+/// overprint parameter that controls whether unspecified colourants are erased
+/// with tint 0.0 or left undisturbed on devices that support overprinting.
 pub(all) struct ColourDefaults {
   default_gray : @objects.PdfObject?
   default_rgb : @objects.PdfObject?
@@ -167,9 +212,15 @@ pub fn ColourDefaults::empty() -> ColourDefaults {
 }
 
 ///|
-/// Parses a colour space object, including device, CIE-based, ICCBased,
-/// Pattern, Indexed, Separation, DeviceN, NChannel, and default remapped
-/// colour-space families used by ISO 32000-2 clause 8.6.
+/// Section 8.6.1 General, "Colour spaces": parses the device-independent
+/// colour specification side of PDF graphics. A PDF file may specify abstract
+/// colours in colour spaces related to device colour representation
+/// (DeviceGray, DeviceRGB, DeviceCMYK), human visual perception (CIE-based
+/// CalGray, CalRGB, Lab, ICCBased), and special features modelled as colour
+/// spaces (Pattern, Indexed, Separation, DeviceN). Device-dependent colour
+/// rendering work such as colour conversion, gamma correction, halftoning, and
+/// scan conversion remains outside this parser; Figure 20 shows colour
+/// specification and Figure 21 shows colour rendering.
 pub fn parse_colour_space_object(
   object : @objects.PdfObject,
   defaults : ColourDefaults,
@@ -927,6 +978,13 @@ pub fn ColourSpace::to_device_family(self : ColourSpace) -> DeviceColourSpace? {
 }
 
 ///|
+/// Section 8.6.5.1 General, "CIE-based colour spaces": returns component
+/// ranges for calibrated colour families CalGray, CalRGB, Lab, and ICCBased.
+/// The CIE-based model relates components to human visual perception and the
+/// CIE 1931 XYZ tristimulus values X, Y, and Z; Figure 23 illustrates
+/// uncalibrated colour variation, Figure 24 shows CIE-based ABC component
+/// transformations, and Tables 62, 63, 64, 65, 66, 67, and 68 define the
+/// CalGray, CalRGB, Lab, and ICCBased dictionary/profile entries and ranges.
 pub fn ColourSpace::component_ranges(self : ColourSpace) -> Array[ColourRange] {
   match self {
     Device(DeviceGray) | Device(DeviceRGB) | CalGray(_) | CalRGB(_) =>
@@ -1347,7 +1405,10 @@ fn colour_object_number(
 
 ///|
 /// High-level ISO 32000-2 8.6 colour-space family classification used by
-/// colour resolution, image Decode defaults, and conversion dispatch.
+/// colour resolution, image Decode defaults, and conversion dispatch. Table 61
+/// groups DeviceGray, DeviceRGB, and DeviceCMYK as device colour spaces;
+/// CalGray, CalRGB, Lab, and ICCBased as CIE-based colour spaces; and Indexed,
+/// Pattern, Separation, and DeviceN as special colour spaces.
 pub(all) enum ColourSpaceFamily {
   DeviceColourSpaceFamily
   CieBasedColourSpaceFamily
@@ -1359,6 +1420,13 @@ pub(all) enum ColourSpaceFamily {
 } derive(Eq, Debug)
 
 ///|
+/// Section 8.6.4.1 General, "Device colour spaces": returns the component
+/// count for DeviceGray, DeviceRGB, or DeviceCMYK. DeviceGray has one
+/// achromatic component from black to white, DeviceRGB has the three additive
+/// primary colourants red, green, and blue, and DeviceCMYK has the four
+/// subtractive process colourants cyan, magenta, yellow, and black. Figure 22
+/// covers additive and subtractive colour, and Table 61 lists the device colour
+/// space families.
 pub fn DeviceColourSpace::component_count(self : DeviceColourSpace) -> Int {
   match self {
     DeviceGray => 1

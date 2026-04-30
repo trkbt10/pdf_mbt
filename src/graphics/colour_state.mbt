@@ -18,9 +18,18 @@ pub(all) struct ColourValue {
 
 ///|
 /// Current colour-space and current colour parameter of the graphics state.
-/// Colour values are interpreted according to this colour space; images and
-/// later processing stages can consume the same device-independent colour
-/// specification without performing raster colour rendering here.
+/// Section 8.6.6.1 General, "Special colour spaces" says special colour spaces
+/// add features or properties to an underlying colour space. The special
+/// families are Pattern, Indexed, Separation, and DeviceN, covering patterns,
+/// colour mapping, separations, high-fidelity colour, and multitone colour.
+/// Section 8.6.6.2 Pattern colour spaces allows the current colour space to be
+/// Pattern, where an area is painted with a pattern rather than a single
+/// colour; "Patterns" discusses patterns in detail. Section 8.6.6.3 Indexed
+/// colour spaces specifies a colour map or colour table of arbitrary colours in
+/// another base colour space. SCN/scn carry a Pattern name as the colour value,
+/// with optional underlying colour components for uncoloured tiling patterns.
+/// Colour values are otherwise interpreted according to the current colour
+/// space without performing raster colour rendering here.
 pub(all) struct ColourState {
   colour_space : ColourSpace
   colour_value : ColourValue

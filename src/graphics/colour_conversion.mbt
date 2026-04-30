@@ -1,6 +1,11 @@
 ///|
-/// Device RGB colour components in additive form. Values are normalized to the
-/// PDF device component interval 0.0..1.0 by conversion helpers.
+/// Section 8.6.4.1 General, "Device colour spaces": DeviceRGB represents
+/// additive RGB colour, where output devices form colours by adding red,
+/// green, and blue light sources together. Device colour spaces enable a page
+/// description to specify colour values directly related to output-device
+/// colourants such as display phosphor intensities; Figure 22 covers additive
+/// and subtractive colour, and Table 61 lists DeviceRGB with DeviceGray and
+/// DeviceCMYK.
 pub(all) struct DeviceRgbColour {
   red : Double
   green : Double
@@ -8,8 +13,14 @@ pub(all) struct DeviceRgbColour {
 } derive(Eq, Debug)
 
 ///|
-/// Device CMYK colour components in subtractive form. Values are normalized to
-/// the PDF device component interval 0.0..1.0 by conversion helpers.
+/// Section 8.6.4.1 General, "Device colour spaces": DeviceCMYK represents
+/// subtractive CMYK colour, where output devices form colours by subtracting
+/// light with cyan, magenta, yellow, and black inks. Device colour values map
+/// directly, or by simple conversions, to output-device colourants; Figure 22
+/// covers additive and subtractive colour, and Table 61 lists DeviceCMYK with
+/// DeviceGray and DeviceRGB. The device colour spaces enable a page description
+/// to control colours precisely for a particular output device, though results
+/// might not be consistent from one device to another.
 pub(all) struct DeviceCmykColour {
   cyan : Double
   magenta : Double
@@ -18,8 +29,17 @@ pub(all) struct DeviceCmykColour {
 } derive(Eq, Debug)
 
 ///|
-/// CIE 1931 XYZ tristimulus value with Y normalized to 1.0 at the reference
-/// white used by the source colour space.
+/// Section 8.6.5.1 General, "CIE-based colour spaces": CIE-based CalGray,
+/// CalRGB, Lab, and ICCBased spaces specify colours independently of any
+/// particular output device and relate their components to the tristimulus
+/// values X, Y, and Z of the CIE 1931 XYZ space. Figure 23 shows variation from
+/// uncalibrated colour, Figure 24 shows component transformations in a
+/// CIE-based ABC colour space, and Tables 62 through 68 define calibrated
+/// colour dictionaries, ICCBased profiles, and component ranges. The goal is
+/// for the same colour specification to produce consistent results on
+/// different output devices within each device gamut; CIE-based spaces are
+/// defined as [name dictionary], and setting one initializes components to 0.0
+/// or the nearest valid value.
 pub(all) struct CieXyzColour {
   x : Double
   y : Double
@@ -199,6 +219,12 @@ pub fn cie_xyz_d65_to_srgb(xyz : CieXyzColour) -> DeviceRgbColour {
 }
 
 ///|
+/// Section 8.6.6.1 General, "Special colour spaces": Indexed is a special
+/// colour space family, along with Pattern, Separation, and DeviceN, that adds
+/// colour mapping to an underlying base colour space. Section 8.6.6.3 Indexed
+/// colour spaces uses this lookup to map an index through a colour table into
+/// a colour value in the base colour space, reducing sampled image data while
+/// still allowing SC, SCN, sc, and scn colour selection.
 pub fn IndexedParams::lookup_colour_value(
   self : IndexedParams,
   index : Double,
@@ -238,6 +264,12 @@ pub fn IndexedParams::lookup_device_rgb(
 }
 
 ///|
+/// Section 8.6.6.4 Separation colour spaces: applies the tintTransform
+/// function for a Separation colour space when the colourant named by
+/// [/Separation name alternateSpace tintTransform] is unavailable on the output
+/// device. The input tint is a single subtractive component in the range
+/// 0.0 to 1.0, where 0.0 is the minimum amount of colourant and 1.0 is the
+/// maximum; the function returns colour component values in the alternateSpace.
 pub fn SeparationParams::alternate_colour_value(
   self : SeparationParams,
   tint : Double,
@@ -275,6 +307,13 @@ pub fn DeviceNParams::alternate_colour_value(
 }
 
 ///|
+/// Section 8.6.5.8 Rendering intents: converts stored colour-space components
+/// for preview while leaving rendering intent policy to the graphics state and
+/// downstream renderer. PDF rendering intents are identified by ri, RI, or
+/// image Intent; Table 69 lists AbsoluteColorimetric, RelativeColorimetric,
+/// Saturation, and Perceptual, with unrecognised names defaulting to
+/// RelativeColorimetric. This conversion entry point does not make output
+/// device gamut compromises or override renderer-specific colour priorities.
 pub fn ColourSpace::components_to_device_rgb(
   self : ColourSpace,
   components : Array[Double],

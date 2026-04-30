@@ -1,9 +1,14 @@
 ///|
 
 ///|
-/// Standard rendering intents from ISO 32000-2 8.6.5.8 Table 69. The ri
-/// operator, RI ExtGState entry, and image Intent entry identify priorities
-/// for colour rendering; unknown names fall back to RelativeColorimetric.
+/// Section 8.6.5.8 Rendering intents. Although CIE-based colour specifications
+/// are device-independent, rendering colours for a given output device may
+/// require gamut compromises among colour properties. The ri operator, RI
+/// graphics state parameter dictionary entry, and image Intent entry specify a
+/// rendering intent name. Table 69 lists AbsoluteColorimetric,
+/// RelativeColorimetric, Saturation, and Perceptual; unrecognised names use
+/// RelativeColorimetric by default, while supported intents may vary by output
+/// device.
 pub(all) enum RenderingIntent {
   AbsoluteColorimetric
   RelativeColorimetric
@@ -23,12 +28,24 @@ pub(all) enum BlackPointCompensation {
 } derive(Eq, Debug)
 
 ///|
-/// Cumulative graphics state parameter dictionary patch resolved from an
-/// ExtGState resource. Known simple keys are typed; later-phase entries remain
-/// raw so rendering, transparency, font, transfer, halftone, and colour
-/// semantics stay deferred. Colour-related keys include RI rendering intent,
-/// UseBlackPtComp black point compensation, OP/op overprint flags, and OPM
-/// overprint mode, where mode 1 is the non-zero overprint mode for DeviceCMYK.
+/// Section 8.6.7 Overprint control fields from a graphics state parameter
+/// dictionary. OP/op carry stroking and nonstroking overprint parameters, and
+/// OPM carries the non-zero overprint mode. When overprint is false, painting
+/// in any colour space erases unspecified colourants with tint value 0.0; when
+/// overprint is true and supported by the output device, previous colourants
+/// are left undisturbed. Separation and DeviceN explicitly specify marked
+/// colourants, while device or CIE-based spaces imply colourants through the
+/// output process colour model. Overprinting is mainly used with separations
+/// and some composite devices; if overprinting is not supported, the overprint
+/// parameter is ignored, and the combined colour result is device-dependent.
+/// Section 8.6.6.4 Separation colour spaces is relevant because a Separation
+/// colour space explicitly marks the colourant named by
+/// [/Separation name alternateSpace tintTransform], using a single tint
+/// component for All, None, spot colourants, process colourants, or physical
+/// separations; overprint determines whether other colourants are erased or
+/// left undisturbed during such painting. The alternateSpace and tintTransform
+/// parameters remain valid even when the requested colourant is available or
+/// when All/None causes the processor to ignore them.
 pub(all) struct ExtGStatePatch {
   line_width : Double?
   line_cap : LineCapStyle?
