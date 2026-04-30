@@ -54,7 +54,7 @@
   - _Requirements: 1.4, 5.1, 5.2, 5.3, 5.4_
   - _Boundary: InlineImageReader_
 
-- [ ] 2.5 Build decoded-byte instruction iteration
+- [x] 2.5 Build decoded-byte instruction iteration
   - Define the public instruction and content stream aggregate that use the operator, operand, inline image, and resource models from their owning components.
   - Iterate decoded content bytes one instruction at a time, collecting operands until an operator is emitted.
   - Clear operands after each emitted instruction and preserve source order and instruction start offsets.
