@@ -81,18 +81,22 @@ pub fn GraphicsInterpretOptions::default() -> GraphicsInterpretOptions {
 }
 
 ///|
-/// Section 8.6.1 General, "Colour spaces": complete device-independent colour
-/// specification for a PDF content stream. PDF colour facilities are divided
-/// into colour specification and colour rendering. This program records
-/// abstract colours in colour spaces related to device colour representation
-/// (grayscale, RGB, CMYK), human visual perception (CIE-based), and special
-/// features modelled as colour spaces (patterns, colour mapping, separations,
-/// high-fidelity and multitone colour). Device-dependent colour rendering to a
-/// raster output device, including colour conversion, gamma correction,
-/// halftoning, scan conversion, rendering for separations, separation
-/// simulation, and overprinting, remains outside the page description. Figure
-/// 20 illustrates colour specification and Figure 21 illustrates colour
-/// rendering.
+/// ISO 32000-2 Section 8.1 General graphics description for a PDF content
+/// stream. A `GraphicsProgram` records graphics operators as an abstract page
+/// description: the graphics state, current point, user space, device space,
+/// text space, image space, form space, and pattern space relationships that a
+/// processor needs before device-dependent rendering. Section 8.6.1 General,
+/// "Colour spaces", adds the complete device-independent colour specification
+/// for this graphics model. PDF colour facilities are divided into colour
+/// specification and colour rendering. This program records abstract colours in
+/// colour spaces related to device colour representation (grayscale, RGB,
+/// CMYK), human visual perception (CIE-based), and special features modelled as
+/// colour spaces (patterns, colour mapping, separations, high-fidelity and
+/// multitone colour). Device-dependent colour rendering to a raster output
+/// device, including colour conversion, gamma correction, halftoning, scan
+/// conversion, rendering for separations, separation simulation, and
+/// overprinting, remains outside the page description. Figure 20 illustrates
+/// colour specification and Figure 21 illustrates colour rendering.
 pub(all) struct GraphicsProgram {
   events : Array[GraphicsEvent]
   final_state : GraphicsState
