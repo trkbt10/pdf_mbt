@@ -118,7 +118,7 @@
   - _Boundary: RoleNamespaceResolver_
   - _Depends: 2.2, 2.3_
 
-- [ ] 4.3 (P) Classify standard structure type categories
+- [x] 4.3 (P) Classify standard structure type categories
   - Recognize document, grouping, block, sub-block, inline, ruby, warichu, list, table, caption, figure, formula, and artifact standard types.
   - Validate uppercase heading forms and reject malformed heading names such as lowercase, leading-zero, or suffixed variants.
   - Represent context-sensitive categories for types that may be grouping, block, or inline depending on placement.
