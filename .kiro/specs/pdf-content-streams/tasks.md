@@ -147,7 +147,7 @@
   - _Requirements: 3.2, 3.3, 3.4_
   - _Boundary: ContentResources_
 
-- [ ] 6. Reader integration and fixture validation
+- [x] 6. Reader integration and fixture validation
 - [x] 6.1 Test page content resolution, decoding, concatenation, and error wrapping
   - Cover inherited page resources, missing contents, direct single-stream contents, and arrays of referenced streams.
   - Cover filter-decoded page streams and line-feed separation between concatenated decoded streams.
