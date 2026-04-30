@@ -238,7 +238,7 @@
   - _Boundary: Reader facade, Package boundary_
   - _Depends: 7.1_
 
-- [ ] 8. Validate logical-structure behavior
+- [x] 8. Validate logical-structure behavior
 - [ ] 8.1 Verify mark information, structure hierarchy, and content associations
   - Cover mark-information defaults and malformed flags, catalog language, root validation, element traversal, ID lookup, parent validation, IDTree, ParentTree, MCID, MCR, OBJR, annotations, and form XObject cases.
   - Include absent optional structures, malformed present structures, cycle cases, parent-tree lookup failures, and exact byte-string identifier comparisons.
