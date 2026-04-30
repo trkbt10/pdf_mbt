@@ -104,7 +104,7 @@
   - _Requirements: 3, 3.1, 3.10_
   - _Boundary: TransferFunctionPipeline_
 
-- [ ] 4. Implement halftone processing
+- [x] 4. Implement halftone processing
 - [ ] 4.1 (P) Implement predefined spot functions and screen ordering
   - Support the predefined spot function names needed by clause 10 and choose the first recognized name when an array is supplied.
   - Generate stable whitening order values for screen cells while treating unrecognized names as default-halftone fallback conditions.
