@@ -167,7 +167,7 @@
   - _Boundary: ReaderPageContentBridge, ContentResources, InlineImageReader_
 
 - [ ] 7. Final validation and regression hardening
-- [ ] 7.1 Add parser robustness and performance regression coverage
+- [x] 7.1 Add parser robustness and performance regression coverage
   - Cover a large synthetic content stream with thousands of simple operators to validate linear progress.
   - Cover multi-stream page concatenation with stable offsets around inserted line-feed separators.
   - Cover large inline image data with a missing or delayed end marker to validate bounded scanning and clear errors.
