@@ -37,7 +37,7 @@
   - _Requirements: 0.2_
   - _Boundary: SampledFunctionModel_
 
-- [ ] 2.3 Complete sampled function cubic-order evaluation
+- [x] 2.3 Complete sampled function cubic-order evaluation
   - Evaluate `Order 3` sampled functions with cubic interpolation whenever each required dimension has enough samples for cubic processing.
   - Fall back to the required ignored-order behavior only when a declared dimension makes cubic interpolation unavailable.
   - Cubic-order tests show supported `Order 3` fixtures differ from linear interpolation where expected, and small-size fixtures ignore cubic order as specified.

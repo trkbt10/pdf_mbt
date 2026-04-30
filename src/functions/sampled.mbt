@@ -235,6 +235,107 @@ fn interpolate_linear_component(
 }
 
 ///|
+fn supports_cubic_interpolation(function : SampledFunction) -> Bool {
+  match function.order {
+    Cubic => {
+      let mut supported = true
+      for dimension in function.size {
+        if dimension < 4 {
+          supported = false
+        }
+      }
+      supported
+    }
+    Linear => false
+  }
+}
+
+///|
+fn cubic_value(
+  p0 : Double,
+  p1 : Double,
+  p2 : Double,
+  p3 : Double,
+  t : Double,
+) -> Double {
+  let t2 = t * t
+  let t3 = t2 * t
+  0.5 *
+  (
+    2.0 * p1 +
+    (p2 - p0) * t +
+    (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 +
+    (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3
+  )
+}
+
+///|
+fn cubic_indices_and_fraction(
+  size : Int,
+  coordinate : Double,
+) -> (Array[Int], Double) {
+  let low = @math.floor(coordinate).to_int()
+  let fraction = coordinate - low.to_double()
+  let i0 = if low - 1 < 0 { 0 } else { low - 1 }
+  let i1 = if low < 0 { 0 } else if low >= size { size - 1 } else { low }
+  let i2 = if low + 1 >= size { size - 1 } else { low + 1 }
+  let i3 = if low + 2 >= size { size - 1 } else { low + 2 }
+  ([i0, i1, i2, i3], fraction)
+}
+
+///|
+fn interpolate_cubic_component_at_dimension(
+  function : SampledFunction,
+  coordinates : Array[Double],
+  component : Int,
+  dimension : Int,
+  selected : Array[Int],
+) -> Double {
+  if dimension == function.size.length() {
+    sample_value_at(
+      function,
+      flattened_sample_index(function.size, selected),
+      component,
+    )
+  } else {
+    let (indices, fraction) = cubic_indices_and_fraction(
+      function.size[dimension],
+      coordinates[dimension],
+    )
+    let values : Array[Double] = []
+    for index in indices {
+      let next = selected.copy()
+      next.push(index)
+      values.push(
+        interpolate_cubic_component_at_dimension(
+          function,
+          coordinates,
+          component,
+          dimension + 1,
+          next,
+        ),
+      )
+    }
+    cubic_value(values[0], values[1], values[2], values[3], fraction)
+  }
+}
+
+///|
+fn interpolate_cubic_component(
+  function : SampledFunction,
+  coordinates : Array[Double],
+  component : Int,
+) -> Double {
+  interpolate_cubic_component_at_dimension(
+    function,
+    coordinates,
+    component,
+    0,
+    [],
+  )
+}
+
+///|
 fn evaluate_sampled_function(
   function : SampledFunction,
   clipped_inputs : Array[Double],
@@ -243,7 +344,11 @@ fn evaluate_sampled_function(
   let max_sample = max_encoded_sample_value(function.bits_per_sample)
   let outputs : Array[Double] = []
   for component in 0..<function.table.output_count {
-    let raw = interpolate_linear_component(function, coordinates, component)
+    let raw = if supports_cubic_interpolation(function) {
+      interpolate_cubic_component(function, coordinates, component)
+    } else {
+      interpolate_linear_component(function, coordinates, component)
+    }
     outputs.push(
       interpolate(
         raw,

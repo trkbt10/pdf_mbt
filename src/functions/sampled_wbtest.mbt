@@ -277,3 +277,66 @@ test "sampled linear evaluation uses first-dimension-fastest multidimensional or
     content="[200]",
   )
 }
+
+///|
+test "sampled Order 3 uses cubic interpolation when every dimension has enough samples" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[sampled_name(b"FunctionType")] = sampled_int(0L)
+  dict[sampled_name(b"Domain")] = sampled_array([
+    sampled_num(0.0),
+    sampled_num(3.0),
+  ])
+  dict[sampled_name(b"Size")] = sampled_array([sampled_int(4L)])
+  dict[sampled_name(b"BitsPerSample")] = sampled_int(8L)
+  dict[sampled_name(b"Order")] = sampled_int(3L)
+  dict[sampled_name(b"Decode")] = sampled_array([
+    sampled_num(0.0),
+    sampled_num(255.0),
+  ])
+  dict[sampled_name(b"Range")] = sampled_array([
+    sampled_num(0.0),
+    sampled_num(255.0),
+  ])
+  let function = parse_direct_function(
+    sampled_stream_with_dict(
+      dict,
+      Bytes::from_array([b'\x00', b'\x00', b'\x64', b'\x00']),
+    ),
+    FunctionLimits::default(),
+    70L,
+  )
+  inspect(
+    function.evaluate([1.5], FunctionLimits::default()),
+    content="[56.25]",
+  )
+}
+
+///|
+test "sampled Order 3 falls back to linear interpolation for small dimensions" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[sampled_name(b"FunctionType")] = sampled_int(0L)
+  dict[sampled_name(b"Domain")] = sampled_array([
+    sampled_num(0.0),
+    sampled_num(1.0),
+  ])
+  dict[sampled_name(b"Size")] = sampled_array([sampled_int(3L)])
+  dict[sampled_name(b"BitsPerSample")] = sampled_int(8L)
+  dict[sampled_name(b"Order")] = sampled_int(3L)
+  dict[sampled_name(b"Decode")] = sampled_array([
+    sampled_num(0.0),
+    sampled_num(255.0),
+  ])
+  dict[sampled_name(b"Range")] = sampled_array([
+    sampled_num(0.0),
+    sampled_num(255.0),
+  ])
+  let function = parse_direct_function(
+    sampled_stream_with_dict(
+      dict,
+      Bytes::from_array([b'\x00', b'\x64', b'\x00']),
+    ),
+    FunctionLimits::default(),
+    71L,
+  )
+  inspect(function.evaluate([0.25], FunctionLimits::default()), content="[50]")
+}
