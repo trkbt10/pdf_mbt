@@ -227,7 +227,7 @@
   - _Requirements: 0.1, 0.15, 0.20, 0.30, 0.57, 0.64_
   - _Boundary: PublicAPIAudit_
 
-- [ ] 9. Validate behavior with focused and integration tests
+- [x] 9. Validate behavior with focused and integration tests
 - [ ] 9.1 Test AcroForm hierarchy, field types, widgets, and non-interactive markers
   - Cover field inheritance, fully qualified names, duplicate-name consistency, widget merging, cycles, variable text, button flags, text flags, choice flags, signature field locks, seed values, and PrintField markers.
   - Include malformed fixtures for invalid partial names, conflicting duplicate names, illegal push-button values, and ambiguous signature widgets.
