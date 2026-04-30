@@ -25,7 +25,7 @@
   - Done: valid base images produce inspectable descriptors with sample layout and intrinsic placement semantics; invalid dimensions, Pattern colour spaces, and invalid bit depths fail.
   - _Requirements: 0.2, 0.3, 0.4, 0.5, 0.6_
   - _Boundary: ImageDescriptorModel_
-- [ ] 2.3 Add decode-array defaults and row bit layout validation
+- [x] 2.3 Add decode-array defaults and row bit layout validation
   - Compute default decode ranges for Device, CIE-based, ICCBased, Indexed, Separation, and DeviceN images from colour-space metadata.
   - Validate explicit Decode length and preserve inverted ranges; calculate byte-aligned row layout and optional decoded-length checks where supported filters yield bytes.
   - Done: descriptors expose decode mappings and row layout, and tests show padded row bits do not affect subsequent rows.
