@@ -131,7 +131,7 @@
   - The LZWDecode stage returns decompressed and reconstructed bytes for supported inputs.
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 6. Complete the filter pipeline behavior
+- [x] 6. Complete the filter pipeline behavior
 - [x] 6.1 Apply single and chained filters in dictionary order
   - Execute a single named filter against the raw stream bytes.
   - Execute a filter array in order, passing each decoded result into the next stage.
