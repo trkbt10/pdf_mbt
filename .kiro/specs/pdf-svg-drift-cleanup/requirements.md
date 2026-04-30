@@ -45,7 +45,7 @@ Categories:
 
 ## Requirements
 
-### Requirement 1: Resolve category A vocabulary gaps
+#### Alignment note: Resolve category A vocabulary gaps
 
 #### 1.1: pdf-svg-cff-charset synthetic cmap vocabulary
 `build_synthetic_cmap` (or its caller path in `cff_wrapper.mbt`)
@@ -75,7 +75,7 @@ carry doc comments referencing "apply clipPath to rendered
 elements", "clip-path attribute on images / paths / text", and the
 no-op skip for empty clip states.
 
-### Requirement 2: Resolve category B with MoonBit alignment markers
+#### Alignment note: Resolve category B with MoonBit alignment markers
 
 #### 2.1: pdf-svg-image-perf demo integration marker
 A public empty function (e.g.
@@ -92,7 +92,7 @@ loadPageSvg stable identity, Blob URL lifecycle, wasm API remains
 stateless per call) so the MoonBit-side alignment gate passes
 without touching the TypeScript KGF extraction issue.
 
-### Requirement 3: Resolve category D genuine gaps
+#### Alignment note: Resolve category D genuine gaps
 
 #### 3.1: pdf-svg-system-fonts gaps
 - SHALLOW "System font directory discovery" — the helper function
@@ -120,7 +120,7 @@ Visual regression gate) SHALL be either:
   non-requirements section (e.g. acceptance criteria that describe
   test harness behaviour rather than implementation surface).
 
-### Requirement 4: Category C meta requirements
+#### Alignment note: Category C meta requirements
 
 #### 4.1: Visual regression gate convention
 Requirements that describe test harness behaviour (e.g. "Visual
