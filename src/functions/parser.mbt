@@ -47,10 +47,7 @@ fn parse_registered_direct_function(
   match input.function_type {
     Sampled => {
       require_range(input.common, input.offset, "Type 0") |> ignore
-      raise PdfFunctionError::InvalidFunction(
-        input.offset,
-        "Type 0 function parser is not registered yet",
-      )
+      SampledFunction(parse_sampled_function(input))
     }
     Exponential =>
       raise PdfFunctionError::InvalidFunction(

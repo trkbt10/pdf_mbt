@@ -26,7 +26,9 @@ pub(all) struct FunctionInterval {
 } derive(Eq, Debug)
 
 ///|
-/// Entries common to all PDF function dictionaries.
+/// Entries common to all PDF function dictionaries from Table 38: FunctionType,
+/// Domain, and optional or type-required Range. Inputs are clipped to Domain
+/// and outputs are clipped to Range when present.
 pub(all) struct FunctionCommon {
   domain : Array[FunctionInterval]
   range : Array[FunctionInterval]?
@@ -50,7 +52,9 @@ pub fn FunctionSource::is_direct(self : FunctionSource) -> Bool {
 }
 
 ///|
-/// Typed direct PDF function variants.
+/// Typed direct PDF function variants for the Table 38 FunctionType values:
+/// Type 0 sampled, Type 2 exponential interpolation, Type 3 stitching, and
+/// Type 4 PostScript calculator functions.
 pub(all) enum PdfFunction {
   SampledFunction(SampledFunction)
   ExponentialFunction(ExponentialFunction)
@@ -65,6 +69,10 @@ pub(all) enum SampleOrder {
 } derive(Eq, Debug)
 
 ///|
+/// Sampled function table values decoded from a continuous high-order-bit-first
+/// sample stream. The first input dimension varies fastest, output components
+/// are stored in Range order, and the declared table may match the 326 bytes
+/// example for 21 by 31 samples at 4 bits per sample.
 pub(all) struct SampleTable {
   values : Array[Double]
   output_count : Int
@@ -81,6 +89,8 @@ pub fn SampleTable::sample_count(self : SampleTable) -> Int {
 }
 
 ///|
+/// Type 0 sampled function model: Size, BitsPerSample, Order, Encode, Decode,
+/// decoded sample table, required Range, and Table 38 common Domain entries.
 pub(all) struct SampledFunction {
   common : FunctionCommon
   size : Array[Int]
@@ -119,6 +129,9 @@ pub(all) struct CalculatorProgram {
 } derive(Eq, Debug)
 
 ///|
+/// Type 4 calculator function model. Calculator streams still use the Table 38
+/// common FunctionType, Domain, and Range entries before arithmetic, relational,
+/// boolean, bitwise, conditional, and stack operators are evaluated.
 pub(all) struct CalculatorFunction {
   common : FunctionCommon
   program : CalculatorProgram

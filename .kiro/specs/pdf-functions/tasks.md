@@ -23,7 +23,7 @@
   - _Boundary: FunctionParser_
 
 - [ ] 2. Implement function semantics by type
-- [ ] 2.1 (P) Parse sampled function tables and bit-packed sample data
+- [x] 2.1 (P) Parse sampled function tables and bit-packed sample data
   - Validate sampled-function size, bit width, interpolation order, required range, encode defaults, decode defaults, and declared sample count before reading sample data.
   - Read decoded sample bytes as one continuous high-order-bit-first stream for all supported sample widths and preserve first-dimension-fastest table ordering.
   - The parsed sampled model rejects insufficient stream data, invalid bit widths, and limit-exceeding tables, while valid fixtures expose the expected sample values in range order.
