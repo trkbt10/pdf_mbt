@@ -84,7 +84,7 @@
   - _Boundary: FontResourceResolver_
   - _Depends: 2.1, 2.3, 2.4_
 
-- [ ] 3.2 Validate TrueType encoding plans
+- [x] 3.2 Validate TrueType encoding plans
   - Represent the PDF TrueType character-code selection rules for named encodings, nonsymbolic fonts, symbolic fonts, and missing encoding entries.
   - Preserve platform cmap selection constraints and post-table fallback intent as metadata because font-program interpretation is deferred.
   - Reject encoding shapes that the PDF font dictionary cannot legally express while allowing processor-choice gaps as explicit fallbacks.
