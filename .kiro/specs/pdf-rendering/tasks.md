@@ -252,7 +252,7 @@
   - _Requirements: 3.16, 3.17_
   - _Boundary: SeparationRenderer, ColourPipeline_
 
-- [ ] 7.3 Simulate separations on non-separation devices
+- [x] 7.3 Simulate separations on non-separation devices
   - Convert separation planes to flat XYZ over a white matte, multiply blend them, and convert the result to the actual native device space.
   - Keep simulation local to separation rendering without adding general transparency compositing.
   - The completed simulation returns a raster surface whose pixel format matches the actual device.
