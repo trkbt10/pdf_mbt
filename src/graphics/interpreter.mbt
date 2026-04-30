@@ -27,13 +27,17 @@ pub(all) enum PathPaintOperation {
 } derive(Eq, Debug)
 
 ///|
-/// Ordered graphics interpretation events for PDF graphics operators.
-/// The events cover clause 8 graphics state, paths, painting, external
-/// objects, sampled images, image XObjects, inline images, form XObjects,
-/// group XObjects, reference XObject proxy forms, optional content marked by
-/// BDC/DP/EMC, and whole-XObject OC visibility. Hidden marked content still
-/// applies graphics-state side effects, while hidden image or form XObjects
-/// are skipped as encapsulated objects.
+/// Ordered graphics interpretation events for PDF graphics operators. The
+/// events cover clause 8 graphics state, paths, painting, external objects,
+/// sampled images, image XObjects, inline images, form XObjects, group
+/// XObjects, reference XObject proxy forms, optional content marked by
+/// BDC/DP/EMC, and whole-XObject OC visibility. A `Do` name operand is looked
+/// up in the current resource dictionary's XObject subdictionary, the stream
+/// Type is XObject when present, and Subtype dispatches to Image or Form.
+/// Marked-content property lists and DP property declarations may name OCG or
+/// OCMD resources through Properties. Hidden marked content still applies
+/// graphics-state side effects, while hidden image or form XObjects are
+/// skipped as encapsulated objects.
 pub(all) enum GraphicsEvent {
   StateSaved(Int64, GraphicsState)
   StateRestored(Int64, GraphicsState)
@@ -65,8 +69,10 @@ pub(all) enum GraphicsEvent {
 
 ///|
 /// Graphics interpretation options, including the optional content group state
-/// used to evaluate OCG, OCMD, VE, marked-content scopes, image XObject OC
-/// entries, and form XObject OC entries.
+/// used to evaluate OCG, OCMD, VE, marked-content scopes, BDC and DP optional
+/// content property lists, image XObject OC entries, and form XObject OC
+/// entries under the active View, Print, Export, Zoom, User, or Language use
+/// context supplied by the caller.
 pub(all) struct GraphicsInterpretOptions {
   optional_content_state : OptionalContentState
 } derive(Eq, Debug)
@@ -115,6 +121,28 @@ pub fn GraphicsInterpretOptions::default() -> GraphicsInterpretOptions {
 /// horizontal and vertical intervals to fill the area to be painted. Shading
 /// patterns define a gradient fill that produces a smooth transition between
 /// colours across the area, with colour specified as a function of position.
+///
+/// Section 8.9.1 image general vocabulary is also part of the abstract page
+/// description: PDF painting operators deal with sampled images, rectangular
+/// arrays of sample values that may approximate photographs, scanner input,
+/// video camera input, or synthetic images. Each sample has the number of
+/// colour components required by DeviceGray, DeviceRGB, DeviceCMYK, DeviceN,
+/// or another image colour space, and may use 1, 2, 4, 8, 16, or JPXDecode
+/// component sizes. Images may be Image XObjects painted with `Do` or inline
+/// images defined directly in a content stream.
+///
+/// Section 8.9.6.1 masked image vocabulary is represented structurally:
+/// in the opaque imaging model images mark all areas they occupy on the page
+/// as if with opaque paint, so black, white, gray, and colour samples obscure
+/// previous marks. ImageMask stencil masks, explicit Mask image XObjects,
+/// colour key Mask arrays, and soft masks crop or mask backgrounds so the
+/// existing background shows through while this interpreter remains device
+/// independent.
+///
+/// Section 8.11.3.1 and 8.11.3.3 optional-content vocabulary is represented
+/// through events and visibility decisions: marked-content sections, Form
+/// XObjects, image XObjects, and annotations may be optional in their entirety
+/// by an OC entry that names an OCG or OCMD.
 pub(all) struct GraphicsProgram {
   events : Array[GraphicsEvent]
   final_state : GraphicsState

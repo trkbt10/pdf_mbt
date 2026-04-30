@@ -1,7 +1,14 @@
 ///|
-/// Visibility result for optional content in ISO 32000-2 8.11. Hidden
-/// suppresses drawing, Visible draws, and InertVisible means no OCProperties,
-/// OCG, OCMD, or active optional-content control affected the content.
+/// Visibility result for optional content in ISO 32000-2 8.11. Optional
+/// content groups (OCGs), optional content membership dictionaries (OCMDs),
+/// and visibility expressions (VE) determine whether graphical content is
+/// visible for a configuration and intent. Usage dictionaries describe content
+/// controlled by a group, such as language, magnification, view, print, export,
+/// user, zoom, creator information, subtype, and suggested automatic state in
+/// Table 100 entries of an optional content usage dictionary.
+/// Hidden suppresses drawing, Visible draws, and InertVisible means no
+/// OCProperties, OCG, OCMD, or active optional-content control affected the
+/// content.
 pub(all) enum OptionalContentDecision {
   Visible
   Hidden
@@ -10,7 +17,12 @@ pub(all) enum OptionalContentDecision {
 
 ///|
 /// Optional content membership dictionary policy (`P`) from ISO 32000-2
-/// 8.11.2.2: AllOn, AnyOn, AnyOff, or AllOff over the OCGs entry.
+/// 8.11.2.1 and 8.11.2.2. Optional content groups are named graphic layers
+/// that may be made visible or invisible dynamically by PDF processors. An
+/// OCG dictionary has Type OCG, a user-interface Name text string, Intent such
+/// as View or Design, and a Usage dictionary. An OCMD combines one or more
+/// OCGs through AllOn, AnyOn, AnyOff, or AllOff over the OCGs entry, unless a
+/// VE visibility expression takes precedence.
 pub(all) enum OptionalContentPolicy {
   AllOn
   AnyOn
@@ -36,11 +48,19 @@ pub(all) struct OptionalContentMembership {
 } derive(Eq, Debug)
 
 ///|
-/// Optional content state derived from OCProperties, OCGs, the default
-/// optional content configuration dictionary, BaseState, ON/OFF arrays, and
-/// Intent. Usage dictionaries and usage application dictionaries for View,
-/// Print, Export, Zoom, User, and Language are represented at this state
-/// boundary by caller-selected hidden groups and active intents.
+/// Optional content state derived from Catalog OCProperties, the OCGs array,
+/// default and alternate optional-content configuration dictionaries, D,
+/// Configs, BaseState, ON and OFF arrays, Intent, Order, ListMode, RBGroups,
+/// and Locked entries. It represents how a PDF processor determines the
+/// initial state of optional content groups: apply BaseState to all groups,
+/// adjust groups listed in ON or OFF, then apply matching usage application
+/// dictionaries according to processor type. Configuration dictionaries
+/// provide presentation metadata and group state for viewers, design
+/// applications, aggregating applications, and printing applications. Usage
+/// dictionaries and usage application dictionaries for View, Print, Export,
+/// Zoom, User, and Language contexts are represented at this state boundary by
+/// caller-selected hidden groups and active intents. Missing OCProperties
+/// makes optional-content structures inert and visible.
 pub(all) struct OptionalContentState {
   hidden_refs : Array[@objects.ObjectId]
   hidden_names : Array[@objects.PdfName]
@@ -54,7 +74,11 @@ struct OptionalVisibilityStack {
 
 ///|
 /// Creates a visible optional-content state. Missing OCProperties makes
-/// optional content structures inert and visible, as required by 8.11.4.2.
+/// optional content structures inert and visible, as required by 8.11.4.1 and
+/// 8.11.4.2. Optional content is useful for CAD drawings, layered artwork,
+/// maps, and multi-language documents whose graphics can be viewed or hidden
+/// by document authors or consumers. The PDF structures are optional content
+/// groups, making graphical content optional, and configuring optional content.
 pub fn OptionalContentState::visible() -> OptionalContentState {
   OptionalContentState::{
     hidden_refs: [],

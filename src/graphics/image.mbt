@@ -11,10 +11,12 @@ pub(all) enum ImageSource {
 } derive(Eq, Debug)
 
 ///|
-/// Availability of image sample data after structural filter handling.
-/// Encoded bytes remain for filters such as JBIG2Decode, CCITTFaxDecode, or
-/// Crypt; decoded bytes are checked against the image sample layout when
-/// supported filters produce sample bytes.
+/// Availability of image sample data after structural filter handling. A
+/// sampled image is a rectangular array of sample values, scanned by row in
+/// image space, where each sample has the colour components required by its
+/// colour space. Encoded bytes remain for filters such as JBIG2Decode,
+/// CCITTFaxDecode, DCTDecode, JPXDecode, or Crypt; decoded bytes are checked
+/// against the image sample layout when supported filters produce sample bytes.
 pub(all) enum ImageByteStatus {
   EncodedBytes(Int)
   DecodedBytes(Int)
@@ -31,10 +33,16 @@ pub(all) struct ImageDecodeRange {
 } derive(Eq, Debug)
 
 ///|
-/// Image coordinate system and sample representation. Width and height are in
-/// samples, rows are byte-aligned, padding bits at row ends are ignored, and
-/// the image space rectangle maps to the user-space unit square before the
-/// invocation CTM places the image on the page.
+/// Image coordinate system and sample representation from ISO 32000-2 8.9.4.
+/// Width and height are in samples, each sample occupies one square unit, the
+/// origin is the upper-left corner, horizontal coordinates vary most rapidly,
+/// rows are byte-aligned, padding bits at row ends are ignored, and the image
+/// space rectangle maps to the user-space unit square before the invocation
+/// CTM places the image on the page. The unit square in user space bounded by
+/// (0, 0) and (1, 1) corresponds to the image-space boundary from (0, h) to
+/// (w, 0); the implicit image matrix is [1/w 0 0 -1/h 0 1]. Coordinate
+/// transforms may map other conventions to this PDF source image coordinate
+/// system.
 pub(all) struct ImageSampleLayout {
   width : Int
   height : Int
@@ -70,9 +78,16 @@ pub(all) struct ImageDictionaryValidation {
 } derive(Eq, Debug)
 
 ///|
-/// Masked image model from ISO 32000-2 8.9.6: no mask, stencil ImageMask,
-/// explicit image mask XObject, or colour key masking with pre-decode sample
-/// ranges. Colour-key masks are arrays of min/max component integers.
+/// Masked image model from ISO 32000-2 8.9.6.1 through 8.9.6.4: no mask,
+/// stencil ImageMask, explicit image mask XObject, or colour key masking.
+/// Stencil masking paints unmasked one-bit samples with the current
+/// nonstroking colour. Explicit masking uses a subsidiary image XObject as a
+/// source of shape; the base image and image mask need not have the same
+/// Width and Height, but because all images are defined on the unit square in
+/// user space their page boundaries coincide and overlay each other. Colour-key
+/// masking supplies a Mask array of min/max pairs for each colour component;
+/// matching pre-decode sample values are masked out, ranges are integer sample
+/// values, and ImageMask true forbids Mask and ColorSpace.
 pub(all) enum ImageMaskInfo {
   NoImageMask
   StencilImageMask
@@ -100,9 +115,16 @@ pub(all) struct SoftMaskInfo {
 } derive(Eq, Debug)
 
 ///|
-/// Alternate image dictionary metadata from ISO 32000-2 8.9.5.4. The Image
-/// entry identifies the alternate image XObject, DefaultForPrinting records
-/// print selection, and OC stores optional content selection input.
+/// Alternate image dictionary metadata from ISO 32000-2 8.9.5.4 and Table 89
+/// (89). Alternate
+/// images provide backward-compatible multiple versions of an image for
+/// different purposes, such as low-resolution on-screen viewing and
+/// high-resolution printing. The Image entry identifies the alternate image
+/// XObject, DefaultForPrinting records the default version to use for
+/// printing, and OC stores optional content selection input. Alternate images
+/// describe variant representations of the base image that may differ in
+/// resolution or colour space, but an alternate image must not recursively
+/// contain Alternates.
 pub(all) struct AlternateImageInfo {
   image : @objects.PdfObject
   default_for_printing : Bool
@@ -113,7 +135,11 @@ pub(all) struct AlternateImageInfo {
 /// Structural entries specific to image dictionaries: rendering Intent,
 /// Interpolate-adjacent alternate image data, Name, StructParent,
 /// StructParents, ID, Metadata, OPI, OC optional content, associated files
-/// (AF), Measure, and PtData. These are preserved without rendering.
+/// (AF), Measure, and PtData. Image interpolation is only a hint that a PDF
+/// processor may use to produce a smooth transition between adjacent sample
+/// values when image resolution is significantly lower than output-device
+/// resolution; this model preserves the Interpolate entry without choosing a
+/// resampling algorithm. These entries are preserved without rendering.
 pub(all) struct ImageStructuralMetadata {
   intent : @objects.PdfName?
   alternates : Array[AlternateImageInfo]
@@ -131,10 +157,14 @@ pub(all) struct ImageStructuralMetadata {
 
 ///|
 /// Validated image dictionary descriptor for image XObjects and inline images.
-/// It records image parameters, sample representation, Decode arrays,
-/// Interpolate hints, image masks, colour key masks, explicit masks, soft
-/// masks, alternate images, optional content, and the image coordinate system
-/// needed by the `Do` operator or inline image painting event.
+/// It records the four interrelated image parameters from ISO 32000-2 8.9.2:
+/// image format, sample data, the image-space to user-space correspondence,
+/// and the Decode mapping from component values to colour-space values. It
+/// also preserves Interpolate hints from 8.9.5.3 without resampling, image
+/// masks, colour key masks, explicit masks, soft masks, alternate images,
+/// optional content, associated files, measure dictionaries, point data,
+/// metadata, OPI, structural parent identifiers, and the image coordinate
+/// system needed by the `Do` operator or inline image painting event.
 pub(all) struct ImageDescriptor {
   source : ImageSource
   width : Int

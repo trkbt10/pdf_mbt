@@ -1,5 +1,9 @@
 ///|
 /// Coordinate pair in PDF user space or a transformed coordinate space.
+/// Optional content in ISO 32000-2 8.11.3.1 can make graphical content
+/// optional through marked-content sections, Form XObjects, image XObjects,
+/// and annotations, while graphics state side effects such as transformation
+/// matrix and clipping still apply.
 pub(all) struct GraphicsPoint {
   x : Double
   y : Double

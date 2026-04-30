@@ -1,7 +1,13 @@
 ///|
-/// Group XObject attributes from ISO 32000-2 8.10.3. The Group dictionary's
-/// subtype (`S`) distinguishes transparency group XObjects from other group
-/// attributes, and the raw dictionary is retained for deferred rendering.
+/// Group XObject attributes from ISO 32000-2 8.10.3. A group XObject is a
+/// special form XObject that groups graphical elements together as a unit and
+/// is distinguished by the optional Group entry in the form dictionary. The
+/// Group value is a subsidiary group attributes dictionary whose Type, if
+/// present, is Group. Table 94 entries common to all group attributes
+/// dictionaries include the group subtype (`S`), which determines the format and
+/// meaning of remaining entries. This specification defines the Transparency
+/// subtype for transparency group XObjects; the raw dictionary is retained for
+/// deferred rendering.
 pub(all) struct FormGroupInfo {
   subtype : @objects.PdfName?
   transparency : TransparencyGroup?
@@ -9,11 +15,19 @@ pub(all) struct FormGroupInfo {
 } derive(Eq, Debug)
 
 ///|
-/// Reference XObject metadata from ISO 32000-2 8.10.4. The required reference
-/// dictionary entries `F` and `Page` identify the target document and page;
-/// `ID` helps find or warn about changed target files. Printing may use the
-/// imported content or this proxy form, while annotation appearance and logical
-/// structure caveats are preserved for higher layers.
+/// Reference XObject metadata from ISO 32000-2 8.10.4.1, 8.10.4.2, and
+/// 8.10.4.3. The reference dictionary entries `F` and `Page` identify the
+/// target document and page; `ID` helps find or warn about changed target
+/// files. The containing document holds the reference XObject, while the
+/// target document may reside in an external file or embedded file stream. A
+/// reference XObject is a form XObject proxy for imported target content that
+/// may be unavailable. Printing may emit the imported content designated by
+/// the reference XObject or the reference XObject as a proxy for the imported
+/// content according to DefaultForPrinting, processor capabilities, user
+/// preferences, print job nature, and external-file availability. Annotation
+/// appearance, logical structure, named destinations, article threads, actions,
+/// and other special considerations are preserved for higher layers instead of
+/// being loaded by graphics.
 pub(all) struct ReferenceXObjectInfo {
   file_spec : @objects.PdfObject?
   page : @objects.PdfObject?
@@ -22,9 +36,18 @@ pub(all) struct ReferenceXObjectInfo {
 
 ///|
 /// Type 1 Form XObject descriptor from ISO 32000-2 8.10. A form XObject is a
-/// reusable content stream painted by `Do`; it has form space, BBox clipping,
-/// a Matrix mapping form space to user space, optional Resources, Group,
-/// reference proxy metadata, OC optional content, and associated files.
+/// self-contained description of an arbitrary sequence of graphics objects,
+/// stored as a reusable content stream and painted by `Do`. It has form space,
+/// BBox clipping, a Matrix mapping form space to user space, optional
+/// Resources, Group attributes for group XObjects such as transparency groups,
+/// Ref metadata for reference XObject proxy forms, OC optional content,
+/// structural parent exclusivity, PieceInfo, Metadata, and PDF 2.0 associated
+/// files. The proxy form behavior is preserved without external PDF import.
+/// This also carries the 8.8.1 external object vocabulary: an XObject is a
+/// graphics object defined by a self-contained stream, separate from the
+/// content stream in which it is used. The Table 86 Do operator paints the
+/// named XObject from the current resource dictionary's XObject subdictionary;
+/// the stream Type is XObject when present and Subtype is Image or Form.
 pub(all) struct FormXObject {
   name : @objects.PdfName?
   form_type : Int

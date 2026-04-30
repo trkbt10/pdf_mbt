@@ -1,7 +1,11 @@
 ///|
 /// DeviceRGB pixel output extracted from an image XObject or inline image.
 /// Pixels are interleaved RGBA bytes in image sample order: row-major from the
-/// image-space upper-left corner, four bytes per sample.
+/// image-space upper-left corner, four bytes per sample. Colour key masking
+/// from a Mask array compares pre-decode colour component integers against
+/// min/max ranges; samples whose components all fall inside those ranges are
+/// not painted so the existing background shows through. The adjacent inline
+/// image rule uses the 4096 byte recommendation for small inline data.
 pub(all) struct ImageDeviceRgbRaster {
   width : Int
   height : Int
