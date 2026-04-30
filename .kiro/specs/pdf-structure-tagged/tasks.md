@@ -90,7 +90,7 @@
   - _Boundary: StructureContentResolver_
   - _Depends: 2.2, 3.1, 3.2_
 
-- [ ] 3.4 Report content-item rule diagnostics without eager content scanning
+- [x] 3.4 Report content-item rule diagnostics without eager content scanning
   - Report leaf-content restrictions, form XObject content-item patterns, real-content versus artifact classification, and hidden-content treatment from available structure metadata.
   - Preserve `ReversedChars`, Unicode mapping, word-break, and MCID-existence checks as downstream-context items unless parsed content data is supplied.
   - Keep base structure inspection usable even when the content report contains warnings or unchecked items.
