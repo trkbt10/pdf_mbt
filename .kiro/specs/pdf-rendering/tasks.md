@@ -179,7 +179,7 @@
   - _Requirements: 3.14, 3.15_
   - _Boundary: ScanConverter_
 
-- [ ] 5.4 Render sampled images with centre sampling and clipping
+- [x] 5.4 Render sampled images with centre sampling and clipping
   - Determine the transformed image region in device space and paint only pixels whose centres lie inside that region.
   - Map pixel centres back to source samples without averaging over the pixel area.
   - The completed image path paints clipped image regions deterministically and skips unused high-resolution source samples.
