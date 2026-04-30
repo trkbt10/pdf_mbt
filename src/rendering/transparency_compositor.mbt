@@ -63,6 +63,13 @@ pub(all) struct CombinedPaintCompositeInput {
 } derive(Eq, Debug)
 
 ///|
+pub(all) struct PatternTransparencyCompositeInput {
+  backdrop : TransparencyCompositeSample
+  pattern_objects : Array[ElementaryObjectCompositeInput]
+  shading_background : TransparencyCompositeSample?
+} derive(Eq, Debug)
+
+///|
 pub(all) enum TransparencyMaskSampleSource {
   AlphaMaskSamples(Array[Double])
   LuminosityMaskSamples(Array[Array[Double]])
@@ -140,6 +147,24 @@ pub fn composite_elementary_object(
     opacity: result_opacity,
     alpha: result_alpha,
   }
+}
+
+///|
+pub fn composite_pattern_transparency(
+  input : PatternTransparencyCompositeInput,
+) -> TransparencyCompositeSample {
+  let initial = input.shading_background.unwrap_or(input.backdrop)
+  let group = composite_transparency_group(TransparencyGroupCompositeInput::{
+    backdrop: input.backdrop,
+    initial_backdrop: initial,
+    objects: input.pattern_objects,
+    backdrop_mode: TransparencyGroupBackdropMode::NonIsolatedGroupBackdrop,
+    blending_colour_space_components: knockout_component_count(
+      input.backdrop,
+      initial,
+    ),
+  })
+  group.composited
 }
 
 ///|

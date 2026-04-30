@@ -34,6 +34,21 @@ pub(all) struct TransparencyScene {
 } derive(Eq, Debug)
 
 ///|
+pub(all) enum TransparencyPatternPaintKind {
+  TilingPatternTransparency
+  ShadingPatternTransparency
+} derive(Eq, Debug)
+
+///|
+pub(all) struct TransparencyPatternPolicy {
+  kind : TransparencyPatternPaintKind
+  implicit_non_isolated_group : Bool
+  knockout : Bool
+  resets_transparency_parameters : Bool
+  group_state : @graphics.GraphicsState
+} derive(Eq, Debug)
+
+///|
 pub fn build_transparency_scene(
   graphics : @graphics.GraphicsProgram,
   text? : @text.TextProgram = @text.TextProgram::empty(),
@@ -97,6 +112,22 @@ pub fn build_transparency_scene(
   }
   sort_transparency_paints(paints)
   TransparencyScene::{ paints, }
+}
+
+///|
+pub fn transparency_pattern_policy(
+  kind : TransparencyPatternPaintKind,
+  state : @graphics.GraphicsState,
+) -> TransparencyPatternPolicy {
+  let group_state = state.copy()
+  group_state.reset_transparency_parameters()
+  TransparencyPatternPolicy::{
+    kind,
+    implicit_non_isolated_group: true,
+    knockout: true,
+    resets_transparency_parameters: true,
+    group_state,
+  }
 }
 
 ///|

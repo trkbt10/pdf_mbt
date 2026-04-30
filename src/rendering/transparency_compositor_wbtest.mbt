@@ -175,6 +175,18 @@ test "embedded soft mask matte keeps zero alpha division defined" {
 }
 
 ///|
+test "pattern transparency composites over shading background" {
+  let result = composite_pattern_transparency(PatternTransparencyCompositeInput::{
+    backdrop: TransparencyCompositeSample::opaque([0.0, 0.0, 1.0]),
+    pattern_objects: [elementary_test_object([1.0, 0.0, 0.0], 0.5)],
+    shading_background: Some(
+      TransparencyCompositeSample::opaque([0.0, 1.0, 0.0]),
+    ),
+  })
+  assert_eq(result.colour, Some([0.5, 0.0, 0.5]))
+}
+
+///|
 fn elementary_test_object(
   colour : Array[Double],
   opacity : Double,

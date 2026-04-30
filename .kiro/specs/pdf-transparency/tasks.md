@@ -112,7 +112,7 @@
   - _Requirements: 2.22, 2.23, 2.24, 2.30, 2.32, 2.33, 2.38_
   - _Boundary: TransparencyMaskEvaluation_
   - _Depends: 1.3, 2.2, 2.4, 3.2, 3.3_
-- [ ] 3.6 Integrate pattern transparency, spot components, and overprint behavior
+- [x] 3.6 Integrate pattern transparency, spot components, and overprint behavior
   - Evaluate tiling and shading pattern definitions as implicit non-isolated groups with the required knockout behavior and reset transparency parameters.
   - Apply spot component passthrough or alternate substitution and compatible overprint decisions when painting elementary objects and group objects.
   - Rendering tests cover transparent patterns, shading backgrounds, spot-colour groups, non-white-preserving fallback, and overprint mode differences.

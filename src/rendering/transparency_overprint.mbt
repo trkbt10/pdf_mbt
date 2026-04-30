@@ -70,3 +70,20 @@ pub fn blend_mode_for_spot_colour(
     subtractive_space: true,
   }).effective_blend_mode
 }
+
+///|
+pub fn resolve_pattern_spot_overprint(
+  context : SpotOverprintContext,
+  pattern_paints_group_object : Bool,
+) -> SpotOverprintResolution {
+  resolve_spot_overprint(SpotOverprintContext::{
+    blend_mode: context.blend_mode,
+    overprint: context.overprint,
+    overprint_mode: context.overprint_mode,
+    is_spot_colour: context.is_spot_colour,
+    spot_available: context.spot_available,
+    painting_group_object: context.painting_group_object ||
+    pattern_paints_group_object,
+    subtractive_space: context.subtractive_space,
+  })
+}

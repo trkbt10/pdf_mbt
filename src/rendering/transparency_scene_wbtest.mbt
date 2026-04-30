@@ -40,3 +40,20 @@ test "transparency scene preserves PDF paint order and state snapshots" {
   assert_eq(scene.paints[0].alpha_constant, 0.5)
   assert_eq(scene.paints[1].alpha_constant, 0.75)
 }
+
+///|
+test "pattern transparency policy resets group transparency parameters" {
+  let state = @graphics.GraphicsState::initial(
+    @graphics.GraphicsInitialState::default(),
+  )
+  state.blend_mode = @graphics.BlendMode::Multiply
+  state.alpha_nonstroking = 0.25
+  let policy = transparency_pattern_policy(
+    TransparencyPatternPaintKind::TilingPatternTransparency,
+    state,
+  )
+  assert_eq(policy.implicit_non_isolated_group, true)
+  assert_eq(policy.knockout, true)
+  assert_eq(policy.group_state.blend_mode == @graphics.BlendMode::Normal, true)
+  assert_eq(policy.group_state.alpha_nonstroking, 1.0)
+}
