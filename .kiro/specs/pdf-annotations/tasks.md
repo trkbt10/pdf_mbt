@@ -145,7 +145,7 @@
   - Completion: tests cover required raw payloads, default icon behavior, popup parent validation, and non-execution of file or sound payloads.
   - _Requirements: 0.19, 0.20, 0.21_
 
-- [ ] 5.7 Parse movie and screen annotations
+- [x] 5.7 Parse movie and screen annotations
   - Preserve movie dictionaries, movie activation data, screen actions, additional actions, and screen appearance characteristics as raw hand-off values.
   - Parse movie titles, screen titles, and screen page-reference requirements for rendition-action contexts without playing media or executing actions.
   - Completion: tests cover required movie payloads, default activation behavior, screen page-reference validation, appearance hand-off, and non-execution of media or actions.
