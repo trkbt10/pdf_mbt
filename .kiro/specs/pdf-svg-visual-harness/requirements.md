@@ -25,7 +25,7 @@ decision in the harness source code (reviewable in git diff).
 
 ## Requirements
 
-### Requirement 1: Single visual harness entry point
+#### Test harness expectation: Single visual harness entry point
 
 #### 1.1: One harness module
 A single module at `npm/test/visual_harness.mjs` SHALL expose the
@@ -49,7 +49,7 @@ function signature SHALL expose only `(pdfPath, pageIndex) →
 { diff: number, referencePng, svgPng, diffPng }`. Any caller
 passing a `threshold` keyword SHALL be a type or runtime error.
 
-### Requirement 2: Page 6 / Page 7 fixture with numbered baselines
+#### Test harness expectation: Page 6 / Page 7 fixture with numbered baselines
 
 #### 2.1: local-fixture fixture baselines
 A JSON file `npm/test/visual_baselines.json` SHALL record, for
@@ -93,7 +93,7 @@ the SDD's acceptance SHALL be recorded into
 `visual_baselines.json` as the new baseline, narrowing the
 allowable band.
 
-### Requirement 3: No parameter drift in callers
+#### Test harness expectation: No parameter drift in callers
 
 #### 3.1: Ban direct pixelmatch usage
 Callers in `npm/test/` SHALL NOT import `pixelmatch` directly
