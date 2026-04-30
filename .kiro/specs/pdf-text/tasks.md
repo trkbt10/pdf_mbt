@@ -278,7 +278,7 @@
   - _Depends: 7.2_
 
 - [x] 8. Validate behavior, regressions, and public interfaces
-- [ ] 8.1 Complete text state and interpreter unit coverage
+- [x] 8.1 Complete text state and interpreter unit coverage
   - Cover state defaults, q/Q restore, text object lifecycle, positioning operators, state operators, showing operators, render matrices, clipping modes, Type 3 exceptions, and operand errors.
   - Include word-spacing single-byte eligibility, horizontal scaling, text rise, leading, zero-sized text, negative font size, invisible modes, empty strings, and TJ numeric adjustments.
   - `moon test` for the text package passes with state, matrix, and interpreter coverage.
