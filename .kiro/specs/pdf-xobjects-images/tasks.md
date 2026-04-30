@@ -129,7 +129,7 @@
   - _Boundary: GraphicsInterpreterIntegration_
 
 - [ ] 6. Reader materialization and page API integration
-- [ ] 6.1 (P) Load Catalog optional-content properties into page-level state
+- [x] 6.1 (P) Load Catalog optional-content properties into page-level state
   - Resolve Catalog OCProperties and all listed OCG references through reader-owned object loading.
   - Wrap malformed optional-content structures in document errors while preserving missing OCProperties as visible defaults.
   - Done: document and page callers can obtain optional-content state from the default configuration and caller use context.
