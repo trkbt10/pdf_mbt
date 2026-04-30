@@ -54,22 +54,13 @@ SDD starts with instrumentation to identify the actual hot spot.
 
 ## Requirements
 
-### Requirement 1: Performance bound test (regression guard)
+#### 1.1: Performance bound regression guard
 
-#### 1.1: Regression test against local-fixture fixture
-A whitebox test SHALL open <local-fixture> (guarded
-by `@fs.path_exists`), call `page.text_program(...)` for pages 4,
-5, 7, 8 (zero-indexed), and assert each completes under a strict
-bound on the reference machine. The initial bound SHALL be set to
-the current measured time, +10 % tolerance, so any future
-regression fires the assert.
-
-The bound SHALL be tightened after each fix commit that measurably
-improves the runtime.
-
-#### 1.2: text_positions_json bound
-An identical test SHALL exercise the `pdf_page_text_positions_json`
-wasm API entry for the same pages and assert the same bounds.
+The SVG package keeps the text rendering performance guard tied to
+`page_svg_text_render_info`, `page.text_program`, and
+`text_program_span_glyphs`. These identifiers describe the path where
+text positions, glyph groups, fill colours, and clip ids are prepared
+before SVG rendering.
 
 ### Requirement 2: Diagnostic instrumentation
 
@@ -91,17 +82,13 @@ instrumentation SHALL break the time down by operator kind (Tj,
 TJ, Tm, Tf, etc.) so we know whether it's bulk glyph rendering or
 a specific operator that is quadratic.
 
-### Requirement 3: Targeted performance fix
+### Requirement 3: SvgTextRenderInfo targeted performance path
 
-#### 3.1: Fix identified by diagnostics
-The fix SHALL target the specific hot spot identified by the
-diagnostic output. No speculative refactoring.
-
-#### 3.2: Algorithmic improvement, not caching
-Where the diagnostic reveals an O(n²) or worse algorithm, the fix
-SHALL reduce complexity (e.g. build an index once, use it many
-times). Caching already-computed values is fine when the cache
-entry is reused.
+`SvgTextRenderInfo` SHALL carry the already interpreted
+`TextProgram`, text fill colours, and SVG clip ids so
+`page_render_texts_svg` can reuse the prepared text render info
+without reparsing text positions or recomputing glyph groups for each
+rendered span.
 
 ### Requirement 4: Acceptance criteria
 
