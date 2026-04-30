@@ -60,7 +60,7 @@
   - _Requirements: 2.7_
   - _Boundary: ColourPipeline, TransferFunctionPipeline_
 
-- [ ] 2.5 Preserve native process and spot colourant values for separation-aware painting
+- [x] 2.5 Preserve native process and spot colourant values for separation-aware painting
   - Keep process and spot colourant components available when the destination is a separation target.
   - Route unsupported colourant combinations to explicit strict errors or best-effort skipped paint records.
   - The completed colour output can feed both normal native surfaces and separation-plane rendering without losing named colourants.
