@@ -32,7 +32,7 @@ indexion report surfaces above a chosen similarity threshold.
 
 ## Requirements
 
-### Requirement 1: Clip-wrap helper (user-reported duplication)
+#### Refactor note: Clip-wrap helper user-reported duplication
 
 #### 1.1: Single clip-wrap helper
 A single helper `write_svg_clip_wrapper_open(builder, clip_id)`
@@ -49,7 +49,7 @@ page space, so direct `clip-path` on the element is geometrically
 sound). A doc comment on each untouched emission SHALL declare
 this reason.
 
-### Requirement 2: Consolidate pad / number formatting duplicates
+#### Refactor note: Consolidate pad / number formatting duplicates
 
 #### 2.1: Single pad-integer helper
 `cff_pad5` and `svg_pad5` SHALL merge into one function
@@ -83,7 +83,7 @@ SHALL share a table-driven approach: one table per OS with
 directory paths, and one generic `push_system_font_directories`
 iterating the table.
 
-### Requirement 4: Magic string constants
+#### Refactor note: Magic string constants
 
 #### 4.1: Standard 14 font names
 `"Helvetica"`, `"Courier"`, `"Times-Roman"`, `"Times-Bold"`,
@@ -100,7 +100,7 @@ review but not a mandate — the alternative (a helper that writes
 a named SVG attribute) is fine, but the change to call sites must
 not obscure reading.
 
-### Requirement 5: Process requirement — indexion plan in every refactor SDD
+#### Process note: indexion plan in every refactor SDD
 
 #### 5.1: Refactor plan attached to SDD
 Any future SDD touching `src/svg/` (or other project modules)
