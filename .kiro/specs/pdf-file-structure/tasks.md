@@ -110,7 +110,7 @@
   - _Requirements: 5.4, 9.1, 9.2, 9.3, 9.4, 9.5_
   - _Boundary: PdfFile_
 
-- [ ] 6. Validate samples, robustness, and public surface
+- [x] 6. Validate samples, robustness, and public surface
 - [x] 6.1 Validate synthetic traditional and incremental file flows
   - Open a synthetic minimal traditional-table PDF and load Catalog, Pages, Page, content stream, and metadata objects by identifier.
   - Open a synthetic incremental-update PDF with multiple sections and verify later entries win while deleted objects resolve to null.
