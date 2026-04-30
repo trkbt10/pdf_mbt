@@ -149,7 +149,7 @@
   - Completed state: DSS and VRI records expose evidence references and malformed evidence dictionaries raise InvalidSignature.
   - _Requirements: 0.47, 0.48, 0.49, 0.50_
   - _Boundary: LTVReader_
-- [ ] 6.2 Build validation evidence search ordering
+- [x] 6.2 Build validation evidence search ordering
   - Represent the preferred evidence lookup order from VRI-specific data to DSS global arrays to embedded signature evidence.
   - Include timestamp-related LTV evidence for initial and subsequent timestamp chains.
   - Completed state: validation plans expose deterministic evidence search order and timestamp evidence metadata for external handlers.
