@@ -63,6 +63,18 @@ test "typed form fields flatten hierarchy and support qualified lookup" {
 }
 
 ///|
+test "variable text descriptor preserves appearance metadata" {
+  let document = PdfDocument::open(build_form_values_fixture())
+  let name = document.form_field_by_name(b"person.name").unwrap()
+  let variable_text = name.variable_text.unwrap()
+
+  assert_eq(variable_text.default_appearance, Some(b"/Helv 11 Tf 0 g"))
+  assert_eq(variable_text.quadding, Some(2))
+  assert_eq(variable_text.default_style, Some(b"font: Helvetica"))
+  assert_eq(variable_text.rich_text is Some(_), true)
+}
+
+///|
 test "typed form fields reject invalid partial names" {
   let document = PdfDocument::open(build_form_invalid_name_fixture())
   let result : Result[Array[PdfFormField], PdfDocumentError] = try? document.form_fields()
@@ -108,7 +120,7 @@ fn build_form_values_fixture() -> Bytes {
     bytes, header_base, 5, 0, b"<< /FT /Tx /T (person) /Kids [6 0 R 7 0 R] >>",
   )
   let (bytes, name_offset) = append_indirect_object(
-    bytes, header_base, 6, 0, b"<< /T (name) /V (Alice) >>",
+    bytes, header_base, 6, 0, b"<< /T (name) /V (Alice) /DA (/Helv 11 Tf 0 g) /Q 2 /DS (font: Helvetica) /RV (rich) >>",
   )
   let (bytes, city_offset) = append_indirect_object(
     bytes, header_base, 7, 0, b"<< /T (city) /V (Tokyo) >>",

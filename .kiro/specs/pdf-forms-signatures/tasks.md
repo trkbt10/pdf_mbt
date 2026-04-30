@@ -27,7 +27,7 @@
   - Completed state: field enumeration and name lookup return deterministic fields with inherited attributes or raise InvalidForm for cycles, invalid partial names, and inconsistent duplicate names.
   - _Requirements: 0.2, 0.4, 0.5_
   - _Boundary: FieldTreeResolver, FieldAttributeResolver, FieldNameIndex_
-- [ ] 2.3 (P) Parse variable text descriptors and appearance metadata
+- [x] 2.3 (P) Parse variable text descriptors and appearance metadata
   - Preserve default appearance strings, quadding, default style, rich text, default resources, and appearance-generation metadata as parser data.
   - Validate structural DA and resource-name relationships without generating or rewriting appearance streams.
   - Completed state: variable text fields expose complete descriptor data and malformed descriptor shapes raise InvalidForm.

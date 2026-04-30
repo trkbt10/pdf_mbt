@@ -256,8 +256,51 @@ fn parse_typed_form_field(
       "field Kids",
     ),
     widgets: [],
-    variable_text: None,
+    variable_text: parse_variable_text_descriptor(dict, object_id),
     raw_dict: dict,
+  }
+}
+
+///|
+fn parse_variable_text_descriptor(
+  dict : @objects.PdfDictionary,
+  object_id : @objects.ObjectId?,
+) -> PdfVariableTextDescriptor? raise PdfDocumentError {
+  let default_appearance = form_optional_bytes(
+    dict,
+    form_key(b"DA"),
+    object_id,
+    "variable text DA",
+  )
+  let quadding = form_optional_int(
+    dict,
+    form_key(b"Q"),
+    object_id,
+    "variable text Q",
+  )
+  let default_style = form_optional_bytes(
+    dict,
+    form_key(b"DS"),
+    object_id,
+    "variable text DS",
+  )
+  let rich_text = dict.get(form_key(b"RV"))
+  let default_resources = dict.get(form_key(b"DR"))
+  if default_appearance is None &&
+    quadding is None &&
+    default_style is None &&
+    rich_text is None &&
+    default_resources is None {
+    None
+  } else {
+    Some(PdfVariableTextDescriptor::{
+      default_appearance,
+      quadding,
+      default_style,
+      rich_text,
+      default_resources,
+      raw_dict: dict,
+    })
   }
 }
 
