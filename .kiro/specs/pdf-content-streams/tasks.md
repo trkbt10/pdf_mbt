@@ -119,7 +119,7 @@
   - _Requirements: 1.2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10_
   - _Boundary: OperatorRegistry_
 
-- [ ] 5.2 Verify operand parsing, parser iteration, and compatibility behavior
+- [x] 5.2 Verify operand parsing, parser iteration, and compatibility behavior
   - Cover direct operands for numbers, strings, names, arrays, dictionaries, booleans, and null.
   - Cover invalid indirect references, invalid aggregate syntax, unexpected delimiters, and byte-offset diagnostics.
   - Cover operand clearing, ordered operation emission, and unknown operator skip/error behavior across compatibility sections.
