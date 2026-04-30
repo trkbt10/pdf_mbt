@@ -214,7 +214,7 @@
   - Completed state: callers can reach each new feature through the reader objects named in the design without depending on raw Catalog dictionary traversal.
   - _Requirements: 0.1, 0.2, 0.3, 0.14, 0.20, 0.30, 0.47, 0.55, 0.56, 0.57, 0.64_
   - _Boundary: ReaderAPIIntegration_
-- [ ] 8.2 Bridge existing annotations, actions, and name trees
+- [x] 8.2 Bridge existing annotations, actions, and name trees
   - Connect widget annotation helpers, measure annotation entries, form action parsing, trigger traversal, and Pages or Templates name-tree access to the new typed structures.
   - Preserve existing annotation, action, and name-tree behavior while adding typed reader-layer extensions.
   - Completed state: existing annotation and action tests still pass, and new typed data is available from the same traversal paths.
