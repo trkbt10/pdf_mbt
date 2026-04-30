@@ -127,7 +127,7 @@
   - _Requirements: 3.4, 3.7_
   - _Boundary: HalftoneProcessor_
 
-- [ ] 4.4 Add angled and 16-bit threshold halftones
+- [x] 4.4 Add angled and 16-bit threshold halftones
   - Parse and validate Type 10 square-pair threshold streams and Type 16 one- or two-rectangle threshold streams.
   - Check exact decoded byte lengths before allocation and interpret 16-bit samples in high-byte-first order.
   - The completed support rejects inconsistent dimensions and paints sample pixels from both primary and secondary threshold regions.
