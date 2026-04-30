@@ -222,7 +222,7 @@
   - _Requirements: 1, 3.5, 3.11, 3.14_
   - _Boundary: RenderSceneBuilder, RenderingResourceContracts_
 
-- [ ] 6.3 Expose public rendering entry points for constructed programs
+- [x] 6.3 Expose public rendering entry points for constructed programs
   - Accept constructed graphics programs, optional text programs, devices, options, and providers from library callers.
   - Return native raster surfaces and render reports without mutating upstream program values.
   - The completed public API renders simple Gray, RGB, and CMYK constructed programs into matching native surfaces.
