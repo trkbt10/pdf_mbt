@@ -175,7 +175,7 @@
   - _Boundary: CMapResolver, FontResourceResolver_
   - _Depends: 4.5_
 
-- [ ] 5. Implement Unicode mapping and extracted text
+- [x] 5. Implement Unicode mapping and extracted text
 - [ ] 5.1 Parse ToUnicode CMaps
   - Parse ToUnicode codespaces, bfchar mappings, bfrange string increments, bfrange destination arrays, UseCMap references, and UTF-16BE destination strings up to the permitted length.
   - Validate surrogate pairs, multi-codepoint destination strings, destination-array counts, and invalid range increment overflow.
