@@ -105,7 +105,7 @@
   - _Boundary: OptionalContentEvaluator_
 
 - [ ] 5. Graphics interpreter integration
-- [ ] 5.1 Gate drawing events through marked-content visibility while preserving state side effects
+- [x] 5.1 Gate drawing events through marked-content visibility while preserving state side effects
   - Maintain a visibility stack for BDC and EMC optional-content scopes and process DP optional-content declarations.
   - Suppress drawing events when content is hidden while still applying graphics-state and other persistent state changes.
   - Done: hidden marked-content leaves the same final graphics state as visible content, while visible-only paint events are absent from hidden scopes.
