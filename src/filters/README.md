@@ -332,7 +332,7 @@
 - **`parse_zlib_stream`** (Function) — 
 
 
-- **`execute_pipeline`** (Function) — 
+- **`decode_pdf_file_structure_stream_bytes`** (Function) — 
 
 
 - **`decode_ascii85_terminated`** (Function) — 

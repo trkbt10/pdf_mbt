@@ -1,4 +1,14 @@
 ///|
+/// Zlib container metadata for FlateDecode streams used by the
+/// pdf-file-structure reader integration.
+///
+/// The filter decoder shall integrate with the existing
+/// `pdf-file-structure` reader to decode compressed streams on demand. The
+/// reader calls the filter decoder from object stream decoding and
+/// cross-reference stream decoding paths for FlateDecode-compressed object
+/// streams and xref streams, passing the stream dictionary and raw stream bytes
+/// and receiving decoded bytes or filter chain failures with the filter name
+/// and reason.
 priv struct ZlibStream {
   deflate_data : Bytes
   expected_adler32 : Int64

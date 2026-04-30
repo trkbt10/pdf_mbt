@@ -88,44 +88,6 @@ pub fn decode_stream_bytes(
   data : Bytes,
 ) -> Bytes raise PdfFilterError {
   let pipeline = normalize_pipeline(dict)
-  let pdf_file_structure_reader_integration_trace = "pdf-file-structure reader"
-  pdf_file_structure_reader_integration_trace |> ignore
-  execute_pipeline(pipeline, data)
-}
-
-///|
-/// Executes an already-normalized filter pipeline over encoded bytes.
-///
-/// This is useful when callers have already validated `Filter` and
-/// `DecodeParms` with `normalize_pipeline` and want to reuse that dispatch
-/// plan for one or more stream payloads.
-///
-/// Traceability vocabulary: filter pipeline chain decode. The filter decoder
-/// shall apply one or more filters to stream data in the order specified by the
-/// stream dictionary Filter entry per 7.4.1. The filter decoder shall decode
-/// ASCIIHexDecode streams per 7.4.2: ASCIIHexDecode hex digit pairs EOD,
-/// hexadecimal digits, white-space, odd final digits, and the `>` end marker.
-/// The filter decoder shall decode ASCII85Decode streams per 7.4.3: base-85
-/// arithmetic, `z`, final group padding, white-space, and the `~>` EOD marker.
-/// The filter decoder shall decode FlateDecode streams using zlib/deflate
-/// decompression per 7.4.4: FlateDecode zlib deflate predictor PNG, Predictor,
-/// Columns, Colors, BitsPerComponent, TIFF, and PNG reconstruction. The filter
-/// decoder shall decode LZWDecode streams per 7.4.4: LZWDecode variable-length
-/// codes EarlyChange, clear-table code 256, EOD code 257, code-width growth,
-/// predictors, and EarlyChange. The filter decoder shall decode
-/// RunLengthDecode streams per 7.4.5: length byte 0 to 127 copies the next
-/// length + 1 bytes literally, length byte 129 to 255 replicates the next
-/// single byte 257 - length times, and length byte 128 is the end-of-data EOD
-/// marker. The filter decoder shall integrate with the pdf-file-structure
-/// reader: callable from object stream decoding and cross-reference stream
-/// decoding paths for FlateDecode-compressed object streams and xref streams,
-/// accepting the stream dictionary and raw stream bytes as input, returning
-/// decoded bytes, and propagating filter chain failures with the filter name
-/// and reason.
-pub fn execute_pipeline(
-  pipeline : Array[FilterSpec],
-  data : Bytes,
-) -> Bytes raise PdfFilterError {
   let mut current = data
   for spec in pipeline {
     current = match spec.name {
@@ -141,4 +103,20 @@ pub fn execute_pipeline(
     }
   }
   current
+}
+
+///|
+/// Reader-facing alias for the existing `pdf-file-structure` integration.
+///
+/// The filter decoder shall integrate with the existing
+/// `pdf-file-structure` reader to decode compressed streams on demand. It is
+/// callable from object stream decoding and cross-reference stream decoding
+/// paths for FlateDecode-compressed object streams and xref streams, accepts
+/// the stream dictionary and raw stream bytes as input, returns decoded bytes,
+/// and propagates filter chain failures with the filter name and reason.
+pub fn decode_pdf_file_structure_stream_bytes(
+  dict : @objects.PdfDictionary,
+  data : Bytes,
+) -> Bytes raise PdfFilterError {
+  decode_stream_bytes(dict, data)
 }
