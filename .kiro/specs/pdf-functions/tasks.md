@@ -65,7 +65,7 @@
   - _Requirements: 0.6_
   - _Boundary: CalculatorFunctionModel_
 
-- [ ] 2.7 Execute calculator relational, boolean, and bitwise operators
+- [x] 2.7 Execute calculator relational, boolean, and bitwise operators
   - Evaluate comparisons, boolean literals, logical operators, integer bitwise operations, and bit shifting with calculator-specific value typing.
   - Reject mismatched operand types, invalid integer conversions, stack underflow, and unsupported names through function-domain errors.
   - Operator tests cover every relational, boolean, and bitwise operator with both success and representative failure cases.

@@ -145,6 +145,41 @@ fn calc_eval(program : Bytes) -> Array[Double] raise PdfFunctionError {
 }
 
 ///|
+fn calc_values(
+  program : Bytes,
+) -> Array[CalculatorValue] raise PdfFunctionError {
+  let function = parse_direct_function(
+    calc_stream(program),
+    FunctionLimits::default(),
+    101L,
+  )
+  match function {
+    CalculatorFunction(calculator) => {
+      let runtime = CalculatorRuntime::new([], FunctionLimits::default())
+      for instruction in calculator.program.instructions {
+        runtime.execute_instruction(instruction)
+      }
+      runtime.stack
+    }
+    _ =>
+      raise PdfFunctionError::EvaluationFailure(
+        0L, "expected calculator function",
+      )
+  }
+}
+
+///|
+fn calc_bool(program : Bytes) -> Bool raise PdfFunctionError {
+  match calc_values(program) {
+    [Boolean(value)] => value
+    _ =>
+      raise PdfFunctionError::EvaluationFailure(
+        0L, "expected one boolean result",
+      )
+  }
+}
+
+///|
 test "calculator arithmetic operators evaluate numeric stack operands" {
   inspect(calc_eval(b"{ -3 abs }"), content="[3]")
   inspect(calc_eval(b"{ 2 3 add }"), content="[5]")
@@ -196,5 +231,45 @@ test "calculator arithmetic operators report numeric failures" {
     Err(EvaluationFailure(_, reason)) =>
       assert_eq(reason, "calculator operator requires numeric operands")
     _ => fail("expected numeric type failure")
+  }
+}
+
+///|
+test "calculator relational boolean and bitwise operators evaluate typed operands" {
+  assert_eq(calc_bool(b"{ 2 2 eq }"), true)
+  assert_eq(calc_bool(b"{ 2 3 ne }"), true)
+  assert_eq(calc_bool(b"{ 3 2 gt }"), true)
+  assert_eq(calc_bool(b"{ 3 3 ge }"), true)
+  assert_eq(calc_bool(b"{ 2 3 lt }"), true)
+  assert_eq(calc_bool(b"{ 2 2 le }"), true)
+  assert_eq(calc_bool(b"{ true false and }"), false)
+  assert_eq(calc_bool(b"{ true false or }"), true)
+  assert_eq(calc_bool(b"{ true false xor }"), true)
+  assert_eq(calc_bool(b"{ true not }"), false)
+  inspect(calc_eval(b"{ 6 3 and }"), content="[2]")
+  inspect(calc_eval(b"{ 4 1 or }"), content="[5]")
+  inspect(calc_eval(b"{ 6 3 xor }"), content="[5]")
+  inspect(calc_eval(b"{ 1 3 bitshift }"), content="[8]")
+  inspect(calc_eval(b"{ 8 -2 bitshift }"), content="[2]")
+}
+
+///|
+test "calculator relational boolean and bitwise operators reject mismatched operands" {
+  let mismatch : Result[Array[Double], PdfFunctionError] = try? calc_eval(
+    b"{ true 1 eq }",
+  )
+  match mismatch {
+    Err(EvaluationFailure(_, reason)) =>
+      assert_eq(reason, "calculator operands must have matching types")
+    _ => fail("expected type mismatch")
+  }
+
+  let bool_required : Result[Array[Double], PdfFunctionError] = try? calc_eval(
+    b"{ true 1 and }",
+  )
+  match bool_required {
+    Err(EvaluationFailure(_, reason)) =>
+      assert_eq(reason, "calculator operands must have matching types")
+    _ => fail("expected matching type failure")
   }
 }

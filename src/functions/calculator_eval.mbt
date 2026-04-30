@@ -88,6 +88,21 @@ fn calculator_int(value : Double) -> Int raise PdfFunctionError {
 }
 
 ///|
+fn calculator_values_equal(
+  left : CalculatorValue,
+  right : CalculatorValue,
+) -> Bool raise PdfFunctionError {
+  match (left, right) {
+    (Number(a), Number(b)) => a == b
+    (Boolean(a), Boolean(b)) => a == b
+    _ =>
+      raise PdfFunctionError::EvaluationFailure(
+        0L, "calculator operands must have matching types",
+      )
+  }
+}
+
+///|
 fn eval_arithmetic_operator(
   runtime : CalculatorRuntime,
   operator : CalculatorOperator,
@@ -268,6 +283,99 @@ fn eval_arithmetic_operator(
 }
 
 ///|
+fn eval_relational_boolean_bitwise_operator(
+  runtime : CalculatorRuntime,
+  operator : CalculatorOperator,
+) -> Bool raise PdfFunctionError {
+  match operator {
+    Eq => {
+      let b = runtime.pop()
+      let a = runtime.pop()
+      runtime.push(Boolean(calculator_values_equal(a, b)))
+      true
+    }
+    Ne => {
+      let b = runtime.pop()
+      let a = runtime.pop()
+      runtime.push(Boolean(!calculator_values_equal(a, b)))
+      true
+    }
+    Gt | Ge | Lt | Le => {
+      let b = runtime.pop_number()
+      let a = runtime.pop_number()
+      runtime.push(
+        Boolean(
+          match operator {
+            Gt => a > b
+            Ge => a >= b
+            Lt => a < b
+            Le => a <= b
+            _ => false
+          },
+        ),
+      )
+      true
+    }
+    And | Or | Xor => {
+      let b = runtime.pop()
+      let a = runtime.pop()
+      match (a, b) {
+        (Boolean(left), Boolean(right)) => {
+          let result = match operator {
+            And => left && right
+            Or => left || right
+            Xor => left != right
+            _ => false
+          }
+          runtime.push(Boolean(result))
+        }
+        (Number(left), Number(right)) => {
+          let li = calculator_int(left)
+          let ri = calculator_int(right)
+          let result = match operator {
+            And => li & ri
+            Or => li | ri
+            Xor => li ^ ri
+            _ => 0
+          }
+          runtime.push(Number(result.to_double()))
+        }
+        _ =>
+          raise PdfFunctionError::EvaluationFailure(
+            0L, "calculator operands must have matching types",
+          )
+      }
+      true
+    }
+    Not => {
+      match runtime.pop() {
+        Boolean(value) => runtime.push(Boolean(!value))
+        Number(value) => {
+          let integer = calculator_int(value)
+          runtime.push(Number((-integer - 1).to_double()))
+        }
+      }
+      true
+    }
+    Bitshift => {
+      let shift = calculator_int(runtime.pop_number())
+      let value = calculator_int(runtime.pop_number())
+      runtime.push(
+        Number(
+          if shift < 0 {
+            (value >> -shift).to_double()
+          } else {
+            (value << shift).to_double()
+          },
+        ),
+      )
+      true
+    }
+    _ => false
+  }
+}
+
+///|
 fn CalculatorRuntime::execute_instruction(
   self : CalculatorRuntime,
   instruction : CalculatorInstruction,
@@ -277,7 +385,8 @@ fn CalculatorRuntime::execute_instruction(
     CalculatorNumber(value) => self.push(Number(value))
     CalculatorBoolean(value) => self.push(Boolean(value))
     CalculatorOperator(operator) =>
-      if !eval_arithmetic_operator(self, operator) {
+      if !eval_arithmetic_operator(self, operator) &&
+        !eval_relational_boolean_bitwise_operator(self, operator) {
         raise PdfFunctionError::EvaluationFailure(
           0L, "calculator operator is not implemented yet",
         )
