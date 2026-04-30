@@ -220,7 +220,7 @@
   - Completed state: existing annotation and action tests still pass, and new typed data is available from the same traversal paths.
   - _Requirements: 0.10, 0.11, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.26, 0.57_
   - _Boundary: AnnotationActionNameTreeIntegration_
-- [ ] 8.3 Regenerate and review the public reader API surface
+- [x] 8.3 Regenerate and review the public reader API surface
   - Run the interface-generation workflow after public API additions and inspect the generated reader interface for intended exported types and functions only.
   - Remove accidental exports, preserve compatibility shims where required, and keep the package standard-library-only.
   - Completed state: generated public API output matches the design's intended reader surface and no unplanned dependency appears.
