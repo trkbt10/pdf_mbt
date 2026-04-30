@@ -121,7 +121,7 @@
   - _Depends: 3.1, 3.2, 3.3_
 
 - [x] 4. Implement CIDFonts, CMaps, and Type 0 composite fonts
-- [ ] 4.1 (P) Validate CIDSystemInfo and CIDFont dictionaries
+- [x] 4.1 (P) Validate CIDSystemInfo and CIDFont dictionaries
   - Parse Registry, Ordering, and Supplement values and validate compatibility rules used between CMaps and CIDFonts.
   - Validate CIDFontType0 and CIDFontType2 dictionary entries, descriptor requirements, base names, and descendant-only usage.
   - Preserve CID glyph-selection metadata for CFF, TrueType, embedded, non-embedded, and CIDToGIDMap cases without interpreting font programs.
