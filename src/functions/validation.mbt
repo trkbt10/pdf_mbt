@@ -126,7 +126,9 @@ fn ensure_finite(
 
 ///|
 /// Constructs a Domain, Range, Encode, or Decode interval whose lower bound is
-/// less than or equal to the upper bound.
+/// less than or equal to the upper bound. Table 38 requires Domain and Range
+/// pairs to satisfy lower <= upper, and Type 0 Encode and Decode arrays use the
+/// same interval form for interpolation.
 pub fn FunctionInterval::new(
   min : Double,
   max : Double,
@@ -143,7 +145,9 @@ pub fn FunctionInterval::new(
 }
 
 ///|
-/// Clips a numeric function input or output to the nearest interval boundary.
+/// Clips a numeric PDF function input or output to the nearest interval
+/// boundary, matching Table 38 Domain clipping before evaluation and Range
+/// clipping after output values are produced.
 pub fn FunctionInterval::clip(
   self : FunctionInterval,
   value : Double,
@@ -159,7 +163,9 @@ pub fn FunctionInterval::clip(
 
 ///|
 /// Implements the 7.10.1 Interpolate(x, xmin, xmax, ymin, ymax) relationship
-/// used by Domain, Encode, Size, Decode, Range, and stitching subdomains.
+/// used by Type 0 Domain, Encode, Size, Decode, and Range mapping, and by Type
+/// 3 stitching functions when a value x from a subdomain is encoded for the
+/// selected function.
 pub fn interpolate(
   value : Double,
   input : FunctionInterval,

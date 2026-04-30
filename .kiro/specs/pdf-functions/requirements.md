@@ -1,9 +1,7 @@
-# SDD Draft
+# pdf-functions Requirements
 
 Generated from:
 - `spec/extracted/7.10-functions.spec.txt`
-
-## Requirements
 
 #### 0.1: 7.10.1              General
 PDF is not a programming language, and a PDF file is not a program. However, PDF provides several
@@ -194,7 +192,7 @@ The Size value for an input dimension can be 1, in which case all input values i
 mapped to the single allowed value. If Size is less than 4, cubic spline interpolation is not possible and
 Order 3 shall be ignored if specified.
 
-#### 0.3: 7.10.3          Type 2 (exponential interpolation) functions
+#### 0.3: 7.10.3 Exponential interpolation functions
 Type 2 functions (PDF 1.3) include a set of parameters that define an exponential interpolation of one
 input value and n output values:
 𝑓(𝑥) = 𝑦0 , … , 𝑦𝑛−1
@@ -278,12 +276,11 @@ mechanism for inverting the domains of 1-input functions.
 EXAMPLE 2       Consider a function f with a Domain of [0.0 1.0] and a stitching function g with a Domain of [0.0 1.0], a
 Functions array containing f, and an Encode array of [1.0 0.0]. In effect, 𝑔 (𝑥) = 𝑓 (1 − 𝑥).
 7.10.5           Type 4 (PostScript calculator) functions
-7.10.5.1         General
+
+#### 0.5: 7.10.5.1 Type 4 PostScript calculator syntax and lexical structure
 A Type 4 function (PDF 1.3), also called a PostScript calculator function, shall be represented as a
 stream containing code written in a small subset of the PostScript language. This subset is comprised
 of the following PostScript language features:
-
-#### 0.5: 7.10.5.1         General
 •    Comments
 •    No composite data structures (such as strings or arrays)
 •    No procedures
@@ -300,11 +297,10 @@ NOTE 2      Type 4 functions also facilitate inclusion of a wide variety of half
 loss of accuracy that comes from sampling, and without adding to the list of predefined spot
 functions (see 10.6.3, "Spot functions"). All of the predefined spot functions can be written as
 Type 4 functions.
-7.10.5.2          Operators and operands
+
+#### 0.6: 7.10.5.2 PostScript calculator operators and operands
 "Table 42 — Operators in Type 4 functions" lists the operators that can be used in this type of function.
 The PostScript Language Reference, Third Edition shall define the semantics of these operators and all
-
-#### 0.6: 7.10.5.2          Operators and operands
 PostScript language operators, a full PostScript language compatible interpreter is not required.
 Table 42 — Operators in Type 4 functions
 Operator Type            Operators
@@ -333,4 +329,3 @@ involved.
 7.10.5.3          Type 4 function dictionary
 A Type 4 function dictionary shall include the entries in "Table 38 — Entries common to all function
 dictionaries", as well as other appropriate stream attributes (see "Table 5 — Entries common to all
-
