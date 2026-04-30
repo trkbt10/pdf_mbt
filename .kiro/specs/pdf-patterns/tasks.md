@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Foundation for pattern and shading validation
+- [x] 1. Foundation for pattern and shading validation
 - [ ] 1.1 Establish shared validation primitives for resource dictionaries and streams
   - Add reusable checks for required and optional names, integers, numbers, booleans, arrays, rectangles, matrices, dictionaries, streams, and indirect references used by pattern and shading resources.
   - Normalize malformed pattern and shading inputs into deterministic graphics errors with the caller-supplied resource offset or content operation offset.
