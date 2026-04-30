@@ -61,7 +61,7 @@
   - Completion: tab-order tests cover absent, known, and unknown names and show annotation source order remains unchanged.
   - _Requirements: 0.1_
 
-- [ ] 3. Parse common annotation dictionaries
+- [x] 3. Parse common annotation dictionaries
 - [ ] 3.1 Parse common fields, defaults, flags, and common raw values
   - Require a subtype name and annotation rectangle before subtype parsing begins.
   - Accept the annotation type marker only when absent or valid, and preserve byte strings without text normalization.
