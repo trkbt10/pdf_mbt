@@ -112,7 +112,7 @@
   - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6_
   - _Boundary: GraphicsFunctionIntegration_
 
-- [ ] 3.2 Add reader materialization for indirect functions
+- [x] 3.2 Add reader materialization for indirect functions
   - Load referenced function objects through existing document object access and parse the materialized value through the function package.
   - Keep lazy object loading owned by the reader layer and preserve underlying function errors inside document-level diagnostics.
   - Reader tests show indirect Type 2 and nested Type 3 functions materialize to direct evaluable functions, while missing or malformed references fail through document errors.

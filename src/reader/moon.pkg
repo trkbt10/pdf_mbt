@@ -8,6 +8,7 @@ import {
   "trkbt10/pdf/src/encryption",
   "trkbt10/pdf/src/content",
   "trkbt10/pdf/src/graphics",
+  "trkbt10/pdf/src/functions",
   "trkbt10/pdf/src/text",
   "trkbt10/pdf/src/layout",
   "trkbt10/pdf/src/interchange",

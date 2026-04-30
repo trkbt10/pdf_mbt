@@ -63,7 +63,7 @@ fn build_pattern_resource_fixture() -> Bytes {
     ),
   )
   let (bytes, shading_offset) = append_indirect_object(
-    bytes, header_base, 6, 0, b"<< /ShadingType 2 /ColorSpace /DeviceRGB /Coords [0 0 1 0] /Function <<>> >>",
+    bytes, header_base, 6, 0, b"<< /ShadingType 2 /ColorSpace /DeviceRGB /Coords [0 0 1 0] /Function << /FunctionType 2 /Domain [0 1] /C0 [0 0 0] /C1 [1 1 1] /N 1 >> >>",
   )
 
   let xref_offset = object_offset(bytes, header_base)
