@@ -268,7 +268,7 @@
   - _Boundary: ReaderTextBridge_
   - _Depends: 7.1_
 
-- [ ] 7.3 Cache font, encoding, CMap, and Unicode parsing per page interpretation
+- [x] 7.3 Cache font, encoding, CMap, and Unicode parsing per page interpretation
   - Cache parsed text resources within one page interpretation so repeated font switches and ToUnicode lookups reuse parsed results.
   - Ensure cache ownership does not leak across pages or require mutable global state.
   - Preserve deterministic native and wasm behavior without runtime network or system font access.
