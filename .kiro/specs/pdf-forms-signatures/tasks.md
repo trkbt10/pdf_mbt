@@ -193,7 +193,7 @@
   - Completed state: coordinate-system records distinguish geographic and projected systems and reject conflicting or missing EPSG/WKT descriptors.
   - _Requirements: 0.61, 0.62_
   - _Boundary: CoordinateSystemParser_
-- [ ] 7.5 Parse geospatial point data
+- [x] 7.5 Parse geospatial point data
   - Parse PtData dictionaries and arrays with Cloud subtype, Names columns, predefined LAT, LON, ALT semantics, and XPTS tuple values.
   - Validate that each XPTS tuple has the same arity as the Names array.
   - Completed state: point-data records expose typed columns and tuple payloads, and malformed tuple shapes raise InvalidMeasure.
