@@ -75,7 +75,7 @@
   - _Requirements: 0.15, 0.16, 0.17, 0.18_
   - _Boundary: ActionsIntegration, FormActionParser_
 
-- [ ] 4. Add standalone FDF reader support
+- [x] 4. Add standalone FDF reader support
 - [ ] 4.1 Parse FDF file structure from caller-supplied bytes
   - Validate the FDF header, body objects, optional xref table, trailer Root, generation-zero rule, duplicate object numbers, and direct or indirect root catalog.
   - Keep FDF parsing separate from normal PDF document opening and incremental-update semantics.
