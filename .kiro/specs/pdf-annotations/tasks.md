@@ -26,7 +26,7 @@
   - Completion: API review shows raw and special subtype records can represent all required 12.5-owned fields without executing actions, opening files, playing media, applying redactions, or interpreting 3D and RichMedia payloads.
   - _Requirements: 0.6, 0.20, 0.21, 0.22, 0.23, 0.24, 0.25, 0.26, 0.27, 0.28, 0.29_
 
-- [ ] 1.5 Add shared annotation object-reading and primitive validation helpers
+- [x] 1.5 Add shared annotation object-reading and primitive validation helpers
   - Provide cycle-safe indirect resolution for annotation-owned dictionaries, streams, and raw objects.
   - Provide reusable validation for names, booleans, integers, numbers, byte strings, arrays, rectangles, colours, opacity values, and byte-preserving text fields.
   - Ensure malformed present values raise annotation diagnostics while absent optional values remain available for parser-level defaults.
