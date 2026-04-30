@@ -1,4 +1,11 @@
 ///|
+/// Decodes RunLengthDecode streams per 7.4.5.
+///
+/// When the length byte is in the range 0 to 127, the filter decoder copies
+/// the next length + 1 bytes literally. When the length byte is in the range
+/// 129 to 255, the filter decoder replicates the next single byte 257 - length
+/// times. When the length byte is 128, the filter decoder treats it as the
+/// end-of-data EOD marker.
 fn decode_run_length(data : Bytes) -> Bytes raise PdfFilterError {
   let output : Array[Byte] = []
   let mut index = 0

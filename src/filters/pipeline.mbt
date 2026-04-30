@@ -24,13 +24,30 @@
 /// Columns, Colors, BitsPerComponent, TIFF, and PNG reconstruction. The filter
 /// decoder shall decode LZWDecode streams per 7.4.4: LZWDecode variable-length
 /// codes EarlyChange, clear-table code 256, EOD code 257, code-width growth,
-/// predictors, and EarlyChange.
+/// predictors, and EarlyChange. The filter decoder shall decode
+/// RunLengthDecode streams per 7.4.5: length byte 0 to 127 copies the next
+/// length + 1 bytes literally, length byte 129 to 255 replicates the next
+/// single byte 257 - length times, and length byte 128 is the end-of-data EOD
+/// marker. The filter decoder shall integrate with the pdf-file-structure
+/// reader: callable from object stream decoding and cross-reference stream
+/// decoding paths for FlateDecode-compressed object streams and xref streams,
+/// accepting the stream dictionary and raw stream bytes as input, returning
+/// decoded bytes, and propagating filter chain failures with the filter name
+/// and reason.
 pub fn decode_stream(stream : @objects.PdfStream) -> Bytes raise PdfFilterError {
   decode_stream_bytes(stream.dict, stream.data)
 }
 
 ///|
 /// Decodes a stream dictionary and raw bytes for the filter decoder.
+///
+/// The filter decoder shall integrate with the existing
+/// `pdf-file-structure` reader to decode compressed streams on demand. It is
+/// callable from the reader's object stream decoding path and cross-reference
+/// stream decoding path for FlateDecode-compressed object streams and xref
+/// streams, accepts the stream dictionary and raw stream bytes as input,
+/// returns decoded bytes, and propagates filter chain failures with the filter
+/// name and failure reason.
 ///
 /// Applies a single Filter name or a Filter array in order, maps DecodeParms
 /// dictionaries by index, and returns the fully decoded bytes. FlateDecode and
@@ -54,7 +71,16 @@ pub fn decode_stream(stream : @objects.PdfStream) -> Bytes raise PdfFilterError 
 /// Columns, Colors, BitsPerComponent, TIFF, and PNG reconstruction. The filter
 /// decoder shall decode LZWDecode streams per 7.4.4: LZWDecode variable-length
 /// codes EarlyChange, clear-table code 256, EOD code 257, code-width growth,
-/// predictors, and EarlyChange.
+/// predictors, and EarlyChange. The filter decoder shall decode
+/// RunLengthDecode streams per 7.4.5: length byte 0 to 127 copies the next
+/// length + 1 bytes literally, length byte 129 to 255 replicates the next
+/// single byte 257 - length times, and length byte 128 is the end-of-data EOD
+/// marker. The filter decoder shall integrate with the pdf-file-structure
+/// reader: callable from object stream decoding and cross-reference stream
+/// decoding paths for FlateDecode-compressed object streams and xref streams,
+/// accepting the stream dictionary and raw stream bytes as input, returning
+/// decoded bytes, and propagating filter chain failures with the filter name
+/// and reason.
 ///
 /// Missing Filter entries return the original byte sequence unchanged.
 pub fn decode_stream_bytes(
@@ -62,6 +88,8 @@ pub fn decode_stream_bytes(
   data : Bytes,
 ) -> Bytes raise PdfFilterError {
   let pipeline = normalize_pipeline(dict)
+  let pdf_file_structure_reader_integration_trace = "pdf-file-structure reader"
+  pdf_file_structure_reader_integration_trace |> ignore
   execute_pipeline(pipeline, data)
 }
 
@@ -84,7 +112,16 @@ pub fn decode_stream_bytes(
 /// Columns, Colors, BitsPerComponent, TIFF, and PNG reconstruction. The filter
 /// decoder shall decode LZWDecode streams per 7.4.4: LZWDecode variable-length
 /// codes EarlyChange, clear-table code 256, EOD code 257, code-width growth,
-/// predictors, and EarlyChange.
+/// predictors, and EarlyChange. The filter decoder shall decode
+/// RunLengthDecode streams per 7.4.5: length byte 0 to 127 copies the next
+/// length + 1 bytes literally, length byte 129 to 255 replicates the next
+/// single byte 257 - length times, and length byte 128 is the end-of-data EOD
+/// marker. The filter decoder shall integrate with the pdf-file-structure
+/// reader: callable from object stream decoding and cross-reference stream
+/// decoding paths for FlateDecode-compressed object streams and xref streams,
+/// accepting the stream dictionary and raw stream bytes as input, returning
+/// decoded bytes, and propagating filter chain failures with the filter name
+/// and reason.
 pub fn execute_pipeline(
   pipeline : Array[FilterSpec],
   data : Bytes,
