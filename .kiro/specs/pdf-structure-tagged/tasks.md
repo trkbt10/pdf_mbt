@@ -201,7 +201,7 @@
   - _Boundary: TaggedPdfReport_
   - _Depends: 2.1, 2.4, 3.4, 4.4_
 
-- [ ] 6.3 Add downstream-context and text requirement report items
+- [x] 6.3 Add downstream-context and text requirement report items
   - Represent soft-hyphen, Unicode mapping, word-break, reversed-character, MCID existence, text-object placement, and visual rectangle checks as warning or unchecked items when the needed content/font/rendering context is absent.
   - Use accessibility and attribute data to identify where alternate, actual, expansion, and language metadata may satisfy text-related requirements.
   - Keep content-stream scanning and font ToUnicode evaluation outside the default report path.
