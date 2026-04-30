@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [x] 1. Establish annotation model foundations and diagnostics
-- [ ] 1.1 Define the common annotation shell and annotation diagnostics
+- [x] 1.1 Define the common annotation shell and annotation diagnostics
   - Add externally inspectable values for annotation identity, page association, common dictionary data, known and unknown subtype names, and flag state.
   - Add an annotation-specific reader-layer diagnostic that preserves existing catalog, page, navigation, content, and graphics error behavior.
   - Keep the existing raw page annotation accessor compatible while reserving the typed annotation surface for structural parsing.
