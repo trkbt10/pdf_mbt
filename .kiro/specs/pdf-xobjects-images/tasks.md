@@ -19,7 +19,7 @@
   - Done: direct image and form resources produce typed resource outcomes, while missing names, non-stream resources, and unknown subtypes raise graphics resource failures.
   - _Requirements: 0.1_
   - _Boundary: XObjectResourceResolver_
-- [ ] 2.2 Build base image descriptors and sample layout semantics
+- [x] 2.2 Build base image descriptors and sample layout semantics
   - Validate positive dimensions, ColorSpace restrictions, BitsPerComponent rules, JPX exceptions, and component count from the image colour space.
   - Record raw or decoded byte availability and define the intrinsic image-space unit-square placement model without consuming invocation graphics state.
   - Done: valid base images produce inspectable descriptors with sample layout and intrinsic placement semantics; invalid dimensions, Pattern colour spaces, and invalid bit depths fail.
