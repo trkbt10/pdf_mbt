@@ -33,7 +33,7 @@
   - Completion: white-box tests exercise successful primitive extraction, malformed-shape failures, and indirect-reference cycle detection without touching lower parser packages.
   - _Requirements: 0.2, 0.3, 0.4, 0.5, 0.7, 0.10, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.18, 0.24, 0.27, 0.28_
 
-- [ ] 1.6 Build annotation fixture coverage for page-owned object graphs
+- [x] 1.6 Build annotation fixture coverage for page-owned object graphs
   - Add reusable in-memory document fixtures for missing, direct, and indirect page annotation arrays.
   - Include fixtures for reused indirect annotation references, popup or reply cycles, appearance streams, and raw adjacent-domain payloads.
   - Completion: fixture tests can open a minimal document, locate a page, and supply direct and indirect annotation dictionaries in page order for later parser tests.
