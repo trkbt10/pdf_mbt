@@ -274,7 +274,7 @@
   - _Requirements: 1_
   - _Boundary: ReaderRenderingBridge_
 
-- [ ] 8.2 Materialize rendering resources and output-intent data
+- [x] 8.2 Materialize rendering resources and output-intent data
   - Resolve indirect halftones, transfer functions, output profiles, image streams, pattern resources, and shading resources before handing values to the renderer.
   - Use existing reader caches and object-loading behavior rather than resolving references inside the renderer.
   - The completed bridge supplies direct render resources or returns reader-wrapped unresolved-resource errors.
