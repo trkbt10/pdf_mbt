@@ -276,53 +276,11 @@ stringn streamn
 ]
 The first element of each pair shall be a string giving the name of one of the related files; the second
 element shall be an embedded file stream holding the file’s contents.
-EXAMPLE           In the following example, object 31 is an embedded file stream containing Encapsulated Postscript File
-(EPSF) file Sunset.eps. The file specification dictionary’s RF entry specifies an array, object 30, identifying a
-set of embedded files, forming a DCS 1.0 set.
-10 0 obj                                       %File specification dictionary
-<</Type /Filespec
-/F (Sunset.eps)
-/UF (Sunset.eps)
-/EF <</F 21 0 R
-/UF 41 0 R
->>
-/RF <</UF 30 0 R>>                    %Related files array
-endobj
-30 0 obj                                       %Related files array
-[(Sunset.eps) 31 0 R                %Embedded file stream for the EPSF Sunset.eps
-(Sunset.C) 32 0 R
-(Sunset.M) 33 0 R
-(Sunset.Y) 34 0 R
-(Sunset.K) 35 0 R
-]
-endobj
-31 0 obj                                  %Embedded file stream for Mac OS file
-<</Type /EmbeddedFile               %Sunset.eps
-/Length …
-/Filter…
->>
-stream
-… Data for Sunset.eps …
-endstream
-endobj
-32 0 obj                                  %Embedded file stream for related file
-<</Type /EmbeddedFile               %Sunset.C
-/Length …
-/Filter…
->>
-stream
-… Data for Sunset.C …
-endstream
-endobj
 
 #### 0.7: 7.11.5          URL specifications
 When the FS entry in a file specification dictionary has the value URL, the value of the F entry in that
 dictionary is not a file specification string, but a uniform resource locator (URL) of the form defined in
 Internet RFC 3986.
-EXAMPLE        The following example shows a URL specification.
-<< /FS /URL
-/F (ftp://www.beatles.com/Movies/AbbeyRoad.mov)
->>
 The URL shall adhere to the character-encoding requirements specified in Internet RFC 3986. Because
 7-bit U.S. ASCII is a strict subset of PDFDocEncoding, this value shall also be considered to be in
 PDFDocEncoding.
@@ -335,4 +293,3 @@ Table 46 — Entries in a collection item dictionary
 Key          Type        Value
 Type         name        (Optional) The type of PDF object that this dictionary describes; if present, shall be
 CollectionItem for a collection item dictionary.
-
