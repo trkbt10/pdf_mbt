@@ -81,7 +81,7 @@
   - _Requirements: 3.4_
   - _Boundary: ContentResources_
 
-- [ ] 4. Stream input and page integration
+- [x] 4. Stream input and page integration
 - [x] 4.1 Connect decoded and stream-based content parsing workflows
   - Provide the decoded-byte entry point that accepts a resource context and returns a parsed content stream.
   - Provide the stream-based helper that decodes stream bytes through the filter pipeline before parsing.
