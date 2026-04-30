@@ -143,7 +143,7 @@
   - _Depends: 2.1, 3.1, 3.2_
   - _Requirements: 0.1, 0.15, 0.16, 0.18, 0.19_
   - _Boundary: ReaderXObjectMaterializer_
-- [ ] 6.3 Add page-level graphics interpretation with materialized XObjects and optional content
+- [x] 6.3 Add page-level graphics interpretation with materialized XObjects and optional content
   - Combine materialized XObject resources, optional-content state, page resources, and graphics initial state into a single reader-owned interpretation path.
   - Preserve existing page graphics behavior for callers that do not request materialized resource semantics.
   - Done: page graphics interpretation can produce typed XObject, image, form, and optional-content events from indirect resources while wrapping content and graphics failures as document errors.
