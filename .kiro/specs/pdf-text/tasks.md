@@ -185,7 +185,7 @@
   - _Boundary: CMapResolver, UnicodeMapper_
   - _Depends: 4.4_
 
-- [ ] 5.2 Apply Unicode mapping priority
+- [x] 5.2 Apply Unicode mapping priority
   - Map decoded glyphs through ToUnicode first, then simple-font glyph names, then predefined CMap and Adobe CID Unicode data, then unknown fallback.
   - Keep unknown mappings observable with source bytes, glyph identifier, and fallback reason instead of inventing character content.
   - Preserve one source code mapping to zero, one, or multiple Unicode scalar values as one extraction unit.
