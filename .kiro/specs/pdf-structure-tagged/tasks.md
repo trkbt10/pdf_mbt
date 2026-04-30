@@ -229,7 +229,7 @@
   - _Boundary: Reader facade, StructureTreeReader, StructureContentResolver, RoleNamespaceResolver, AttributeResolver, StandardStructureCatalog, AccessibilityPropertyResolver, TaggedPdfReport_
   - _Depends: 2.4, 3.4, 4.4, 5.5, 6.4_
 
-- [ ] 7.2 Preserve package boundaries and root re-export policy
+- [x] 7.2 Preserve package boundaries and root re-export policy
   - Confirm no upstream package imports reader and no external dependency is introduced.
   - Update root-level exports only if the project chooses to expose logical-structure APIs from the root package.
   - Preserve ordinary document loading behavior for PDFs without structure trees.
