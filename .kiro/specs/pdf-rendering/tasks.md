@@ -141,7 +141,7 @@
   - _Requirements: 3.5, 3.10_
   - _Boundary: HalftoneProcessor_
 
-- [ ] 4.6 Apply halftones or continuous-tone pass-through during painting
+- [x] 4.6 Apply halftones or continuous-tone pass-through during painting
   - Bypass halftoning for continuous-tone devices after transfer functions.
   - For halftoned devices, convert additive native colour values to representable device pixel marks using device-space cell coordinates.
   - The completed halftone application produces device-representable marks and remains unaffected by CTM changes.
