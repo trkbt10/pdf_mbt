@@ -81,7 +81,7 @@
   - _Boundary: StructureContentResolver_
   - _Depends: 2.3_
 
-- [ ] 3.3 Resolve parent-tree associations for objects and MCIDs
+- [x] 3.3 Resolve parent-tree associations for objects and MCIDs
   - Resolve object content items through `StructParent` keys and marked-content streams through `StructParents` arrays indexed by MCID.
   - Validate the parent-tree value shape for object references versus marked-content arrays.
   - Report missing parent-tree entries, out-of-range MCIDs, and mutually exclusive `StructParent`/`StructParents` declarations as diagnostics.
