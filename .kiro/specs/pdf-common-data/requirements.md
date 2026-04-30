@@ -1,9 +1,14 @@
-# SDD Draft
+# pdf-common-data validate_text_stream_bytes requirements
 
-Generated from:
-- `spec/extracted/7.9-common-data-structures.spec.txt`
+This SDD Draft records ISO 32000-2 clause 7.9 common data requirements
+implemented by the `src/common_data` validators for text strings, dates,
+rectangles, name trees, number trees, and `validate_text_stream_bytes`.
 
-## Requirements
+## Requirements validate_text_stream_bytes
+
+The requirements below map to the common-data value model, diagnostics, string
+qualification, text stream validation, date parsing, rectangle validation, and
+tree key and pair-array validation APIs, including `validate_text_stream_bytes`.
 
 #### 0.1: 7.9.1 General
 As mentioned at the beginning of this clause, there are some general-purpose data structures that are
@@ -101,6 +106,10 @@ supplementary characters; that is, characters requiring more than two bytes to r
 NOTE 5      It is important not to confuse UTF-16BE with UCS2 (i.e. wchar_t). UTF-16 is not a fixed width
 encoding scheme.
 
+Implementation alignment: `parse_text_string` returns a `PdfTextString` with raw bytes, decoded text,
+selected encoding, and `PdfLanguageSpan` metadata where Unicode language escape sequences are
+present.
+
 #### 0.4: 7.9.2.2.2         Text string language escape sequences
 Escape sequences may appear anywhere in a Unicode text string to indicate the language in which
 subsequent text shall be written.
@@ -176,6 +185,9 @@ NOTE 2        PDF versions up to and including 1.7 defined a date string to incl
 PDF processors are recommended to accept date strings that still follow that convention.
 NOTE 3        The letter Z can optionally be followed by hour and minute offsets, which are zero in this case.
 
+Implementation alignment: `PdfUtcOffset` records omitted GMT information, equality with UT, and
+local time later than or earlier than UT without converting the local date fields to system time.
+
 #### 0.9: 7.9.5 Rectangles
 Rectangles are used to describe locations on a page and bounding boxes for a variety of objects. A
 rectangle shall be written as an array of four numbers giving the coordinates of a pair of diagonally
@@ -186,6 +198,10 @@ specifying the lower-left x, lower-left y, upper-right x, and upper-right y coor
 that order. The other two corners of the rectangle are then assumed to have coordinates (llx, ury) and
 (urx, lly).
 NOTE          Rectangles can have a width of zero or height of zero.
+
+Implementation alignment: parsing preserves the source rectangle coordinate order. Any
+`PdfRectangle::normalized` helper is an explicit caller opt-in and is not applied by rectangle
+validation.
 
 #### 0.10: 7.9.6 Name trees
 A name tree serves a similar purpose to a dictionary — associating keys and values — but by different
@@ -235,6 +251,10 @@ the least and greatest keys contained within the node’s Names entry. In an int
 specify the least and greatest keys contained within the Names entries of any of that node’s
 descendants. The value associated with a given key can thus be found by walking the tree in order,
 searching for the leaf node whose Names entry contains that key.
+
+Implementation alignment: `compare_name_tree_keys` implements byte-by-byte lexical order, and
+`PdfNameTreeEntry` preserves each string key with the associated raw object value.
+
 EXAMPLE 1       The following is an abbreviated outline, showing object numbers and nodes, of a name tree that maps the
 names of all the chemical elements, from actinium to zirconium, to their atomic numbers.
 Example of a name tree
@@ -363,3 +383,40 @@ associated with that key. The keys shall be sorted in numerical order,
 analogously to the arrangement of keys in a name tree as described in 7.9.6,
 "Name trees".
 
+Implementation alignment: `compare_number_tree_keys` implements ascending integer key order, and
+`PdfNumberTreeEntry::compare_key` compares a stored number-tree key with a caller-supplied key for
+lookup and enumeration helpers.
+
+#### API alignment: compare_name_tree_keys
+The public `compare_name_tree_keys` helper is part of the name tree requirement because name-tree
+keys are strings ordered by byte-by-byte lexical comparison.
+
+#### API alignment: compare_number_tree_keys
+The public `compare_number_tree_keys` helper is part of the number tree requirement because
+number-tree keys are integers sorted in ascending numerical order.
+
+#### API alignment: PdfLanguageSpan
+The public `PdfLanguageSpan` value is part of the Unicode language escape requirement because it
+records the ESCAPE-delimited BCP 47 language code and optional ISO 3166 country code.
+
+#### API alignment: PdfTextString
+The public `PdfTextString` value is part of the text string requirement because it preserves raw
+bytes, decoded text, selected PDFDocEncoding, UTF-16BE, or UTF-8 encoding, and language spans.
+
+#### API alignment: PdfUtcOffset
+The public `PdfUtcOffset` value is part of the date requirement because it records whether local time
+is equal to UT, later than UT, earlier than UT, or has omitted GMT information.
+
+#### API alignment: PdfRectangle::normalized
+The public `PdfRectangle::normalized` helper is outside rectangle parsing semantics: validation
+preserves lower-left and upper-right coordinate order, while normalization is an explicit caller
+operation.
+
+#### API alignment: PdfNumberTreeEntry::compare_key
+The public `PdfNumberTreeEntry::compare_key` helper is part of number-tree lookup support because
+it compares an entry key with a caller-supplied integer key.
+
+#### API alignment: parse_text_string
+The public `parse_text_string` helper is part of text string decoding because it selects UTF-16BE
+from leading bytes 254 and 255, UTF-8 from leading bytes 239, 187, and 191, and PDFDocEncoding
+otherwise.

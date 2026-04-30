@@ -23,13 +23,21 @@ pub fn parse_text_string(Bytes) -> PdfTextString raise PdfCommonDataError
 
 pub fn parse_text_string_object(@objects.PdfObject) -> PdfTextString raise PdfCommonDataError
 
+pub fn qualify_pdf_string(Bytes, PdfStringQualification) -> PdfStringKind raise PdfCommonDataError
+
+pub fn scan_unicode_language_spans(String) -> Array[PdfLanguageSpan] raise PdfCommonDataError
+
 pub fn validate_ascii_string(Bytes) -> Bytes raise PdfCommonDataError
 
 pub fn validate_byte_string(Bytes) -> Bytes
 
 pub fn validate_name_tree_limits(@objects.PdfObject) -> (Bytes, Bytes) raise PdfCommonDataError
 
+pub fn validate_name_tree_node_shape(Map[@objects.PdfName, @objects.PdfObject], is_root~ : Bool) -> Unit raise PdfCommonDataError
+
 pub fn validate_name_tree_pairs(@objects.PdfObject) -> Array[PdfNameTreeEntry] raise PdfCommonDataError
+
+pub fn validate_number_tree_node_shape(Map[@objects.PdfName, @objects.PdfObject], is_root~ : Bool) -> Unit raise PdfCommonDataError
 
 pub fn validate_number_tree_pairs(@objects.PdfObject) -> Array[PdfNumberTreeEntry] raise PdfCommonDataError
 
@@ -87,6 +95,12 @@ pub(all) enum PdfStringKind {
   Text(PdfTextString)
   Ascii(Bytes)
   Byte(Bytes)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfStringQualification {
+  TextString
+  ASCIIString
+  ByteString
 } derive(Eq, @debug.Debug)
 
 pub(all) enum PdfTextEncoding {

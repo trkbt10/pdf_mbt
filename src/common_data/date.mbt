@@ -1,10 +1,20 @@
 ///|
+/// Parses a PDF date text string in the 7.9.4 `D:YYYYMMDDHHmmSSOHH'mm` form:
+/// `YYYY` year, `MM` month 01-12, `DD` day 01-31, `HH` hour 00-23, `mm`
+/// minute 00-59, `SS` second 00-59, and `O` as PLUS SIGN, HYPHEN-MINUS, or
+/// LATIN CAPITAL LETTER Z. The `D:` prefix and year field are mandatory,
+/// optional fields must appear in order, whitespace is rejected, month and day
+/// default to 01, all other numerical fields default to zero, omitted UT
+/// information is considered GMT, and accepted legacy apostrophe forms are
+/// retained as typed UTC relationship metadata without system-time conversion.
 pub fn parse_pdf_date(bytes : Bytes) -> PdfDate raise PdfCommonDataError {
   let text = parse_text_string(bytes).text
   parse_pdf_date_text(bytes, text)
 }
 
 ///|
+/// Parses a string object as a 7.9.4 date while preserving the exact source
+/// bytes used by the document hierarchy.
 pub fn parse_pdf_date_object(
   object : @objects.PdfObject,
 ) -> PdfDate raise PdfCommonDataError {

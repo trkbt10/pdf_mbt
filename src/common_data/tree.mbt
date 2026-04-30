@@ -1,4 +1,49 @@
 ///|
+/// Validates direct 7.9.6 name tree node dictionary shape. A name tree is
+/// constructed of dictionary nodes and has exactly one root node. The root node
+/// shall contain a single entry, either `/Kids` or `/Names` but not both; if the
+/// root has `/Names`, it is the only node. Non-root intermediate and leaf nodes
+/// must contain `/Limits` plus exactly one of `/Kids` or `/Names`. Loading
+/// indirect child references, checking child range overlap, and cycle detection
+/// remain reader-owned traversal responsibilities.
+pub fn validate_name_tree_node_shape(
+  dict : @objects.PdfDictionary,
+  is_root~ : Bool,
+) -> Unit raise PdfCommonDataError {
+  validate_tree_node_shape(
+    dict,
+    is_root~,
+    pairs_key=@objects.PdfName::new(b"Names"),
+    kids_key=@objects.PdfName::new(b"Kids"),
+    limits_key=@objects.PdfName::new(b"Limits"),
+    label="name tree",
+  )
+}
+
+///|
+/// Validates direct 7.9.7 number tree node dictionary shape. The root node must
+/// contain either `/Kids` or `/Nums` but not both; non-root intermediate and
+/// leaf nodes must contain `/Limits` plus exactly one of `/Kids` or `/Nums`.
+/// Loading indirect child references and cycle detection remain reader-owned
+/// traversal responsibilities.
+pub fn validate_number_tree_node_shape(
+  dict : @objects.PdfDictionary,
+  is_root~ : Bool,
+) -> Unit raise PdfCommonDataError {
+  validate_tree_node_shape(
+    dict,
+    is_root~,
+    pairs_key=@objects.PdfName::new(b"Nums"),
+    kids_key=@objects.PdfName::new(b"Kids"),
+    limits_key=@objects.PdfName::new(b"Limits"),
+    label="number tree",
+  )
+}
+
+///|
+/// Compares 7.9.6 name tree string keys by simple byte-by-byte lexical order.
+/// If one key is a prefix of the other, the shorter key sorts before the
+/// longer key.
 pub fn compare_name_tree_keys(left : Bytes, right : Bytes) -> Int {
   let mut index = 0
   let left_length = left.length()
@@ -26,6 +71,7 @@ pub fn compare_name_tree_keys(left : Bytes, right : Bytes) -> Int {
 }
 
 ///|
+/// Compares 7.9.7 number tree integer keys in ascending numeric order.
 pub fn compare_number_tree_keys(left : Int, right : Int) -> Int {
   if left < right {
     -1
@@ -37,6 +83,11 @@ pub fn compare_number_tree_keys(left : Int, right : Int) -> Int {
 }
 
 ///|
+/// Validates a name tree `/Names` pair array of the form key1 value1 key2
+/// value2 through keyn valuen. Keys must be string objects sorted lexically in
+/// ascending order by simple byte-by-byte equality and ordering; local duplicate
+/// keys and descending keys are rejected, and associated values are preserved as
+/// raw PDF objects.
 pub fn validate_name_tree_pairs(
   object : @objects.PdfObject,
 ) -> Array[PdfNameTreeEntry] raise PdfCommonDataError {
@@ -66,6 +117,9 @@ pub fn validate_name_tree_pairs(
 }
 
 ///|
+/// Validates a number tree `/Nums` pair array. Keys must be integer objects,
+/// arity must be even, local duplicate keys and descending keys are rejected,
+/// and associated values are preserved as raw PDF objects.
 pub fn validate_number_tree_pairs(
   object : @objects.PdfObject,
 ) -> Array[PdfNumberTreeEntry] raise PdfCommonDataError {
@@ -95,6 +149,9 @@ pub fn validate_number_tree_pairs(
 }
 
 ///|
+/// Validates name tree `/Limits` as exactly two strings that specify the least
+/// and greatest keys in a leaf node or descendant leaf nodes. The lower bound
+/// must not exceed the upper bound under byte-wise name tree ordering.
 pub fn validate_name_tree_limits(
   object : @objects.PdfObject,
 ) -> (Bytes, Bytes) raise PdfCommonDataError {
@@ -169,5 +226,40 @@ fn validate_number_key_order(
         )
       }
     None => ()
+  }
+}
+
+///|
+fn validate_tree_node_shape(
+  dict : @objects.PdfDictionary,
+  is_root~ : Bool,
+  pairs_key~ : @objects.PdfName,
+  kids_key~ : @objects.PdfName,
+  limits_key~ : @objects.PdfName,
+  label~ : String,
+) -> Unit raise PdfCommonDataError {
+  let has_pairs = dict.contains(pairs_key)
+  let has_kids = dict.contains(kids_key)
+  let has_limits = dict.contains(limits_key)
+  if has_pairs && has_kids {
+    raise PdfCommonDataError::InvalidTreeNode(
+      label + " node must not contain both pair array and /Kids",
+    )
+  }
+  if !has_pairs && !has_kids {
+    raise PdfCommonDataError::InvalidTreeNode(
+      label + " node must contain either pair array or /Kids",
+    )
+  }
+  if is_root {
+    if has_limits {
+      raise PdfCommonDataError::InvalidTreeNode(
+        label + " root node must not contain /Limits",
+      )
+    }
+  } else if !has_limits {
+    raise PdfCommonDataError::InvalidTreeNode(
+      label + " non-root node must contain /Limits",
+    )
   }
 }

@@ -1,4 +1,8 @@
 ///|
+/// Validates a 7.9.5 rectangle as a direct array of exactly four number
+/// objects: lower-left x, lower-left y, upper-right x, upper-right y. Integer
+/// and real coordinates are accepted, source coordinate order is preserved, and
+/// zero width or zero height rectangles are valid.
 pub fn parse_pdf_rectangle(
   object : @objects.PdfObject,
 ) -> PdfRectangle raise PdfCommonDataError {
