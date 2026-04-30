@@ -245,7 +245,7 @@
   - _Boundary: SeparationRenderer_
   - _Depends: 1.3, 2.5_
 
-- [ ] 7.2 Route process and spot colourants with overprint-aware behavior
+- [x] 7.2 Route process and spot colourants with overprint-aware behavior
   - Paint process and spot components to independent planes when separation output is requested.
   - Respect upstream overprint policy where the graphics state exposes enough information, and report unsupported cases explicitly.
   - The completed separation renderer preserves independent cyan, yellow, and spot plane contributions for overlapping paints.
