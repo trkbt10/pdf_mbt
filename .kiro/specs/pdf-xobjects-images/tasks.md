@@ -112,7 +112,7 @@
   - _Depends: 4.4_
   - _Requirements: 0.22, 0.27, 0.28, 0.29_
   - _Boundary: GraphicsInterpreterIntegration_
-- [ ] 5.2 Emit typed image and inline-image events with placement and visibility metadata
+- [x] 5.2 Emit typed image and inline-image events with placement and visibility metadata
   - Enforce that Do and inline images are accepted only in valid graphics object contexts before descriptor validation or event emission.
   - Replace raw image and inline-image sightings with validated descriptors, invocation graphics-state snapshots, and explicit skipped-image outcomes when optional content hides an image.
   - Preserve unsupported image filter names as metadata and avoid device-dependent rendering, colour conversion, or codec execution outside supported byte checks.
