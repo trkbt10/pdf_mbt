@@ -8,6 +8,10 @@ enum CalculatorLexeme {
 } derive(Eq, Debug)
 
 ///|
+/// Scanner for Type 4 PostScript calculator functions: the code stream is
+/// enclosed in braces, comments are skipped, numbers/booleans/operators are
+/// accepted, and strings, arrays, dictionaries, variables, names, and procedure
+/// objects fail closed.
 priv struct CalculatorScanner {
   data : Bytes
   mut position : Int

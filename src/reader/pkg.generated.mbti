@@ -6,6 +6,7 @@ import {
   "trkbt10/pdf/src/content",
   "trkbt10/pdf/src/encryption",
   "trkbt10/pdf/src/filters",
+  "trkbt10/pdf/src/functions",
   "trkbt10/pdf/src/graphics",
   "trkbt10/pdf/src/interchange",
   "trkbt10/pdf/src/objects",
@@ -56,6 +57,7 @@ pub(all) suberror PdfDocumentError {
   InterchangeError(@interchange.PdfInterchangeError)
   ContentError(@content.PdfContentError)
   GraphicsError(@graphics.PdfGraphicsError)
+  FunctionError(@objects.ObjectId, @functions.PdfFunctionError)
   TextError(@text.PdfTextError)
   PageIndexOutOfRange(Int, Int)
   CycleDetected(@objects.ObjectId, String)
@@ -817,6 +819,7 @@ pub fn PdfFile::compare_file_id_reference(Self, PdfFileId) -> @interchange.PdfFi
 pub fn PdfFile::document(Self) -> PdfDocument raise PdfDocumentError
 pub fn PdfFile::file_id(Self) -> PdfFileId?
 pub fn PdfFile::is_encrypted(Self) -> Bool
+pub fn PdfFile::load_function(Self, @objects.ObjectId, @functions.FunctionLimits) -> @functions.PdfFunction raise PdfDocumentError
 pub fn PdfFile::load_object(Self, @objects.ObjectId) -> @objects.PdfObject raise PdfReaderError
 pub fn PdfFile::open(Bytes) -> Self raise PdfReaderError
 pub fn PdfFile::parse_file_spec(Self, @objects.PdfObject) -> PdfFileSpecification raise PdfDocumentError

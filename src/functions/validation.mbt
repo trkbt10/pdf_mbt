@@ -125,6 +125,8 @@ fn ensure_finite(
 }
 
 ///|
+/// Constructs a Domain, Range, Encode, or Decode interval whose lower bound is
+/// less than or equal to the upper bound.
 pub fn FunctionInterval::new(
   min : Double,
   max : Double,
@@ -141,6 +143,7 @@ pub fn FunctionInterval::new(
 }
 
 ///|
+/// Clips a numeric function input or output to the nearest interval boundary.
 pub fn FunctionInterval::clip(
   self : FunctionInterval,
   value : Double,
@@ -155,6 +158,8 @@ pub fn FunctionInterval::clip(
 }
 
 ///|
+/// Implements the 7.10.1 Interpolate(x, xmin, xmax, ymin, ymax) relationship
+/// used by Domain, Encode, Size, Decode, Range, and stitching subdomains.
 pub fn interpolate(
   value : Double,
   input : FunctionInterval,

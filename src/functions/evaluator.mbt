@@ -1,9 +1,12 @@
 ///|
+/// Returns the number of input values m implied by the Domain array.
 pub fn FunctionCommon::input_count(self : FunctionCommon) -> Int {
   self.domain.length()
 }
 
 ///|
+/// Returns the number of output values n implied by Range when the function
+/// dictionary declares output clipping.
 pub fn FunctionCommon::output_count(self : FunctionCommon) -> Int? {
   match self.range {
     Some(range) => Some(range.length())
@@ -12,6 +15,8 @@ pub fn FunctionCommon::output_count(self : FunctionCommon) -> Int? {
 }
 
 ///|
+/// Returns the Table 38 common entries shared by a sampled, exponential,
+/// stitching, or PostScript calculator function.
 pub fn PdfFunction::common(self : PdfFunction) -> FunctionCommon {
   match self {
     SampledFunction(function) => function.common
@@ -34,6 +39,7 @@ fn clip_to_intervals(
 }
 
 ///|
+/// Clips each input value to the declared Domain interval before evaluation.
 pub fn FunctionCommon::clip_inputs(
   self : FunctionCommon,
   inputs : Array[Double],
@@ -52,6 +58,8 @@ pub fn FunctionCommon::clip_inputs(
 }
 
 ///|
+/// Clips each produced output value to the declared Range interval when Range
+/// is present; if Range is absent no output clipping is done.
 pub fn FunctionCommon::clip_outputs(
   self : FunctionCommon,
   outputs : Array[Double],
@@ -75,6 +83,9 @@ pub fn FunctionCommon::clip_outputs(
 }
 
 ///|
+/// Evaluates a PDF function as a side-effect-free numerical transformation:
+/// inputs are clipped to Domain, Type 0/2/3/4 semantics run, and outputs are
+/// clipped to Range when present.
 pub fn PdfFunction::evaluate(
   self : PdfFunction,
   inputs : Array[Double],
@@ -109,6 +120,8 @@ fn evaluate_function_with_depth(
 }
 
 ///|
+/// Evaluates a direct function source and rejects unresolved indirect function
+/// references until the reader materializes them.
 pub fn evaluate_function_source(
   source : FunctionSource,
   inputs : Array[Double],

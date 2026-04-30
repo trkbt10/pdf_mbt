@@ -3,6 +3,7 @@ package "trkbt10/pdf/src/rendering"
 
 import {
   "moonbitlang/core/debug",
+  "trkbt10/pdf/src/functions",
   "trkbt10/pdf/src/graphics",
   "trkbt10/pdf/src/objects",
 }
@@ -132,6 +133,7 @@ pub(all) struct RasterDevice {
   default_halftone : HalftoneRef?
   limits : RenderLimits
 } derive(Eq, @debug.Debug)
+pub fn RasterDevice::apply_default_transfer(Self, Double) -> Double raise PdfRenderingError
 pub fn RasterDevice::bytes_per_component(Self) -> Int
 pub fn RasterDevice::cmyk(Int, Int) -> Self
 pub fn RasterDevice::component_count(Self) -> Int
@@ -240,9 +242,11 @@ pub fn ThresholdArray::validate(Self) -> Unit raise PdfRenderingError
 
 pub(all) enum TransferFunctionRef {
   IdentityTransfer
-  DirectTransfer(@objects.PdfObject)
+  DirectTransfer(@functions.FunctionSource)
   IndirectTransfer(@objects.ObjectId)
 } derive(Eq, @debug.Debug)
+pub fn TransferFunctionRef::apply_component(Self, Double, limits? : @functions.FunctionLimits) -> Double raise PdfRenderingError
+pub fn TransferFunctionRef::from_object(@objects.PdfObject, limits? : @functions.FunctionLimits, offset? : Int64) -> Self raise PdfRenderingError
 
 pub(all) struct TypeOneHalftone {
   screen : HalftoneScreen

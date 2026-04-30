@@ -22,7 +22,7 @@
   - _Requirements: 0.1_
   - _Boundary: FunctionParser_
 
-- [ ] 2. Implement function semantics by type
+- [x] 2. Implement function semantics by type
 - [x] 2.1 (P) Parse sampled function tables and bit-packed sample data
   - Validate sampled-function size, bit width, interpolation order, required range, encode defaults, decode defaults, and declared sample count before reading sample data.
   - Read decoded sample bytes as one continuous high-order-bit-first stream for all supported sample widths and preserve first-dimension-fastest table ordering.
@@ -103,7 +103,7 @@
   - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6_
   - _Boundary: FunctionParser_
 
-- [ ] 3. Integrate function sources with consumers
+- [x] 3. Integrate function sources with consumers
 - [x] 3.1 Wire graphics models to typed function sources
   - Convert direct tint transforms, shading functions, mesh optional functions, and soft-mask transfer functions into typed function sources at graphics parsing boundaries.
   - Preserve unresolved indirect references explicitly where graphics cannot materialize them and wrap function-domain failures in graphics diagnostics.
@@ -128,7 +128,7 @@
   - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6_
   - _Boundary: Rendering consumers, FunctionEvaluator_
 
-- [ ] 4. Validate limits, integration, and public API
+- [x] 4. Validate limits, integration, and public API
 - [x] 4.1 Complete common parser and evaluator test coverage
   - Cover function type dispatch, domain and range validation, common interpolation, input clipping, output clipping, arity mismatches, unresolved references, filter failures, and unsupported objects.
   - Tests exercise both black-box public behavior and package-local validation paths.
@@ -164,7 +164,7 @@
   - _Requirements: 0.5, 0.6_
   - _Boundary: CalculatorFunctionModel_
 
-- [ ] 4.6 Run package-wide verification and public API review
+- [x] 4.6 Run package-wide verification and public API review
   - Run formatting, type checking, full test coverage, and public interface generation for all affected packages.
   - Review generated public interfaces for the function, graphics, rendering, and reader packages so only intentional API changes remain.
   - The final verification commands pass, generated interface files are updated where public APIs changed, and no forbidden dependency direction or external dependency is introduced.

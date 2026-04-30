@@ -31,8 +31,63 @@ pub(all) struct CalculatorFunction {
   program : CalculatorProgram
 } derive(Eq, @debug.Debug)
 
+pub(all) enum CalculatorInstruction {
+  CalculatorNumber(Double)
+  CalculatorBoolean(Bool)
+  CalculatorOperator(CalculatorOperator)
+  CalculatorBlock(Array[CalculatorInstruction])
+} derive(Eq, @debug.Debug)
+
+type CalculatorLexeme derive(Eq, @debug.Debug)
+
+pub(all) enum CalculatorOperator {
+  Abs
+  Add
+  Atan
+  Ceiling
+  Cos
+  Cvi
+  Cvr
+  Div
+  Exp
+  Floor
+  Idiv
+  Ln
+  Log
+  Mod
+  Mul
+  Neg
+  Round
+  Sin
+  Sqrt
+  Sub
+  Truncate
+  And
+  Bitshift
+  Eq
+  False
+  Ge
+  Gt
+  Le
+  Lt
+  Ne
+  Not
+  Or
+  True
+  Xor
+  If
+  Ifelse
+  Copy
+  Dup
+  Exch
+  Index
+  Pop
+  Roll
+} derive(Eq, @debug.Debug)
+
 pub(all) struct CalculatorProgram {
   token_count : Int
+  instructions : Array[CalculatorInstruction]
 } derive(Eq, @debug.Debug)
 
 pub(all) enum CalculatorValue {

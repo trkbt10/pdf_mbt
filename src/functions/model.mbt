@@ -1,5 +1,7 @@
 ///|
-/// PDF function types supported by ISO 32000-2 clause 7.10.
+/// SDD Draft Requirements for ISO 32000-2 clause 7.10 function dictionaries:
+/// FunctionType selects Type 0 sampled, Type 2 exponential interpolation,
+/// Type 3 stitching, or Type 4 PostScript calculator functions.
 pub(all) enum FunctionType {
   Sampled
   Exponential
@@ -19,7 +21,8 @@ pub fn FunctionType::pdf_code(self : FunctionType) -> Int {
 }
 
 ///|
-/// Closed numeric interval used by Domain, Range, Encode, and Decode arrays.
+/// Closed numeric interval used by Domain, Range, Encode, and Decode arrays;
+/// input values and output values are clipped to the nearest boundary value.
 pub(all) struct FunctionInterval {
   min : Double
   max : Double
@@ -35,15 +38,17 @@ pub(all) struct FunctionCommon {
 } derive(Eq, Debug)
 
 ///|
-/// A function source is either already materialized or an unresolved indirect
-/// reference that must be loaded by a higher-level reader package.
+/// A function object may be a dictionary, stream, or indirect reference; this
+/// source model keeps direct materialized functions separate from unresolved
+/// indirect references that a reader package must load.
 pub(all) enum FunctionSource {
   DirectFunction(PdfFunction)
   IndirectFunction(@objects.ObjectId)
 } derive(Eq, Debug)
 
 ///|
-/// Reports whether the source already carries a direct function value.
+/// Reports whether the PDF function source already carries a direct dictionary
+/// or stream value instead of an indirect reference.
 pub fn FunctionSource::is_direct(self : FunctionSource) -> Bool {
   match self {
     DirectFunction(_) => true
@@ -52,9 +57,9 @@ pub fn FunctionSource::is_direct(self : FunctionSource) -> Bool {
 }
 
 ///|
-/// Typed direct PDF function variants for the Table 38 FunctionType values:
-/// Type 0 sampled, Type 2 exponential interpolation, Type 3 stitching, and
-/// Type 4 PostScript calculator functions.
+/// Typed static, self-contained numerical transformations for Table 38
+/// FunctionType values: Type 0 sampled, Type 2 exponential interpolation,
+/// Type 3 stitching, and Type 4 PostScript calculator functions.
 pub(all) enum PdfFunction {
   SampledFunction(SampledFunction)
   ExponentialFunction(ExponentialFunction)
@@ -63,6 +68,8 @@ pub(all) enum PdfFunction {
 } derive(Eq, Debug)
 
 ///|
+/// Type 0 Order value: 1 specifies linear interpolation and 3 specifies cubic
+/// spline interpolation, ignored when the sampled Size is less than 4.
 pub(all) enum SampleOrder {
   Linear
   Cubic
@@ -126,6 +133,8 @@ pub(all) struct StitchingFunction {
 } derive(Eq, Debug)
 
 ///|
+/// Calculator operands are numbers or booleans used by Type 4 PostScript
+/// language operators; composite data structures are not supported.
 pub(all) enum CalculatorValue {
   Number(Double)
   Boolean(Bool)
@@ -217,6 +226,9 @@ pub(all) struct CalculatorFunction {
 } derive(Eq, Debug)
 
 ///|
+/// Direct parser handoff for a function dictionary or stream, carrying the
+/// FunctionType, common Domain and Range entries, decoded stream bytes, limits,
+/// and source offset.
 pub(all) struct DirectFunctionParseInput {
   function_type : FunctionType
   common : FunctionCommon
