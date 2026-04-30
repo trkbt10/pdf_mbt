@@ -96,7 +96,7 @@
   - _Depends: 4.2_
   - _Requirements: 0.35, 0.36_
   - _Boundary: OptionalContentEvaluator_
-- [ ] 4.4 Resolve optional-content property lists for marked content and XObject entries
+- [x] 4.4 Resolve optional-content property lists for marked content and XObject entries
   - Resolve marked-content OC property names through current Properties resources and accept direct materialized OCG or OCMD dictionaries.
   - Answer visibility for marked-content scopes, DP references, and image or form XObject OC entries from the current optional-content state.
   - Done: the evaluator can decide visibility for BDC/DP optional content and whole XObject optional content without document loading inside graphics.
