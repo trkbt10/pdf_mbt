@@ -128,7 +128,7 @@
   - _Requirements: 1.1, 1.3, 2.9, 4.1, 4.2, 4.4_
   - _Boundary: ContentOperandReader, ContentStreamParser, CompatibilityTracker_
 
-- [ ] 5.3 Verify inline image parsing and parser emission
+- [x] 5.3 Verify inline image parsing and parser emission
   - Cover key-value collection before image data, required whitespace after the image-data marker, and raw byte capture until a valid end marker.
   - Cover abbreviation expansion for required inline image dictionary names.
   - Cover malformed inline image cases such as missing data markers, missing end markers, and invalid key/value sequences.
