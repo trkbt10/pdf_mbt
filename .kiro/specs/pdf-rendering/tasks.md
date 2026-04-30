@@ -215,7 +215,7 @@
   - _Requirements: 1, 3.1, 3.11_
   - _Boundary: RenderSceneBuilder, ColourPipeline, TransferFunctionPipeline, HalftoneProcessor, ScanConverter_
 
-- [ ] 6.2 Execute paint operations in deterministic order with strict and best-effort outcomes
+- [x] 6.2 Execute paint operations in deterministic order with strict and best-effort outcomes
   - Stop on strict unsupported rendering outcomes before silently approximating missing capabilities.
   - In best-effort mode, skip unsupported paint operations and record the skip in the render report.
   - The completed renderer produces identical surfaces and reports for repeated runs over the same input and device.
