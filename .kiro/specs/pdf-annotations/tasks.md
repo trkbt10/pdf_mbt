@@ -71,7 +71,7 @@
   - _Requirements: 0.2, 0.3, 0.6, 0.9_
 
 - [x] 4. Build annotation descriptor parsers
-- [ ] 4.1 (P) Parse border arrays, border style dictionaries, and border effects
+- [x] 4.1 (P) Parse border arrays, border style dictionaries, and border effects
   - Apply default border behavior when neither legacy nor style dictionary data is present.
   - Parse border width, dash patterns, style names, unknown style fallback, cloudy effects, and intensity bounds.
   - Completion: border tests show defaults, valid border/style/effect combinations, ignored legacy border behavior when a style dictionary exists, and malformed values raising annotation diagnostics.
