@@ -229,7 +229,7 @@
   - _Requirements: 1, 2, 3.11_
   - _Boundary: RenderSceneBuilder, RasterDeviceModel_
 
-- [ ] 6.4 Validate public renderer scenarios
+- [x] 6.4 Validate public renderer scenarios
   - Test simple filled paths, colour conversion through classic fallback and provider stubs, halftoned Gray output, and strict provider failure.
   - Include best-effort report assertions for skipped unsupported operations.
   - The completed renderer scenario tests pass through the public API rather than package-private helpers.
