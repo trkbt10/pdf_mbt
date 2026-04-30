@@ -110,7 +110,7 @@
   - _Boundary: ReaderPageContentBridge, PdfDocumentError_
 
 - [ ] 5. Unit-level validation
-- [ ] 5.1 (P) Verify operator recognition coverage
+- [x] 5.1 (P) Verify operator recognition coverage
   - Cover every required standard operator keyword, including punctuation and starred variants.
   - Cover inline-image marker keyword recognition and compatibility begin/end keyword recognition at the operator table boundary.
   - Keep unknown operator checks limited to distinguishable table misses, leaving parser skip/error behavior to parser tests.
