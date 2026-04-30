@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Establish graphics transparency semantics
+- [x] 1. Establish graphics transparency semantics
 - [x] 1.1 Model standard blend mode vocabulary and classification
   - Parse named and array-based blend mode values while preserving PDF 2.0 fallback behavior for unrecognized arrays.
   - Classify each standard mode for separable, non-separable, and white-preserving behavior used by downstream spot-colour policy.
