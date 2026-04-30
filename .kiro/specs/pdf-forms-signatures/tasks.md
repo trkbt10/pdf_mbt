@@ -21,7 +21,7 @@
   - Completed state: callers can distinguish no form, an empty form, and a malformed form through typed reader results.
   - _Requirements: 0.1, 0.2, 0.3_
   - _Boundary: AcroFormReader_
-- [ ] 2.2 Traverse field hierarchies, inheritance, and fully qualified names
+- [x] 2.2 Traverse field hierarchies, inheritance, and fully qualified names
   - Resolve root fields, non-terminal fields, terminal fields, widget-only children, merged field/widget dictionaries, parent ownership, and indirect-object cycles.
   - Resolve inheritable field attributes from nearest ancestors and build one fully qualified field-name index with duplicate-name consistency checks.
   - Completed state: field enumeration and name lookup return deterministic fields with inherited attributes or raise InvalidForm for cycles, invalid partial names, and inconsistent duplicate names.

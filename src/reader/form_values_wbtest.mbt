@@ -49,6 +49,33 @@ test "acro form is absent when Catalog AcroForm is absent" {
 }
 
 ///|
+test "typed form fields flatten hierarchy and support qualified lookup" {
+  let document = PdfDocument::open(build_form_values_fixture())
+  let fields = document.form_fields()
+  let city = document.form_field_by_name(b"person.city").unwrap()
+
+  assert_eq(fields.length(), 8)
+  assert_eq(city.partial_name, Some(b"city"))
+  assert_eq(city.fully_qualified_name, Some(b"person.city"))
+  assert_eq(city.parent == Some(oid(5)), true)
+  assert_eq(city.field_type == PdfFormFieldType::Text, true)
+  assert_eq(document.form_field_by_name(b"missing") is None, true)
+}
+
+///|
+test "typed form fields reject invalid partial names" {
+  let document = PdfDocument::open(build_form_invalid_name_fixture())
+  let result : Result[Array[PdfFormField], PdfDocumentError] = try? document.form_fields()
+  match result {
+    Err(InvalidForm(object_id, reason)) => {
+      assert_eq(object_id == Some(oid(5)), true)
+      assert_eq(reason.contains("PERIOD"), true)
+    }
+    _ => fail("expected InvalidForm for invalid partial name")
+  }
+}
+
+///|
 test "form field traversal rejects field tree cycles" {
   let document = PdfDocument::open(build_form_values_cycle_fixture())
   let result : Result[Map[String, String], PdfDocumentError] = try? document.form_field_values()
@@ -121,6 +148,43 @@ fn build_form_values_fixture() -> Bytes {
   xref_entry_line(signature_offset, 0, b'n') +
   b"trailer\r\n" +
   b"<< /Size 13 /Root 1 0 R >>\r\n" +
+  b"startxref\r\n" +
+  decimal_bytes(xref_offset) +
+  b"\r\n%%EOF\r\n"
+}
+
+///|
+fn build_form_invalid_name_fixture() -> Bytes {
+  let (bytes, header_base) = build_document_structure_fixture_prefix()
+
+  let (bytes, catalog_offset) = append_indirect_object(
+    bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R /AcroForm 4 0 R >>",
+  )
+  let (bytes, pages_offset) = append_indirect_object(
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+  )
+  let (bytes, page_offset) = append_indirect_object(
+    bytes, header_base, 3, 0, b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+  )
+  let (bytes, acroform_offset) = append_indirect_object(
+    bytes, header_base, 4, 0, b"<< /Fields [5 0 R] >>",
+  )
+  let (bytes, field_offset) = append_indirect_object(
+    bytes, header_base, 5, 0, b"<< /FT /Tx /T (bad.name) /V (x) >>",
+  )
+
+  let xref_offset = object_offset(bytes, header_base)
+  bytes +
+  b"xref\r\n" +
+  b"0 6\r\n" +
+  xref_entry_line(0L, 65535, b'f') +
+  xref_entry_line(catalog_offset, 0, b'n') +
+  xref_entry_line(pages_offset, 0, b'n') +
+  xref_entry_line(page_offset, 0, b'n') +
+  xref_entry_line(acroform_offset, 0, b'n') +
+  xref_entry_line(field_offset, 0, b'n') +
+  b"trailer\r\n" +
+  b"<< /Size 6 /Root 1 0 R >>\r\n" +
   b"startxref\r\n" +
   decimal_bytes(xref_offset) +
   b"\r\n%%EOF\r\n"
