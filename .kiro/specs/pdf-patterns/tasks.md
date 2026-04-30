@@ -144,7 +144,7 @@
   - Done when robustness tests demonstrate bounded allocation behavior and deterministic failures for malformed packed data.
   - _Requirements: 0.14, 0.15, 0.16, 0.17_
   - _Depends: 6.3_
-- [ ] 7.2 Run project validation commands and refresh public interfaces
+- [x] 7.2 Run project validation commands and refresh public interfaces
   - Run formatting, package checks, targeted graphics tests, targeted reader tests, and public interface generation.
   - Review generated interface changes for unintended public API growth outside the pattern, shading, event, and reader helper contracts.
   - Done when validation commands pass and generated public interfaces are consistent with the approved design boundaries.
