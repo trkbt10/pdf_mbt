@@ -109,7 +109,7 @@
   - The FlateDecode stage returns fully decompressed and reconstructed bytes for supported inputs.
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 5. Implement LZWDecode decompression
+- [x] 5. Implement LZWDecode decompression
 - [x] 5.1 Decode the LZW code stream lifecycle
   - Read high-order-bit-first LZW codes starting at 9 bits.
   - Initialize the table with byte values plus clear-table and end-of-data codes.
