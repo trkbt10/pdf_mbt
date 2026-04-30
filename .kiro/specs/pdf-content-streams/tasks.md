@@ -91,7 +91,7 @@
   - _Requirements: 4.1, 4.2, 4.4, 6.2_
   - _Boundary: ContentStreamParser, ContentStream, PdfContentError_
 
-- [ ] 4.2 Resolve page contents and inherited resources
+- [x] 4.2 Resolve page contents and inherited resources
   - Resolve the page resource dictionary through existing page inheritance behavior.
   - Resolve absent, single-stream, and array-of-stream page contents through the document structure layer.
   - Decode each content stream with the filter pipeline and concatenate multiple decoded streams with one line-feed separator in document order.
