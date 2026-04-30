@@ -97,7 +97,7 @@
   - _Requirements: 3_
   - _Boundary: TransferFunctionPipeline_
 
-- [ ] 3.4 Validate transfer precedence, additive form, overrides, and gray behavior
+- [x] 3.4 Validate transfer precedence, additive form, overrides, and gray behavior
   - Test TR/TR2 precedence, halftone transfer overrides, subtractive component conversion, independent component processing, and the gray-to-CMYK exception.
   - Include provider failure coverage for required transfer function evaluation.
   - The completed tests demonstrate that transfer output is ready for halftone application.
