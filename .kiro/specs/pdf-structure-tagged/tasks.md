@@ -173,7 +173,7 @@
   - _Boundary: AttributeResolver_
   - _Depends: 5.3_
 
-- [ ] 5.5 Parse user properties and correlate the mark-information flag
+- [x] 5.5 Parse user properties and correlate the mark-information flag
   - Interpret user-property attribute objects with required property arrays, names, values, optional formatted values, and hidden flags.
   - Preserve non-text, non-number, and non-boolean property values without treating them as errors.
   - Report when user properties are present but the document mark information does not advertise them.
