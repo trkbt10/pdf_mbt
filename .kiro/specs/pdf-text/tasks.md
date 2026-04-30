@@ -42,7 +42,7 @@
   - _Requirements: 2.23, 2.24, 2.27_
   - _Boundary: FontDescriptorModel_
 
-- [ ] 2.2 Parse CIDFont descriptor extensions and style overrides
+- [x] 2.2 Parse CIDFont descriptor extensions and style overrides
   - Validate CIDFont descriptor additions for language, CID subset streams, style dictionaries, and descriptor override dictionaries.
   - Preserve Panose bytes and FD override metrics while rejecting forbidden embedded font streams inside override descriptors.
   - Keep CIDFont descriptor data compatible with later CIDFont validation without depending on Type 0 parsing.
