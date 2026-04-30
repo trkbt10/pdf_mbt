@@ -120,7 +120,7 @@
   - _Depends: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 5.1_
   - _Requirements: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13, 0.14, 0.30_
   - _Boundary: GraphicsInterpreterIntegration_
-- [ ] 5.3 Emit typed form events with nested content and whole-form visibility gating
+- [x] 5.3 Emit typed form events with nested content and whole-form visibility gating
   - Invoke validated forms through Do, gate form OC entries as whole objects, and emit begin, nested, end, or skipped outcomes.
   - Keep nested form interpretation device-independent and ensure hidden forms do not leak nested state changes into the parent stream.
   - Done: visible form Do operations emit ordered form boundaries and nested events, while hidden form Do operations emit only the skipped outcome.
