@@ -50,7 +50,7 @@
   - _Requirements: 2.25, 2.26_
   - _Boundary: FontDescriptorModel_
 
-- [ ] 2.3 (P) Provide standard font metrics and subset-name recognition
+- [x] 2.3 (P) Provide standard font metrics and subset-name recognition
   - Add standard 14 font metric summaries and descriptor defaults used when legacy Type 1 dictionaries omit widths and descriptors.
   - Recognize six-uppercase-letter subset tags on font and descriptor names without merging subset fonts.
   - Keep standard font and subset metadata independent of system font lookup.
