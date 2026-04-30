@@ -74,6 +74,12 @@ pub fn resolve_file_spec_path(
 }
 
 ///|
+/// Resolve a relative URL file specification path against a base URL.
+///
+/// Section 7.11.5 URL specifications use an FS entry URL and an F entry uniform
+/// resource locator. The relative path is URL escaped according to Internet RFC
+/// 3986, matching the Internet RFC 1738 URL escaping vocabulary used by older
+/// file specification text.
 pub fn resolve_file_spec_url_path(
   base_url : Bytes,
   relative_path : PdfFileSpecPath,

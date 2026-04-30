@@ -899,6 +899,8 @@ pub(all) struct PdfFileSpecificationDictionary {
   raw_object : @objects.PdfObject
 } derive(Eq, @debug.Debug)
 pub fn PdfFileSpecificationDictionary::attachment_count(Self) -> Int
+pub fn PdfFileSpecificationDictionary::is_url_specification(Self) -> Bool
+pub fn PdfFileSpecificationDictionary::related_files_array_count(Self) -> Int
 
 pub(all) struct PdfFixedPrint {
   matrix : Array[Double]
