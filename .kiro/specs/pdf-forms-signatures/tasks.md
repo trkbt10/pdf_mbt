@@ -199,7 +199,7 @@
   - Completed state: point-data records expose typed columns and tuple payloads, and malformed tuple shapes raise InvalidMeasure.
   - _Requirements: 0.63_
   - _Boundary: PointDataParser_
-- [ ] 7.6 (P) Parse Catalog requirement dictionaries
+- [x] 7.6 (P) Parse Catalog requirement dictionaries
   - Parse Catalog Requirements arrays with requirement type, minimum version, requirement handler alternatives, penalty, encryption requirement payloads, and digital-signature requirement payloads.
   - Report deterministic parser-known support status before any consumer executes scripts while preserving encryption and handler-specific payloads raw.
   - Completed state: requirement records expose support assessment metadata and malformed requirement dictionaries raise InvalidRequirement.
