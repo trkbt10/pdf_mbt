@@ -148,7 +148,7 @@
   - _Requirements: 3.1, 3.2, 3.4, 3.10_
   - _Boundary: HalftoneProcessor_
 
-- [ ] 4.7 Validate halftone parsing, lookup, component dispatch, and bounds
+- [x] 4.7 Validate halftone parsing, lookup, component dispatch, and bounds
   - Cover Types 1, 5, 6, 10, and 16, threshold byte counts, predefined names, default fallback, and Type 5 Default behavior.
   - Include guard-limit tests for oversized threshold data and unsupported filters.
   - The completed halftone tests pass deterministically with constructed objects and decoded stream fixtures.
