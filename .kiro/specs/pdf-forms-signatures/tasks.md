@@ -56,7 +56,7 @@
   - _Boundary: WidgetBridge, NonInteractiveMarker_
 
 - [x] 3. Promote form action parsing and selection plans
-- [ ] 3.1 Parse typed submit, reset, and import action structures
+- [x] 3.1 Parse typed submit, reset, and import action structures
   - Promote submit, reset, and import action dictionaries from raw payloads to typed structures that preserve file specifications, fields arrays, flags, character set, and raw dictionaries.
   - Preserve compatibility with existing raw form action inspection while typed action kinds are introduced.
   - Completed state: action parsing yields typed SubmitForm, ResetForm, and ImportData data without changing non-form action behavior.
