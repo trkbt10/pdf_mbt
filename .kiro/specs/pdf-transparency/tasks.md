@@ -158,7 +158,7 @@
   - _Requirements: 2.5, 2.6, 2.7, 2.22, 2.25, 2.27, 2.30, 2.31, 2.32, 2.33, 2.34, 2.35_
   - _Boundary: GraphicsValidation_
   - _Depends: 1.5_
-- [ ] 5.2 Validate rendering scenarios and edge cases
+- [x] 5.2 Validate rendering scenarios and edge cases
   - Run focused rendering tests for math, blend functions, colour policy, masks, groups, overprint, rendering parameters, and renderer scenarios.
   - Include robustness coverage for empty groups, fully transparent objects, zero alpha, unsupported providers, and bounded deep nesting.
   - Validation output shows deterministic rendering tests pass for every transparency behavior family.

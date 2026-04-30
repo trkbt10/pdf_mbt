@@ -16,11 +16,35 @@ pub fn apply_halftone(AdditiveNativeColour, DevicePixelPoint, ThresholdArray?, R
 
 pub fn apply_transfer_functions(NativeColour, @graphics.ColourSpace, TransferFunctionSet) -> AdditiveNativeColour raise PdfRenderingError
 
+pub fn apply_transparency_mask_to_object(ElementaryObjectCompositeInput, TransparencyMaskApplication) -> ElementaryObjectCompositeInput
+
+pub fn blend_component(@graphics.BlendMode, Double, Double) -> Double
+
+pub fn blend_mode_for_spot_colour(@graphics.BlendMode, Bool) -> @graphics.BlendMode
+
+pub fn blend_nonseparable_rgb(@graphics.BlendMode, Array[Double], Array[Double]) -> Array[Double]
+
+pub fn blend_vector(@graphics.BlendMode, Array[Double], Array[Double], subtractive? : Bool) -> Array[Double]
+
 pub fn build_render_scene(@graphics.GraphicsProgram, text? : @text.TextProgram, providers? : RenderingProviders) -> RenderScene
+
+pub fn build_transparency_scene(@graphics.GraphicsProgram, text? : @text.TextProgram) -> TransparencyScene
 
 pub fn choose_device_colour_policy(RasterDevice, @graphics.ColourSpace) -> DeviceColourPolicy
 
+pub fn composite_combined_paint(CombinedPaintCompositeInput) -> TransparencyCompositeSample
+
+pub fn composite_elementary_object(ElementaryObjectCompositeInput) -> TransparencyCompositeSample
+
+pub fn composite_knockout_group(KnockoutGroupCompositeInput) -> TransparencyCompositeSample
+
+pub fn composite_pattern_transparency(PatternTransparencyCompositeInput) -> TransparencyCompositeSample
+
+pub fn composite_transparency_group(TransparencyGroupCompositeInput) -> TransparencyGroupCompositeResult
+
 pub fn convert_device_rgb_to_device_cmyk(@graphics.DeviceRgbColour, black_generation? : @graphics.ColourTransformFunction, undercolour_removal? : @graphics.ColourTransformFunction, offset? : Int64) -> DeviceRgbToCmykConversion raise PdfRenderingError
+
+pub fn evaluate_transparency_mask(TransparencyMaskEvaluationInput) -> TransparencyMaskApplication
 
 pub fn fill_device_rect(RasterSurface, Int, Int, Int, Int, DevicePixelMark) -> Int raise PdfRenderingError
 
@@ -29,6 +53,12 @@ pub fn gamut_mapping_strategy_for_intent(@graphics.RenderingIntent) -> GamutMapp
 pub fn image_source_sample_for_device_pixel(Int, Int, Int, Int, Int, Int) -> DevicePixelPoint raise PdfRenderingError
 
 pub fn native_component_to_additive(NativeColourSpace, Double) -> Double
+
+pub fn normalize_opacity(Double) -> Double
+
+pub fn normalize_shape(Double) -> Double
+
+pub fn normalize_transparency_vector(Array[Double]) -> Array[Double]
 
 pub fn paint_device_pixel(RasterSurface, DevicePixelPoint, DevicePixelMark) -> Unit raise PdfRenderingError
 
@@ -40,11 +70,35 @@ pub fn render_program(@graphics.GraphicsProgram, text? : @text.TextProgram, Rast
 
 pub fn render_scene(RenderScene, RasterDevice, options? : RenderOptions, providers? : RenderingProviders) -> RenderResult raise PdfRenderingError
 
+pub fn render_transparency_program(@graphics.GraphicsProgram, text? : @text.TextProgram, RasterDevice, options? : RenderOptions, providers? : RenderingProviders) -> RenderResult raise PdfRenderingError
+
 pub fn resolve_graphics_state_transfer(@graphics.GraphicsState, RasterDevice, halftone_override? : TransferFunctionRef, offset? : Int64) -> ResolvedTransferFunctions raise PdfRenderingError
+
+pub fn resolve_pattern_spot_overprint(SpotOverprintContext, Bool) -> SpotOverprintResolution
+
+pub fn resolve_spot_overprint(SpotOverprintContext) -> SpotOverprintResolution
+
+pub fn resolve_transparency_colour_space(TransparencyColourSpaceRequest, providers? : RenderingProviders) -> TransparencyColourSpaceResolution raise PdfRenderingError
+
+pub fn safe_ratio(Double, Double) -> Double
+
+pub fn select_transparency_rendering_parameters(RenderingParameterSnapshot, Array[OpaqueObjectCandidate], Int, overprint_active? : Bool, group_invocation? : Bool) -> RenderingParameterSelection
 
 pub fn simulate_separations(SeparationTarget) -> RasterSurface raise PdfRenderingError
 
+pub fn snapshot_rendering_parameters(@graphics.GraphicsState, RasterDevice) -> RenderingParameterSnapshot raise PdfRenderingError
+
 pub fn stroke_device_line(RasterSurface, DevicePixelPoint, DevicePixelPoint, Double, Bool, DevicePixelMark) -> Int raise PdfRenderingError
+
+pub fn transparency_alpha(Double, Double) -> Double
+
+pub fn transparency_component(Double) -> Double
+
+pub fn transparency_pattern_policy(TransparencyPatternPaintKind, @graphics.GraphicsState) -> TransparencyPatternPolicy
+
+pub fn union_alpha(Double, Double) -> Double
+
+pub fn vector_with_component_count(Array[Double], Int, Double) -> Array[Double]
 
 pub fn wrap_provider_failure(RenderingProviderKind, String, String) -> PdfRenderingError
 
@@ -82,6 +136,13 @@ pub(all) struct ClauseTenRenderingSequence {
 } derive(Eq, @debug.Debug)
 pub fn ClauseTenRenderingSequence::general() -> Self
 
+pub(all) struct CombinedPaintCompositeInput {
+  backdrop : TransparencyCompositeSample
+  fill : ElementaryObjectCompositeInput?
+  stroke : ElementaryObjectCompositeInput?
+  text_mode : String
+} derive(Eq, @debug.Debug)
+
 pub(all) struct DeviceColourPolicy {
   mode : DeviceConversionMode
   requires_transform_provider : Bool
@@ -111,6 +172,20 @@ pub(all) struct DeviceRgbToCmykConversion {
   undercolour_removed : Double
   generated_black : Double
   colour : @graphics.DeviceCmykColour
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ElementaryObjectCompositeInput {
+  backdrop : TransparencyCompositeSample
+  source_colour : Array[Double]?
+  backdrop_colour : Array[Double]?
+  source_shape : Double
+  mask_shape : Double
+  constant_shape : Double
+  source_opacity : Double
+  mask_opacity : Double
+  constant_opacity : Double
+  blend_mode : @graphics.BlendMode
+  subtractive_space : Bool
 } derive(Eq, @debug.Debug)
 
 pub(all) enum GamutMappingStrategy {
@@ -143,6 +218,13 @@ pub(all) struct HalftoneScreen {
 pub fn HalftoneScreen::generate_threshold_array(Self, Int, Int, bits_per_sample? : Int, limits? : RenderLimits) -> ThresholdArray raise PdfRenderingError
 pub fn HalftoneScreen::new(Double, Double, SpotFunction) -> Self raise PdfRenderingError
 
+pub(all) struct KnockoutGroupCompositeInput {
+  backdrop : TransparencyCompositeSample
+  objects : Array[ElementaryObjectCompositeInput]
+  fractional_shape_averaging : Bool
+  nested_knockout : Bool
+} derive(Eq, @debug.Debug)
+
 pub(all) struct NativeColour {
   colour_space : NativeColourSpace
   components : Array[Double]
@@ -159,9 +241,23 @@ pub fn NativeColourSpace::component_count(Self) -> Int
 pub fn NativeColourSpace::default_process_colourants(Self) -> Array[@objects.PdfName]
 pub fn NativeColourSpace::to_device_colour_space(Self) -> @graphics.DeviceColourSpace
 
+pub(all) struct OpaqueObjectCandidate {
+  component_index : Int
+  alpha : Double
+  shape : Double
+  opacity : Double
+  parameters : RenderingParameterSnapshot
+} derive(Eq, @debug.Debug)
+
 pub(all) enum OutputProfileRef {
   DirectOutputProfile(@objects.PdfObject)
   IndirectOutputProfile(@objects.ObjectId)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PatternTransparencyCompositeInput {
+  backdrop : TransparencyCompositeSample
+  pattern_objects : Array[ElementaryObjectCompositeInput]
+  shading_background : TransparencyCompositeSample?
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PixelAddress {
@@ -248,6 +344,7 @@ pub(all) struct RenderContext {
   report : RenderReport
 } derive(Eq, @debug.Debug)
 pub fn RenderContext::execute(Self) -> RenderResult raise PdfRenderingError
+pub fn RenderContext::execute_transparency(Self, TransparencyScene) -> RenderResult raise PdfRenderingError
 pub fn RenderContext::new(RasterDevice, RenderScene, options? : RenderOptions, providers? : RenderingProviders) -> Self raise PdfRenderingError
 
 pub(all) struct RenderLimitObservation {
@@ -314,28 +411,50 @@ pub(all) enum RenderStrictness {
   BestEffort
 } derive(Eq, @debug.Debug)
 
+pub(all) struct RenderingParameterSelection {
+  selected : RenderingParameterSnapshot
+  selected_from_opaque_object : Bool
+  ignored_group_halftone_transfer : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct RenderingParameterSnapshot {
+  rendering_intent : @graphics.RenderingIntent
+  black_point_compensation : @graphics.BlackPointCompensation
+  transfer : TransferFunctionSet
+  halftone : HalftoneRef?
+} derive(Eq, @debug.Debug)
+
 pub(all) enum RenderingProviderKind {
   ObjectResolverProvider
   PdfFunctionEvaluatorProvider
+  TransferFunctionEvaluatorProvider
+  TintTransformEvaluatorProvider
   ColourTransformProvider
+  HalftoneProcessorProvider
   GlyphRasterizerProvider
 } derive(Eq, @debug.Debug)
 
 pub(all) struct RenderingProviders {
   object_resolver : Bool
   function_evaluator : Bool
+  transfer_function_evaluator : Bool
+  tint_transform_evaluator : Bool
   colour_transform : Bool
+  halftone_processor : Bool
   glyph_rasterizer : Bool
 } derive(Eq, @debug.Debug)
 pub fn RenderingProviders::all() -> Self
 pub fn RenderingProviders::has(Self, RenderingProviderKind) -> Bool
 pub fn RenderingProviders::none() -> Self
 pub fn RenderingProviders::require(Self, RenderingProviderKind, String) -> Unit raise PdfRenderingError
-pub fn RenderingProviders::strict_preflight(Self, needs_object_resolver? : Bool, needs_function_evaluator? : Bool, needs_colour_transform? : Bool, needs_glyph_rasterizer? : Bool) -> Unit raise PdfRenderingError
+pub fn RenderingProviders::strict_preflight(Self, needs_object_resolver? : Bool, needs_function_evaluator? : Bool, needs_transfer_function_evaluator? : Bool, needs_tint_transform_evaluator? : Bool, needs_colour_transform? : Bool, needs_halftone_processor? : Bool, needs_glyph_rasterizer? : Bool) -> Unit raise PdfRenderingError
 pub fn RenderingProviders::with_colour_transform(Self, Bool) -> Self
 pub fn RenderingProviders::with_function_evaluator(Self, Bool) -> Self
 pub fn RenderingProviders::with_glyph_rasterizer(Self, Bool) -> Self
+pub fn RenderingProviders::with_halftone_processor(Self, Bool) -> Self
 pub fn RenderingProviders::with_object_resolver(Self, Bool) -> Self
+pub fn RenderingProviders::with_tint_transform_evaluator(Self, Bool) -> Self
+pub fn RenderingProviders::with_transfer_function_evaluator(Self, Bool) -> Self
 
 pub(all) struct ResolvedTransferFunctions {
   source : TransferSource
@@ -375,6 +494,12 @@ pub(all) enum SkippedRenderReason {
   GuardLimit(String)
 } derive(Eq, @debug.Debug)
 
+pub(all) enum SpotBlendDecision {
+  PreserveSpotBlend
+  SubstituteNormalForSpot
+  UseAlternateColourSpace
+} derive(Eq, @debug.Debug)
+
 pub(all) enum SpotFunction {
   SimpleDot
   InvertedSimpleDot
@@ -385,6 +510,23 @@ pub(all) enum SpotFunction {
   Round
 } derive(Eq, @debug.Debug)
 pub fn SpotFunction::sample(Self, Double, Double) -> Double
+
+pub(all) struct SpotOverprintContext {
+  blend_mode : @graphics.BlendMode
+  overprint : Bool
+  overprint_mode : Int
+  is_spot_colour : Bool
+  spot_available : Bool
+  painting_group_object : Bool
+  subtractive_space : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SpotOverprintResolution {
+  effective_blend_mode : @graphics.BlendMode
+  decision : SpotBlendDecision
+  overprints_compatible_components : Bool
+  erases_unpainted_components : Bool
+} derive(Eq, @debug.Debug)
 
 pub(all) struct ThresholdArray {
   width : Int
@@ -421,6 +563,135 @@ pub(all) enum TransferSource {
   GraphicsStateTR
   GraphicsStateTR2
   HalftoneTransferOverride
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TransparencyColourSpaceRequest {
+  role : TransparencyColourSpaceRole
+  explicit_space : @graphics.ColourSpace?
+  parent_space : @graphics.ColourSpace?
+  page_space : @graphics.ColourSpace
+  default_device_space : @graphics.ColourSpace?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TransparencyColourSpaceResolution {
+  blending_space : @graphics.ColourSpace
+  inherited : Bool
+  requires_colour_transform_provider : Bool
+  uses_nearest_cie_ancestor : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TransparencyColourSpaceRole {
+  PageBlendingSpace
+  ParentGroupBlendingSpace
+  IsolatedGroupBlendingSpace
+  NonIsolatedGroupBlendingSpace
+  SoftMaskGroupBlendingSpace
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TransparencyCompositeSample {
+  colour : Array[Double]?
+  shape : Double
+  opacity : Double
+  alpha : Double
+} derive(Eq, @debug.Debug)
+pub fn TransparencyCompositeSample::opaque(Array[Double]) -> Self
+pub fn TransparencyCompositeSample::transparent() -> Self
+
+pub(all) enum TransparencyGroupBackdropMode {
+  IsolatedGroupBackdrop
+  NonIsolatedGroupBackdrop
+  PageGroupBackdrop
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TransparencyGroupCompositeInput {
+  backdrop : TransparencyCompositeSample
+  initial_backdrop : TransparencyCompositeSample
+  objects : Array[ElementaryObjectCompositeInput]
+  backdrop_mode : TransparencyGroupBackdropMode
+  blending_colour_space_components : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TransparencyGroupCompositeResult {
+  group_colour : Array[Double]?
+  group_shape : Double
+  group_opacity : Double
+  group_alpha : Double
+  composited : TransparencyCompositeSample
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TransparencyMaskApplication {
+  mask_value : Double
+  shape_multiplier : Double
+  opacity_multiplier : Double
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TransparencyMaskEvaluationInput {
+  source : TransparencyMaskSampleSource
+  sample_index : Int
+  backdrop : Array[Double]
+  matte : Array[Double]?
+  transfer_scale : Double
+  alpha_is_shape : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TransparencyMaskSampleSource {
+  AlphaMaskSamples(Array[Double])
+  LuminosityMaskSamples(Array[Array[Double]])
+  ImageMaskSamples(Array[Double])
+  EmbeddedImageMaskSamples(Array[Double])
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TransparencyPaint {
+  offset : Int64
+  kind : TransparencyPaintKind
+  state : @graphics.GraphicsState
+  source_colour : @graphics.ColourValue?
+  shape_source : String
+  opacity_source : String
+  alpha_constant : Double
+  soft_mask : @graphics.EstablishedSoftMask
+  blend_mode : @graphics.BlendMode
+  overprint_stroking : Bool
+  overprint_nonstroking : Bool
+  rendering_intent : @graphics.RenderingIntent
+  black_point_compensation : @graphics.BlackPointCompensation
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TransparencyPaintKind {
+  PathFillPaint
+  PathStrokePaint
+  ImagePaint
+  InlineImagePaint
+  ShadingPaint
+  TextGlyphPaint
+  FormGroupPaint
+  PatternPaint
+  UnsupportedTransparencyPaint(String)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TransparencyPatternPaintKind {
+  TilingPatternTransparency
+  ShadingPatternTransparency
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TransparencyPatternPolicy {
+  kind : TransparencyPatternPaintKind
+  implicit_non_isolated_group : Bool
+  knockout : Bool
+  resets_transparency_parameters : Bool
+  group_state : @graphics.GraphicsState
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TransparencySample {
+  colour : Array[Double]?
+  shape : Double
+  opacity : Double
+} derive(Eq, @debug.Debug)
+pub fn TransparencySample::alpha(Self) -> Double
+pub fn TransparencySample::new(Array[Double]?, Double, Double) -> Self
+
+pub(all) struct TransparencyScene {
+  paints : Array[TransparencyPaint]
 } derive(Eq, @debug.Debug)
 
 pub(all) struct TypeFiveHalftoneEntry {
