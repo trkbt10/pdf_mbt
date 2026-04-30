@@ -259,7 +259,7 @@
   - _Requirements: 3.18_
   - _Boundary: SeparationRenderer, ColourPipeline_
 
-- [ ] 7.4 Validate separation rendering and simulation
+- [x] 7.4 Validate separation rendering and simulation
   - Test process planes, spot planes, overprint routing, multiply blend simulation, output-intent colourant selection, and actual-device conversion.
   - Include strict failure coverage for invalid simulated devices and missing required transforms.
   - The completed separation tests demonstrate different results for normal last-paint output and separation simulation where overprint matters.
