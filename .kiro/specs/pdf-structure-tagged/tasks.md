@@ -127,7 +127,7 @@
   - _Boundary: StandardStructureCatalog_
   - _Depends: 1.2_
 
-- [ ] 4.4 Evaluate supplemental standard-type and namespace diagnostics
+- [x] 4.4 Evaluate supplemental standard-type and namespace diagnostics
   - Report supplemental nesting rules for document, grouping, block, inline, ruby, warichu, list, table, caption, figure, formula, artifact, link, annotation, and form structures.
   - Report missing role maps for custom tagged content and namespace membership issues for PDF 1.7, PDF 2.0, MathML, and other namespaces.
   - Keep Annex L and geometry-dependent checks as diagnostics that can be tightened by future specs rather than hard failures.
