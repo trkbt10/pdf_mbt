@@ -74,7 +74,7 @@
   - _Requirements: 0.18, 0.19, 0.20, 0.21_
   - _Boundary: FormXObjectInterpreter_
 
-- [ ] 4. Optional-content semantics
+- [x] 4. Optional-content semantics
 - [x] 4.1 (P) Parse optional content groups and membership policies
   - Validate optional content groups with Type, Name, Intent, and Usage and optional content membership dictionaries with OCGs, P, and VE.
   - Ignore null or deleted group references, apply VE precedence over OCGs/P, and evaluate AllOn, AnyOn, AnyOff, AllOff, And, Or, and Not policies.
