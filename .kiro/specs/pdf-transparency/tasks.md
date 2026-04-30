@@ -151,7 +151,7 @@
   - _Depends: 3.7, 4.2_
 
 - [ ] 5. Validate transparency behavior and public API stability
-- [ ] 5.1 Validate graphics semantics and API generation
+- [x] 5.1 Validate graphics semantics and API generation
   - Run focused graphics tests for blend modes, transparency state, soft masks, groups, images, patterns, and interpreter events.
   - Regenerate and review public graphics API metadata for the new typed transparency contracts.
   - Validation output shows graphics tests pass and generated API diffs expose only intentional transparency types.
