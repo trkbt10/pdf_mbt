@@ -64,7 +64,7 @@
   - _Requirements: 1.3, 1.4, 4.1, 4.2, 4.4, 5.3_
   - _Boundary: ContentStreamParser, ContentStream_
 
-- [ ] 3. Resource context support
+- [x] 3. Resource context support
 - [x] 3.1 Build resource category lookup
   - Define the public resource context and category model for graphics state, color spaces, patterns, shadings, XObjects, fonts, properties, and procedure sets.
   - Return absent categories and absent names as missing values while preserving malformed explicit category values as content errors.
