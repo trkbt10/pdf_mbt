@@ -198,7 +198,7 @@
   - _Depends: 2.2, 5.9, 6.1_
   - _Requirements: 0.1, 0.2, 0.26_
 
-- [ ] 6.3 Verify boundary protections for rendering, actions, media, forms, redaction, 3D, and RichMedia
+- [x] 6.3 Verify boundary protections for rendering, actions, media, forms, redaction, 3D, and RichMedia
   - Assert that appearance streams, optional content, actions, media, file attachments, widget field data, redaction overlays, 3D data, and RichMedia data remain structural or raw values only.
   - Confirm annotation parsing does not mutate document state, invoke content rendering, perform hit testing, apply redactions, open files, play media, execute actions, or enforce UI behavior.
   - Completion: security and boundary tests exercise representative raw payloads and prove only object parsing and validation occur.
