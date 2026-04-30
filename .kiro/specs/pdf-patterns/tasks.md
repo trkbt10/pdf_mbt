@@ -7,7 +7,7 @@
   - Preserve existing ordinary colour-space and content-stream behavior while introducing only the allowed graphics dependencies.
   - Done when malformed field fixtures can assert stable error categories and existing graphics checks still pass.
   - _Requirements: 0.2, 0.3, 0.6, 0.8_
-- [ ] 1.2 Establish public resource summaries and package boundary prerequisites
+- [x] 1.2 Establish public resource summaries and package boundary prerequisites
   - Add inspectable summaries for pattern definitions, shading definitions, matrices, bounds, and mesh validation results according to the design contracts.
   - Ensure graphics remains independent of reader, and reader remains the only layer that loads indirect objects.
   - Keep package dependencies limited to the approved object, content, filter, math, graphics, and reader directions.
