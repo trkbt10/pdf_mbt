@@ -117,7 +117,7 @@
   - _Boundary: FDFReader, FormActionParser_
 
 - [x] 5. Parse PDF signature structures and validation inputs
-- [ ] 5.1 Parse signature dictionaries, byte ranges, and signature classifications
+- [x] 5.1 Parse signature dictionaries, byte ranges, and signature classifications
   - Enumerate signature dictionaries from signature fields and permissions entries, including approval, certification, usage-rights, and document timestamp signatures.
   - Parse Type, Filter, SubFilter, Contents, Cert, ByteRange, Reference, Changes, signer metadata, build metadata, authentication metadata, and deprecated PKCS #1 or PKCS #7 forms.
   - Completed state: signature records expose bounded byte ranges, raw signature bytes, subfilter classification, and metadata without cryptographic validity claims.
