@@ -82,7 +82,7 @@
   - Completed state: valid FDF bytes produce an object store and root catalog, while malformed FDF file structure raises InvalidFDF.
   - _Requirements: 0.20, 0.21, 0.22, 0.23, 0.24_
   - _Boundary: FDFReader, FDFStructureParser_
-- [ ] 4.2 Parse FDF catalog and FDF dictionary payloads
+- [x] 4.2 Parse FDF catalog and FDF dictionary payloads
   - Parse catalog version, FDF dictionary source or target file data, identifiers, fields, status, pages, encoding, annotations, differences, target, embedded FDF descriptors, and JavaScript descriptors.
   - Preserve encrypted embedded FDF data and JavaScript as raw structural descriptors only.
   - Completed state: the FDF catalog exposes typed FDF dictionary payloads with raw differences and embedded descriptors intact.
