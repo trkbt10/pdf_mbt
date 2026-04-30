@@ -47,7 +47,7 @@
   - _Requirements: 2.1, 2.2, 2.3, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13_
   - _Boundary: TransparencyCompositorMath_
   - _Depends: 2.1_
-- [ ] 2.3 (P) Evaluate standard blend functions
+- [x] 2.3 (P) Evaluate standard blend functions
   - Evaluate all separable blend modes including PDF 2.0 ColorDodge and ColorBurn edge cases.
   - Evaluate non-separable blend modes through luminosity, saturation, clipping, and CMYK-specific K handling.
   - Blend tests produce deterministic component values for every standard mode and verify subtractive-space complement handling.
