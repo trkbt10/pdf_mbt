@@ -151,7 +151,7 @@
   - _Requirements: 0.1, 0.15, 0.22, 0.28, 0.30, 0.33, 0.36_
   - _Boundary: ReaderXObjectMaterializer, GraphicsInterpreterIntegration_
 
-- [ ] 7. Validation and API review
+- [x] 7. Validation and API review
 - [x] 7.1 Test XObject, image, mask, and inline-image semantics
   - Cover missing resources, non-stream resources, invalid Type/Subtype, direct image resources, unresolved references, required image entries, bit depths, colour spaces, Decode defaults, masks, alternates, interpolation, and inline-image restrictions.
   - Include public event assertions for visible images, hidden images, and inline-image descriptor emission.
