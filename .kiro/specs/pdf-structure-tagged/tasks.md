@@ -210,7 +210,7 @@
   - _Boundary: TaggedPdfReport, AccessibilityPropertyResolver_
   - _Depends: 6.1, 6.2_
 
-- [ ] 6.4 Aggregate document-level and tree-level reports
+- [x] 6.4 Aggregate document-level and tree-level reports
   - Provide report generation from either a document or an already parsed structure tree.
   - Return useful diagnostics when a document is marked tagged but has no structure tree.
   - Ensure report generation does not mutate cached data, raw dictionaries, or existing reader state.
