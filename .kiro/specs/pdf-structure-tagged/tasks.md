@@ -99,7 +99,7 @@
   - _Boundary: StructureContentResolver_
   - _Depends: 3.1, 3.2, 3.3_
 
-- [ ] 4. Resolve roles, namespaces, and standard structure types
+- [x] 4. Resolve roles, namespaces, and standard structure types
 - [ ] 4.1 Resolve root role maps and custom structure type chains
   - Interpret root role-map entries as name-to-name mappings and follow transitive chains.
   - Preserve original custom roles, terminal custom roles, standard targets, and circular chains without forcing a parse failure.
