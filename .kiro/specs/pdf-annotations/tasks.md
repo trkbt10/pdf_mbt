@@ -169,7 +169,7 @@
   - Completion: watermark tests cover absent fixed-print data, valid fixed-print dictionaries, defaults, malformed matrix or translation values, and non-rendering behavior.
   - _Requirements: 0.27_
 
-- [ ] 5.11 Parse redaction and projection annotation descriptors
+- [x] 5.11 Parse redaction and projection annotation descriptors
   - Parse redaction quadrilaterals, interior colour, overlay raw stream, overlay text, repeat flag, appearance string, and justification without applying redactions.
   - Parse projection markup context, external data, and zero-area appearance restrictions.
   - Completion: tests cover redaction precedence rules, required overlay appearance string when needed, projection external data, zero-area appearance rejection, and non-destructive behavior.
