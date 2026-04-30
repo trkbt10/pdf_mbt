@@ -295,7 +295,7 @@
   - _Requirements: 1, 2.1, 3.5, 3.11_
   - _Boundary: ReaderRenderingBridge_
 
-- [ ] 9. Complete cross-package validation and generated API review
+- [x] 9. Complete cross-package validation and generated API review
 - [ ] 9.1 Add end-to-end raster fixtures and stable snapshot checks
   - Render bundled simple PDF fixtures with deterministic device configuration.
   - Cover simple paths, image centre sampling, clipping, colour conversion, and text only when a stub glyph rasterizer is supplied.
