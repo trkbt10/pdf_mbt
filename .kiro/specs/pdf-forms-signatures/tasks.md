@@ -109,7 +109,7 @@
   - _Requirements: 0.28_
   - _Boundary: FDFAnnotationParser_
   - _Depends: 4.2_
-- [ ] 4.6 Integrate FDF descriptors with import action plans
+- [x] 4.6 Integrate FDF descriptors with import action plans
   - Connect import-data source descriptors and FDF field payloads so callers can inspect what would be imported without applying it.
   - Preserve FDF submission differences and annotation payloads as data for caller-owned workflows.
   - Completed state: import-data actions and standalone FDF parsing share compatible structural descriptors for caller-side planning.
