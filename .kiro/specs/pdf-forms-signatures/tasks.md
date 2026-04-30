@@ -175,7 +175,7 @@
   - Completed state: page APIs expose viewports and measurement metadata, and point lookup returns the expected viewport or none.
   - _Requirements: 0.57_
   - _Boundary: MeasurementReader_
-- [ ] 7.2 Implement rectilinear number-format array formatting
+- [x] 7.2 Implement rectilinear number-format array formatting
   - Parse number format arrays and dictionaries with labels, conversion factors, decimal precision, fractions, rounding, truncation, grouping, decimal separators, spacing, and prefix or suffix placement.
   - Implement the left-to-right formatting algorithm while leaving right-to-left customization to callers.
   - Completed state: formatter output matches decimal, fraction, rounding, truncation, grouping, and label placement examples.
