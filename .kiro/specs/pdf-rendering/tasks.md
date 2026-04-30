@@ -172,7 +172,7 @@
   - _Boundary: ScanConverter_
   - _Depends: 1.3_
 
-- [ ] 5.3 Render strokes with line width, zero-width behavior, and automatic adjustment
+- [x] 5.3 Render strokes with line width, zero-width behavior, and automatic adjustment
   - Convert stroked paths into device-space coverage for nonzero-width strokes.
   - Apply automatic stroke adjustment when enabled and render sub-half-pixel adjusted strokes as single-pixel lines.
   - The completed stroke conversion produces uniform adjusted lines within one half pixel of the requested width.
