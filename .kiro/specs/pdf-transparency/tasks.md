@@ -150,7 +150,7 @@
   - _Boundary: ReaderTransparencyBridge, RenderingPipelineIntegration_
   - _Depends: 3.7, 4.2_
 
-- [ ] 5. Validate transparency behavior and public API stability
+- [x] 5. Validate transparency behavior and public API stability
 - [x] 5.1 Validate graphics semantics and API generation
   - Run focused graphics tests for blend modes, transparency state, soft masks, groups, images, patterns, and interpreter events.
   - Regenerate and review public graphics API metadata for the new typed transparency contracts.
