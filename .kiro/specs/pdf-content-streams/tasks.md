@@ -100,7 +100,7 @@
   - _Requirements: 3.1, 4.3, 6.1, 6.2, 6.3_
   - _Boundary: ReaderPageContentBridge, ContentResources, FilterPipeline_
 
-- [ ] 4.3 Expose page-level content APIs and document error wrapping
+- [x] 4.3 Expose page-level content APIs and document error wrapping
   - Add page-level APIs for content resources, parsed content streams, and instruction arrays.
   - Wrap content and filter failures as document-layer errors at the page integration boundary.
   - Regenerate public package interfaces after the reader and content APIs are in place.
