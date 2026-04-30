@@ -239,7 +239,7 @@
   - _Depends: 7.1_
 
 - [x] 8. Validate logical-structure behavior
-- [ ] 8.1 Verify mark information, structure hierarchy, and content associations
+- [x] 8.1 Verify mark information, structure hierarchy, and content associations
   - Cover mark-information defaults and malformed flags, catalog language, root validation, element traversal, ID lookup, parent validation, IDTree, ParentTree, MCID, MCR, OBJR, annotations, and form XObject cases.
   - Include absent optional structures, malformed present structures, cycle cases, parent-tree lookup failures, and exact byte-string identifier comparisons.
   - Done when targeted reader tests prove logical-structure traversal and content association behavior for all base structure requirements.
