@@ -73,7 +73,7 @@
   - Tests cover all PNG row filter types and confirm reconstructed bytes match expected row data.
   - _Requirements: 4.2, 4.3, 4.4, 4.5, 5.4_
 
-- [ ] 4. Implement FlateDecode decompression
+- [x] 4. Implement FlateDecode decompression
 - [x] 4.1 Build bit-level reading and zlib container validation
   - Provide deterministic bit reading for least-significant-bit-first DEFLATE fields.
   - Validate zlib header method, window flags, check bits, and preset dictionary rejection.
