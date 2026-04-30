@@ -120,7 +120,7 @@
   - _Requirements: 0.1, 0.4_
   - _Boundary: ReaderFunctionBridge_
 
-- [ ] 3.3 Revalidate rendering-facing function references
+- [x] 3.3 Revalidate rendering-facing function references
   - Replace or adapt existing rendering transfer and halftone function references only where the rendering layer already preserves function-bearing settings.
   - Keep raster policy, colour conversion, and pixel application outside the function package while allowing typed direct functions to be evaluated at rendering boundaries.
   - Rendering-focused checks show typed functions can be accepted without changing raster ownership or introducing reverse dependencies.

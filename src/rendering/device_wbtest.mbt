@@ -122,3 +122,68 @@ test "render reports capture strictness skips fallbacks and limit observations" 
   assert_eq(report.provider_fallbacks.length(), 1)
   assert_eq(report.limit_observations.length(), 1)
 }
+
+///|
+fn rendering_test_real(value : Double) -> @objects.PdfObject {
+  @objects.PdfObject::Real(value)
+}
+
+///|
+fn rendering_test_type2_transfer() -> @objects.PdfObject {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[@objects.PdfName::new(b"FunctionType")] = @objects.PdfObject::Integer(2L)
+  dict[@objects.PdfName::new(b"Domain")] = @objects.PdfObject::Array([
+    rendering_test_real(0.0),
+    rendering_test_real(1.0),
+  ])
+  dict[@objects.PdfName::new(b"C0")] = @objects.PdfObject::Array([
+    rendering_test_real(0.0),
+  ])
+  dict[@objects.PdfName::new(b"C1")] = @objects.PdfObject::Array([
+    rendering_test_real(0.5),
+  ])
+  dict[@objects.PdfName::new(b"N")] = rendering_test_real(1.0)
+  @objects.PdfObject::Dictionary(dict)
+}
+
+///|
+test "rendering transfer refs accept typed direct functions at the raster boundary" {
+  let transfer = TransferFunctionRef::from_object(
+    rendering_test_type2_transfer(),
+  )
+  match transfer {
+    DirectTransfer(@functions.FunctionSource::DirectFunction(_)) => ()
+    _ => fail("expected typed direct transfer function")
+  }
+
+  let applied = transfer.apply_component(0.8)
+  assert_eq(applied.is_close(0.4, absolute_tolerance=0.000001), true)
+
+  let identity = TransferFunctionRef::from_object(
+    @objects.PdfObject::Name(@objects.PdfName::new(b"Identity")),
+  )
+  assert_eq(identity.apply_component(0.8), 0.8)
+}
+
+///|
+test "rendering transfer refs preserve indirect functions for reader materialization" {
+  let object_id = @objects.ObjectId::{ object_number: 7, generation_number: 0 }
+  let transfer = TransferFunctionRef::from_object(
+    @objects.PdfObject::Ref(object_id),
+  )
+  match transfer {
+    IndirectTransfer(found) => assert_eq(found == object_id, true)
+    _ => fail("expected indirect transfer reference")
+  }
+
+  let result : Result[Double, PdfRenderingError] = try? transfer.apply_component(
+    0.5,
+  )
+  match result {
+    Err(ProviderFailure(provider, reason)) => {
+      assert_eq(provider, "transfer function")
+      assert_eq(reason.contains("materialized"), true)
+    }
+    _ => fail("expected materialization boundary failure")
+  }
+}

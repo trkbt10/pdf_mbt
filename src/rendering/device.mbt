@@ -14,7 +14,7 @@ pub(all) enum OutputProfileRef {
 ///|
 pub(all) enum TransferFunctionRef {
   IdentityTransfer
-  DirectTransfer(@objects.PdfObject)
+  DirectTransfer(@functions.FunctionSource)
   IndirectTransfer(@objects.ObjectId)
 } derive(Eq, Debug)
 
@@ -256,6 +256,91 @@ pub fn RasterDevice::component_count(self : RasterDevice) -> Int {
 ///|
 pub fn RasterDevice::bytes_per_component(self : RasterDevice) -> Int {
   bytes_for_bits(self.bits_per_component)
+}
+
+///|
+/// Parses a rendering transfer function reference into a typed function source
+/// when the object is already direct, while preserving indirect references for
+/// reader-owned materialization. Rendering evaluates only typed direct transfer
+/// functions at the raster boundary and does not resolve document objects.
+pub fn TransferFunctionRef::from_object(
+  object : @objects.PdfObject,
+  limits? : @functions.FunctionLimits = @functions.FunctionLimits::default(),
+  offset? : Int64 = 0L,
+) -> TransferFunctionRef raise PdfRenderingError {
+  match object {
+    @objects.PdfObject::Name(name) =>
+      if name == pdf_name(b"Identity") {
+        IdentityTransfer
+      } else {
+        raise PdfRenderingError::UnsupportedCapability(
+          "unsupported named transfer function",
+        )
+      }
+    @objects.PdfObject::Ref(object_id) => IndirectTransfer(object_id)
+    _ =>
+      DirectTransfer(
+        try @functions.parse_function_object(object, limits, offset) catch {
+          _ =>
+            raise PdfRenderingError::ProviderFailure(
+              "transfer function", "typed direct transfer function could not be parsed",
+            )
+        } noraise {
+          source => source
+        },
+      )
+  }
+}
+
+///|
+/// Applies a rendering transfer function to one component. Indirect transfer
+/// references must be materialized before rendering, keeping object loading out
+/// of the raster policy layer.
+pub fn TransferFunctionRef::apply_component(
+  self : TransferFunctionRef,
+  component : Double,
+  limits? : @functions.FunctionLimits = @functions.FunctionLimits::default(),
+) -> Double raise PdfRenderingError {
+  match self {
+    IdentityTransfer => colour_component(component)
+    DirectTransfer(source) => {
+      let output = try
+        @functions.evaluate_function_source(
+          source,
+          [colour_component(component)],
+          limits,
+        )
+      catch {
+        _ =>
+          raise PdfRenderingError::ProviderFailure(
+            "transfer function", "typed direct transfer function could not be evaluated",
+          )
+      } noraise {
+        value => value
+      }
+      if output.length() != 1 {
+        raise PdfRenderingError::ProviderFailure(
+          "transfer function", "typed direct transfer function must return one component",
+        )
+      }
+      colour_component(output[0])
+    }
+    IndirectTransfer(_) =>
+      raise PdfRenderingError::ProviderFailure(
+        "transfer function", "indirect transfer function must be materialized before rendering",
+      )
+  }
+}
+
+///|
+pub fn RasterDevice::apply_default_transfer(
+  self : RasterDevice,
+  component : Double,
+) -> Double raise PdfRenderingError {
+  match self.default_transfer {
+    Some(transfer) => transfer.apply_component(component)
+    None => colour_component(component)
+  }
 }
 
 ///|

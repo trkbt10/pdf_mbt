@@ -39,6 +39,29 @@ fn halftone_test_name(bytes : Bytes) -> @objects.PdfName {
 }
 
 ///|
+fn halftone_test_real(value : Double) -> @objects.PdfObject {
+  @objects.PdfObject::Real(value)
+}
+
+///|
+fn halftone_transfer_function_object() -> @objects.PdfObject {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[halftone_test_name(b"FunctionType")] = @objects.PdfObject::Integer(2L)
+  dict[halftone_test_name(b"Domain")] = @objects.PdfObject::Array([
+    halftone_test_real(0.0),
+    halftone_test_real(1.0),
+  ])
+  dict[halftone_test_name(b"C0")] = @objects.PdfObject::Array([
+    halftone_test_real(0.0),
+  ])
+  dict[halftone_test_name(b"C1")] = @objects.PdfObject::Array([
+    halftone_test_real(0.25),
+  ])
+  dict[halftone_test_name(b"N")] = halftone_test_real(1.0)
+  @objects.PdfObject::Dictionary(dict)
+}
+
+///|
 test "type one halftone dictionary parses screen fields and generates thresholds" {
   let dict : @objects.PdfDictionary = Map::new()
   dict[halftone_test_name(b"HalftoneType")] = @objects.PdfObject::Integer(1L)
@@ -59,6 +82,33 @@ test "type one halftone dictionary parses screen fields and generates thresholds
       assert_eq(halftone.accurate_screens, true)
       assert_eq(halftone.generate_threshold_array(2, 2).values.length(), 4)
     }
+    _ => fail("expected Type 1 halftone")
+  }
+}
+
+///|
+test "halftone transfer functions are typed and evaluable at rendering boundaries" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[halftone_test_name(b"HalftoneType")] = @objects.PdfObject::Integer(1L)
+  dict[halftone_test_name(b"Frequency")] = @objects.PdfObject::Real(120.0)
+  dict[halftone_test_name(b"Angle")] = @objects.PdfObject::Real(30.0)
+  dict[halftone_test_name(b"SpotFunction")] = @objects.PdfObject::Name(
+    halftone_test_name(b"CosineDot"),
+  )
+  dict[halftone_test_name(b"TransferFunction")] = halftone_transfer_function_object()
+
+  match parse_halftone_object(@objects.PdfObject::Dictionary(dict)) {
+    TypeOneHalftone(halftone) =>
+      match halftone.transfer_function {
+        Some(transform) =>
+          assert_eq(
+            transform
+            .apply_scalar(0.8)
+            .is_close(0.2, absolute_tolerance=0.000001),
+            true,
+          )
+        None => fail("expected typed halftone transfer function")
+      }
     _ => fail("expected Type 1 halftone")
   }
 }
