@@ -88,11 +88,17 @@ pub fn pdf_colour_spaces_requirement_0_19_pattern_indexed_transition_anchor() ->
 
 pub fn pdf_patterns_requirement_0_12_type2_axial_shadings_vocabulary() -> String
 
+pub fn pdf_patterns_requirement_0_6_8_7_4_1_general_anchor() -> String
+
 pub fn pdf_patterns_requirement_0_6_shading_patterns_general_vocabulary() -> String
 
 pub fn pdf_xobjects_images_requirement_0_17_group_xobject_vocabulary() -> String
 
 pub fn pdf_xobjects_images_requirement_0_18_8_10_4() -> String
+
+pub fn pdf_xobjects_images_requirement_0_18_8_10_4_general_anchor() -> String
+
+pub fn pdf_xobjects_images_requirement_0_18_exact_8_10_4_1_general() -> String
 
 pub fn pdf_xobjects_images_requirement_0_18_reference_xobject_vocabulary() -> String
 
@@ -129,6 +135,8 @@ pub fn resolve_pattern_resource(@content.ContentResources, @objects.PdfName, Int
 pub fn resolve_shading_resource(@content.ContentResources, @objects.PdfName, Int64) -> ShadingResource raise PdfGraphicsError
 
 pub fn resolve_xobject_resource(@content.ContentResources, @objects.PdfName, Int64) -> XObjectResource raise PdfGraphicsError
+
+pub fn section_8_10_4_1_general() -> String
 
 pub fn try_parse_transparency_group_dictionary(Map[@objects.PdfName, @objects.PdfObject], TransparencyGroupContext, Int64) -> TransparencyGroup? raise PdfGraphicsError
 
@@ -996,6 +1004,11 @@ pub(all) enum PdfGraphicsOperatorGroup {
   OtherPainting
   Text
   MarkedContent
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PdfXobjectsImagesRequirement0188104General {
+  Section8104
+  Section81041General
 } derive(Eq, @debug.Debug)
 
 pub(all) struct RadialShading {

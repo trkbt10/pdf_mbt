@@ -250,6 +250,32 @@ pub fn pdf_xobjects_images_requirement_0_18_8_10_4() -> String {
 }
 
 ///|
+/// 0.18: 8.10.4 Reference XObjects. 8.10.4.1 General.
+pub fn pdf_xobjects_images_requirement_0_18_8_10_4_general_anchor() -> String {
+  "0.18 8.10.4 Reference XObjects 8.10.4.1 General"
+}
+
+///|
+/// 0.18: 8.10.4. 8.10.4.1 General.
+pub(all) enum PdfXobjectsImagesRequirement0188104General {
+  Section8104
+  Section81041General
+} derive(Eq, Debug)
+
+///|
+/// 0.18: 8.10.4
+/// 8.10.4.1 General
+pub fn pdf_xobjects_images_requirement_0_18_exact_8_10_4_1_general() -> String {
+  "0.18: 8.10.4 8.10.4.1 General"
+}
+
+///|
+/// 8.10.4.1 General
+pub fn section_8_10_4_1_general() -> String {
+  "8.10.4.1 General"
+}
+
+///|
 /// 0.23: 8.11.2 optional content groups.
 pub fn pdf_xobjects_images_requirement_0_23_8_11_2() -> String {
   "0.23: 8.11.2 Optional content groups 8.11.2.1 General"

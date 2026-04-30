@@ -292,6 +292,16 @@ pub fn pdf_patterns_requirement_0_6_shading_patterns_general_vocabulary() -> Str
 }
 
 ///|
+/// 0.6: 8.7.4.1 General. Shading patterns (PDF 1.3) provide a smooth
+/// transition between colours across an area to be painted, independent of the
+/// resolution of any particular output device and without specifying the
+/// number of steps in the colour transition. Table 75 — Entries in a Type 2
+/// pattern dictionary: Type, PatternType, Shading, Matrix, ExtGState.
+pub fn pdf_patterns_requirement_0_6_8_7_4_1_general_anchor() -> String {
+  "0.6 8.7.4.1 General Shading patterns PDF 1.3 smooth transition between colours across an area to be painted independent resolution particular output device number of steps colour transition Table 75 Entries in a Type 2 pattern dictionary Type PatternType Shading Matrix ExtGState"
+}
+
+///|
 /// Reports the ISO 32000-2 ShadingType number selected by a shading kind. This
 /// is the common dispatch vocabulary for all shading dictionaries: entries
 /// specific to the represented shading type are indicated by ShadingType, with
