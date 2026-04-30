@@ -222,6 +222,16 @@ pub(all) struct PdfAcroForm {
 } derive(Eq, Debug)
 
 ///|
+/// ISO 32000-2:2020 12.7.4.1 General field-dictionary anchor. Each field in
+/// an interactive form is an indirect field dictionary; field dictionaries may
+/// be organised hierarchically, inheritable attributes flow from ancestors in
+/// the field hierarchy, and Tables 226 and 227 define the common entries and
+/// common field flags used by PdfFormField.
+pub fn pdf_form_field_dictionary_general_vocabulary() -> String {
+  "12.7.4.1 General field dictionary indirect object hierarchical tree structures inheritable attributes parent field hierarchy Table 226 entries common to all field dictionaries FT Parent Kids T TU TM Ff V DV AA Table 227 field flags common to all field types ReadOnly Required NoExport"
+}
+
+///|
 /// True when the field type can carry a terminal V or DV value.
 pub fn PdfFormFieldType::allows_value(self : PdfFormFieldType) -> Bool {
   match self {
