@@ -95,7 +95,7 @@
   - _Requirements: 0.1, 0.4_
   - _Boundary: StitchingFunctionModel, FunctionEvaluator_
 
-- [ ] 2.11 Complete direct parser dispatch for all function types
+- [x] 2.11 Complete direct parser dispatch for all function types
   - Connect Type 0, Type 2, Type 3, and Type 4 direct parsing through the common function parser after each owned component is implemented.
   - Decode Type 0 and Type 4 streams through the filter boundary, preserve raw stream ownership, and keep unsupported function types rejected consistently.
   - Parser integration tests show every supported direct function type parses from its required dictionary or stream form and malformed direct objects produce typed parser errors.
