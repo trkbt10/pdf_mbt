@@ -39,7 +39,7 @@
   - Completion: fixture tests can open a minimal document, locate a page, and supply direct and indirect annotation dictionaries in page order for later parser tests.
   - _Requirements: 0.1, 0.2, 0.26_
 
-- [ ] 2. Resolve page/document annotation sources and tab metadata
+- [x] 2. Resolve page/document annotation sources and tab metadata
 - [ ] 2.1 Resolve page annotation source entries for later typed parsing
   - Treat an absent page annotation entry as an empty annotation source list.
   - Require a present annotation entry to be an array and require each direct or resolved entry to be an annotation dictionary.
