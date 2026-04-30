@@ -164,7 +164,7 @@
   - _Boundary: AttributeResolver_
   - _Depends: 4.3, 5.1, 5.2_
 
-- [ ] 5.4 Parse layout, list, print-field, table, and artifact attribute groups
+- [x] 5.4 Parse layout, list, print-field, table, and artifact attribute groups
   - Interpret placement, writing mode, colors, borders, spacing, rectangles, dimensions, alignment, text decoration, ruby, vertical glyph orientation, column, list, print-field, table, and artifact attributes.
   - Preserve values such as `Auto`, `Normal`, unknown extensible names, byte-string identifiers, and raw rectangles.
   - Report known owner misuse and invalid value shapes as attribute diagnostics.
