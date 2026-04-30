@@ -881,9 +881,6 @@ of the dictionary’s remaining entries. The only group subtype defined is
 Transparency; see 11.6.6, "Transparency group XObjects", for the remaining
 contents of this type of dictionary.
 
-#### 0.18: 8.10.4            Reference XObjects
-8.10.4.1          General
-
 #### 0.19: 8.10.4.1          General
 in which the reference occurs is called the containing document; the one whose content is being
 imported is the target document. The target document may reside in a file external to the containing
@@ -1650,4 +1647,3 @@ shall revert to their prior states.
 NOTE 3     Although the event types Print and Export have identically named counterparts that are usage
 categories, the corresponding usage application dictionaries are permitted to specify that other
 categories can be applied.
-
