@@ -231,7 +231,7 @@
   - _Boundary: TextInterpreter, TextStateMachine_
   - _Depends: 3.5, 4.6, 6.2_
 
-- [ ] 6.4 Emit rendering matrices, paint intents, clipping summaries, and spans
+- [x] 6.4 Emit rendering matrices, paint intents, clipping summaries, and spans
   - Recompute text rendering matrix snapshots before each emitted glyph using font size, horizontal scaling, text rise, text matrix, and supplied CTM-like input.
   - Emit paint intent for fill, stroke, fill-stroke, invisible, and clipping modes while accumulating clipping summaries until `ET`.
   - Apply Type 3 rendering-mode exceptions and continue matrix updates for modes 3 and 7.
