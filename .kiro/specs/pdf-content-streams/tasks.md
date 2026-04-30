@@ -166,7 +166,7 @@
   - _Requirements: 1.4, 3.4, 5.3, 6.1, 6.2_
   - _Boundary: ReaderPageContentBridge, ContentResources, InlineImageReader_
 
-- [ ] 7. Final validation and regression hardening
+- [x] 7. Final validation and regression hardening
 - [x] 7.1 Add parser robustness and performance regression coverage
   - Cover a large synthetic content stream with thousands of simple operators to validate linear progress.
   - Cover multi-stream page concatenation with stable offsets around inserted line-feed separators.
@@ -176,7 +176,7 @@
   - _Requirements: 4.3, 4.4, 5.2, 6.3_
   - _Boundary: ContentStreamParser, InlineImageReader, ReaderPageContentBridge_
 
-- [ ] 7.2 Run formatting, full checks, tests, and public API generation
+- [x] 7.2 Run formatting, full checks, tests, and public API generation
   - Format the MoonBit codebase and regenerate public package interface files.
   - Run the project check and test commands for the content and reader changes.
   - Inspect the generated public interfaces for the intended content and page-level APIs.
