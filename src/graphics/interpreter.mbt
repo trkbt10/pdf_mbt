@@ -97,6 +97,14 @@ pub fn GraphicsInterpretOptions::default() -> GraphicsInterpretOptions {
 /// conversion, rendering for separations, separation simulation, and
 /// overprinting, remains outside the page description. Figure 20 illustrates
 /// colour specification and Figure 21 illustrates colour rendering.
+///
+/// Section 11.1 transparency extends that imaging model with transparent
+/// objects that need not obey strict opaque painting. This program therefore
+/// records the PDF representation of blend/composite behaviour, transparency
+/// groups, soft masks for shape and opacity, transparency graphics-state
+/// properties, and colour-space/rendering interactions while leaving the exact
+/// processor implementation strategy to the rendering package as long as the
+/// resulting behaviour is equivalent.
 pub(all) struct GraphicsProgram {
   events : Array[GraphicsEvent]
   final_state : GraphicsState

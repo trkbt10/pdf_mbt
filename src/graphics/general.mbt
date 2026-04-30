@@ -21,6 +21,37 @@
 /// and marked-content operators attach higher-level logical information. This
 /// model also records the relationships among text space, image space, form
 /// space, and pattern space before any device-dependent rendering.
+///
+/// For ISO 32000-2 Section 11.1 transparency, this package models the
+/// document-facing vocabulary rather than choosing a device implementation:
+/// transparent objects, opaque painting compatibility, blend/composite
+/// semantics for overlapping objects, transparency groups, soft masks, PDF
+/// transparency property dictionaries, and colour-space/rendering interactions
+/// are preserved so processors can later produce equivalent transparency
+/// results without requiring one exact implementation strategy.
 pub(all) struct PdfGraphics {
   program : GraphicsProgram
 } derive(Eq, Debug)
+
+///|
+/// Reports whether the final graphics state carries document-level
+/// transparency features from ISO 32000-2 Section 11.1. This is an abstract
+/// graphics-side predicate: it observes blend/composite vocabulary, soft masks,
+/// alpha constants, alpha-is-shape routing, and text knockout state without
+/// selecting a renderer implementation strategy.
+pub fn PdfGraphics::uses_transparency_features(self : PdfGraphics) -> Bool {
+  let state = self.program.final_state
+  if state.blend_mode != BlendMode::Normal {
+    return true
+  }
+  if state.alpha_stroking < 1.0 || state.alpha_nonstroking < 1.0 {
+    return true
+  }
+  if state.alpha_is_shape || !state.text_knockout {
+    return true
+  }
+  match state.soft_mask.source {
+    NoSoftMask => false
+    _ => true
+  }
+}

@@ -887,6 +887,7 @@ pub fn PatternResource::requires_resolution(Self) -> Bool
 pub(all) struct PdfGraphics {
   program : GraphicsProgram
 } derive(Eq, @debug.Debug)
+pub fn PdfGraphics::uses_transparency_features(Self) -> Bool
 
 pub(all) struct RadialShading {
   coords : Array[Double]

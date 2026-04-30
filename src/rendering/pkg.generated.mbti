@@ -668,6 +668,7 @@ pub(all) enum TransparencyPaintKind {
   PatternPaint
   UnsupportedTransparencyPaint(String)
 } derive(Eq, @debug.Debug)
+pub fn TransparencyPaintKind::contributes_to_transparency_stack(Self) -> Bool
 
 pub(all) enum TransparencyPatternPaintKind {
   TilingPatternTransparency

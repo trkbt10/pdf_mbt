@@ -1,4 +1,8 @@
 ///|
+/// Paint categories that participate in a PDF transparency stack. Fills,
+/// strokes, text, images, shadings, form groups, and patterns are ordered from
+/// bottom to top before later compositing against a backdrop with shape,
+/// opacity, alpha constants, soft masks, blend modes, and colour-space policy.
 pub(all) enum TransparencyPaintKind {
   PathFillPaint
   PathStrokePaint
@@ -10,6 +14,19 @@ pub(all) enum TransparencyPaintKind {
   PatternPaint
   UnsupportedTransparencyPaint(String)
 } derive(Eq, Debug)
+
+///|
+/// Returns whether this paint kind contributes an enclosing object to the
+/// transparent imaging model. Unsupported entries are retained for diagnostics
+/// but are not treated as stack objects during compositing.
+pub fn TransparencyPaintKind::contributes_to_transparency_stack(
+  self : TransparencyPaintKind,
+) -> Bool {
+  match self {
+    UnsupportedTransparencyPaint(_) => false
+    _ => true
+  }
+}
 
 ///|
 pub(all) struct TransparencyPaint {
