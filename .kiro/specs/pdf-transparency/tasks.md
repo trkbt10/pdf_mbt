@@ -68,7 +68,7 @@
   - _Requirements: 2.38, 2.39, 2.40, 2.41, 2.42, 2.43_
   - _Boundary: SpotOverprintPolicy_
   - _Depends: 1.1, 2.3, 2.4_
-- [ ] 2.6 (P) Select transparency-aware rendering parameters
+- [x] 2.6 (P) Select transparency-aware rendering parameters
   - Track topmost fully opaque elementary objects per sample and per component when overprinting is active.
   - Ignore group-object halftone and transfer selections while preserving rendering intent, black point compensation, black generation, and undercolour-removal context at conversion time.
   - Rendering-parameter tests identify page defaults, opaque-object selection, non-opaque fallbacks, and group invocation conversion context.
