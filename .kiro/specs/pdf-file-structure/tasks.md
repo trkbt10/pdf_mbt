@@ -36,7 +36,7 @@
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
   - _Boundary: TailScanner_
 
-- [ ] 3. Parse traditional xref sections and trailers
+- [x] 3. Parse traditional xref sections and trailers
 - [x] 3.1 Parse and validate trailer dictionaries
   - Convert the dictionary after a traditional trailer keyword or an xref stream dictionary into validated trailer metadata.
   - Validate direct `Size`, required `Root`, optional `Prev`, `Encrypt`, `Info`, `ID`, and `XRefStm`, including the PDF 2.0 file-identifier requirement.
