@@ -288,7 +288,7 @@
   - _Requirements: 1, 3.11_
   - _Boundary: ReaderRenderingBridge_
 
-- [ ] 8.4 Validate reader bridge success and failure paths
+- [x] 8.4 Validate reader bridge success and failure paths
   - Test output intent lookup, indirect resource loading, rendering error wrapping, missing provider failure, and optional text glyph behavior.
   - Use constructed or embedded page fixtures that keep expected raster output small and deterministic.
   - The completed reader tests prove page rendering works without adding reader imports to the rendering package.
