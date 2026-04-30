@@ -73,7 +73,7 @@
   - _Requirements: 3.2, 3.3_
   - _Boundary: ContentResources_
 
-- [ ] 3.2 Select Form XObject resource scope
+- [x] 3.2 Select Form XObject resource scope
   - Detect whether a Form XObject stream dictionary provides its own resource dictionary.
   - Use the Form XObject resources when present and fall back to the parent/page resource context when absent.
   - Report malformed Form XObject resource shapes through content errors.
