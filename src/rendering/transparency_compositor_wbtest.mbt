@@ -81,15 +81,61 @@ test "non isolated and page groups choose the required backdrop" {
 }
 
 ///|
+test "knockout group uses topmost object over group backdrop" {
+  let result = composite_knockout_group(KnockoutGroupCompositeInput::{
+    backdrop: TransparencyCompositeSample::opaque([0.0, 0.0, 1.0]),
+    objects: [
+      elementary_test_object([1.0, 0.0, 0.0], 0.5),
+      elementary_test_object([0.0, 1.0, 0.0], 0.5),
+    ],
+    fractional_shape_averaging: false,
+    nested_knockout: true,
+  })
+  assert_eq(result.colour, Some([0.0, 0.5, 0.5]))
+}
+
+///|
+test "fractional knockout averages object shape with previous result" {
+  let result = composite_knockout_group(KnockoutGroupCompositeInput::{
+    backdrop: TransparencyCompositeSample::opaque([0.0, 0.0, 1.0]),
+    objects: [elementary_test_object_with_shape([1.0, 0.0, 0.0], 0.25, 1.0)],
+    fractional_shape_averaging: true,
+    nested_knockout: true,
+  })
+  assert_eq(result.shape, 1.0)
+  assert_eq(result.colour, Some([0.0625, 0.0, 0.9375]))
+}
+
+///|
+test "combined fill stroke paint is composited as an implicit knockout group" {
+  let result = composite_combined_paint(CombinedPaintCompositeInput::{
+    backdrop: TransparencyCompositeSample::opaque([1.0, 1.0, 1.0]),
+    fill: Some(elementary_test_object([1.0, 0.0, 0.0], 1.0)),
+    stroke: Some(elementary_test_object([0.0, 0.0, 1.0], 1.0)),
+    text_mode: "knockout",
+  })
+  assert_eq(result.colour, Some([0.0, 0.0, 1.0]))
+}
+
+///|
 fn elementary_test_object(
   colour : Array[Double],
+  opacity : Double,
+) -> ElementaryObjectCompositeInput {
+  elementary_test_object_with_shape(colour, 1.0, opacity)
+}
+
+///|
+fn elementary_test_object_with_shape(
+  colour : Array[Double],
+  shape : Double,
   opacity : Double,
 ) -> ElementaryObjectCompositeInput {
   ElementaryObjectCompositeInput::{
     backdrop: TransparencyCompositeSample::transparent(),
     source_colour: Some(colour),
     backdrop_colour: None,
-    source_shape: 1.0,
+    source_shape: shape,
     mask_shape: 1.0,
     constant_shape: 1.0,
     source_opacity: 1.0,

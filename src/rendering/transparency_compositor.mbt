@@ -47,6 +47,22 @@ pub(all) struct TransparencyGroupCompositeResult {
 } derive(Eq, Debug)
 
 ///|
+pub(all) struct KnockoutGroupCompositeInput {
+  backdrop : TransparencyCompositeSample
+  objects : Array[ElementaryObjectCompositeInput]
+  fractional_shape_averaging : Bool
+  nested_knockout : Bool
+} derive(Eq, Debug)
+
+///|
+pub(all) struct CombinedPaintCompositeInput {
+  backdrop : TransparencyCompositeSample
+  fill : ElementaryObjectCompositeInput?
+  stroke : ElementaryObjectCompositeInput?
+  text_mode : String
+} derive(Eq, Debug)
+
+///|
 pub fn composite_elementary_object(
   input : ElementaryObjectCompositeInput,
 ) -> TransparencyCompositeSample {
@@ -130,6 +146,57 @@ pub fn composite_transparency_group(
 }
 
 ///|
+pub fn composite_knockout_group(
+  input : KnockoutGroupCompositeInput,
+) -> TransparencyCompositeSample {
+  let mut result = input.backdrop
+  let mut accumulated_shape = 0.0
+  for object in input.objects {
+    let object_shape = transparency_component(object.source_shape) *
+      transparency_component(object.mask_shape) *
+      transparency_component(object.constant_shape)
+    let knockout_backdrop = knockout_backdrop_for_object(
+      input.backdrop,
+      result,
+      accumulated_shape,
+      input.nested_knockout,
+    )
+    let object_result = composite_elementary_object(
+      elementary_object_with_backdrop(object, knockout_backdrop),
+    )
+    result = merge_knockout_result(
+      result,
+      object_result,
+      object_shape,
+      input.fractional_shape_averaging,
+    )
+    accumulated_shape = union_alpha(accumulated_shape, object_shape)
+  }
+  result
+}
+
+///|
+pub fn composite_combined_paint(
+  input : CombinedPaintCompositeInput,
+) -> TransparencyCompositeSample {
+  let parts : Array[ElementaryObjectCompositeInput] = []
+  match input.fill {
+    Some(fill) => parts.push(fill)
+    None => ()
+  }
+  match input.stroke {
+    Some(stroke) => parts.push(stroke)
+    None => ()
+  }
+  composite_knockout_group(KnockoutGroupCompositeInput::{
+    backdrop: input.backdrop,
+    objects: parts,
+    fractional_shape_averaging: true,
+    nested_knockout: input.text_mode != "non-knockout",
+  })
+}
+
+///|
 pub fn TransparencyCompositeSample::transparent() -> TransparencyCompositeSample {
   TransparencyCompositeSample::{
     colour: None,
@@ -148,6 +215,83 @@ pub fn TransparencyCompositeSample::opaque(
     shape: 1.0,
     opacity: 1.0,
     alpha: 1.0,
+  }
+}
+
+///|
+fn knockout_backdrop_for_object(
+  group_backdrop : TransparencyCompositeSample,
+  current : TransparencyCompositeSample,
+  accumulated_shape : Double,
+  nested_knockout : Bool,
+) -> TransparencyCompositeSample {
+  if nested_knockout {
+    group_backdrop
+  } else if accumulated_shape == 0.0 {
+    group_backdrop
+  } else {
+    current
+  }
+}
+
+///|
+fn merge_knockout_result(
+  previous : TransparencyCompositeSample,
+  object_result : TransparencyCompositeSample,
+  object_shape : Double,
+  fractional_shape_averaging : Bool,
+) -> TransparencyCompositeSample {
+  if !fractional_shape_averaging || object_shape >= 1.0 {
+    object_result
+  } else {
+    average_fractional_knockout(previous, object_result, object_shape)
+  }
+}
+
+///|
+fn average_fractional_knockout(
+  previous : TransparencyCompositeSample,
+  object_result : TransparencyCompositeSample,
+  object_shape : Double,
+) -> TransparencyCompositeSample {
+  let shape = union_alpha(previous.shape, object_result.shape)
+  let alpha = union_alpha(previous.alpha, object_result.alpha)
+  let opacity = safe_ratio(alpha, shape)
+  let count = knockout_component_count(previous, object_result)
+  let previous_colour = vector_with_component_count(
+    previous.colour.unwrap_or([]),
+    count,
+    0.0,
+  )
+  let object_colour = vector_with_component_count(
+    object_result.colour.unwrap_or([]),
+    count,
+    0.0,
+  )
+  let colour : Array[Double] = []
+  for i in 0..<count {
+    colour.push(
+      transparency_component(
+        previous_colour[i] * (1.0 - object_shape) +
+        object_colour[i] * object_shape,
+      ),
+    )
+  }
+  TransparencyCompositeSample::{ colour: Some(colour), shape, opacity, alpha }
+}
+
+///|
+fn knockout_component_count(
+  previous : TransparencyCompositeSample,
+  object_result : TransparencyCompositeSample,
+) -> Int {
+  match object_result.colour {
+    Some(values) => values.length()
+    None =>
+      match previous.colour {
+        Some(values) => values.length()
+        None => 1
+      }
   }
 }
 

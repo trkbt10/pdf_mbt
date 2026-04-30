@@ -98,7 +98,7 @@
   - _Requirements: 1, 2, 2.14, 2.15, 2.16, 2.17, 2.18, 2.20, 2.21, 2.34, 2.37_
   - _Boundary: TransparencyCompositor_
   - _Depends: 1.4, 2.2, 2.3, 2.4, 3.1_
-- [ ] 3.4 Composite knockout groups and combined object shapes
+- [x] 3.4 Composite knockout groups and combined object shapes
   - Apply knockout group backdrop selection, fractional-shape averaging, separate shape tracking, and nested knockout rules.
   - Treat combined fill/stroke path operations and combined text rendering modes as implicit groups where required.
   - Knockout and combined-paint tests show topmost-object behavior, fractional-shape blending, and no double-border overlap for combined paints.
