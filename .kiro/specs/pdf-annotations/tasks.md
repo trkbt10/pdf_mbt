@@ -131,7 +131,7 @@
   - Completion: tests cover square, circle, polygon, and polyline defaults, required geometry, path precedence, malformed geometry, and raw measure preservation.
   - _Requirements: 0.13, 0.14_
 
-- [ ] 5.5 Parse text markup, caret, and ink annotations
+- [x] 5.5 Parse text markup, caret, and ink annotations
   - Parse required text-markup quadrilaterals for highlight, underline, squiggly, and strikeout variants.
   - Parse caret difference rectangles and symbol defaults.
   - Parse ink lists, ink border styles, and PDF 2.0 ink paths.
