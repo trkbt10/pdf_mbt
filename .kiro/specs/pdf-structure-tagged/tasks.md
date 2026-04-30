@@ -146,7 +146,7 @@
   - _Boundary: AttributeResolver_
   - _Depends: 2.3_
 
-- [ ] 5.2 Resolve attribute classes through class maps
+- [x] 5.2 Resolve attribute classes through class maps
   - Interpret class maps from class names to attribute objects or arrays of attribute objects.
   - Parse element class declarations as a single name or arrays with optional revision-number pairs.
   - Apply direct-attribute precedence over class-map attributes for the same attribute.
