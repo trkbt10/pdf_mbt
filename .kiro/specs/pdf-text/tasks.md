@@ -75,7 +75,7 @@
   - _Boundary: UnicodeMapper_
 
 - [x] 3. Implement simple fonts and Type 3 glyph metadata
-- [ ] 3.1 Validate simple Type 1, MMType1, and TrueType font dictionaries
+- [x] 3.1 Validate simple Type 1, MMType1, and TrueType font dictionaries
   - Parse simple font dictionaries with required type, subtype, base font, character range, widths, descriptors, encodings, and optional ToUnicode streams.
   - Preserve MMType1 base-name conventions and TrueType or OpenType metadata while applying the simple-font single-byte code model.
   - Use descriptor missing width or standard 14 fallback metrics for codes outside declared widths where the specification permits.
