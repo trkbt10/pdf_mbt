@@ -71,6 +71,14 @@ fn sampled_stream(
 }
 
 ///|
+fn sampled_stream_with_dict(
+  dict : @objects.PdfDictionary,
+  data : Bytes,
+) -> @objects.PdfObject {
+  @objects.PdfObject::Stream(@objects.PdfStream::{ dict, data })
+}
+
+///|
 test "sampled parser accepts every supported bit width as one continuous MSB-first stream" {
   let widths = [1, 2, 4, 8, 12, 16, 24, 32]
   let maxima = [1L, 3L, 15L, 255L, 4095L, 65535L, 16777215L, 4294967295L]
@@ -194,4 +202,78 @@ test "sampled parser rejects invalid declarations and insufficient stream data" 
     }
     _ => fail("expected sample value limit failure")
   }
+}
+
+///|
+test "sampled linear evaluation maps domain through encode decode and range clipping" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[sampled_name(b"FunctionType")] = sampled_int(0L)
+  dict[sampled_name(b"Domain")] = sampled_array([
+    sampled_num(0.0),
+    sampled_num(1.0),
+  ])
+  dict[sampled_name(b"Size")] = sampled_array([sampled_int(2L)])
+  dict[sampled_name(b"BitsPerSample")] = sampled_int(8L)
+  dict[sampled_name(b"Encode")] = sampled_array([
+    sampled_num(0.0),
+    sampled_num(1.0),
+  ])
+  dict[sampled_name(b"Decode")] = sampled_array([
+    sampled_num(0.0),
+    sampled_num(2.0),
+  ])
+  dict[sampled_name(b"Range")] = sampled_array([
+    sampled_num(0.0),
+    sampled_num(1.0),
+  ])
+  let function = parse_direct_function(
+    sampled_stream_with_dict(dict, Bytes::from_array([b'\x00', b'\xff'])),
+    FunctionLimits::default(),
+    60L,
+  )
+  inspect(function.evaluate([0.25], FunctionLimits::default()), content="[0.5]")
+  inspect(function.evaluate([-2.0], FunctionLimits::default()), content="[0]")
+  inspect(function.evaluate([2.0], FunctionLimits::default()), content="[1]")
+}
+
+///|
+test "sampled linear evaluation uses first-dimension-fastest multidimensional ordering" {
+  let dict : @objects.PdfDictionary = Map::new()
+  dict[sampled_name(b"FunctionType")] = sampled_int(0L)
+  dict[sampled_name(b"Domain")] = sampled_array([
+    sampled_num(0.0),
+    sampled_num(1.0),
+    sampled_num(0.0),
+    sampled_num(1.0),
+  ])
+  dict[sampled_name(b"Size")] = sampled_array([sampled_int(2L), sampled_int(2L)])
+  dict[sampled_name(b"BitsPerSample")] = sampled_int(8L)
+  dict[sampled_name(b"Decode")] = sampled_array([
+    sampled_num(0.0),
+    sampled_num(255.0),
+  ])
+  dict[sampled_name(b"Range")] = sampled_array([
+    sampled_num(0.0),
+    sampled_num(255.0),
+  ])
+  let function = parse_direct_function(
+    sampled_stream_with_dict(
+      dict,
+      Bytes::from_array([b'\x00', b'\x64', b'\xc8', b'\xff']),
+    ),
+    FunctionLimits::default(),
+    61L,
+  )
+  inspect(
+    function.evaluate([0.5, 0.5], FunctionLimits::default()),
+    content="[138.75]",
+  )
+  inspect(
+    function.evaluate([1.0, 0.0], FunctionLimits::default()),
+    content="[100]",
+  )
+  inspect(
+    function.evaluate([0.0, 1.0], FunctionLimits::default()),
+    content="[200]",
+  )
 }

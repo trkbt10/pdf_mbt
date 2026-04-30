@@ -30,7 +30,7 @@
   - _Requirements: 0.2_
   - _Boundary: SampledFunctionModel_
 
-- [ ] 2.2 Complete sampled function linear evaluation
+- [x] 2.2 Complete sampled function linear evaluation
   - Map clipped inputs through encode intervals, clip encoded coordinates to the sample table, interpolate surrounding sample values linearly, decode output components, and apply range clipping.
   - Support one-dimensional and multidimensional linear interpolation using the declared sample ordering and output component order.
   - Evaluation tests show encoded coordinates, first-dimension-fastest indexing, decode behavior, trailing padding, range clipping, and out-of-domain inputs produce the expected numbers.

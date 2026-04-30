@@ -136,6 +136,126 @@ fn read_sample_table(
 }
 
 ///|
+fn max_encoded_sample_value(bits_per_sample : Int) -> Double {
+  if bits_per_sample == 32 {
+    4294967295.0
+  } else {
+    ((1L << bits_per_sample) - 1L).to_double()
+  }
+}
+
+///|
+fn sample_value_at(
+  function : SampledFunction,
+  sample_index : Int,
+  component : Int,
+) -> Double {
+  function.table.values[sample_index * function.table.output_count + component]
+}
+
+///|
+fn flattened_sample_index(size : Array[Int], coordinates : Array[Int]) -> Int {
+  let mut stride = 1
+  let mut index = 0
+  for dimension in 0..<size.length() {
+    index = index + coordinates[dimension] * stride
+    stride = stride * size[dimension]
+  }
+  index
+}
+
+///|
+fn encoded_coordinates(
+  function : SampledFunction,
+  clipped_inputs : Array[Double],
+) -> Array[Double] {
+  let coordinates : Array[Double] = []
+  for dimension in 0..<function.size.length() {
+    let encoded = interpolate(
+      clipped_inputs[dimension],
+      function.common.domain[dimension],
+      function.encode[dimension],
+    )
+    let table_interval = FunctionInterval::{
+      min: 0.0,
+      max: (function.size[dimension] - 1).to_double(),
+    }
+    coordinates.push(table_interval.clip(encoded))
+  }
+  coordinates
+}
+
+///|
+fn interpolate_linear_component(
+  function : SampledFunction,
+  coordinates : Array[Double],
+  component : Int,
+) -> Double {
+  let dimensions = function.size.length()
+  let lower : Array[Int] = []
+  let upper : Array[Int] = []
+  let fractions : Array[Double] = []
+  for dimension in 0..<dimensions {
+    if function.size[dimension] == 1 {
+      lower.push(0)
+      upper.push(0)
+      fractions.push(0.0)
+    } else {
+      let low = @math.floor(coordinates[dimension]).to_int()
+      let high = if low + 1 >= function.size[dimension] { low } else { low + 1 }
+      lower.push(low)
+      upper.push(high)
+      fractions.push(coordinates[dimension] - low.to_double())
+    }
+  }
+
+  let corner_count = 1 << dimensions
+  let mut value = 0.0
+  for corner in 0..<corner_count {
+    let selected : Array[Int] = []
+    let mut weight = 1.0
+    for dimension in 0..<dimensions {
+      if ((corner >> dimension) & 1) == 1 {
+        selected.push(upper[dimension])
+        weight = weight * fractions[dimension]
+      } else {
+        selected.push(lower[dimension])
+        weight = weight * (1.0 - fractions[dimension])
+      }
+    }
+    value = value +
+      weight *
+      sample_value_at(
+        function,
+        flattened_sample_index(function.size, selected),
+        component,
+      )
+  }
+  value
+}
+
+///|
+fn evaluate_sampled_function(
+  function : SampledFunction,
+  clipped_inputs : Array[Double],
+) -> Array[Double] raise PdfFunctionError {
+  let coordinates = encoded_coordinates(function, clipped_inputs)
+  let max_sample = max_encoded_sample_value(function.bits_per_sample)
+  let outputs : Array[Double] = []
+  for component in 0..<function.table.output_count {
+    let raw = interpolate_linear_component(function, coordinates, component)
+    outputs.push(
+      interpolate(
+        raw,
+        FunctionInterval::{ min: 0.0, max: max_sample },
+        function.decode[component],
+      ),
+    )
+  }
+  function.common.clip_outputs(outputs)
+}
+
+///|
 fn parse_sampled_function(
   input : DirectFunctionParseInput,
 ) -> SampledFunction raise PdfFunctionError {

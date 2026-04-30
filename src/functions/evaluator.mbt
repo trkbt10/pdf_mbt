@@ -81,11 +81,16 @@ pub fn PdfFunction::evaluate(
   limits : FunctionLimits,
 ) -> Array[Double] raise PdfFunctionError {
   let common = self.common()
-  common.clip_inputs(inputs) |> ignore
+  let clipped_inputs = common.clip_inputs(inputs)
   limits.max_evaluation_steps |> ignore
-  raise PdfFunctionError::EvaluationFailure(
-    0L, "function type evaluator is not implemented yet",
-  )
+  match self {
+    SampledFunction(function) =>
+      evaluate_sampled_function(function, clipped_inputs)
+    _ =>
+      raise PdfFunctionError::EvaluationFailure(
+        0L, "function type evaluator is not implemented yet",
+      )
+  }
 }
 
 ///|
