@@ -44,7 +44,7 @@
   - _Requirements: 2.9, 4.4_
   - _Boundary: CompatibilityTracker, ContentStreamParser_
 
-- [ ] 2.4 Parse inline image dictionaries and raw data
+- [x] 2.4 Parse inline image dictionaries and raw data
   - Define the inline image value model owned by the inline image parser.
   - After the inline-image begin marker, collect key-value pairs until the image-data marker.
   - Consume the required single whitespace byte before raw image data and scan for a valid end-image marker without tokenizing image bytes.
