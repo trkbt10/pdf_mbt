@@ -85,6 +85,18 @@ pub fn LabParams::clamp_ab(
 }
 
 ///|
+/// Special colour spaces per Section 8.6.6.1 General of ISO 32000-2.
+///
+/// Beyond the device and CIE-based colour spaces, PDF supports
+/// several special colour spaces: Pattern colour spaces (8.6.6.2),
+/// Indexed colour spaces (8.6.6.3), Separation colour spaces
+/// (8.6.6.4), DeviceN colour spaces (8.6.6.5), and NChannel colour
+/// spaces (8.6.6.6).
+///
+/// Pattern colour space per Section 8.6.6.2 of ISO 32000-2.
+/// A Pattern colour space (PDF 1.2) specifies that an area is to be
+/// painted with a pattern rather than a single colour.
+///
 /// Section 8.6.6.1 General, "Special colour spaces": special colour spaces add
 /// features or properties to an underlying colour space, including Pattern,
 /// Indexed, Separation, and DeviceN for patterns, colour mapping, separations,
@@ -162,6 +174,14 @@ pub(all) struct DeviceNParams {
 } derive(Eq, Debug)
 
 ///|
+/// Special colour spaces per Section 8.6.6.1 General of ISO 32000-2.
+///
+/// Beyond the device and CIE-based colour spaces, PDF supports
+/// several special colour spaces: Pattern colour spaces (8.6.6.2),
+/// Indexed colour spaces (8.6.6.3), Separation colour spaces
+/// (8.6.6.4), DeviceN colour spaces (8.6.6.5), and NChannel colour
+/// spaces (8.6.6.6).
+///
 /// PDF colour space families used by graphics operators for ISO 32000-2 8.6
 /// colour specification, separated from device-dependent colour rendering.
 /// Section 8.6.5.1 General covers CIE-based colour spaces CalGray, CalRGB, Lab,
@@ -209,6 +229,67 @@ pub(all) struct ColourDefaults {
 ///|
 pub fn ColourDefaults::empty() -> ColourDefaults {
   ColourDefaults::{ default_gray: None, default_rgb: None, default_cmyk: None }
+}
+
+///|
+/// Requirement 0.18 / Section 8.6.6.1 General special colour spaces
+/// vocabulary. Beyond the device and CIE-based colour spaces, PDF supports
+/// several special colour spaces: Pattern colour spaces 8.6.6.2, Indexed
+/// colour spaces 8.6.6.3, Separation colour spaces 8.6.6.4, DeviceN colour
+/// spaces 8.6.6.5, and NChannel colour spaces 8.6.6.6.
+///
+/// Extracted requirement text: A Pattern colour space (PDF 1.2) specifies that
+/// an area is to be painted with a pattern rather than a single colour.
+pub fn pdf_colour_spaces_requirement_0_18_special_colour_spaces_general_vocabulary() -> String {
+  "0.18 8.6.6.1 General Special colour spaces Beyond the device and CIE-based colour spaces PDF supports several special colour spaces Pattern colour spaces 8.6.6.2 Indexed colour spaces 8.6.6.3 Separation colour spaces 8.6.6.4 DeviceN colour spaces 8.6.6.5 NChannel colour spaces 8.6.6.6 A Pattern colour space PDF 1.2 specifies that an area is to be painted with a pattern rather than a single colour"
+}
+
+///|
+/// Requirement 0.19 / Section 8.6.6.2 Pattern colour spaces vocabulary.
+/// A Pattern colour space PDF 1.2 specifies that an area is to be painted with
+/// a pattern rather than a single colour. The pattern shall be specified as a
+/// named resource in a Pattern resource dictionary and selected with SCN or
+/// scn after CS or cs establishes the Pattern colour space.
+///
+/// Extracted requirement text: "Patterns", discusses patterns in detail.
+/// 8.6.6.3 Indexed colour spaces. An Indexed colour space specifies a colour
+/// map or colour table of arbitrary colours in some other colour space.
+pub fn pdf_colour_spaces_requirement_0_19_pattern_colour_spaces_vocabulary() -> String {
+  "0.19 8.6.6.2 Pattern colour spaces Patterns discusses patterns in detail 8.6.6.3 Indexed colour spaces An Indexed colour space specifies a colour map or colour table of arbitrary colours in some other colour space Pattern colour space PDF 1.2 specifies that an area is to be painted with a pattern rather than a single colour Pattern resource dictionary named resource CS cs SCN scn coloured tiling patterns uncoloured tiling patterns shading patterns"
+}
+
+///|
+/// 0.18: 8.6.6.1 General. A Pattern colour space (PDF 1.2) specifies that an
+/// area is to be painted with a pattern rather than a single colour.
+pub(all) struct PdfColourSpacesRequirement018General {
+  pattern_colour_space_pdf_1_2 : String
+  painted_with_pattern_rather_than_single_colour : String
+} derive(Eq, Debug)
+
+///|
+/// 0.19: 8.6.6.2 Pattern colour spaces. "Patterns", discusses patterns in
+/// detail. 8.6.6.3 Indexed colour spaces. An Indexed colour space specifies a
+/// colour map or colour table of arbitrary colours in some other colour space.
+pub(all) struct PdfColourSpacesRequirement019PatternColourSpaces {
+  patterns_discusses_patterns_in_detail : String
+  indexed_colour_spaces : String
+  colour_map_or_colour_table_of_arbitrary_colours : String
+} derive(Eq, Debug)
+
+///|
+/// 0.18: 8.6.6.1 8.6.6.3 Indexed colour spaces.
+pub fn pdf_colour_spaces_requirement_0_18_8_6_6_1_indexed_colour_spaces_anchor() -> String {
+  "0.18 8.6.6.1 8.6.6.3 Indexed colour spaces"
+}
+
+///|
+/// 0.19: 8.6.6.2 Pattern colour spaces. 0.20: 8.6.6.3 Indexed colour
+/// spaces. The PDF processor treats the sample value as an index into the
+/// colour table and uses the colour value it finds there. This technique can
+/// considerably reduce the amount of data required to represent a sampled
+/// image.
+pub fn pdf_colour_spaces_requirement_0_19_pattern_indexed_transition_anchor() -> String {
+  "0.19 8.6.6.2 Pattern colour spaces 0.20 8.6.6.3 Indexed colour spaces colour value it finds there This technique can considerably reduce the amount of data required to represent a sampled image"
 }
 
 ///|
