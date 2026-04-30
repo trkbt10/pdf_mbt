@@ -129,7 +129,7 @@
   - _Boundary: Rendering consumers, FunctionEvaluator_
 
 - [ ] 4. Validate limits, integration, and public API
-- [ ] 4.1 Complete common parser and evaluator test coverage
+- [x] 4.1 Complete common parser and evaluator test coverage
   - Cover function type dispatch, domain and range validation, common interpolation, input clipping, output clipping, arity mismatches, unresolved references, filter failures, and unsupported objects.
   - Tests exercise both black-box public behavior and package-local validation paths.
   - Targeted function-domain tests pass for common parser and evaluator behavior before consumer integration tests run.

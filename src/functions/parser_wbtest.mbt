@@ -206,3 +206,25 @@ test "direct parser dispatches all supported function types and decodes streams"
     _ => fail("expected Type 4 calculator function")
   }
 }
+
+///|
+test "direct parser wraps decoded function stream filter failures" {
+  let dict = parser_base_dict(0L)
+  dict[parser_name(b"Range")] = parser_num_array([0.0, 1.0])
+  dict[parser_name(b"Size")] = parser_array([parser_int(2L)])
+  dict[parser_name(b"BitsPerSample")] = parser_int(8L)
+  dict[parser_name(b"Filter")] = @objects.PdfObject::Name(
+    parser_name(b"TotallyUnknownFunctionFilter"),
+  )
+
+  let parsed : Result[PdfFunction, PdfFunctionError] = try? parse_direct_function(
+    @objects.PdfObject::Stream(@objects.PdfStream::{ dict, data: b"00FF" }),
+    FunctionLimits::default(),
+    30L,
+  )
+  match parsed {
+    Err(FilterFailure(@filters.PdfFilterError::UnsupportedFilter(name))) =>
+      assert_eq(name, "TotallyUnknownFunctionFilter")
+    _ => fail("expected function parser filter failure")
+  }
+}

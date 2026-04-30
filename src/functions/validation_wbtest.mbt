@@ -89,4 +89,14 @@ test "input and output clipping enforce arity and range contracts" {
       assert_eq(reason, "expected 2 function inputs, got 1")
     _ => fail("expected input arity failure")
   }
+
+  let wrong_output_count : Result[Array[Double], PdfFunctionError] = try? common.clip_outputs([
+      1.0, 2.0,
+    ],
+  )
+  match wrong_output_count {
+    Err(EvaluationFailure(_, reason)) =>
+      assert_eq(reason, "expected 1 function outputs, got 2")
+    _ => fail("expected output arity failure")
+  }
 }
