@@ -120,7 +120,7 @@
   - _Requirements: 0.6, 0.8, 0.9, 0.10, 0.11, 0.12, 0.13_
   - _Boundary: ShadingModel tests_
   - _Depends: 4.1_
-- [ ] 6.3 (P) Cover mesh and patch stream validation cases
+- [x] 6.3 (P) Cover mesh and patch stream validation cases
   - Test allowed and rejected bit widths, decode lengths, packed bit consumption, record padding, truncated streams, and valid summaries.
   - Test Type 4 edge-flag triangle sequences and Type 5 lattice row constraints.
   - Test Type 6 and Type 7 patch flags, first-patch requirements, implicit edge data, and control point count differences.
