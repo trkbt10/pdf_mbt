@@ -90,7 +90,7 @@
   - _Requirements: 3, 3.1_
   - _Boundary: TransferFunctionPipeline_
 
-- [ ] 3.3 Implement the DeviceGray-to-DeviceCMYK transfer special case
+- [x] 3.3 Implement the DeviceGray-to-DeviceCMYK transfer special case
   - Use only the gray transfer function for DeviceGray source colours rendered on CMYK devices.
   - Keep cyan, magenta, and yellow components untransformed for this compatibility case.
   - The completed special case produces black-only CMYK output after transfer for DeviceGray source paints.
