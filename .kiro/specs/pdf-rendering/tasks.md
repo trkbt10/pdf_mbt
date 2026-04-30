@@ -120,7 +120,7 @@
   - _Requirements: 3.5, 3.6_
   - _Boundary: HalftoneProcessor_
 
-- [ ] 4.3 Implement threshold arrays and device-space addressing
+- [x] 4.3 Implement threshold arrays and device-space addressing
   - Store threshold-array dimensions, bit depth, decoded values, and tiling behavior with render-limit validation.
   - Map device pixels to threshold samples independently from the current transformation matrix.
   - The completed threshold lookup treats zero thresholds correctly and returns stable component decisions for repeated tiles.
