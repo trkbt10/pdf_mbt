@@ -70,7 +70,7 @@
   - Completion: common-field tests cover required-field failures, defaults, reserved or malformed flags, screen and print helper outcomes, opacity fallback rules, associated files, language, and unknown subtype preservation.
   - _Requirements: 0.2, 0.3, 0.6, 0.9_
 
-- [ ] 4. Build annotation descriptor parsers
+- [x] 4. Build annotation descriptor parsers
 - [ ] 4.1 (P) Parse border arrays, border style dictionaries, and border effects
   - Apply default border behavior when neither legacy nor style dictionary data is present.
   - Parse border width, dash patterns, style names, unknown style fallback, cloudy effects, and intensity bounds.
