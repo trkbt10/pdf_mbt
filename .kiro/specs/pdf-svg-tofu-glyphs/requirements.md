@@ -45,7 +45,7 @@ glyph 0 for an unrecognised CID, the `.notdef` tofu shows up.
 
 ## Requirements
 
-### Requirement 1: Diagnostic enumeration of tofu-rendered glyphs
+#### Diagnostic expectation: tofu-rendered glyphs
 
 #### 1.1: List codepoints rendered from glyph 0
 A whitebox test SHALL walk every glyph drawn on local-fixture page 6 and 7
@@ -65,7 +65,7 @@ Where possible, cross-check against pdftoppm's output: run
 the text stream. Any character present in pdftotext but rendered
 as notdef in our SVG is a confirmed tofu defect.
 
-### Requirement 2: Avoid drawing `.notdef` as tofu
+#### Rendering expectation: avoid drawing `.notdef` as tofu
 
 #### 2.1: Suppress notdef rendering in SVG
 When `svg_resolve_glyph_id` returns 0 for a Unicode codepoint that
@@ -83,18 +83,14 @@ direct glyph ID or CID 0 in a composite font), the current
 rendering SHALL be preserved — this is rare but semantically
 meaningful.
 
-### Requirement 3: Root-cause fix for missing glyph mappings
+### Requirement 3: cid_realpath root cause fixes alignment
 
 #### 3.1: Surface missing CID-to-glyph mappings
-If the diagnostic from Requirement 1 shows CIDs present in the
-PDF content stream that are not mapped in the CFF charset, the
-fix SHALL improve the charset lookup or add the missing range.
-
-This may require:
-- revisiting `cff_cid_to_glyph_id_map` for format-2 ranges
-- handling CIDs above the charstring count by returning the
-  default CID from the FD array (for CID-keyed CFF fonts with
-  multiple FontDictionaries)
+The SVG package SHALL retain `cid_realpath_root_cause_fixes_alignment`.
+The marker documents the empty-Unicode-span render path, CID glyph
+paths, TextGlyphEvent data, CFF wrapper CID reverse lookup,
+`cid.XXXXX` post names, and missing glyph mapping fixes that prevent
+real local-fixture CID text from becoming tofu.
 
 ### Requirement 4: Acceptance
 
