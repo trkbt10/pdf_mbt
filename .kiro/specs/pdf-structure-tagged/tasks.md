@@ -271,7 +271,7 @@
   - _Boundary: TaggedPdfReport integration tests_
   - _Depends: 6.4_
 
-- [ ] 8.5 Run formatting, type checking, tests, and API validation
+- [x] 8.5 Run formatting, type checking, tests, and API validation
   - Run formatting, type checking, targeted reader tests, package boundary tests, public API tests, no-structure smoke tests, and generated-interface review.
   - Confirm ordinary document, page, annotation, form, XObject, content, name-tree, number-tree, multimedia, and interchange tests remain compatible.
   - Done when validation commands pass and the only public API changes are the logical-structure additions required by the design.
