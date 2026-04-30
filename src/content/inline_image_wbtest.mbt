@@ -111,3 +111,22 @@ test "inline image reader rejects non-name dictionary keys" {
     _ => fail("expected invalid dictionary key")
   }
 }
+
+///|
+test "inline image reader reports clear errors for large data without EI" {
+  let bytes : Array[Byte] = []
+  bytes.append(b"/W 1 /H 1 ID ".to_array())
+  for _ in 0..<4096 {
+    bytes.push(b'X')
+  }
+  let result : Result[PdfInlineImage, PdfContentError] = try? InlineImageReader::new(
+    Bytes::from_array(bytes),
+  ).parse(0L)
+  match result {
+    Err(InlineImageFailure(offset, reason)) => {
+      assert_eq(offset > 4096L, true)
+      assert_eq(reason.contains("EI"), true)
+    }
+    _ => fail("expected missing EI marker for large inline image data")
+  }
+}

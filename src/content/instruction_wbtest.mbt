@@ -74,3 +74,18 @@ test "parser returns empty stream at end of decoded input" {
   let stream = ContentStreamParser::new(b"").parse_all()
   assert_eq(stream.instructions.length(), 0)
 }
+
+///|
+test "parser handles large simple operator streams with linear progress" {
+  let bytes : Array[Byte] = []
+  for _ in 0..<2000 {
+    bytes.append(b"q ".to_array())
+  }
+  let stream = ContentStreamParser::new(Bytes::from_array(bytes)).parse_all()
+  assert_eq(stream.instructions.length(), 2000)
+  match stream.instructions[1999] {
+    Operation(operation) =>
+      assert_eq(operation.operator == SaveGraphicsState, true)
+    _ => fail("expected final save graphics state operation")
+  }
+}
