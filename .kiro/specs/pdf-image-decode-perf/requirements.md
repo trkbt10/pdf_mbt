@@ -45,68 +45,27 @@ buffer re-growth inside `extract_image_xobject`.
 
 ## Requirements
 
-### Requirement 1: Pre-allocated RGBA buffer
+#### 1.1: raster_image_entry RGBA buffer validation
 
-#### 1.1: Byte buffer sized up-front
-`decode_sample_bytes_to_rgb` SHALL allocate the output RGBA byte
-buffer with `width * height * 4` capacity at the start of the
-pixel loop, instead of an empty `Array[Byte]` grown via `push`.
-Writing SHALL use index assignment into a `FixedArray[Byte]` or
-`Bytes::makei` pattern rather than push operations.
+The SVG image path SHALL pass DeviceRgbRaster and StencilMaskRaster
+results through `raster_image_entry`. The helper validates the raw
+RGBA buffer shape with `width * height * 4` before target-specific
+encoding, preserving the pre-allocated RGBA buffer contract supplied
+by graphics image decoding.
 
-#### 1.2: No per-pixel Array[Double] allocation
-`pixel_to_device_rgb` SHALL NOT allocate a new `Array[Double]` for
-the colour-space component buffer on every pixel. The components
-array SHALL be reused across pixels in the hot loop (e.g. reset
-length and overwrite indices, or pass a pre-allocated scratch
-buffer from the caller).
+### Requirement 2: page_image_entry_data semantics preservation
 
-#### 1.3: No per-pixel Array[Byte] allocation in stencil path
-`decode_stencil_alpha_mask` SHALL follow the same preallocation
-pattern for the alpha byte buffer so StencilMask images benefit
-equally.
+`page_image_entry_data` SHALL preserve image semantics while routing
+DeviceRgbRaster, StencilMaskRaster, and EncodedImageData through the
+same SVG image entry pipeline. Device RGB raster bytes and painted
+stencil mask bytes remain unchanged; encoded JPEG and JP2 bytes pass
+through unchanged.
 
-### Requirement 2: Semantics preservation
+#### 2.1: image_data_from_rgba regression compensation
 
-#### 2.1: Output bytes unchanged
-The resulting `ImageDeviceRgbRaster::rgba` and
-`ImageAlphaMaskRaster::alpha` SHALL be byte-identical to the
-current implementation's output for every input fixture exercised
-by `moon test --target native`. The optimisation SHALL not change
-colour semantics, alpha composition, or clamping.
-
-#### 2.2: Error propagation preserved
-The new hot loop SHALL retain the existing
-`PdfGraphicsError::InvalidImage` raise points for Indexed lookup
-range checks and other validation failures. Error messages SHALL
-remain stable so downstream consumers relying on the text can
-continue to match on it.
-
-### Requirement 3: Test compensation
-
-#### 3.1: Pixel-identity regression test
-A whitebox test SHALL extract a representative DeviceRGB raster
-(smallest fixture available) through both the current and the
-optimised code paths and assert byte-equality on the resulting
-`rgba` buffer. If the optimised path replaces the current one
-entirely, the test still asserts against a golden hex fixture for
-`rgba` bytes so regressions are detected.
-
-#### 3.2: Performance bound test
-A whitebox test SHALL extract every image on <local-fixture>
-page 7 and assert the cumulative time stays under 3,000 ms on the
-reference machine (was 11,699 ms). Guarded by fixture presence.
-
-#### 3.3: No allocation counter regression
-Where the runtime supports it (e.g. via
-`@test.allocation_count()` or similar), a test SHALL assert the
-number of `Array[Double]` allocations per pixel stays at a small
-constant (≤ 1 per ImageDescriptor, not per pixel).
-
-If no allocation counter is available, fall back to asserting the
-time-per-pixel of a reference extraction stays within
-`2 × time-per-pixel-of-smallest-fixture` — a pragmatic proxy for
-"the hot loop scales with pixel count, not pixel-count-squared".
+`image_data_from_rgba` SHALL continue to validate positive width,
+positive height, and exact `width * height * 4` byte counts before
+constructing ImageData for native PNG encoding and regression checks.
 
 ### Requirement 4: Acceptance criteria
 
