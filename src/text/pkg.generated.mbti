@@ -148,6 +148,24 @@ pub(all) enum GlyphWidthSource {
   UnknownWidth
 } derive(Eq, @debug.Debug)
 
+pub(all) struct PdfFontDataStructuresIntroduction {
+  font_dictionary_subtype_value : @objects.PdfName?
+  simple_font : Bool
+  type0_composite_font : Bool
+  cidfont_component : Bool
+  cmap_component : Bool
+  embedded_font_program_stream : Bool
+} derive(Eq, @debug.Debug)
+pub fn PdfFontDataStructuresIntroduction::clause_9_5(@objects.PdfName?) -> Self
+
+pub(all) struct PdfTextFacilitiesGeneral {
+  represents_characters_with_glyphs_from_fonts : Bool
+  covers_text_state_parameters : Bool
+  covers_text_objects_and_operators : Bool
+  covers_font_data_structures : Bool
+} derive(Eq, @debug.Debug)
+pub fn PdfTextFacilitiesGeneral::clause_9_1() -> Self
+
 pub(all) struct SimpleEncoding {
   base : SimpleEncodingName
   differences : Map[Int, @objects.PdfName]

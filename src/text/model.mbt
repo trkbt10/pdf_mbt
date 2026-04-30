@@ -1,4 +1,8 @@
 ///|
+/// Device-independent PDF text facilities for representing characters with
+/// glyphs from fonts. A text program records how content-stream text objects
+/// select fonts, position glyphs, paint glyphs, and preserve extractable text
+/// without executing a renderer.
 pub(all) enum GlyphWidthSource {
   FontDictionary
   FontDescriptorMissingWidth
@@ -97,12 +101,20 @@ pub(all) struct ExtractedText {
 } derive(Eq, Debug)
 
 ///|
+/// Summary of a PDF font dictionary resource. The value may describe a simple
+/// font, a Type 0 composite font, a descendant CIDFont, a Type 3 glyph-stream
+/// font, or embedded font program metadata that later resolution uses without
+/// invoking system font lookup.
 pub(all) struct FontResourceSummary {
   resource_name : @objects.PdfName
   font_object : @objects.PdfObject
 } derive(Eq, Debug)
 
 ///|
+/// Materialized text resources needed to interpret show strings: font
+/// dictionaries, their encodings, CIDFonts, CMaps, ToUnicode maps, and
+/// ExtGState values relevant to text. Font programs remain PDF stream objects
+/// and are kept distinct from the font dictionaries that reference them.
 pub(all) struct TextResources {
   content_resources : @content.ContentResources
   fonts : Map[@objects.PdfName, FontResourceSummary]
@@ -113,6 +125,31 @@ pub(all) struct TextResources {
 pub(all) struct TextInitialState {
   ctm : TextMatrix
   text_knockout : Bool
+} derive(Eq, Debug)
+
+///|
+/// Clause 9.1 introduction marker for the text layer. It records that this
+/// package handles PDF text facilities for representing characters with glyphs
+/// from fonts, including text state, text objects and operators, and font data
+/// structures, while leaving graphical glyph rendering to later layers.
+pub(all) struct PdfTextFacilitiesGeneral {
+  represents_characters_with_glyphs_from_fonts : Bool
+  covers_text_state_parameters : Bool
+  covers_text_objects_and_operators : Bool
+  covers_font_data_structures : Bool
+} derive(Eq, Debug)
+
+///|
+/// Clause 9.5 introduction marker for font data structures. It keeps the PDF
+/// distinction between font dictionaries, simple fonts, Type 0 composite
+/// fonts, descendant CIDFonts, CMaps, and embedded font program streams.
+pub(all) struct PdfFontDataStructuresIntroduction {
+  font_dictionary_subtype_value : @objects.PdfName?
+  simple_font : Bool
+  type0_composite_font : Bool
+  cidfont_component : Bool
+  cmap_component : Bool
+  embedded_font_program_stream : Bool
 } derive(Eq, Debug)
 
 ///|
@@ -162,6 +199,30 @@ pub fn TextResources::from_content_resources(
 ///|
 pub fn TextInitialState::default() -> TextInitialState {
   TextInitialState::{ ctm: TextMatrix::identity(), text_knockout: true }
+}
+
+///|
+pub fn PdfTextFacilitiesGeneral::clause_9_1() -> PdfTextFacilitiesGeneral {
+  PdfTextFacilitiesGeneral::{
+    represents_characters_with_glyphs_from_fonts: true,
+    covers_text_state_parameters: true,
+    covers_text_objects_and_operators: true,
+    covers_font_data_structures: true,
+  }
+}
+
+///|
+pub fn PdfFontDataStructuresIntroduction::clause_9_5(
+  subtype : @objects.PdfName?,
+) -> PdfFontDataStructuresIntroduction {
+  PdfFontDataStructuresIntroduction::{
+    font_dictionary_subtype_value: subtype,
+    simple_font: true,
+    type0_composite_font: true,
+    cidfont_component: true,
+    cmap_component: true,
+    embedded_font_program_stream: true,
+  }
 }
 
 ///|

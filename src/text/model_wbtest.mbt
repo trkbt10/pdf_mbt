@@ -63,6 +63,28 @@ test "text program summary preserves empty strings and span mappings" {
 }
 
 ///|
+test "clause introduction summaries expose text and font vocabulary" {
+  let text = PdfTextFacilitiesGeneral::clause_9_1()
+  assert_eq(text.represents_characters_with_glyphs_from_fonts, true)
+  assert_eq(text.covers_text_state_parameters, true)
+  assert_eq(text.covers_text_objects_and_operators, true)
+  assert_eq(text.covers_font_data_structures, true)
+
+  let font = PdfFontDataStructuresIntroduction::clause_9_5(
+    Some(@objects.PdfName::new(b"Type0")),
+  )
+  match font.font_dictionary_subtype_value {
+    Some(name) => assert_eq(name == @objects.PdfName::new(b"Type0"), true)
+    None => fail("expected font dictionary subtype value")
+  }
+  assert_eq(font.simple_font, true)
+  assert_eq(font.type0_composite_font, true)
+  assert_eq(font.cidfont_component, true)
+  assert_eq(font.cmap_component, true)
+  assert_eq(font.embedded_font_program_stream, true)
+}
+
+///|
 test "glyph metrics resolve explicit and default widths" {
   let widths : Map[Int, Double] = Map::new()
   widths[65] = 600.0
