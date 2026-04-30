@@ -207,7 +207,7 @@
   - _Requirements: 3.11, 3.12, 3.13, 3.14, 3.15_
   - _Boundary: RenderSceneBuilder, ScanConverter_
 
-- [ ] 6. Integrate the rendering pipeline
+- [x] 6. Integrate the rendering pipeline
 - [ ] 6.1 Assemble the render context and per-operation colour pipeline
   - Resolve device, providers, scene, transfer state, halftone state, clip state, and target surface into a single render context.
   - Apply colour conversion, transfer functions, halftones, and scan conversion in the clause 10 sequence for each paint operation.
