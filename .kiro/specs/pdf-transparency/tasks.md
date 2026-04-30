@@ -76,7 +76,7 @@
   - _Boundary: RenderingParameterPolicy_
   - _Depends: 2.1_
 
-- [ ] 3. Compose transparency scenes and raster output
+- [x] 3. Compose transparency scenes and raster output
 - [x] 3.1 Build transparency scenes from graphics programs
   - Convert path paints, images, inline images, shadings, text, form groups, and pattern paints into ordered transparency paint entries.
   - Capture source colour, shape source, opacity source, alpha constants, soft masks, blend mode, overprint flags, rendering intent, black point compensation, and deferred rendering parameters.
