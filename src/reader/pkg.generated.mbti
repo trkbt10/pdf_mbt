@@ -26,6 +26,30 @@ pub fn parse_file_spec_path(Bytes) -> PdfFileSpecPath
 
 pub fn parse_object_stream(@objects.PdfStream, offset~ : Int64) -> ObjectStreamTable raise PdfReaderError
 
+pub fn pdf_actions_section_12_6_3_trigger_events_tables_197_200() -> Int
+
+pub fn pdf_actions_section_12_6_4_10_movie_actions_table_213() -> Int
+
+pub fn pdf_actions_section_12_6_4_12_named_actions_tables_215_216() -> Int
+
+pub fn pdf_actions_section_12_6_4_14_rendition_actions_table_218() -> Int
+
+pub fn pdf_actions_section_12_6_4_18_rich_media_execute_actions_table_222() -> Int
+
+pub fn pdf_actions_section_12_6_4_18_rich_media_execute_table_222_anchor() -> Int
+
+pub fn pdf_actions_section_12_6_4_1_general_table_201() -> Int
+
+pub fn pdf_actions_section_12_6_4_2_go_to_actions_table_202() -> Int
+
+pub fn pdf_actions_section_12_6_4_3_remote_go_to_actions_table_203() -> Int
+
+pub fn pdf_actions_section_12_6_4_4_embedded_go_to_actions_tables_204_205() -> Int
+
+pub fn pdf_actions_section_12_6_4_5_gotodp_action_table_206() -> Int
+
+pub fn pdf_actions_section_12_6_4_8_uri_actions_tables_210_211() -> Int
+
 pub fn resolve_file_spec_path(PdfFileSpecPath, PdfFileSpecPath) -> PdfFileSpecPath raise PdfDocumentError
 
 pub fn resolve_file_spec_url_path(Bytes, PdfFileSpecPath) -> Bytes raise PdfDocumentError
@@ -160,6 +184,7 @@ pub(all) struct PdfAction {
   next : Array[PdfAction]
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfAction::general_attachment_site_count(Self) -> Int
 pub fn PdfAction::has_follow_up_actions(Self) -> Bool
 
 pub(all) enum PdfActionKind {
@@ -186,6 +211,7 @@ pub(all) enum PdfActionKind {
   Unknown(@objects.PdfName, Map[@objects.PdfName, @objects.PdfObject])
 } derive(Eq, @debug.Debug)
 pub fn PdfActionKind::is_external_boundary(Self) -> Bool
+pub fn PdfActionKind::is_table_201_standard(Self) -> Bool
 
 pub(all) enum PdfActionSource {
   Catalog(@objects.ObjectId)
@@ -214,6 +240,7 @@ pub(all) struct PdfActionTriggerOrdering {
   page_close_order : Array[PdfActionTrigger]
 } derive(Eq, @debug.Debug)
 pub fn PdfActionTriggerOrdering::standard() -> Self
+pub fn PdfActionTriggerOrdering::table_197_to_200_slot_count(Self) -> Int
 
 pub(all) struct PdfAlternatePresentation {
   name : Bytes
@@ -729,6 +756,7 @@ pub(all) struct PdfEmbeddedGoToAction {
   target : PdfTargetDictionary?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfEmbeddedGoToAction::has_embedded_target_route(Self) -> Bool
 
 pub(all) struct PdfEncryptedPayload {
   source_object_id : @objects.ObjectId?
@@ -1040,11 +1068,13 @@ pub(all) struct PdfGoToAction {
   structure_destination : PdfDestination?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfGoToAction::has_structure_destination(Self) -> Bool
 
 pub(all) struct PdfGoToDPartAction {
   dpart : @objects.ObjectId
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfGoToDPartAction::dpart_reference(Self) -> @objects.ObjectId
 
 pub(all) struct PdfHeader {
   version : PdfVersion
@@ -1741,6 +1771,7 @@ pub(all) struct PdfRemoteGoToAction {
   new_window : Bool?
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfRemoteGoToAction::has_remote_destination_payload(Self) -> Bool
 pub fn PdfRemoteGoToAction::requests_new_window(Self, Bool) -> Bool
 
 pub(all) enum PdfRendition {
@@ -1757,6 +1788,7 @@ pub(all) struct PdfRenditionAction {
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
 pub fn PdfRenditionAction::has_deferred_payload(Self) -> Bool
+pub fn PdfRenditionAction::has_ecmascript_fallback(Self) -> Bool
 
 pub(all) struct PdfRenditionCommon {
   object_id : @objects.ObjectId?
@@ -1861,6 +1893,7 @@ pub(all) struct PdfRichMediaExecuteAction {
   command : Map[@objects.PdfName, @objects.PdfObject]
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfRichMediaExecuteAction::has_target_instance(Self) -> Bool
 
 pub(all) struct PdfRichMediaInstance {
   object_id : @objects.ObjectId?
@@ -2483,6 +2516,7 @@ pub(all) struct PdfUriAction {
   is_map : Bool
   raw_dict : Map[@objects.PdfName, @objects.PdfObject]
 } derive(Eq, @debug.Debug)
+pub fn PdfUriAction::tracks_mouse_position(Self) -> Bool
 
 pub(all) struct PdfUserProperty {
   name : Bytes
