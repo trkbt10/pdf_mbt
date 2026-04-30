@@ -90,6 +90,16 @@ test "exponential functions clip optional ranges and reject arity mismatches" {
 
 ///|
 test "exponential functions reject invalid numeric preconditions" {
+  let integer_negative = parse_direct_function(
+    @objects.PdfObject::Dictionary(exp_base_dict([-1.0, 1.0], 2.0)),
+    FunctionLimits::default(),
+    87L,
+  )
+  inspect(
+    integer_negative.evaluate([-0.5], FunctionLimits::default()),
+    content="[0.25]",
+  )
+
   let fractional = parse_direct_function(
     @objects.PdfObject::Dictionary(exp_base_dict([-1.0, 1.0], 0.5)),
     FunctionLimits::default(),
@@ -125,6 +135,19 @@ test "exponential functions reject invalid numeric preconditions" {
 
 ///|
 test "exponential parser validates coefficient and range dimensions" {
+  let bad_domain : Result[PdfFunction, PdfFunctionError] = try? parse_direct_function(
+    @objects.PdfObject::Dictionary(exp_base_dict([0.0, 1.0, 0.0, 1.0], 1.0)),
+    FunctionLimits::default(),
+    88L,
+  )
+  match bad_domain {
+    Err(InvalidFunction(offset, reason)) => {
+      assert_eq(offset, 88L)
+      assert_eq(reason, "Type 2 functions require exactly one Domain interval")
+    }
+    _ => fail("expected Type 2 one-input domain failure")
+  }
+
   let mismatch = exp_base_dict([0.0, 1.0], 1.0)
   mismatch[exp_name(b"C0")] = exp_num_array([0.0, 1.0])
   mismatch[exp_name(b"C1")] = exp_num_array([1.0])

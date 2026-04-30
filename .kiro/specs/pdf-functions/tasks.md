@@ -143,7 +143,7 @@
   - _Requirements: 0.2_
   - _Boundary: SampledFunctionModel_
 
-- [ ] 4.3 Complete exponential and stitching conformance coverage
+- [x] 4.3 Complete exponential and stitching conformance coverage
   - Cover exponential defaults, coefficient length mismatches, exponent edge cases, optional range clipping, stitching bounds, encode mapping, degenerate partitions, recursion limits, and subfunction compatibility.
   - Include tests that combine Type 2 subfunctions inside Type 3 stitching functions to verify cross-type evaluation through the shared evaluator.
   - Targeted tests pass for both standalone exponential functions and nested stitching behavior.
