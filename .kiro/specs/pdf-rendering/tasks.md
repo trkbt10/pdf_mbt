@@ -310,7 +310,7 @@
   - _Requirements: 1, 3.4, 3.5, 3.12, 3.13_
   - _Boundary: RasterDeviceModel, HalftoneProcessor, ScanConverter, RenderingResourceContracts_
 
-- [ ] 9.3 Regenerate public API summaries and run full MoonBit validation
+- [x] 9.3 Regenerate public API summaries and run full MoonBit validation
   - Run formatting, full checks, full tests, and public API summary generation after rendering and reader integration are complete.
   - Review generated interface changes so only intended rendering and reader APIs are exposed.
   - The completed validation has passing MoonBit commands and reviewed generated API diffs ready for implementation handoff.
