@@ -36,7 +36,7 @@
   - _Requirements: 1.1, 4.2, 4.4_
   - _Boundary: ContentOperandReader_
 
-- [ ] 2.3 Track compatibility sections and unknown operator behavior
+- [x] 2.3 Track compatibility sections and unknown operator behavior
   - Maintain balanced compatibility depth for begin and end compatibility operators.
   - Raise clear errors for unknown operators outside compatibility sections.
   - Ignore unknown operators and their accumulated operands while inside compatibility sections.
