@@ -72,7 +72,7 @@
   - Done when Type 4 and Type 5 stream dictionaries produce vertex and triangle summaries and reject incomplete or illegal record sequences.
   - _Requirements: 0.14, 0.15_
   - _Depends: 4.2_
-- [ ] 4.4 Validate Type 6 and Type 7 patch mesh semantics
+- [x] 4.4 Validate Type 6 and Type 7 patch mesh semantics
   - Validate patch edge flags 0 through 3, at least one complete patch, and the implicit edge data required after nonzero flags.
   - Distinguish Coons patch control point counts from tensor-product patch control point counts while sharing colour and decode validation.
   - Preserve function-backed corner parameters separately from full corner colour component records.
