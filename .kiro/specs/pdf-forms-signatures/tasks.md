@@ -181,7 +181,7 @@
   - Completed state: formatter output matches decimal, fraction, rounding, truncation, grouping, and label placement examples.
   - _Requirements: 0.58_
   - _Boundary: NumberFormatFormatter_
-- [ ] 7.3 Parse geospatial measure dictionaries
+- [x] 7.3 Parse geospatial measure dictionaries
   - Parse GEO Bounds, GCS, DCS, PDU, GPTS, LPTS, PCSM, default neatline values, point cardinality, unit names, and PCSM priority metadata.
   - Preserve geospatial transformation as metadata and do not perform EPSG lookup, WKT parsing, or coordinate conversion.
   - Completed state: geospatial measures expose coordinate metadata and malformed cardinality or required-entry failures raise InvalidMeasure.
