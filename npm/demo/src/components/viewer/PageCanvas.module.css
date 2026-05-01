@@ -1,0 +1,16 @@
+.canvas {
+  position: relative;
+  overflow: auto;
+  background: var(--bg-canvas);
+  padding: 16px 0;
+}
+
+.pageList {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}

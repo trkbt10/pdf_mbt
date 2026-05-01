@@ -1,0 +1,45 @@
+.pageItem {
+  position: relative;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  display: block;
+  overflow: hidden;
+}
+
+.pageItemActive {
+  border-color: var(--accent);
+}
+
+.svgSurface {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.svgSurface > svg {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  width: 100%;
+  height: 100%;
+}
+
+.errorMessage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger);
+  font-size: 12px;
+  padding: 16px;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+}
