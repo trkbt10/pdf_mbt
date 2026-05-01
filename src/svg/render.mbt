@@ -43,6 +43,14 @@ priv struct SvgPathBounds {
 }
 
 ///|
+priv struct SvgEmbeddedFont {
+  ttf : @font.TTFont
+  cff_cid_to_gid : Array[Int]?
+  cid_to_gid_map : Array[Int]?
+  cid_to_gid_identity : Bool
+}
+
+///|
 /// Shared sentinel for raw RGBA deferred image payloads. The wasm API surface
 /// reports image/x-rgba8 so the JS consumer can choose OffscreenCanvas canvas
 /// decoding instead of direct Blob creation.
@@ -56,6 +64,16 @@ fn SvgClipRegistry::new() -> SvgClipRegistry {
 ///|
 fn SvgPathBounds::new() -> SvgPathBounds {
   SvgPathBounds::{ seen: false, left: 0.0, bottom: 0.0, right: 0.0, top: 0.0 }
+}
+
+///|
+fn SvgEmbeddedFont::new(ttf : @font.TTFont) -> SvgEmbeddedFont {
+  SvgEmbeddedFont::{
+    ttf,
+    cff_cid_to_gid: None,
+    cid_to_gid_map: None,
+    cid_to_gid_identity: false,
+  }
 }
 
 ///|
@@ -1467,7 +1485,7 @@ fn page_render_text_span_as_paths(
   builder : StringBuilder,
   span : @text.TextSpan,
   glyphs : Array[@text.TextGlyphEvent],
-  ttf : @font.TTFont,
+  embedded_font : SvgEmbeddedFont,
   page_height : Double,
   fill_colour : String,
   clip_id : Int,
@@ -1475,13 +1493,13 @@ fn page_render_text_span_as_paths(
   if glyphs.length() == 0 {
     return span.text.length() == 0
   }
-  let units_per_em = svg_font_units_per_em(ttf)
+  let units_per_em = svg_font_units_per_em(embedded_font.ttf)
   write_svg_clip_wrapper_begin(builder, clip_id)
   let glyph_clip_id = 0
   let mut ok = true
   for glyph in glyphs {
     if !render_glyph_as_path(
-        builder, glyph, ttf, units_per_em, page_height, fill_colour, glyph_clip_id,
+        builder, glyph, embedded_font, units_per_em, page_height, fill_colour, glyph_clip_id,
       ) {
       ok = false
       break
@@ -1501,7 +1519,7 @@ fn page_render_text_span_as_paths(
 fn render_glyph_as_path(
   builder : StringBuilder,
   glyph : @text.TextGlyphEvent,
-  ttf : @font.TTFont,
+  embedded_font : SvgEmbeddedFont,
   units_per_em : Int,
   page_height : Double,
   fill_colour : String,
@@ -1516,7 +1534,11 @@ fn render_glyph_as_path(
   if svg_glyph_is_zero_width_spacing(glyph) {
     return true
   }
-  let gid = svg_resolve_glyph_id(ttf, glyph)
+  let ttf = embedded_font.ttf
+  let gid = match svg_resolve_embedded_glyph_id(embedded_font, glyph) {
+    Some(value) => value
+    None => return false
+  }
   if gid < 0 || gid >= ttf.num_glyphs {
     return false
   }
@@ -1525,7 +1547,13 @@ fn render_glyph_as_path(
   }
   let outline : Array[@svgpath.PathCommand] = ttf.glyph_outline(gid)
   if outline.length() == 0 {
-    return svg_glyph_is_spacing(glyph)
+    if svg_glyph_is_spacing(glyph) {
+      write_svg_spacing_glyph_path(
+        builder, glyph, units_per_em, page_height, clip_id,
+      )
+      return true
+    }
+    return false
   }
   let d = @font.path_commands_to_svg_d(outline)
   if d.length() == 0 {
@@ -1549,41 +1577,231 @@ fn render_glyph_as_path(
 }
 
 ///|
-/// Resolves the glyph ID for a text glyph event. CID-keyed CFF
-/// CIDFontType0C fonts first consult the synthetic post table CID reverse map
-/// encoded with cid.XXXXX post name entries such as cid00012, then fall back
-/// to treating the CID as the glyph_id. Simple fonts resolve GlyphName
-/// identifiers through the TTFont post table glyph_name reverse lookup when
-/// available, then fall back to cmap lookup by source_code. Returns -1 if the
-/// glyph ID cannot be resolved.
-fn svg_resolve_glyph_id(
-  ttf : @font.TTFont,
+fn write_svg_spacing_glyph_path(
+  builder : StringBuilder,
   glyph : @text.TextGlyphEvent,
-) -> Int {
+  units_per_em : Int,
+  page_height : Double,
+  clip_id : Int,
+) -> Unit {
+  builder.write_string("<path d=\"M 0 0\" transform=\"matrix(")
+  write_svg_glyph_path_matrix(
+    builder,
+    glyph.rendering_matrix.matrix,
+    units_per_em,
+    page_height,
+  )
+  builder.write_string(")\" fill=\"none\"")
+  write_svg_clip_path_attribute(builder, clip_id)
+  builder.write_string("/>")
+}
+
+///|
+/// Resolves the glyph ID for a text glyph event using CID maps cached beside
+/// the parsed TTFont. CID-keyed CFF fonts first consult the CFF charset
+/// reverse map, CIDFontType2 descendants then consult CIDToGIDMap, and the
+/// existing post-table reverse lookup remains the compatibility fallback.
+fn svg_resolve_embedded_glyph_id(
+  font : SvgEmbeddedFont,
+  glyph : @text.TextGlyphEvent,
+) -> Int? {
   match glyph.glyph.glyph {
-    @text.GlyphIdentifier::CID(cid) => {
-      let mapped = svg_cid_glyph_id(ttf, cid)
-      if mapped >= 0 {
-        mapped
-      } else {
-        cid
-      }
-    }
-    @text.GlyphIdentifier::CharacterCode(code) =>
-      match ttf.cmap.get(code) {
-        Some(gid) => gid
-        None => -1
-      }
-    @text.GlyphIdentifier::GlyphName(name) =>
-      match svg_post_glyph_id(ttf, name.to_text()) {
-        Some(gid) => gid
+    @text.GlyphIdentifier::CID(cid) =>
+      // One ordered resolver for all SVG glyph-path emission:
+      // 1. CID-keyed CFF charset reverse map.
+      // 2. CIDFontType2 + Identity producer repair: ToUnicode codepoint
+      //    through the subset Unicode cmap, then subset cmap keyed by CID.
+      // 3. Explicit CIDToGIDMap stream.
+      // 4. Literal CIDToGIDMap /Identity.
+      // 5. Legacy post-table CID name reverse lookup.
+      // 6. CharacterCode/simple-font cmap compatibility.
+      // 7. In-range identity fallback.
+      match svg_lookup_cid_map(font.cff_cid_to_gid, cid, font.ttf.num_glyphs) {
+        Some(gid) => Some(gid)
         None =>
-          match ttf.cmap.get(glyph.glyph.source_code) {
-            Some(gid) => gid
-            None => -1
+          match svg_lookup_unicode_via_cmap(font, glyph) {
+            Some(gid) => Some(gid)
+            None =>
+              match svg_lookup_cid_via_cmap(font, cid) {
+                Some(gid) => Some(gid)
+                None =>
+                  match svg_lookup_explicit_cid_to_gid_map(font, cid) {
+                    Some(gid) => Some(gid)
+                    None =>
+                      match svg_lookup_identity_cid_to_gid_map(font, cid) {
+                        Some(gid) => Some(gid)
+                        None =>
+                          match svg_legacy_post_glyph_id(font.ttf, glyph) {
+                            Some(gid) => Some(gid)
+                            None =>
+                              match
+                                svg_legacy_character_code_glyph_id(
+                                  font.ttf,
+                                  glyph,
+                                ) {
+                                Some(gid) => Some(gid)
+                                None => svg_identity_glyph_id(font.ttf, cid)
+                              }
+                          }
+                      }
+                  }
+              }
           }
       }
-    @text.GlyphIdentifier::Notdef => 0
+    @text.GlyphIdentifier::CharacterCode(_) =>
+      svg_legacy_character_code_glyph_id(font.ttf, glyph)
+    @text.GlyphIdentifier::GlyphName(_) =>
+      match svg_legacy_post_glyph_id(font.ttf, glyph) {
+        Some(gid) => Some(gid)
+        None => svg_legacy_character_code_glyph_id(font.ttf, glyph)
+      }
+    @text.GlyphIdentifier::Notdef => Some(0)
+  }
+}
+
+///|
+fn svg_lookup_explicit_cid_to_gid_map(
+  font : SvgEmbeddedFont,
+  cid : Int,
+) -> Int? {
+  if font.cid_to_gid_identity {
+    return None
+  }
+  svg_lookup_cid_map(font.cid_to_gid_map, cid, font.ttf.num_glyphs)
+}
+
+///|
+fn svg_lookup_identity_cid_to_gid_map(
+  font : SvgEmbeddedFont,
+  cid : Int,
+) -> Int? {
+  if font.cid_to_gid_identity {
+    // CIDFontType2 + /CIDToGIDMap /Identity: per ISO 32000-2 9.7.6.3 the CID
+    // equals the glyph_index in the descendant TrueType. The producer is
+    // responsible for laying out the (subset) glyf entries so that holds.
+    // Treat the embedded cmap (Format 4, Unicode-keyed) as a separate path
+    // — it cannot be consulted with CID values directly, see
+    // svg_lookup_unicode_via_cmap for the ToUnicode-driven lookup.
+    if cid >= 0 && cid < font.ttf.num_glyphs {
+      return Some(cid)
+    }
+    return None
+  }
+  None
+}
+
+///|
+/// Resolves a glyph_id by following the ToUnicode-derived Unicode codepoint
+/// through the embedded subset font's Unicode cmap. Some producers (notably
+/// Microsoft Word) lay out CIDFontType2 subsets so that the subset glyph
+/// program is keyed by Unicode codepoint rather than by CID; in that case
+/// /CIDToGIDMap /Identity is technically a lie but the subset cmap holds
+/// the correct mapping. We only consult this when:
+///   - the glyph carries a definite Unicode mapping (from ToUnicode CMap),
+///   - the embedded font is a CIDFontType2 with /CIDToGIDMap /Identity, and
+///   - the cmap returns a non-zero glyph_id within range.
+fn svg_lookup_unicode_via_cmap(
+  font : SvgEmbeddedFont,
+  glyph : @text.TextGlyphEvent,
+) -> Int? {
+  if !font.cid_to_gid_identity {
+    return None
+  }
+  let unicode_value = match glyph.unicode {
+    @text.UnicodeMapping::Unicode(value) => value
+    @text.UnicodeMapping::Unknown(_, _, _) => return None
+  }
+  let mut codepoint = -1
+  for ch in unicode_value {
+    codepoint = ch.to_int()
+    break
+  }
+  if codepoint < 0 {
+    return None
+  }
+  match font.ttf.cmap.get(codepoint) {
+    Some(gid) =>
+      if gid > 0 && gid < font.ttf.num_glyphs {
+        Some(gid)
+      } else {
+        None
+      }
+    None => None
+  }
+}
+
+///|
+fn svg_lookup_cid_via_cmap(font : SvgEmbeddedFont, cid : Int) -> Int? {
+  if !font.cid_to_gid_identity {
+    return None
+  }
+  match font.ttf.cmap.get(cid) {
+    Some(gid) =>
+      if gid > 0 && gid < font.ttf.num_glyphs {
+        Some(gid)
+      } else {
+        None
+      }
+    None => None
+  }
+}
+
+///|
+fn svg_lookup_cid_map(
+  cid_to_gid : Array[Int]?,
+  cid : Int,
+  num_glyphs : Int,
+) -> Int? {
+  if cid < 0 {
+    return None
+  }
+  match cid_to_gid {
+    Some(map) =>
+      if cid < map.length() {
+        let gid = map[cid]
+        if gid >= 0 && gid < num_glyphs {
+          Some(gid)
+        } else {
+          None
+        }
+      } else {
+        None
+      }
+    None => None
+  }
+}
+
+///|
+fn svg_legacy_post_glyph_id(
+  ttf : @font.TTFont,
+  glyph : @text.TextGlyphEvent,
+) -> Int? {
+  match glyph.glyph.glyph {
+    @text.GlyphIdentifier::CID(cid) => svg_cid_glyph_id(ttf, cid)
+    @text.GlyphIdentifier::GlyphName(name) =>
+      svg_post_glyph_id(ttf, name.to_text())
+    _ => None
+  }
+}
+
+///|
+fn svg_legacy_character_code_glyph_id(
+  ttf : @font.TTFont,
+  glyph : @text.TextGlyphEvent,
+) -> Int? {
+  match glyph.glyph.glyph {
+    @text.GlyphIdentifier::CharacterCode(code) => ttf.cmap.get(code)
+    @text.GlyphIdentifier::GlyphName(_) => ttf.cmap.get(glyph.glyph.source_code)
+    _ => None
+  }
+}
+
+///|
+fn svg_identity_glyph_id(ttf : @font.TTFont, cid : Int) -> Int? {
+  if cid >= 0 && cid < ttf.num_glyphs {
+    Some(cid)
+  } else {
+    None
   }
 }
 
@@ -1614,21 +1832,21 @@ pub fn svg_renderer_glyph_id_resolution_alignment() -> Unit {
 /// post names. CID-keyed CFF fonts emit cid00000-style names; missing names
 /// return -1 so non-CFF CIDFontType2 and identity CID mappings keep their
 /// existing glyph_id fallback.
-fn svg_cid_glyph_id(ttf : @font.TTFont, cid : Int) -> Int {
+fn svg_cid_glyph_id(ttf : @font.TTFont, cid : Int) -> Int? {
   if cid < 0 {
-    return -1
+    return None
   }
   let glyph_name = "cid" + cid_pad5(cid)
   match ttf.post {
     Some(post) => {
       for glyph_id in 0..<post.glyph_names.length() {
         if post.glyph_names[glyph_id] == glyph_name {
-          return glyph_id
+          return Some(glyph_id)
         }
       }
-      -1
+      None
     }
-    None => -1
+    None => None
   }
 }
 
@@ -1867,6 +2085,17 @@ fn svg_text_transform_without_fontsize(
   font_size : Double,
   page_height : Double,
 ) -> @text.TextMatrix {
+  // SVG <text> renders glyphs along its own y-axis (downward) using font-size
+  // as the unit. The PDF text matrix encodes scale in d; when divided by
+  // font_size the result is +1, which is what SVG needs because the SVG
+  // glyph rasteriser already paints from baseline downward in the SVG y
+  // direction. Negating d here would double-flip and produce upside-down
+  // mirrored text — see OpenXML page 4 list bullets where Symbol/Arial
+  // fallback spans visibly mirrored when this was negated.
+  //
+  // The glyph-path renderer (write_svg_glyph_path_matrix) DOES negate d
+  // because it paints raw font outlines whose y axis is up; the two
+  // pipelines are not symmetric.
   let scale = if font_size == 0.0 { 1.0 } else { font_size }
   @text.TextMatrix::from_six(
     matrix.a / scale,
@@ -2045,8 +2274,8 @@ fn page_svg_font_families(
 /// system font resolution, with SVG `<text>` rendering as the last resort.
 fn page_svg_embedded_fonts(
   page : @reader.PdfPage,
-) -> Map[@objects.PdfName, @font.TTFont] {
-  let fonts : Map[@objects.PdfName, @font.TTFont] = Map::new()
+) -> Map[@objects.PdfName, SvgEmbeddedFont] {
+  let fonts : Map[@objects.PdfName, SvgEmbeddedFont] = Map::new()
   let system_cache = new_system_font_cache()
   let result : Result[@text.TextResources, @reader.PdfDocumentError] = try? page.text_resources()
   match result {
@@ -2062,7 +2291,7 @@ fn page_svg_embedded_fonts(
                     strip_subset_font_tag(base_font).to_text(),
                     cache=system_cache,
                   ) {
-                  Some(ttf) => fonts[name] = ttf
+                  Some(ttf) => fonts[name] = SvgEmbeddedFont::new(ttf)
                   None => ()
                 }
               None => ()
@@ -2077,7 +2306,7 @@ fn page_svg_embedded_fonts(
 ///|
 fn font_object_embedded_truetype_font(
   object : @objects.PdfObject,
-) -> @font.TTFont? {
+) -> SvgEmbeddedFont? {
   match object {
     @objects.PdfObject::Dictionary(dict) =>
       font_dict_embedded_truetype_font(dict)
@@ -2091,7 +2320,7 @@ fn font_object_embedded_truetype_font(
 /// of the font descriptor lookup order.
 fn font_dict_embedded_truetype_font(
   dict : @objects.PdfDictionary,
-) -> @font.TTFont? {
+) -> SvgEmbeddedFont? {
   match font_dict_direct_embedded_truetype_font(dict) {
     Some(ttf) => Some(ttf)
     None => font_dict_descendant_embedded_truetype_font(dict)
@@ -2107,7 +2336,7 @@ fn font_dict_embedded_truetype_font(
 /// the caller can fall back to system font resolution or SVG `<text>`.
 fn font_dict_direct_embedded_truetype_font(
   dict : @objects.PdfDictionary,
-) -> @font.TTFont? {
+) -> SvgEmbeddedFont? {
   match dict.get(@objects.PdfName::new(b"FontDescriptor")) {
     Some(@objects.PdfObject::Dictionary(descriptor)) =>
       match descriptor.get(@objects.PdfName::new(b"FontFile2")) {
@@ -2127,13 +2356,24 @@ fn font_dict_direct_embedded_truetype_font(
 ///|
 fn font_dict_descendant_embedded_truetype_font(
   dict : @objects.PdfDictionary,
-) -> @font.TTFont? {
+) -> SvgEmbeddedFont? {
   match dict.get(@objects.PdfName::new(b"DescendantFonts")) {
     Some(@objects.PdfObject::Array(fonts)) => {
       for font_object in fonts {
-        match font_object_embedded_truetype_font(font_object) {
-          Some(ttf) => return Some(ttf)
-          None => ()
+        match font_object {
+          @objects.PdfObject::Dictionary(descendant) =>
+            match font_dict_embedded_truetype_font(descendant) {
+              Some(font) =>
+                return Some(
+                  svg_embedded_font_with_cid_to_gid_map(font, descendant),
+                )
+              None => ()
+            }
+          _ =>
+            match font_object_embedded_truetype_font(font_object) {
+              Some(font) => return Some(font)
+              None => ()
+            }
         }
       }
       None
@@ -2143,14 +2383,65 @@ fn font_dict_descendant_embedded_truetype_font(
 }
 
 ///|
-/// Decodes FontFile2 TrueType streams for the first font descriptor lookup
-/// order step.
-fn parse_svg_font_file2_stream(stream : @objects.PdfStream) -> @font.TTFont? {
+fn svg_embedded_font_with_cid_to_gid_map(
+  font : SvgEmbeddedFont,
+  descendant : @objects.PdfDictionary,
+) -> SvgEmbeddedFont {
+  match descendant.get(@objects.PdfName::new(b"CIDToGIDMap")) {
+    Some(@objects.PdfObject::Name(name)) if name ==
+      @objects.PdfName::new(b"Identity") =>
+      SvgEmbeddedFont::{
+        ttf: font.ttf,
+        cff_cid_to_gid: font.cff_cid_to_gid,
+        cid_to_gid_map: font.cid_to_gid_map,
+        cid_to_gid_identity: true,
+      }
+    Some(@objects.PdfObject::Stream(stream)) =>
+      SvgEmbeddedFont::{
+        ttf: font.ttf,
+        cff_cid_to_gid: font.cff_cid_to_gid,
+        cid_to_gid_map: parse_cid_to_gid_map_stream(stream),
+        cid_to_gid_identity: false,
+      }
+    _ => font
+  }
+}
+
+///|
+fn parse_cid_to_gid_map_stream(stream : @objects.PdfStream) -> Array[Int]? {
   let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream(
     stream,
   )
   match decoded {
-    Ok(bytes) => @font.parse_ttf(bytes)
+    Ok(bytes) => {
+      let count = bytes.length() / 2
+      if count == 0 {
+        return None
+      }
+      let cid_to_gid = Array::make(count, -1)
+      for cid in 0..<count {
+        let pos = cid * 2
+        cid_to_gid[cid] = (bytes[pos].to_int() << 8) | bytes[pos + 1].to_int()
+      }
+      Some(cid_to_gid)
+    }
+    Err(_) => None
+  }
+}
+
+///|
+/// Decodes FontFile2 TrueType streams for the first font descriptor lookup
+/// order step.
+fn parse_svg_font_file2_stream(stream : @objects.PdfStream) -> SvgEmbeddedFont? {
+  let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream(
+    stream,
+  )
+  match decoded {
+    Ok(bytes) =>
+      match @font.parse_ttf(bytes) {
+        Some(ttf) => Some(SvgEmbeddedFont::new(ttf))
+        None => None
+      }
     Err(_) => None
   }
 }
@@ -2165,7 +2456,7 @@ fn parse_svg_font_file2_stream(stream : @objects.PdfStream) -> @font.TTFont? {
 /// FontFile3 with CIDFontType0C subtype raw CFF streams are attempted through
 /// `parse_font`; if the mizchi/font API cannot parse standalone CFF without an
 /// OpenType wrapper, the stream returns None and falls back to SVG `<text>`.
-fn parse_svg_font_file3_stream(stream : @objects.PdfStream) -> @font.TTFont? {
+fn parse_svg_font_file3_stream(stream : @objects.PdfStream) -> SvgEmbeddedFont? {
   let decoded : Result[Bytes, @filters.PdfFilterError] = try? @filters.decode_stream(
     stream,
   )
@@ -2173,11 +2464,29 @@ fn parse_svg_font_file3_stream(stream : @objects.PdfStream) -> @font.TTFont? {
     Ok(bytes) =>
       if is_raw_cff(bytes) {
         match wrap_cff_in_otf(bytes) {
-          Some(wrapped) => @font.parse_font(wrapped)
+          Some(wrapped) =>
+            match @font.parse_font(wrapped) {
+              Some(ttf) => {
+                let cff_cid_to_gid = cff_cid_to_glyph_id_array(
+                  bytes,
+                  ttf.num_glyphs,
+                )
+                Some(SvgEmbeddedFont::{
+                  ttf,
+                  cff_cid_to_gid,
+                  cid_to_gid_map: None,
+                  cid_to_gid_identity: false,
+                })
+              }
+              None => None
+            }
           None => None
         }
       } else {
-        @font.parse_font(bytes)
+        match @font.parse_font(bytes) {
+          Some(ttf) => Some(SvgEmbeddedFont::new(ttf))
+          None => None
+        }
       }
     Err(_) => None
   }
@@ -2185,9 +2494,9 @@ fn parse_svg_font_file3_stream(stream : @objects.PdfStream) -> @font.TTFont? {
 
 ///|
 fn span_svg_embedded_font(
-  embedded_fonts : Map[@objects.PdfName, @font.TTFont],
+  embedded_fonts : Map[@objects.PdfName, SvgEmbeddedFont],
   span : @text.TextSpan,
-) -> @font.TTFont? {
+) -> SvgEmbeddedFont? {
   match span.font_name {
     Some(name) => embedded_fonts.get(name)
     None => None

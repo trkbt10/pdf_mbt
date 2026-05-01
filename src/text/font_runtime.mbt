@@ -112,13 +112,20 @@ fn parse_runtime_font_dictionary_strict(
   match subtype {
     Some(name) if name == @objects.PdfName::new(b"Type0") => {
       let cmap = parse_type0_encoding(dict, offset, limits)
+      // ISO 32000-2 §9.7.4.3: composite font glyph widths live on the
+      // descendant CIDFont dictionary's DW (default) and W (per-CID) entries,
+      // not on the parent Type 0 dictionary. Without this lookup the
+      // interpreter advanced glyphs by the hard-coded 1000-units default and
+      // produced visibly squashed text whenever the producer set DW != 1000.
+      let cid_widths = parse_descendant_cid_widths(dict, offset)
+      let cid_default_width = parse_descendant_default_width(dict, offset)
       RuntimeFont::{
         kind: Composite(cmap),
         to_unicode,
         ttf,
-        widths,
+        widths: cid_widths,
         standard_widths: Map::new(),
-        default_width: Some(1000.0),
+        default_width: Some(cid_default_width),
         default_width_source: GlyphWidthSource::CIDDefaultWidth,
       }
     }
@@ -242,6 +249,108 @@ fn parse_optional_to_unicode(
       raise PdfTextError::InvalidFont(
         TextErrorContext::at(offset),
         "ToUnicode must be a materialized stream",
+      )
+  }
+}
+
+///|
+///|
+/// Reads the descendant CIDFont dictionary's `/DW` (default width) entry.
+/// Returns 1000.0 when DW is absent or non-numeric, matching ISO 32000-2
+/// §9.7.4.3 default semantics.
+fn parse_descendant_default_width(
+  parent_dict : @objects.PdfDictionary,
+  offset : Int64,
+) -> Double {
+  let _ = offset
+  let descendant = match descendant_cidfont_dict(parent_dict) {
+    Some(d) => d
+    None => return 1000.0
+  }
+  match descendant.get(@objects.PdfName::new(b"DW")) {
+    Some(@objects.PdfObject::Integer(value)) => value.to_double()
+    Some(@objects.PdfObject::Real(value)) => value
+    _ => 1000.0
+  }
+}
+
+///|
+/// Reads the descendant CIDFont dictionary's `/W` (per-CID widths) array
+/// and expands every (Cfirst, Clast, w) range or (Cfirst, [w1 w2 …]) array
+/// into a flat CID → width map. Width units stay in font-program 1000-em
+/// space; the caller divides by 1000 to derive a scaled advance.
+fn parse_descendant_cid_widths(
+  parent_dict : @objects.PdfDictionary,
+  offset : Int64,
+) -> Map[Int, Double] raise PdfTextError {
+  let widths : Map[Int, Double] = Map::new()
+  let descendant = match descendant_cidfont_dict(parent_dict) {
+    Some(d) => d
+    None => return widths
+  }
+  let array = match descendant.get(@objects.PdfName::new(b"W")) {
+    Some(@objects.PdfObject::Array(values)) => values
+    _ => return widths
+  }
+  let mut index = 0
+  while index < array.length() {
+    let first = descendant_w_object_int(array[index], "W start CID", offset)
+    if index + 1 >= array.length() {
+      break
+    }
+    match array[index + 1] {
+      @objects.PdfObject::Array(inline_widths) => {
+        for j in 0..<inline_widths.length() {
+          widths[first + j] = object_number(inline_widths[j], "W width", offset)
+        }
+        index += 2
+      }
+      _ => {
+        if index + 2 >= array.length() {
+          break
+        }
+        let last = descendant_w_object_int(array[index + 1], "W end CID", offset)
+        let w = object_number(array[index + 2], "W width", offset)
+        for cid in first..=last {
+          widths[cid] = w
+        }
+        index += 3
+      }
+    }
+  }
+  widths
+}
+
+///|
+fn descendant_cidfont_dict(
+  parent_dict : @objects.PdfDictionary,
+) -> @objects.PdfDictionary? {
+  match parent_dict.get(@objects.PdfName::new(b"DescendantFonts")) {
+    Some(@objects.PdfObject::Array(values)) =>
+      if values.length() > 0 {
+        match values[0] {
+          @objects.PdfObject::Dictionary(d) => Some(d)
+          _ => None
+        }
+      } else {
+        None
+      }
+    _ => None
+  }
+}
+
+///|
+fn descendant_w_object_int(
+  obj : @objects.PdfObject,
+  label : String,
+  offset : Int64,
+) -> Int raise PdfTextError {
+  match obj {
+    @objects.PdfObject::Integer(value) => value.to_int()
+    _ =>
+      raise PdfTextError::InvalidFont(
+        TextErrorContext::at(offset),
+        label + " must be an integer",
       )
   }
 }

@@ -186,6 +186,50 @@ test "synthetic form xobject selects form-local resources" {
 }
 
 ///|
+test "materialized resources resolve ColorSpace arrays and nested Form resources" {
+  let document = PdfDocument::open(
+    build_page_content_ref_materialization_fixture(),
+  )
+  let page = document.page(0)
+  let resources = page.materialized_content_resources()
+  match
+    resources.lookup_resource(
+      @content.ResourceCategory::ColorSpace,
+      @objects.PdfName::new(b"CS1"),
+    ) {
+    Some(@objects.PdfObject::Array(values)) => {
+      assert_eq(values.length(), 1)
+      assert_eq(
+        values[0] ==
+        @objects.PdfObject::Name(@objects.PdfName::new(b"DeviceRGB")),
+        true,
+      )
+    }
+    _ => fail("expected materialized ColorSpace array")
+  }
+  match
+    resources.lookup_resource(
+      @content.ResourceCategory::XObject,
+      @objects.PdfName::new(b"Fm1"),
+    ) {
+    Some(@objects.PdfObject::Stream(stream)) =>
+      match stream.dict.get(@objects.PdfName::new(b"Resources")) {
+        Some(@objects.PdfObject::Dictionary(form_resources)) =>
+          match form_resources.get(@objects.PdfName::new(b"ColorSpace")) {
+            Some(@objects.PdfObject::Dictionary(colours)) =>
+              match colours.get(@objects.PdfName::new(b"CS2")) {
+                Some(@objects.PdfObject::Array(_)) => ()
+                _ => fail("expected materialized form ColorSpace array")
+              }
+            _ => fail("expected materialized form ColorSpace dictionary")
+          }
+        _ => fail("expected materialized Form Resources dictionary")
+      }
+    _ => fail("expected materialized Form XObject stream")
+  }
+}
+
+///|
 fn build_page_content_single_stream_fixture() -> Bytes {
   let (bytes, header_base) = build_document_structure_fixture_prefix()
 
@@ -396,6 +440,48 @@ fn build_page_content_form_xobject_fixture() -> Bytes {
 
   finish_page_content_fixture(bytes, header_base, [
     catalog_offset, pages_offset, page_offset, content_offset, form_offset, parent_font_offset,
+  ])
+}
+
+///|
+fn build_page_content_ref_materialization_fixture() -> Bytes {
+  let (bytes, header_base) = build_document_structure_fixture_prefix()
+
+  let (bytes, catalog_offset) = append_indirect_object(
+    bytes, header_base, 1, 0, b"<< /Type /Catalog /Pages 2 0 R >>",
+  )
+  let (bytes, pages_offset) = append_indirect_object(
+    bytes, header_base, 2, 0, b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+  )
+  let page_dict = b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /ColorSpace << /CS1 8 0 R >> /XObject << /Fm1 5 0 R >> >> /Contents 4 0 R >>"
+  let (bytes, page_offset) = append_indirect_object(
+    bytes, header_base, 3, 0, page_dict,
+  )
+  let content_stream = build_stream_object_body(b"<< /Length 7 >>", b"/Fm1 Do")
+  let (bytes, content_offset) = append_indirect_object(
+    bytes, header_base, 4, 0, content_stream,
+  )
+  let form_stream = build_stream_object_body(
+    b"<< /Type /XObject /Subtype /Form /BBox [0 0 10 10] /Resources 7 0 R /Length 1 >>",
+    b"q",
+  )
+  let (bytes, form_offset) = append_indirect_object(
+    bytes, header_base, 5, 0, form_stream,
+  )
+  let (bytes, font_offset) = append_indirect_object(
+    bytes, header_base, 6, 0, b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  )
+  let form_resources = b"<< /Font << /F1 6 0 R >> /ColorSpace << /CS2 8 0 R >> >>"
+  let (bytes, form_resources_offset) = append_indirect_object(
+    bytes, header_base, 7, 0, form_resources,
+  )
+  let (bytes, colour_offset) = append_indirect_object(
+    bytes, header_base, 8, 0, b"[ /DeviceRGB ]",
+  )
+
+  finish_page_content_fixture(bytes, header_base, [
+    catalog_offset, pages_offset, page_offset, content_offset, form_offset, font_offset,
+    form_resources_offset, colour_offset,
   ])
 }
 

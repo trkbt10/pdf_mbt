@@ -353,13 +353,11 @@ fn evaluate_optional_content_dict(
       }
     }
   } else {
-    if type_name is Some(name) {
-      if name != pdf_name(b"OCG") {
-        raise PdfGraphicsError::InvalidOptionalContent(
-          offset, "optional-content dictionary Type must be OCG or OCMD",
-        )
-      }
-    }
+    // Producers in the wild (e.g. presentation PDFs) ship optional-content
+    // dictionaries whose /Type is missing or non-standard. ISO 32000-2 8.11
+    // says it should be OCG or OCMD, but rejecting unknown values aborts the
+    // entire page's graphics walk over a single permissive marker. Treat any
+    // non-OCMD value as an OCG so visibility evaluation continues.
     if !ocg_intent_applies(state, dict, offset) {
       return true
     }

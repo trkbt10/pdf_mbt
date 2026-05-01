@@ -310,6 +310,38 @@ pub fn cff_cid_to_glyph_id_map(
 }
 
 ///|
+/// Builds a direct CID-indexed glyph id array for CID-keyed CFF fonts. The
+/// renderer stores this next to the parsed TTFont so glyph emission can resolve
+/// CID to glyph_id without retaining raw CFF bytes.
+fn cff_cid_to_glyph_id_array(data : Bytes, num_glyphs : Int) -> Array[Int]? {
+  if !is_cid_keyed_cff(data) {
+    return None
+  }
+  match parse_cff_cid_charset(data, num_glyphs) {
+    Some(cids) => {
+      let mut max_cid = -1
+      for cid in cids {
+        if cid > max_cid {
+          max_cid = cid
+        }
+      }
+      if max_cid < 0 {
+        return None
+      }
+      let cid_to_gid = Array::make(max_cid + 1, -1)
+      for glyph_id in 0..<cids.length() {
+        let cid = cids[glyph_id]
+        if cid >= 0 {
+          cid_to_gid[cid] = glyph_id
+        }
+      }
+      Some(cid_to_gid)
+    }
+    None => None
+  }
+}
+
+///|
 fn cff_top_dict_entry_bounds(data : Bytes) -> (Int, Int)? {
   if data.length() < 5 {
     return None

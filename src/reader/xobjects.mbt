@@ -1,4 +1,7 @@
 ///|
+/// Materializes page content resources behind the resource-materialization lint
+/// and CI gate. The gate rejects direct `load_document_object` calls outside
+/// `resolve_indirect` and rejects materializer Array matches before Ref unwrap.
 pub fn PdfPage::materialized_content_resources(
   self : PdfPage,
 ) -> @content.ContentResources raise PdfDocumentError {

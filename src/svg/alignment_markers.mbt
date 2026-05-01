@@ -83,6 +83,15 @@ pub fn keep_diagnostic_tests_alignment() -> Unit {
 }
 
 ///|
+/// Lint and CI gate alignment marker. The resource materialization lint gate is
+/// implemented in `scripts/lint_resource_materialization.mbt`; it flags direct
+/// `load_document_object` calls outside `resolve_indirect` and materializer
+/// Array matches that run before Ref unwrap.
+pub fn lint_and_ci_gate_alignment() -> Unit {
+  ()
+}
+
+///|
 /// Clip path geometry transformation alignment marker. ClipEntry geometry is
 /// already CTM-transformed when the PDF clip operator is applied, so SVG
 /// clipPath emission uses `svg_path_data` with identity CTM and the page

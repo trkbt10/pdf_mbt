@@ -565,6 +565,22 @@ test "cff_cid_to_glyph_id_map inverts CID-keyed charset" {
 }
 
 ///|
+test "cff_cid_to_glyph_id_array inverts CID-keyed charset" {
+  let cid_cff = minimal_cid_keyed_cff()
+  match cff_cid_to_glyph_id_array(cid_cff, 4) {
+    Some(map) => {
+      assert_eq(map[0], 0)
+      assert_eq(map[10], 1)
+      assert_eq(map[11], 2)
+      assert_eq(map[12], 3)
+      assert_eq(map.length(), 13)
+    }
+    None => assert_true(false)
+  }
+  assert_eq(cff_cid_to_glyph_id_array(cff_add_fixture_cff(), 28) is None, true)
+}
+
+///|
 test "svg_cid_glyph_id resolves cid post glyph names" {
   match cff_post_glyph_name_table(minimal_cid_keyed_cff(), 4) {
     Some(names) => {
@@ -572,11 +588,103 @@ test "svg_cid_glyph_id resolves cid post glyph names" {
       assert_eq(names[1], "cid00010")
       assert_eq(names[3], "cid00012")
       let ttf = minimal_post_ttf(names)
-      assert_eq(svg_cid_glyph_id(ttf, 10), 1)
-      assert_eq(svg_cid_glyph_id(ttf, 12), 3)
-      assert_eq(svg_cid_glyph_id(ttf, 13), -1)
+      assert_eq(resolved_cid_glyph_id(ttf, 10), 1)
+      assert_eq(resolved_cid_glyph_id(ttf, 12), 3)
+      assert_eq(resolved_cid_glyph_id(ttf, 13), -1)
     }
     None => assert_true(false)
+  }
+}
+
+///|
+test "svg_resolve_embedded_glyph_id uses cached CFF CID map before post fallback" {
+  let ttf = minimal_post_ttf([".notdef", "wrong", "alsoWrong", "last"])
+  let font = SvgEmbeddedFont::{
+    ttf,
+    cff_cid_to_gid: Some([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 2]),
+    cid_to_gid_map: None,
+    cid_to_gid_identity: false,
+  }
+  assert_eq(resolved_embedded_glyph_id(font, minimal_cid_glyph_event(10)), 2)
+}
+
+///|
+test "svg_resolve_embedded_glyph_id uses CIDToGIDMap stream and rejects out of range identity" {
+  let stream = @objects.PdfStream::{
+    dict: Map::new(),
+    data: b"\x00\x00\x00\x03\x00\x01",
+  }
+  let font = SvgEmbeddedFont::{
+    ttf: minimal_post_ttf([".notdef", "one", "two", "three"]),
+    cff_cid_to_gid: None,
+    cid_to_gid_map: parse_cid_to_gid_map_stream(stream),
+    cid_to_gid_identity: false,
+  }
+  assert_eq(resolved_embedded_glyph_id(font, minimal_cid_glyph_event(1)), 3)
+  assert_eq(resolved_embedded_glyph_id(font, minimal_cid_glyph_event(9)), -1)
+
+  let identity_font = SvgEmbeddedFont::{
+    ttf: minimal_post_ttf([".notdef", "one"]),
+    cff_cid_to_gid: None,
+    cid_to_gid_map: None,
+    cid_to_gid_identity: true,
+  }
+  assert_eq(
+    resolved_embedded_glyph_id(identity_font, minimal_cid_glyph_event(1)),
+    1,
+  )
+  assert_eq(
+    resolved_embedded_glyph_id(identity_font, minimal_cid_glyph_event(5)),
+    -1,
+  )
+}
+
+///|
+test "svg_resolve_embedded_glyph_id prefers ToUnicode subset cmap before Identity" {
+  let ttf = minimal_post_ttf([".notdef", "identityWrong", "latinA"])
+  ttf.cmap[97] = 2
+  ttf.cmap[1] = 1
+  let font = SvgEmbeddedFont::{
+    ttf,
+    cff_cid_to_gid: None,
+    cid_to_gid_map: None,
+    cid_to_gid_identity: true,
+  }
+  assert_eq(
+    resolved_embedded_glyph_id(font, minimal_unicode_cid_glyph_event(1, "a")),
+    2,
+  )
+}
+
+///|
+test "svg_resolve_embedded_glyph_id uses CID-keyed subset cmap before Identity" {
+  let ttf = minimal_post_ttf([".notdef", "identityWrong", "cidMapped"])
+  ttf.cmap[7] = 2
+  let font = SvgEmbeddedFont::{
+    ttf,
+    cff_cid_to_gid: None,
+    cid_to_gid_map: None,
+    cid_to_gid_identity: true,
+  }
+  assert_eq(resolved_embedded_glyph_id(font, minimal_cid_glyph_event(7)), 2)
+}
+
+///|
+fn resolved_embedded_glyph_id(
+  font : SvgEmbeddedFont,
+  glyph : @text.TextGlyphEvent,
+) -> Int {
+  match svg_resolve_embedded_glyph_id(font, glyph) {
+    Some(gid) => gid
+    None => -1
+  }
+}
+
+///|
+fn resolved_cid_glyph_id(ttf : @font.TTFont, cid : Int) -> Int {
+  match svg_cid_glyph_id(ttf, cid) {
+    Some(gid) => gid
+    None => -1
   }
 }
 
@@ -1395,7 +1503,7 @@ fn diagnostic_cid_lookup_sample(
     }
     builder.write_string(cids[i].to_string())
     builder.write_string("=>")
-    let glyph_id = svg_cid_glyph_id(ttf, cids[i])
+    let glyph_id = resolved_cid_glyph_id(ttf, cids[i])
     builder.write_string(glyph_id.to_string())
     builder.write_string("/")
     builder.write_string(ttf.glyph_outline(glyph_id).length().to_string())
@@ -1407,11 +1515,11 @@ fn diagnostic_cid_lookup_sample(
 ///|
 fn diagnostic_print_glyph_trace(
   font_name : String,
-  ttf : @font.TTFont,
+  font : SvgEmbeddedFont,
   glyph : @text.TextGlyphEvent,
 ) -> Unit {
   let source_code = glyph.glyph.source_code
-  let gid = svg_resolve_glyph_id(ttf, glyph)
+  let gid = resolved_embedded_glyph_id(font, glyph)
   println(
     "diagnostic local-fixture glyph_trace: font=" +
     font_name +
@@ -1420,20 +1528,20 @@ fn diagnostic_print_glyph_trace(
     " glyph_id_resolved=" +
     gid.to_string() +
     " post_name_at_gid=" +
-    diagnostic_post_name(ttf, gid) +
+    diagnostic_post_name(font.ttf, gid) +
     " outline_first_point=" +
-    diagnostic_outline_first_point(ttf, gid),
+    diagnostic_outline_first_point(font.ttf, gid),
   )
 }
 
 ///|
 fn diagnostic_print_local_fixture_glyph_trace(
   font_name : String,
-  ttf : @font.TTFont,
+  font : SvgEmbeddedFont,
   glyph : @text.TextGlyphEvent,
 ) -> Unit {
   let source_code = glyph.glyph.source_code
-  let gid = svg_resolve_glyph_id(ttf, glyph)
+  let gid = resolved_embedded_glyph_id(font, glyph)
   println(
     "diagnostic local-fixture glyph_trace: font=" +
     font_name +
@@ -1444,9 +1552,9 @@ fn diagnostic_print_local_fixture_glyph_trace(
     " glyph_id_resolved=" +
     gid.to_string() +
     " post_name_at_gid=" +
-    diagnostic_post_name(ttf, gid) +
+    diagnostic_post_name(font.ttf, gid) +
     " outline_first_point=" +
-    diagnostic_outline_first_point(ttf, gid) +
+    diagnostic_outline_first_point(font.ttf, gid) +
     " expected_unicode=\"" +
     diagnostic_unicode_text(glyph.unicode) +
     "\"",
@@ -1493,14 +1601,14 @@ fn diagnostic_local-fixture_page_tofu_glyphs(
         match span.font_name {
           Some(font_name) =>
             match embedded_fonts.get(font_name) {
-              Some(ttf) => {
+              Some(font) => {
                 let glyphs = span_glyphs(glyph_groups, index)
                 for glyph in glyphs {
-                  let gid = svg_resolve_glyph_id(ttf, glyph)
+                  let gid = resolved_embedded_glyph_id(font, glyph)
                   if gid == 0 || gid < 0 {
                     diagnostic_print_tofu_glyph(
                       font_name.to_text(),
-                      ttf,
+                      font.ttf,
                       glyph,
                       gid,
                     )
@@ -1619,17 +1727,17 @@ fn count_rendered_non_source_notdef_paths(page : @reader.PdfPage) -> Int {
 ///|
 fn count_span_rendered_non_source_notdef_paths(
   glyphs : Array[@text.TextGlyphEvent],
-  ttf : @font.TTFont,
+  font : SvgEmbeddedFont,
   page_height : Double,
 ) -> Int {
   let mut count = 0
-  let units_per_em = svg_font_units_per_em(ttf)
+  let units_per_em = svg_font_units_per_em(font.ttf)
   for glyph in glyphs {
-    let gid = svg_resolve_glyph_id(ttf, glyph)
+    let gid = resolved_embedded_glyph_id(font, glyph)
     if gid == 0 && !svg_glyph_is_notdef_source(glyph) {
       let builder = StringBuilder::new()
       if render_glyph_as_path(
-          builder, glyph, ttf, units_per_em, page_height, "#000000", 0,
+          builder, glyph, font, units_per_em, page_height, "#000000", 0,
         ) &&
         builder.to_string().contains("<path") {
         count += 1
@@ -1785,23 +1893,23 @@ fn page6_glyph_outline_golden_cases() -> Array[Page6GlyphOutlineGolden] {
 fn assert_page6_glyph_outline_golden(
   program : @text.TextProgram,
   glyph_groups : Array[Array[@text.TextGlyphEvent]],
-  embedded_fonts : Map[@objects.PdfName, @font.TTFont],
+  embedded_fonts : Map[@objects.PdfName, SvgEmbeddedFont],
   golden : Page6GlyphOutlineGolden,
 ) -> Unit raise {
   match embedded_fonts.get(golden.font_name) {
-    Some(ttf) => {
+    Some(font) => {
       for index in 0..<program.spans.length() {
         let span = program.spans[index]
         if span.font_name == Some(golden.font_name) {
           let glyphs = span_glyphs(glyph_groups, index)
           for glyph in glyphs {
             if glyph.glyph.source_code == golden.source_code {
-              let gid = svg_resolve_glyph_id(ttf, glyph)
+              let gid = resolved_embedded_glyph_id(font, glyph)
               assert_eq(gid, golden.expected_gid)
               if golden.require_non_identity {
                 assert_true(gid != golden.source_code)
               }
-              let outline = ttf.glyph_outline(gid)
+              let outline = font.ttf.glyph_outline(gid)
               assert_true(outline.length() > 0)
               match glyph_outline_first_move(outline) {
                 Some((x, y)) => {
@@ -1890,16 +1998,16 @@ fn diagnostic_page6_text_path_summary(
           let glyphs = span_glyphs(glyph_groups, index)
           glyph_count += glyphs.length()
           match embedded_fonts.get(font_name) {
-            Some(ttf) =>
+            Some(font) =>
               for glyph in glyphs {
                 match glyph.glyph.glyph {
                   @text.GlyphIdentifier::CID(_) => cid_count += 1
                   _ => ()
                 }
-                let glyph_id = svg_resolve_glyph_id(ttf, glyph)
-                if glyph_id >= 0 && glyph_id < ttf.num_glyphs {
+                let glyph_id = resolved_embedded_glyph_id(font, glyph)
+                if glyph_id >= 0 && glyph_id < font.ttf.num_glyphs {
                   resolved_count += 1
-                  if ttf.glyph_outline(glyph_id).length() > 0 {
+                  if font.ttf.glyph_outline(glyph_id).length() > 0 {
                     outline_count += 1
                   }
                 }
@@ -2176,6 +2284,69 @@ fn minimal_post_ttf(glyph_names : Array[String]) -> @font.TTFont {
     vertical: None,
     gasp: [],
     vorg: None,
+  }
+}
+
+///|
+fn minimal_cid_glyph_event(cid : Int) -> @text.TextGlyphEvent {
+  let metrics = @text.GlyphMetrics::{
+    horizontal_displacement: 0.0,
+    vertical_displacement_x: 0.0,
+    vertical_displacement_y: 0.0,
+    vertical_origin_x: 0.0,
+    vertical_origin_y: 0.0,
+    width_source: @text.GlyphWidthSource::CIDExplicitWidth,
+  }
+  let decoded = @text.DecodedGlyph::{
+    source_bytes: b"",
+    source_code: cid,
+    glyph: @text.GlyphIdentifier::CID(cid),
+    metrics,
+    word_spacing_eligible: false,
+    fallback: @text.GlyphFallback::NoFallback,
+  }
+  @text.TextGlyphEvent::{
+    offset: 0L,
+    source: @text.TextSourceString::{
+      bytes: b"",
+      operator_offset: 0L,
+      group_index: 0,
+    },
+    glyph: decoded,
+    unicode: @text.UnicodeMapping::Unknown(
+      b"",
+      @text.GlyphIdentifier::CID(cid),
+      @text.GlyphFallback::NoFallback,
+    ),
+    text_matrix: @text.TextMatrix::identity(),
+    rendering_matrix: @text.TextRenderingMatrix::from_text_state(
+      @text.TextMatrix::identity(),
+      1.0,
+      1.0,
+      0.0,
+      @text.TextMatrix::identity(),
+    ),
+    paint: @text.TextPaintIntent::from_rendering_mode(
+      @text.TextRenderingMode::Fill,
+      false,
+    ),
+  }
+}
+
+///|
+fn minimal_unicode_cid_glyph_event(
+  cid : Int,
+  text : String,
+) -> @text.TextGlyphEvent {
+  let event = minimal_cid_glyph_event(cid)
+  @text.TextGlyphEvent::{
+    offset: event.offset,
+    source: event.source,
+    glyph: event.glyph,
+    unicode: @text.UnicodeMapping::Unicode(text),
+    text_matrix: event.text_matrix,
+    rendering_matrix: event.rendering_matrix,
+    paint: event.paint,
   }
 }
 
