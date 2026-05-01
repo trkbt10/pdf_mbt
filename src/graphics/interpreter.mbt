@@ -848,11 +848,28 @@ fn require_operand_count(
   operation : @content.ContentOperation,
   expected : Int,
 ) -> Unit raise PdfGraphicsError {
-  if operation.operands.length() != expected {
+  // ISO 32000-2 §7.8.2 specifies that PDF content streams use stack-based
+  // operand semantics: operators consume the top N items off the operand
+  // stack and any leftover operands stay on the stack for whatever comes
+  // next. Producers that emit a stray extra number before an operator —
+  // observed in real-world output, e.g. Marp slides emitting `0.00-50 0 m`
+  // for what should have been `0 -50 m` — are technically non-conforming,
+  // but the resulting page still has a coherent set of trailing operands
+  // for each operator and other PDF processors (pdftoppm, PDFium, PDF.js)
+  // simply consume the last N. We adopt the same model: too few operands
+  // is still a hard error (the operator cannot run); too many means the
+  // tail is what the operator gets and the leading excess is dropped.
+  if operation.operands.length() < expected {
     raise PdfGraphicsError::BadOperand(
       operation.offset,
       "operator operand count mismatch",
     )
+  }
+  if operation.operands.length() > expected {
+    let excess = operation.operands.length() - expected
+    for _ in 0..<excess {
+      let _ = operation.operands.remove(0)
+    }
   }
 }
 

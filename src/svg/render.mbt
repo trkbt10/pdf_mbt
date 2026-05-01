@@ -591,12 +591,14 @@ fn write_svg_paint_attributes(
       builder.write_string(svg_colour(state, @graphics.ColourUse::Stroking))
       builder.write_string("\"")
       write_svg_stroke_attributes(builder, state)
+      write_svg_alpha_attributes(builder, state, false, true)
     }
     @graphics.PathPaintOperation::FillPath(rule) => {
       builder.write_string(" fill=\"")
       builder.write_string(svg_colour(state, @graphics.ColourUse::Nonstroking))
       builder.write_string("\" stroke=\"none\"")
       write_svg_fill_rule(builder, rule)
+      write_svg_alpha_attributes(builder, state, true, false)
     }
     @graphics.PathPaintOperation::FillStrokePath(rule)
     | @graphics.PathPaintOperation::CloseFillStrokePath(rule) => {
@@ -607,9 +609,51 @@ fn write_svg_paint_attributes(
       builder.write_string("\"")
       write_svg_fill_rule(builder, rule)
       write_svg_stroke_attributes(builder, state)
+      write_svg_alpha_attributes(builder, state, true, true)
     }
     @graphics.PathPaintOperation::EndPath =>
       builder.write_string(" fill=\"none\" stroke=\"none\"")
+  }
+}
+
+///|
+/// Emits SVG `fill-opacity` / `stroke-opacity` attributes from the current
+/// graphics state's nonstroking / stroking alpha. Alphas come from PDF
+/// `gs` operators that reference an ExtGState with `/ca` and `/CA` entries
+/// (ISO 32000-2 §8.4.5 Table 57). The default is fully opaque (1.0), so we
+/// only emit attributes when the value differs — keeps the SVG terse and
+/// avoids spurious `fill-opacity="1"` decorations on most paths.
+///
+/// Without forwarding `/ca` to `fill-opacity`, slide-style PDFs that use
+/// `/ca 0` ExtGStates to suppress placeholder rectangles end up with those
+/// rectangles painted solid black on top of the slide background, producing
+/// the "elements with black backgrounds" artefact.
+fn write_svg_alpha_attributes(
+  builder : StringBuilder,
+  state : @graphics.GraphicsState,
+  emit_fill_opacity : Bool,
+  emit_stroke_opacity : Bool,
+) -> Unit {
+  if emit_fill_opacity && state.alpha_nonstroking < 1.0 {
+    builder.write_string(" fill-opacity=\"")
+    builder.write_string(format_svg_number(clamp_alpha(state.alpha_nonstroking)))
+    builder.write_string("\"")
+  }
+  if emit_stroke_opacity && state.alpha_stroking < 1.0 {
+    builder.write_string(" stroke-opacity=\"")
+    builder.write_string(format_svg_number(clamp_alpha(state.alpha_stroking)))
+    builder.write_string("\"")
+  }
+}
+
+///|
+fn clamp_alpha(value : Double) -> Double {
+  if value < 0.0 {
+    0.0
+  } else if value > 1.0 {
+    1.0
+  } else {
+    value
   }
 }
 

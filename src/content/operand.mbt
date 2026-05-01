@@ -12,13 +12,19 @@ pub(all) enum OperandReadResult {
 pub(all) struct ContentOperandReader {
   cursor : @lexer.ByteCursor
   lexer : @lexer.Lexer
+  // Pending lexeme produced by splitting a producer-quirk lexeme such as
+  // `0.00-50` (two numbers run together). When set, `read_value` consumes
+  // it before reaching for the underlying tokenizer so the caller observes
+  // the same "two numeric operands" sequence a conforming producer would
+  // have written. Cleared as soon as it is read.
+  mut pending : (Bytes, Int64)?
 }
 
 ///|
 /// Creates a reader over already-decoded content bytes.
 pub fn ContentOperandReader::new(input : Bytes) -> ContentOperandReader {
   let cursor = @lexer.ByteCursor::new(input)
-  ContentOperandReader::{ cursor, lexer: @lexer.Lexer::new(cursor) }
+  ContentOperandReader::{ cursor, lexer: @lexer.Lexer::new(cursor), pending: None }
 }
 
 ///|
@@ -47,6 +53,16 @@ fn ContentOperandReader::read_value(
   self : ContentOperandReader,
   allow_operator_candidate : Bool,
 ) -> OperandReadResult raise PdfContentError {
+  // Drain the split-number queue first. See `pending` doc on the struct.
+  match self.pending {
+    Some((lexeme, lexeme_offset)) => {
+      self.pending = None
+      return self.classify_regular_token(
+        lexeme, lexeme_offset, allow_operator_candidate,
+      )
+    }
+    None => ()
+  }
   self.skip_separators()
   let offset = self.cursor.offset()
   match self.cursor.peek() {
@@ -103,7 +119,7 @@ fn ContentOperandReader::read_value(
 
 ///|
 fn ContentOperandReader::classify_regular_token(
-  _self : ContentOperandReader,
+  self : ContentOperandReader,
   lexeme : Bytes,
   offset : Int64,
   allow_operator_candidate : Bool,
@@ -118,7 +134,30 @@ fn ContentOperandReader::classify_regular_token(
       } else if is_real_lexeme(lexeme) {
         Operand(@objects.PdfObject::Real(parse_double_lexeme(lexeme, offset)))
       } else if is_numeric_like(lexeme) {
-        raise MalformedSyntax(offset, "invalid number")
+        // Producer-quirk recovery: some PDF generators (Marp, certain
+        // PowerPoint exports, etc.) emit two numbers run together when the
+        // second is signed, e.g. `0.00-50` instead of `0.00 -50`. ISO 32000
+        // §7.2.3 requires a delimiter between operands, so the strict
+        // tokenizer rejects this as a single malformed number. PDFium,
+        // pdftoppm and most other processors silently split at the
+        // internal sign byte. We do the same when the split yields two
+        // strictly conforming numeric lexemes; otherwise we still raise so
+        // genuinely garbled input stays caught.
+        match split_concatenated_numeric(lexeme) {
+          Some((first, second_offset_in_lexeme)) => {
+            let first_bytes = bytes_slice(lexeme, 0, first)
+            let rest_bytes = bytes_slice(
+              lexeme, first, lexeme.length() - first,
+            )
+            self.pending = Some(
+              (rest_bytes, offset + second_offset_in_lexeme.to_int64()),
+            )
+            self.classify_regular_token(
+              first_bytes, offset, allow_operator_candidate,
+            )
+          }
+          None => raise MalformedSyntax(offset, "invalid number")
+        }
       } else if is_stream_like_keyword(lexeme) {
         raise IllegalOperand(offset, "illegal stream-like construct")
       } else if allow_operator_candidate {
@@ -127,6 +166,44 @@ fn ContentOperandReader::classify_regular_token(
         raise IllegalOperand(offset, "illegal operand keyword")
       }
   }
+}
+
+///|
+/// Detects a lexeme that looks like two conformant numbers concatenated
+/// without a separator (`0.00-50`, `1+2`, `.5-.7`, etc.), and returns the
+/// length of the first numeric segment plus the offset of the second
+/// segment relative to the lexeme start. Returns None when no split
+/// produces two valid numeric tokens, leaving the caller to raise the
+/// usual "invalid number" syntax error.
+fn split_concatenated_numeric(lexeme : Bytes) -> (Int, Int)? {
+  // The split point is the first +/- byte at index >= 1 (index 0 is the
+  // optional sign of the first number). After the split, both halves must
+  // independently parse as integer or real to count as a recovery; we do
+  // not invent fragments.
+  let mut split_at = 1
+  while split_at < lexeme.length() {
+    let byte = lexeme[split_at]
+    if byte == b'+' || byte == b'-' {
+      let first = bytes_slice(lexeme, 0, split_at)
+      let rest = bytes_slice(lexeme, split_at, lexeme.length() - split_at)
+      let first_ok = is_integer_lexeme(first) || is_real_lexeme(first)
+      let rest_ok = is_integer_lexeme(rest) || is_real_lexeme(rest)
+      if first_ok && rest_ok {
+        return Some((split_at, split_at))
+      }
+    }
+    split_at = split_at + 1
+  }
+  None
+}
+
+///|
+fn bytes_slice(source : Bytes, start : Int, length : Int) -> Bytes {
+  let buf = FixedArray::make(length, b'\x00')
+  for i in 0..<length {
+    buf[i] = source[start + i]
+  }
+  Bytes::from_fixedarray(buf)
 }
 
 ///|
