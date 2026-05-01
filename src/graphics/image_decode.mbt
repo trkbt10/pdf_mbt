@@ -353,6 +353,16 @@ fn decode_byte_samples_to_rgb(
     )
   }
   let alpha = alpha_for_image_descriptor_without_samples(descriptor, offset)
+  // Specialized memcpy path for the dominant case: DeviceRGB / DeviceGray with
+  // an 8-bit identity Decode array and no row padding. The generic loop below
+  // performs a float multiplication and three function calls per component, which
+  // adds up to seconds per megapixel inside wasm-gc; for a typical photo PDF,
+  // every page hits this case. Doing a direct byte copy here keeps the slow
+  // generic path available for Lab/ICC/Indexed/etc. without affecting fidelity.
+  match try_decode_byte_samples_fast(descriptor, decoded, space, alpha) {
+    Some(raster) => return ExtractedImageData::DeviceRgbRaster(raster)
+    None => ()
+  }
   let total = descriptor.width * descriptor.height
   let scratch = Array::make(image_decode_scratch_component_count(space), 0.0)
   let indexed_lookup = indexed_lookup_for_image_decode(space, offset)
@@ -384,6 +394,83 @@ fn decode_byte_samples_to_rgb(
     height: descriptor.height,
     rgba: Bytes::makei(total * 4, fn(i) { rgba[i] }),
   })
+}
+
+///|
+/// Returns Some(raster) when the descriptor matches the trivial identity-decode
+/// DeviceRGB / DeviceGray path so the caller can skip the generic per-component
+/// float loop. The match is intentionally narrow: 8-bit components, the default
+/// `[0 1 …]` Decode array, no row padding (bytes_per_row equals
+/// width * component_count) and a Device colour space. Anything outside that
+/// envelope falls through and is handled by the generic loop in the caller.
+fn try_decode_byte_samples_fast(
+  descriptor : ImageDescriptor,
+  decoded : Bytes,
+  space : ColourSpace,
+  alpha : Bytes?,
+) -> ImageDeviceRgbRaster? {
+  let device = match space {
+    Device(device) => device
+    _ => return None
+  }
+  if descriptor.layout.bits_per_component != 8 {
+    return None
+  }
+  if !is_identity_decode_array(descriptor.decode) {
+    return None
+  }
+  let component_count = descriptor.layout.component_count
+  let bytes_per_row = descriptor.layout.bytes_per_row
+  if bytes_per_row != descriptor.width * component_count {
+    return None
+  }
+  let total = descriptor.width * descriptor.height
+  let rgba = FixedArray::make(total * 4, b'\x00')
+  match device {
+    DeviceRGB =>
+      if component_count != 3 {
+        return None
+      } else {
+        for pixel in 0..<total {
+          let src = pixel * 3
+          let dst = pixel * 4
+          rgba[dst] = decoded[src]
+          rgba[dst + 1] = decoded[src + 1]
+          rgba[dst + 2] = decoded[src + 2]
+          rgba[dst + 3] = alpha_byte_at(alpha, pixel)
+        }
+      }
+    DeviceGray =>
+      if component_count != 1 {
+        return None
+      } else {
+        for pixel in 0..<total {
+          let value = decoded[pixel]
+          let dst = pixel * 4
+          rgba[dst] = value
+          rgba[dst + 1] = value
+          rgba[dst + 2] = value
+          rgba[dst + 3] = alpha_byte_at(alpha, pixel)
+        }
+      }
+    DeviceCMYK => return None
+  }
+  Some(ImageDeviceRgbRaster::{
+    width: descriptor.width,
+    height: descriptor.height,
+    rgba: Bytes::makei(total * 4, fn(i) { rgba[i] }),
+  })
+}
+
+///|
+///|
+fn is_identity_decode_array(decode : Array[ImageDecodeRange]) -> Bool {
+  for range in decode {
+    if range.min != 0.0 || range.max != 1.0 {
+      return false
+    }
+  }
+  true
 }
 
 ///|

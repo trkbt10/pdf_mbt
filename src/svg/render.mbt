@@ -57,6 +57,33 @@ priv struct SvgEmbeddedFont {
 pub let raw_rgba_image_mime : String = "image/x-rgba8"
 
 ///|
+/// Sentinel for the deflate-compressed raw RGB / grayscale image data
+/// shipped to the browser instead of being decoded inside wasm. The bytes are
+/// the original PDF stream's zlib-wrapped DEFLATE payload (PDF FlateDecode).
+/// The JS consumer feeds them into DecompressionStream("deflate"), expands the
+/// resulting samples to RGBA, and renders via canvas.
+///
+/// We use distinct MIME sentinels for the 3-component and 1-component cases
+/// because the browser-side expansion path differs (R,G,B vs replicated gray).
+/// The wasm-side decoder is a pure-MoonBit DEFLATE that runs at roughly
+/// 1 MB/s of decoded output, which serializes the main thread for whole
+/// seconds on photo-heavy pages; punting decompression to the browser's
+/// native zlib is two orders of magnitude faster and unblocks the UI.
+pub let pdf_flate_rgb_image_mime : String = "image/x-pdf-flate-rgb"
+
+///|
+pub let pdf_flate_gray_image_mime : String = "image/x-pdf-flate-gray"
+
+///|
+/// Sentinel for a JPEG-with-SMask passthrough: the bytes carry a small JSON
+/// envelope describing the base JPEG and the soft-mask grayscale stream, plus
+/// the raw payload for both. The JS consumer decodes the JPEG natively, the
+/// SMask via DecompressionStream + grayscale expansion, then alpha-composites
+/// them on a canvas. We ship a single Blob-like buffer because SvgImageEntry
+/// only carries one byte stream per image.
+pub let pdf_jpeg_with_smask_image_mime : String = "image/x-pdf-jpeg-smask"
+
+///|
 fn SvgClipRegistry::new() -> SvgClipRegistry {
   SvgClipRegistry::{ clips: [], id_by_signature: Map::new() }
 }

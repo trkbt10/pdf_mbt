@@ -441,6 +441,7 @@ fn build_deferred_svg_image_page(
         Ok(events) => {
           let page_entries = page_image_entries(pdf_page)
           let extracted_cache : Map[@objects.PdfName, @graphics.ExtractedImage] = Map::new()
+          let passthrough_cache : PassthroughCache = Map::new()
           let entries : Array[@svg.SvgImageEntry] = []
           for event in events {
             match event {
@@ -452,7 +453,10 @@ fn build_deferred_svg_image_page(
                       Some(entry) =>
                         match
                           deferred_svg_image_entry_data_cached(
-                            entry, state, extracted_cache,
+                            entry,
+                            state,
+                            extracted_cache,
+                            passthrough_cache,
                           ) {
                           Some(image) => entries.push(image)
                           None => ()
@@ -488,13 +492,38 @@ fn page_image_entry_by_name_from_entries(
 }
 
 ///|
+/// Per-page cache for the SvgImageEntry produced by the browser-passthrough
+/// fast path. Keyed by PdfName so multiple paint events for the same XObject
+/// share one extracted entry without re-running the dictionary checks.
+typealias Map[@objects.PdfName, @svg.SvgImageEntry] as PassthroughCache
+
+///|
 fn deferred_svg_image_entry_data_cached(
   entry : PageImageEntry,
   state : @graphics.GraphicsState,
   extracted_cache : Map[@objects.PdfName, @graphics.ExtractedImage],
+  passthrough_cache : PassthroughCache,
 ) -> @svg.SvgImageEntry? {
   match entry.name {
-    Some(name) =>
+    Some(name) => {
+      // Browser-passthrough fast path: when the source image is a baseline
+      // JPEG (DCTDecode) with a browser-compatible colour space and no
+      // alpha mask / Decode override, hand the original encoded bytes to
+      // the browser instead of decoding to RGBA inside wasm. The wasm-gc
+      // JPEG decoder is several seconds per megapixel; the browser's
+      // native decoder is sub-frame, and the bytes-out volume drops
+      // ~30x because we skip the decoded RGBA buffer entirely.
+      match passthrough_cache.get(name) {
+        Some(image) => return Some(image)
+        None => ()
+      }
+      match try_browser_passthrough_svg_image(entry) {
+        Some(image) => {
+          passthrough_cache[name] = image
+          return Some(image)
+        }
+        None => ()
+      }
       match extracted_cache.get(name) {
         Some(extracted) => svg_image_entry_from_extracted(extracted, state)
         None =>
@@ -506,6 +535,7 @@ fn deferred_svg_image_entry_data_cached(
             None => None
           }
       }
+    }
     None => deferred_svg_image_entry_data(entry, state)
   }
 }
@@ -515,9 +545,372 @@ fn deferred_svg_image_entry_data(
   entry : PageImageEntry,
   state : @graphics.GraphicsState,
 ) -> @svg.SvgImageEntry? {
+  match try_browser_passthrough_svg_image(entry) {
+    Some(image) => return Some(image)
+    None => ()
+  }
   match extract_deferred_svg_image(entry) {
     Some(extracted) => svg_image_entry_from_extracted(extracted, state)
     None => None
+  }
+}
+
+///|
+/// Returns Some(entry) when the image XObject can be served to the browser
+/// without wasm-side decoding. The check is intentionally conservative: it
+/// only accepts a single DCTDecode (browser native JPEG) or FlateDecode
+/// (browser native zlib via DecompressionStream) filter with DeviceRGB /
+/// DeviceGray (or the calibrated equivalents) colour space, no alpha mask,
+/// no predictor, and a default Decode array. Anything more exotic falls
+/// through to the full extract_image_xobject pipeline so colour fidelity is
+/// preserved.
+fn try_browser_passthrough_svg_image(
+  entry : PageImageEntry,
+) -> @svg.SvgImageEntry? {
+  let prepared = prepare_render_image_stream(entry.stream, entry.resources)
+  let dict = prepared.dict
+  match dict.get(@objects.PdfName::new(b"Mask")) {
+    Some(@objects.PdfObject::Null) | None => ()
+    Some(_) => return None
+  }
+  match dict.get(@objects.PdfName::new(b"ImageMask")) {
+    Some(@objects.PdfObject::Boolean(true)) => return None
+    _ => ()
+  }
+  let filter = match single_filter_name(dict) {
+    Some(name) => name
+    None => return None
+  }
+  if !is_browser_compatible_color_space(dict) {
+    return None
+  }
+  let component_count = if has_grayscale_color_space(dict) { 1 } else { 3 }
+  if !is_default_image_decode(dict, component_count) {
+    return None
+  }
+  let smask_passthrough = read_browser_smask_passthrough(dict)
+  // Bail if SMask is set but cannot be passed through to the browser — falling
+  // through to the WASM decoder is the only way to preserve the alpha mask.
+  if dict.get(@objects.PdfName::new(b"SMask")) is Some(_) &&
+    smask_passthrough is None {
+    return None
+  }
+  if filter == @objects.PdfName::new(b"DCTDecode") {
+    let width = dict_integer_or_zero(dict, b"Width")
+    let height = dict_integer_or_zero(dict, b"Height")
+    if width <= 0 || height <= 0 {
+      return None
+    }
+    return Some(jpeg_passthrough_entry(prepared.data, width, height, smask_passthrough))
+  }
+  if filter == @objects.PdfName::new(b"FlateDecode") {
+    if !is_default_or_no_predictor(dict) {
+      return None
+    }
+    if dict_integer_or_zero(dict, b"BitsPerComponent") != 8 {
+      return None
+    }
+    let width = dict_integer_or_zero(dict, b"Width")
+    let height = dict_integer_or_zero(dict, b"Height")
+    if width <= 0 || height <= 0 {
+      return None
+    }
+    if smask_passthrough is Some(_) {
+      // SMask compositing for FlateDecode passthrough is not yet implemented
+      // on the JS side; bail to the wasm decoder so alpha stays correct.
+      return None
+    }
+    let mime = if component_count == 1 {
+      @svg.pdf_flate_gray_image_mime
+    } else {
+      @svg.pdf_flate_rgb_image_mime
+    }
+    return Some(@svg.SvgImageEntry::{
+      mime_type: mime,
+      data: prepared.data,
+      width: Some(width),
+      height: Some(height),
+    })
+  }
+  None
+}
+
+///|
+priv struct BrowserSMaskPassthrough {
+  width : Int
+  height : Int
+  flate_data : Bytes
+}
+
+///|
+/// Resolves a soft-mask reference embedded in an image XObject dictionary into
+/// the framed payload we pass to the browser. Only the narrow case used by
+/// presentation-style PDFs is accepted here:
+/// - SMask is an inline Stream (not a Ref — those carry no resolution context
+///   inside this module)
+/// - Single FlateDecode filter, BitsPerComponent 8, DeviceGray colour space
+///   (or no ColorSpace, since SMask is implicitly DeviceGray)
+/// - No nested SMask, no Mask, no Predictor, no ImageMask
+/// Anything else returns None so the caller falls through to the wasm decoder.
+fn read_browser_smask_passthrough(
+  dict : @objects.PdfDictionary,
+) -> BrowserSMaskPassthrough? {
+  let smask_object = match dict.get(@objects.PdfName::new(b"SMask")) {
+    Some(value) => value
+    None => return None
+  }
+  let smask_stream = match smask_object {
+    @objects.PdfObject::Stream(stream) => stream
+    _ => return None
+  }
+  let mask_dict = smask_stream.dict
+  if mask_dict.get(@objects.PdfName::new(b"SMask")) is Some(_) {
+    return None
+  }
+  if mask_dict.get(@objects.PdfName::new(b"Mask")) is Some(_) {
+    return None
+  }
+  match mask_dict.get(@objects.PdfName::new(b"ImageMask")) {
+    Some(@objects.PdfObject::Boolean(true)) => return None
+    _ => ()
+  }
+  let filter = match single_filter_name(mask_dict) {
+    Some(name) => name
+    None => return None
+  }
+  if filter != @objects.PdfName::new(b"FlateDecode") {
+    return None
+  }
+  if !is_default_or_no_predictor(mask_dict) {
+    return None
+  }
+  if dict_integer_or_zero(mask_dict, b"BitsPerComponent") != 8 {
+    return None
+  }
+  // SMasks are conventionally DeviceGray. Accept "absent" as well so we cover
+  // PDFs that lean on the implicit default.
+  match mask_dict.get(@objects.PdfName::new(b"ColorSpace")) {
+    None => ()
+    Some(@objects.PdfObject::Name(name)) =>
+      if name != @objects.PdfName::new(b"DeviceGray") &&
+        name != @objects.PdfName::new(b"G") {
+        return None
+      }
+    _ => return None
+  }
+  if !is_default_image_decode(mask_dict, 1) {
+    return None
+  }
+  let width = dict_integer_or_zero(mask_dict, b"Width")
+  let height = dict_integer_or_zero(mask_dict, b"Height")
+  if width <= 0 || height <= 0 {
+    return None
+  }
+  Some(BrowserSMaskPassthrough::{
+    width,
+    height,
+    flate_data: smask_stream.data,
+  })
+}
+
+///|
+/// Builds the JPEG SvgImageEntry, framing the JPEG together with the SMask
+/// passthrough payload (if any) so the JS layer can composite the alpha mask.
+/// Frame layout for the smask case:
+///   magic 'PSMK' (4) | width (4 BE) | height (4 BE) |
+///   smask_w (4 BE) | smask_h (4 BE) | smask_len (4 BE) | smask_zlib_bytes |
+///   jpeg_len (4 BE) | jpeg_bytes
+/// For the non-smask case we just hand the JPEG bytes through with the
+/// canonical image/jpeg MIME so existing Blob URL paths apply.
+fn jpeg_passthrough_entry(
+  jpeg : Bytes,
+  width : Int,
+  height : Int,
+  smask : BrowserSMaskPassthrough?,
+) -> @svg.SvgImageEntry {
+  match smask {
+    None =>
+      @svg.SvgImageEntry::{
+        mime_type: "image/jpeg",
+        data: jpeg,
+        width: Some(width),
+        height: Some(height),
+      }
+    Some(mask) => {
+      let buf : Array[Byte] = []
+      append_bytes_to_array(buf, b"PSMK")
+      append_be_u32(buf, width)
+      append_be_u32(buf, height)
+      append_be_u32(buf, mask.width)
+      append_be_u32(buf, mask.height)
+      append_be_u32(buf, mask.flate_data.length())
+      append_bytes_to_array(buf, mask.flate_data)
+      append_be_u32(buf, jpeg.length())
+      append_bytes_to_array(buf, jpeg)
+      @svg.SvgImageEntry::{
+        mime_type: @svg.pdf_jpeg_with_smask_image_mime,
+        data: Bytes::from_array(buf[:]),
+        width: Some(width),
+        height: Some(height),
+      }
+    }
+  }
+}
+
+///|
+fn append_be_u32(buf : Array[Byte], value : Int) -> Unit {
+  buf.push(((value >> 24) & 0xff).to_byte())
+  buf.push(((value >> 16) & 0xff).to_byte())
+  buf.push(((value >> 8) & 0xff).to_byte())
+  buf.push((value & 0xff).to_byte())
+}
+
+///|
+fn append_bytes_to_array(buf : Array[Byte], bytes : Bytes) -> Unit {
+  for byte in bytes {
+    buf.push(byte)
+  }
+}
+
+///|
+/// Detects FlateDecode predictor settings that match "no predictor" — i.e.
+/// the inflated stream is the literal sample sequence with no per-row filter
+/// byte and no inter-row prediction. We only fast-path this case because
+/// applying TIFF/PNG predictors in JavaScript would erode the speedup.
+fn is_default_or_no_predictor(dict : @objects.PdfDictionary) -> Bool {
+  match dict.get(@objects.PdfName::new(b"DecodeParms")) {
+    None => true
+    Some(@objects.PdfObject::Null) => true
+    Some(@objects.PdfObject::Dictionary(params)) =>
+      match params.get(@objects.PdfName::new(b"Predictor")) {
+        None => true
+        Some(@objects.PdfObject::Null) => true
+        Some(@objects.PdfObject::Integer(value)) => value == 1L
+        _ => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn single_filter_name(
+  dict : @objects.PdfDictionary,
+) -> @objects.PdfName? {
+  match dict.get(@objects.PdfName::new(b"Filter")) {
+    Some(@objects.PdfObject::Name(name)) => Some(name)
+    Some(@objects.PdfObject::Array(values)) =>
+      if values.length() == 1 {
+        match values[0] {
+          @objects.PdfObject::Name(name) => Some(name)
+          _ => None
+        }
+      } else {
+        None
+      }
+    _ => None
+  }
+}
+
+///|
+fn is_browser_compatible_color_space(
+  dict : @objects.PdfDictionary,
+) -> Bool {
+  // After prepare_render_image_stream the ColorSpace field is materialized
+  // (a name reference into Resources is replaced by the resolved object),
+  // so we only have to recognise the inline forms here. We accept the
+  // device colour spaces and their CIE-calibrated counterparts because
+  // browsers handle them as untagged sRGB / grayscale, which is exactly
+  // what the existing canvas-decoded path produced.
+  match dict.get(@objects.PdfName::new(b"ColorSpace")) {
+    None => false
+    Some(@objects.PdfObject::Name(name)) =>
+      name == @objects.PdfName::new(b"DeviceRGB") ||
+      name == @objects.PdfName::new(b"DeviceGray") ||
+      name == @objects.PdfName::new(b"RGB") ||
+      name == @objects.PdfName::new(b"G")
+    Some(@objects.PdfObject::Array(values)) =>
+      if values.length() >= 1 {
+        match values[0] {
+          @objects.PdfObject::Name(name) =>
+            name == @objects.PdfName::new(b"CalRGB") ||
+            name == @objects.PdfName::new(b"CalGray") ||
+            name == @objects.PdfName::new(b"DeviceRGB") ||
+            name == @objects.PdfName::new(b"DeviceGray")
+          _ => false
+        }
+      } else {
+        false
+      }
+    _ => false
+  }
+}
+
+///|
+fn has_grayscale_color_space(dict : @objects.PdfDictionary) -> Bool {
+  match dict.get(@objects.PdfName::new(b"ColorSpace")) {
+    Some(@objects.PdfObject::Name(name)) =>
+      name == @objects.PdfName::new(b"DeviceGray") ||
+      name == @objects.PdfName::new(b"G")
+    Some(@objects.PdfObject::Array(values)) =>
+      if values.length() >= 1 {
+        match values[0] {
+          @objects.PdfObject::Name(name) =>
+            name == @objects.PdfName::new(b"CalGray") ||
+            name == @objects.PdfName::new(b"DeviceGray")
+          _ => false
+        }
+      } else {
+        false
+      }
+    _ => false
+  }
+}
+
+///|
+fn is_default_image_decode(
+  dict : @objects.PdfDictionary,
+  component_count : Int,
+) -> Bool {
+  match dict.get(@objects.PdfName::new(b"Decode")) {
+    None => true
+    Some(@objects.PdfObject::Array(values)) => {
+      if values.length() != component_count * 2 {
+        return false
+      }
+      let mut index = 0
+      while index < values.length() {
+        let lo = number_value(values[index])
+        let hi = number_value(values[index + 1])
+        match (lo, hi) {
+          (Some(lo_value), Some(hi_value)) =>
+            if lo_value != 0.0 || hi_value != 1.0 {
+              return false
+            }
+          _ => return false
+        }
+        index = index + 2
+      }
+      true
+    }
+    _ => false
+  }
+}
+
+///|
+fn number_value(value : @objects.PdfObject) -> Double? {
+  match value {
+    @objects.PdfObject::Integer(n) => Some(n.to_double())
+    @objects.PdfObject::Real(n) => Some(n)
+    _ => None
+  }
+}
+
+///|
+fn dict_integer_or_zero(dict : @objects.PdfDictionary, key : Bytes) -> Int {
+  match dict.get(@objects.PdfName::new(key)) {
+    Some(@objects.PdfObject::Integer(value)) => value.to_int()
+    Some(@objects.PdfObject::Real(value)) => value.to_int()
+    _ => 0
   }
 }
 
