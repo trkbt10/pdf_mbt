@@ -233,6 +233,22 @@ fn materialize_font_dictionary(
   materialize_font_entry(file, output, b"ToUnicode", page_id)
   materialize_font_entry(file, output, b"Widths", page_id)
   materialize_font_entry(file, output, b"FontDescriptor", page_id)
+  // CID font (Type0 descendant) metrics. ISO 32000-2 §9.7.4.3 places the
+  // per-CID width table in `W` (and rarely `W2`) on the descendant CIDFont
+  // dict; producers commonly hide it behind an indirect reference. Without
+  // resolving these here, parse_descendant_cid_widths sees a Ref instead of
+  // an Array, gives up, and every CID falls back to DW (= 1000), which
+  // surfaces as Latin-in-CID text rendered at full em width — the
+  // "S e e   t h e   I n s t r u c t i o n" symptom.
+  materialize_font_entry(file, output, b"W", page_id)
+  materialize_font_entry(file, output, b"W2", page_id)
+  // CIDToGIDMap is frequently a Ref to a stream that maps CIDs to glyph
+  // indexes inside the embedded TrueType. Resolve it so glyph rendering can
+  // walk the table directly without re-fetching the indirect object.
+  materialize_font_entry(file, output, b"CIDToGIDMap", page_id)
+  // CIDSystemInfo can be Ref-wrapped on some producers; the runtime parser
+  // expects a direct Dictionary.
+  materialize_font_entry(file, output, b"CIDSystemInfo", page_id)
   materialize_descendant_fonts(file, output, page_id)
   output
 }

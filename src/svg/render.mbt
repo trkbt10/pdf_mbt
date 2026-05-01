@@ -2437,11 +2437,23 @@ fn parse_svg_font_file2_stream(stream : @objects.PdfStream) -> SvgEmbeddedFont? 
     stream,
   )
   match decoded {
-    Ok(bytes) =>
+    Ok(bytes) => {
+      // Try the strict TrueType parser first. CIDFontType2 subsets in PDF
+      // commonly omit the `cmap` table — which the strict parser rejects —
+      // because the PDF supplies CIDToGIDMap externally; fall through to the
+      // lenient parser when that happens so embedded glyph outlines still
+      // render. Without this fallback, every span lands on
+      // `<text font-family="…, sans-serif">` and any reader without the
+      // exact embedded font installed sees Japanese text as tofu boxes.
       match @font.parse_ttf(bytes) {
+        Some(ttf) => return Some(SvgEmbeddedFont::new(ttf))
+        None => ()
+      }
+      match parse_ttf_lenient(bytes) {
         Some(ttf) => Some(SvgEmbeddedFont::new(ttf))
         None => None
       }
+    }
     Err(_) => None
   }
 }
