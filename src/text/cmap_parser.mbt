@@ -87,7 +87,19 @@ fn CMapParser::parse(self : CMapParser) -> Unit raise PdfTextError {
     match self.next_token() {
       EndOfCMap => break
       CMapOperand(object) => self.stack.push(object)
-      CMapOperator(name, op_offset) => self.handle_operator(name, op_offset)
+      CMapOperator(name, op_offset) => {
+        // Adobe-published CMaps emit a small PostScript epilogue after
+        // `endcmap` (`CMapName currentdict /CMap defineresource pop`,
+        // dictionary `end`s, then `%%EndResource` / `%%EOF` markers).
+        // Our content tokenizer rejects `%%EOF` as an unexpected EOF
+        // marker, so once we see `endcmap` we treat the rest of the
+        // stream as inert and stop parsing — every directive that
+        // contributes to the CMap state has already executed.
+        if name == b"endcmap" {
+          break
+        }
+        self.handle_operator(name, op_offset)
+      }
     }
   }
 }

@@ -1,0 +1,195 @@
+#!/usr/bin/env python3
+"""Convert Adobe CMap text files into MoonBit Bytes constants.
+
+Approach: emit each CMap as a sequence of small byte literals (≤256 bytes
+each) joined into a final Bytes value at runtime via append. MoonBit's
+parser rejects byte string literals beyond a certain size threshold (we hit
+[4139] with multi-KB single literals), so the chunking is necessary even
+though the resulting source is longer.
+"""
+
+import os
+import sys
+
+CMAP_DIR = "/tmp/adobe-cmaps"
+OUT_FILE = "src/text/predefined_cmap_data.mbt"
+
+# ISO 32000-2 §9.7.5.2 Table 116 — "Predefined CJK CMap names". Listing here
+# is justified strictly by the spec: the standard says PDF processors
+# "shall recognise" these names without consulting any external resource,
+# i.e. the names in this table are normative MUST. Identity-H and Identity-V
+# (the two "Generic" entries in Table 116) are produced in-process by
+# `identity_cmap` and so are deliberately absent from this data file —
+# their inclusion in the resolver is justified by the same Table 116 entry.
+#
+# CMaps that Adobe ships in cmap-resources but which are NOT in Table 116
+# are intentionally excluded: ISO 32000 does not require their recognition,
+# so embedding them by name has no spec justification. PDFs referencing
+# such names cannot rely on an unmaterialised reference under ISO 32000;
+# the conforming way for such producers is to embed the CMap stream in the
+# document, which is already handled by `parse_cmap_stream`.
+#
+# Order is significant: every V variant lists after its H parent so that
+# `usecmap` parents are available when resolution recurses.
+CMAP_NAMES = [
+    # Adobe-Japan1 (20 entries, "Japanese" group of Table 116)
+    "H", "V",
+    "EUC-H", "EUC-V",
+    "83pv-RKSJ-H",
+    "90ms-RKSJ-H", "90ms-RKSJ-V",
+    "90msp-RKSJ-H", "90msp-RKSJ-V",
+    "90pv-RKSJ-H",
+    "Add-RKSJ-H", "Add-RKSJ-V",
+    "Ext-RKSJ-H", "Ext-RKSJ-V",
+    "UniJIS-UCS2-H", "UniJIS-UCS2-V",
+    "UniJIS-UCS2-HW-H", "UniJIS-UCS2-HW-V",
+    "UniJIS-UTF16-H", "UniJIS-UTF16-V",
+    # Adobe-GB1 (14 entries, "Chinese (Simplified)" group)
+    "GB-EUC-H", "GB-EUC-V",
+    "GBpc-EUC-H", "GBpc-EUC-V",
+    "GBK-EUC-H", "GBK-EUC-V",
+    "GBKp-EUC-H", "GBKp-EUC-V",
+    "GBK2K-H", "GBK2K-V",
+    "UniGB-UCS2-H", "UniGB-UCS2-V",
+    "UniGB-UTF16-H", "UniGB-UTF16-V",
+    # Adobe-CNS1 (14 entries, "Chinese (Traditional)" group)
+    "B5pc-H", "B5pc-V",
+    "HKscs-B5-H", "HKscs-B5-V",
+    "ETen-B5-H", "ETen-B5-V",
+    "ETenms-B5-H", "ETenms-B5-V",
+    "CNS-EUC-H", "CNS-EUC-V",
+    "UniCNS-UCS2-H", "UniCNS-UCS2-V",
+    "UniCNS-UTF16-H", "UniCNS-UTF16-V",
+    # Adobe-Korea1 (11 entries, "Korean" group)
+    "KSC-EUC-H", "KSC-EUC-V",
+    "KSCms-UHC-H", "KSCms-UHC-V",
+    "KSCms-UHC-HW-H", "KSCms-UHC-HW-V",
+    "KSCpc-EUC-H",
+    "UniKS-UCS2-H", "UniKS-UCS2-V",
+    "UniKS-UTF16-H", "UniKS-UTF16-V",
+]
+
+# Spec-derived count: ISO 32000-2 Table 116 lists exactly 14 + 14 + 20 + 11
+# = 59 CJK names plus Identity-H / Identity-V. Asserting the count here
+# fails fast if a future edit accidentally adds something not in Table 116
+# or drops a name that the spec requires.
+assert len(CMAP_NAMES) == 59, f"Table 116 lists 59 CJK CMaps; got {len(CMAP_NAMES)}"
+
+
+def safe_fn(name: str) -> str:
+    return "predefined_cmap_" + (
+        name.replace("-", "_").replace(".", "_").lower()
+    )
+
+
+def escape_byte(b: int) -> str:
+    if b == 0x5C:
+        return "\\\\"
+    if b == 0x22:
+        return "\\\""
+    if b == 0x0A:
+        return "\\n"
+    if b == 0x0D:
+        return "\\r"
+    if b == 0x09:
+        return "\\t"
+    if b == 0x00:
+        return "\\x00"
+    if 0x20 <= b <= 0x7E:
+        return chr(b)
+    return f"\\x{b:02x}"
+
+
+CHUNK_LIMIT = 240  # bytes per literal — keeps the literal source line
+                    # comfortably under the parser's [4139] threshold while
+                    # producing a manageable number of chunks per CMap.
+
+
+def emit_chunks(data: bytes) -> list[str]:
+    chunks: list[str] = []
+    cur: list[str] = []
+    cur_count = 0
+    for b in data:
+        cur.append(escape_byte(b))
+        cur_count += 1
+        if cur_count >= CHUNK_LIMIT:
+            chunks.append("b\"" + "".join(cur) + "\"")
+            cur = []
+            cur_count = 0
+    if cur:
+        chunks.append("b\"" + "".join(cur) + "\"")
+    return chunks
+
+
+def emit():
+    out: list[str] = []
+    out.append("///|")
+    out.append("/// Predefined CMap byte tables generated from Adobe's official cmap-resources")
+    out.append("/// repository (https://github.com/adobe-type-tools/cmap-resources). Adobe")
+    out.append("/// publishes these as PostScript CMap source. The MoonBit cmap_parser already")
+    out.append("/// understands the same syntax used by ToUnicode CMaps embedded in PDFs, so")
+    out.append("/// we keep the original bytes verbatim and parse on first request.")
+    out.append("///")
+    out.append("/// Generated by tools/generate_predefined_cmaps.py — do not edit by hand.")
+    out.append("///")
+    out.append("/// MoonBit's parser rejects byte string literals beyond a size threshold")
+    out.append("/// (error 4139), so each CMap is split into ~240-byte literals collected")
+    out.append("/// into an Array and concatenated by `concat_bytes_chunks` at call time.")
+    out.append("")
+    out.append("///|")
+    out.append("fn concat_bytes_chunks(chunks : Array[Bytes]) -> Bytes {")
+    out.append("  let mut total = 0")
+    out.append("  for chunk in chunks {")
+    out.append("    total = total + chunk.length()")
+    out.append("  }")
+    out.append("  let buf = FixedArray::make(total, b'\\x00')")
+    out.append("  let mut cursor = 0")
+    out.append("  for chunk in chunks {")
+    out.append("    for i in 0..<chunk.length() {")
+    out.append("      buf[cursor + i] = chunk[i]")
+    out.append("    }")
+    out.append("    cursor = cursor + chunk.length()")
+    out.append("  }")
+    out.append("  let _ = cursor")
+    out.append("  Bytes::from_fixedarray(buf)")
+    out.append("}")
+    out.append("")
+
+    for name in CMAP_NAMES:
+        path = os.path.join(CMAP_DIR, name)
+        if not os.path.exists(path):
+            print(f"missing {path}", file=sys.stderr)
+            continue
+        with open(path, "rb") as f:
+            data = f.read()
+        out.append(f"///| Adobe CMap source bytes for `{name}` ({len(data)} bytes).")
+        out.append(f"pub fn {safe_fn(name)}() -> Bytes {{")
+        chunks = emit_chunks(data)
+        if len(chunks) == 1:
+            out.append(f"  {chunks[0]}")
+        else:
+            out.append("  concat_bytes_chunks([")
+            for chunk in chunks:
+                out.append(f"    {chunk},")
+            out.append("  ])")
+        out.append("}")
+        out.append("")
+
+    out.append("///|")
+    out.append("/// Lookup a predefined CMap by its PostScript name.")
+    out.append("/// Returns the original Adobe CMap source bytes, ready to feed into")
+    out.append("/// `parse_decoded_cmap`. Unknown names return None.")
+    out.append("pub fn predefined_cmap_lookup(name : String) -> Bytes? {")
+    for name in CMAP_NAMES:
+        out.append(f"  if name == \"{name}\" {{ return Some({safe_fn(name)}()) }}")
+    out.append("  None")
+    out.append("}")
+    out.append("")
+
+    with open(OUT_FILE, "w") as f:
+        f.write("\n".join(out))
+    print(f"wrote {OUT_FILE} ({sum(len(line) for line in out)} source chars)")
+
+
+if __name__ == "__main__":
+    emit()

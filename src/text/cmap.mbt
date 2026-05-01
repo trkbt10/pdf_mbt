@@ -88,19 +88,103 @@ pub fn ToUnicodeCMap::empty() -> ToUnicodeCMap {
 }
 
 ///|
+/// Resolves a predefined CMap reference. Identity-H/V are constructed
+/// in-process; other names are looked up in the bundled Adobe CMap source
+/// (cmap-resources/Adobe-{Japan1,GB1,CNS1,Korea1}) via
+/// `predefined_cmap_lookup` and parsed with the same parser used for
+/// PDF-embedded ToUnicode and CID CMaps. `usecmap` directives chain to a
+/// parent predefined CMap, which is resolved recursively up to a small
+/// depth bound to defend against producer-introduced cycles.
 pub fn resolve_predefined_cmap(
   name : @objects.PdfName,
   offset : Int64,
 ) -> CMap raise PdfTextError {
   if name == @objects.PdfName::new(b"Identity-H") {
-    identity_cmap(name, WritingMode::Horizontal)
-  } else if name == @objects.PdfName::new(b"Identity-V") {
-    identity_cmap(name, WritingMode::Vertical)
-  } else {
+    return identity_cmap(name, WritingMode::Horizontal)
+  }
+  if name == @objects.PdfName::new(b"Identity-V") {
+    return identity_cmap(name, WritingMode::Vertical)
+  }
+  resolve_predefined_cmap_recursive(name, offset, 0)
+}
+
+///|
+/// Maximum chained `usecmap` depth. Adobe-published CMaps never chain more
+/// than two levels (V → H typically), but capping the recursion guards
+/// against cycle attempts in adversarial PDFs that would otherwise stack
+/// overflow.
+const MAX_USECMAP_DEPTH : Int = 8
+
+///|
+fn resolve_predefined_cmap_recursive(
+  name : @objects.PdfName,
+  offset : Int64,
+  depth : Int,
+) -> CMap raise PdfTextError {
+  if depth > MAX_USECMAP_DEPTH {
     raise PdfTextError::InvalidCMap(
       TextErrorContext::at(offset),
-      "unsupported predefined CMap " + name.to_text(),
+      "predefined CMap usecmap chain exceeds max depth at " + name.to_text(),
     )
+  }
+  let bytes = match predefined_cmap_lookup(name.to_text()) {
+    Some(value) => value
+    None =>
+      raise PdfTextError::InvalidCMap(
+        TextErrorContext::at(offset),
+        "unsupported predefined CMap " + name.to_text(),
+      )
+  }
+  let parsed = parse_decoded_cmap(
+    bytes, offset, TextInterpretationLimits::default(),
+  )
+  match parsed.use_cmap {
+    Some(parent_name) => {
+      let parent = resolve_predefined_cmap_recursive(
+        parent_name, offset, depth + 1,
+      )
+      merge_cmap_with_parent(parsed, parent)
+    }
+    None => parsed
+  }
+}
+
+///|
+/// Inherits codespace ranges and CID mappings from a parent CMap into a
+/// child that carries `usecmap`. Adobe's convention is that the child's
+/// own entries override the parent's, so the child's mappings are appended
+/// last in the lookup order — `match_codespace` and `decode_matched_code`
+/// scan in array order, so later entries win when ranges overlap.
+fn merge_cmap_with_parent(child : CMap, parent : CMap) -> CMap {
+  let codespaces : Array[CMapCodespaceRange] = []
+  for range in parent.codespaces {
+    codespaces.push(range)
+  }
+  for range in child.codespaces {
+    codespaces.push(range)
+  }
+  let cid_mappings : Array[CMapCIDMapping] = []
+  for mapping in parent.cid_mappings {
+    cid_mappings.push(mapping)
+  }
+  for mapping in child.cid_mappings {
+    cid_mappings.push(mapping)
+  }
+  let notdef_mappings : Array[CMapCIDMapping] = []
+  for mapping in parent.notdef_mappings {
+    notdef_mappings.push(mapping)
+  }
+  for mapping in child.notdef_mappings {
+    notdef_mappings.push(mapping)
+  }
+  CMap::{
+    name: child.name,
+    writing_mode: child.writing_mode,
+    cid_system_info: child.cid_system_info,
+    use_cmap: None,
+    codespaces,
+    cid_mappings,
+    notdef_mappings,
   }
 }
 
