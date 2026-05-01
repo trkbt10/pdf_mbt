@@ -162,18 +162,8 @@ fn materialize_text_named_resource_category(
 ) -> Unit raise PdfDocumentError {
   let key = @objects.PdfName::new(category)
   match resources.get(key) {
-    Some(@objects.PdfObject::Dictionary(dict)) => {
-      let materialized : @objects.PdfDictionary = Map::new()
-      for resource_name, object in dict {
-        materialized[resource_name] = materialize_text_resource_object(
-          file, object, category, page_id,
-        )
-      }
-      resources[key] = @objects.PdfObject::Dictionary(materialized)
-    }
-    Some(@objects.PdfObject::Ref(id)) => {
-      let loaded = load_document_object(file, id)
-      match loaded {
+    Some(raw) =>
+      match resolve_indirect(file, raw) {
         @objects.PdfObject::Dictionary(dict) => {
           let materialized : @objects.PdfDictionary = Map::new()
           for resource_name, object in dict {
@@ -190,8 +180,7 @@ fn materialize_text_named_resource_category(
             " text resource category must resolve to a dictionary",
           )
       }
-    }
-    _ => ()
+    None => ()
   }
 }
 
@@ -202,27 +191,17 @@ fn materialize_text_resource_object(
   category : Bytes,
   page_id : @objects.ObjectId,
 ) -> @objects.PdfObject raise PdfDocumentError {
-  match object {
-    @objects.PdfObject::Ref(id) => {
-      let loaded : Result[@objects.PdfObject, PdfDocumentError] = try? load_document_object(
-        file, id,
-      )
-      match loaded {
-        Ok(value) =>
-          if category == b"Font" {
-            materialize_font_object(file, value, page_id)
-          } else {
-            value
-          }
-        Err(_) => object
-      }
-    }
-    _ =>
-      if category == b"Font" {
-        materialize_font_object(file, object, page_id)
-      } else {
-        object
-      }
+  let resolved_result : Result[@objects.PdfObject, PdfDocumentError] = try? resolve_indirect(
+    file, object,
+  )
+  let resolved = match resolved_result {
+    Ok(value) => value
+    Err(_) => object
+  }
+  if category == b"Font" {
+    materialize_font_object(file, resolved, page_id)
+  } else {
+    resolved
   }
 }
 
@@ -267,9 +246,9 @@ fn materialize_font_entry(
 ) -> Unit {
   let name = @objects.PdfName::new(key)
   match dict.get(name) {
-    Some(@objects.PdfObject::Ref(id)) => {
-      let loaded : Result[@objects.PdfObject, PdfDocumentError] = try? load_document_object(
-        file, id,
+    Some(object) => {
+      let loaded : Result[@objects.PdfObject, PdfDocumentError] = try? resolve_indirect(
+        file, object,
       )
       match loaded {
         Ok(value) =>
@@ -281,7 +260,7 @@ fn materialize_font_entry(
         Err(_) => ()
       }
     }
-    _ => ()
+    None => ()
   }
 }
 
@@ -311,16 +290,16 @@ fn materialize_font_program(
 ) -> Unit {
   let name = @objects.PdfName::new(key)
   match dict.get(name) {
-    Some(@objects.PdfObject::Ref(id)) => {
-      let loaded : Result[@objects.PdfObject, PdfDocumentError] = try? load_document_object(
-        file, id,
+    Some(object) => {
+      let loaded : Result[@objects.PdfObject, PdfDocumentError] = try? resolve_indirect(
+        file, object,
       )
       match loaded {
         Ok(value) => dict[name] = value
         Err(_) => ()
       }
     }
-    _ => ()
+    None => ()
   }
 }
 
@@ -331,23 +310,17 @@ fn materialize_descendant_fonts(
   page_id : @objects.ObjectId,
 ) -> Unit raise PdfDocumentError {
   let key = @objects.PdfName::new(b"DescendantFonts")
-  match dict.get(key) {
-    Some(@objects.PdfObject::Array(values)) => {
+  let raw = match dict.get(key) {
+    Some(object) => resolve_indirect(file, object)
+    None => return
+  }
+  match raw {
+    @objects.PdfObject::Array(values) => {
       let output : Array[@objects.PdfObject] = []
       for value in values {
-        match value {
-          @objects.PdfObject::Ref(id) => {
-            let loaded : Result[@objects.PdfObject, PdfDocumentError] = try? load_document_object(
-              file, id,
-            )
-            match loaded {
-              Ok(object) =>
-                output.push(materialize_font_object(file, object, page_id))
-              Err(_) => output.push(value)
-            }
-          }
-          _ => output.push(materialize_font_object(file, value, page_id))
-        }
+        output.push(
+          materialize_font_object(file, resolve_indirect(file, value), page_id),
+        )
       }
       dict[key] = @objects.PdfObject::Array(output)
     }

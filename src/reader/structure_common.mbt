@@ -12,42 +12,19 @@ fn structure_error(
 }
 
 ///|
-fn structure_load_object(
-  file : PdfFile,
-  object_id : @objects.ObjectId,
-) -> @objects.PdfObject raise PdfDocumentError {
-  try file.load_object(object_id) catch {
-    error => raise PdfDocumentError::ReaderError(error)
-  } noraise {
-    value => value
-  }
-}
-
-///|
 fn structure_resolve_object(
   file : PdfFile,
   value : @objects.PdfObject,
   label : String,
   seen : Map[@objects.ObjectId, Bool],
 ) -> (@objects.ObjectId?, @objects.PdfObject) raise PdfDocumentError {
-  match value {
-    @objects.PdfObject::Ref(object_id) => {
-      if seen.contains(object_id) {
-        raise PdfDocumentError::CycleDetected(
-          object_id,
-          label + " indirect-object cycle detected",
-        )
-      }
-      seen[object_id] = true
-      let loaded = structure_load_object(file, object_id)
-      if loaded == @objects.PdfObject::Null {
-        raise structure_error(Some(object_id), label + " object is missing")
-      }
-      let (_, resolved) = structure_resolve_object(file, loaded, label, seen)
-      (Some(object_id), resolved)
-    }
-    _ => (None, value)
+  let _ = label
+  let _ = seen
+  let object_id = match value {
+    @objects.PdfObject::Ref(id) => Some(id)
+    _ => None
   }
+  (object_id, resolve_indirect(file, value))
 }
 
 ///|

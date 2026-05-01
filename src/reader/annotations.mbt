@@ -12,18 +12,6 @@ fn annotation_error(
 }
 
 ///|
-fn annotation_load_object(
-  file : PdfFile,
-  object_id : @objects.ObjectId,
-) -> @objects.PdfObject raise PdfDocumentError {
-  try file.load_object(object_id) catch {
-    error => raise PdfDocumentError::ReaderError(error)
-  } noraise {
-    loaded => loaded
-  }
-}
-
-///|
 fn resolve_annotation_object(
   file : PdfFile,
   value : @objects.PdfObject,
@@ -31,28 +19,10 @@ fn resolve_annotation_object(
   context : String,
   seen : Map[@objects.ObjectId, Bool],
 ) -> @objects.PdfObject raise PdfDocumentError {
-  match value {
-    @objects.PdfObject::Ref(object_id) => {
-      if seen.contains(object_id) {
-        raise PdfDocumentError::CycleDetected(
-          object_id,
-          context + " indirect-object cycle detected",
-        )
-      }
-      seen[object_id] = true
-      resolve_annotation_object(
-        file,
-        annotation_load_object(file, object_id),
-        owner,
-        context,
-        seen,
-      )
-    }
-    _ => {
-      let _ = owner
-      value
-    }
-  }
+  let _ = owner
+  let _ = context
+  let _ = seen
+  resolve_indirect(file, value)
 }
 
 ///|

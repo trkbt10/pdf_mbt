@@ -34,7 +34,7 @@ fn resolve_optional_content_object(
   object : @objects.PdfObject?,
 ) -> @objects.PdfObject? raise PdfDocumentError {
   match object {
-    Some(@objects.PdfObject::Ref(id)) => Some(load_document_object(file, id))
+    Some(value) => Some(resolve_indirect(file, value))
     _ => object
   }
 }
@@ -50,14 +50,9 @@ fn validate_ocg_references(
         Some(@objects.PdfObject::Array(values)) =>
           for value in values {
             match value {
-              @objects.PdfObject::Ref(id) =>
-                match load_document_object(file, id) {
+              @objects.PdfObject::Ref(_) =>
+                match resolve_indirect(file, value) {
                   @objects.PdfObject::Dictionary(_) => ()
-                  @objects.PdfObject::Null =>
-                    raise PdfDocumentError::InvalidCatalog(
-                      file.root_ref(),
-                      "OCG reference is missing",
-                    )
                   _ =>
                     raise PdfDocumentError::InvalidCatalog(
                       file.root_ref(),

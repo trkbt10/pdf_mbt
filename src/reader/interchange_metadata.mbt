@@ -7,7 +7,7 @@ pub fn PdfDocument::metadata_stream(
     None => None
     Some(@objects.PdfObject::Null) => None
     Some(@objects.PdfObject::Ref(id)) => {
-      let object = load_document_object(self.file, id)
+      let object = resolve_indirect(self.file, @objects.PdfObject::Ref(id))
       try
         @interchange.validate_metadata_stream(object_id=Some(id), object)
       catch {
@@ -38,7 +38,7 @@ pub fn PdfDocument::document_info(
   match self.file.trailer.info {
     None => None
     Some(id) => {
-      let object = load_document_object(self.file, id)
+      let object = resolve_indirect(self.file, @objects.PdfObject::Ref(id))
       try
         @interchange.validate_document_info(object_id=Some(id), object)
       catch {

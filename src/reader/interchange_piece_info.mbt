@@ -7,7 +7,7 @@ pub fn PdfDocument::piece_info(
     None => None
     Some(@objects.PdfObject::Null) => None
     Some(@objects.PdfObject::Ref(id)) => {
-      let object = load_document_object(self.file, id)
+      let object = resolve_indirect(self.file, @objects.PdfObject::Ref(id))
       try
         @interchange.validate_page_piece_dictionary(object_id=Some(id), object)
       catch {
@@ -39,7 +39,7 @@ pub fn PdfPage::piece_info(
     None => None
     Some(@objects.PdfObject::Null) => None
     Some(@objects.PdfObject::Ref(id)) => {
-      let object = load_document_object(self.file, id)
+      let object = resolve_indirect(self.file, @objects.PdfObject::Ref(id))
       try
         @interchange.validate_page_piece_dictionary(object_id=Some(id), object)
       catch {

@@ -243,7 +243,7 @@ fn parse_structure_child(
         root_object_id,
       )
     @objects.PdfObject::Ref(object_id) => {
-      let loaded = structure_load_object(file, object_id)
+      let loaded = resolve_indirect(file, value)
       match loaded {
         @objects.PdfObject::Dictionary(dict) =>
           parse_structure_dictionary_child(

@@ -166,7 +166,10 @@ fn resolve_nested_image_resource_object(
 ) -> @objects.PdfObject raise {
   match object {
     @objects.PdfObject::Ref(id) =>
-      resolve_nested_image_resource_object(file, load_document_object(file, id))
+      resolve_nested_image_resource_object(
+        file,
+        resolve_indirect(file, @objects.PdfObject::Ref(id)),
+      )
     @objects.PdfObject::Array(values) => {
       let resolved : Array[@objects.PdfObject] = []
       for value in values {
@@ -213,7 +216,7 @@ fn resolve_image_resource_object(
   object : @objects.PdfObject,
 ) -> @objects.PdfObject raise {
   match object {
-    @objects.PdfObject::Ref(id) => load_document_object(file, id)
+    @objects.PdfObject::Ref(_) => resolve_indirect(file, object)
     _ => object
   }
 }

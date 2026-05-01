@@ -108,18 +108,8 @@ fn materialize_named_resource_category(
 ) -> Unit raise PdfDocumentError {
   let key = @objects.PdfName::new(category)
   match resources.get(key) {
-    Some(@objects.PdfObject::Dictionary(dict)) => {
-      let materialized : @objects.PdfDictionary = Map::new()
-      for resource_name, object in dict {
-        materialized[resource_name] = materialize_resource_object(
-          file, object, category, form_stack, page_id,
-        )
-      }
-      resources[key] = @objects.PdfObject::Dictionary(materialized)
-    }
-    Some(@objects.PdfObject::Ref(id)) => {
-      let loaded = load_document_object(file, id)
-      match loaded {
+    Some(raw) =>
+      match resolve_indirect(file, raw) {
         @objects.PdfObject::Dictionary(dict) => {
           let materialized : @objects.PdfDictionary = Map::new()
           for resource_name, object in dict {
@@ -136,8 +126,7 @@ fn materialize_named_resource_category(
             " resource category must resolve to a dictionary",
           )
       }
-    }
-    _ => ()
+    None => ()
   }
 }
 
@@ -149,28 +138,25 @@ fn materialize_resource_object(
   form_stack : Array[@objects.ObjectId],
   page_id : @objects.ObjectId,
 ) -> @objects.PdfObject raise PdfDocumentError {
-  match object {
-    @objects.PdfObject::Ref(id) => {
-      let loaded = load_document_object(file, id)
-      if category == b"XObject" {
-        materialize_xobject_stream(file, loaded, id, form_stack, page_id)
-      } else if category == b"ColorSpace" ||
-        category == b"Pattern" ||
-        category == b"Shading" ||
-        category == b"ExtGState" {
-        materialize_nested_resource_object(file, loaded, [id], page_id)
-      } else {
-        loaded
-      }
+  let ref_id = match object {
+    @objects.PdfObject::Ref(id) => Some(id)
+    _ => None
+  }
+  let resolved = resolve_indirect(file, object)
+  if category == b"XObject" {
+    materialize_xobject_stream(file, resolved, ref_id, form_stack, page_id)
+  } else if category == b"ColorSpace" ||
+    category == b"Pattern" ||
+    category == b"Shading" ||
+    category == b"ExtGState" {
+    let object_stack : Array[@objects.ObjectId] = []
+    match ref_id {
+      Some(id) => object_stack.push(id)
+      None => ()
     }
-    _ if category == b"ColorSpace" ||
-      category == b"Pattern" ||
-      category == b"Shading" ||
-      category == b"ExtGState" =>
-      materialize_nested_resource_object(file, object, [], page_id)
-    @objects.PdfObject::Stream(stream) if category == b"XObject" =>
-      materialize_direct_xobject_stream(file, stream, form_stack, page_id)
-    _ => object
+    materialize_nested_resource_object(file, resolved, object_stack, page_id)
+  } else {
+    resolved
   }
 }
 
@@ -178,26 +164,36 @@ fn materialize_resource_object(
 fn materialize_xobject_stream(
   file : PdfFile,
   object : @objects.PdfObject,
-  id : @objects.ObjectId,
+  id : @objects.ObjectId?,
   form_stack : Array[@objects.ObjectId],
   page_id : @objects.ObjectId,
 ) -> @objects.PdfObject raise PdfDocumentError {
   match object {
     @objects.PdfObject::Stream(stream) =>
       if xobject_subtype_is(stream, b"Form") {
-        if contains_object_id(form_stack, id) {
-          raise PdfDocumentError::CycleDetected(
-            id, "recursive Form XObject reference",
-          )
-        }
         let next_stack = form_stack.copy()
-        next_stack.push(id)
+        match id {
+          Some(object_id) => {
+            if contains_object_id(form_stack, object_id) {
+              raise PdfDocumentError::CycleDetected(
+                object_id, "recursive Form XObject reference",
+              )
+            }
+            next_stack.push(object_id)
+          }
+          None => ()
+        }
         @objects.PdfObject::Stream(
           materialize_form_stream_resources(file, stream, next_stack, page_id),
         )
       } else if xobject_subtype_is(stream, b"Image") {
+        let image_stack = form_stack.copy()
+        match id {
+          Some(object_id) => image_stack.push(object_id)
+          None => ()
+        }
         @objects.PdfObject::Stream(
-          materialize_image_stream_resources(file, stream, [id]),
+          materialize_image_stream_resources(file, stream, image_stack),
         )
       } else {
         object
@@ -267,26 +263,25 @@ fn materialize_nested_image_object(
   object : @objects.PdfObject,
   object_stack : Array[@objects.ObjectId],
 ) -> @objects.PdfObject raise PdfDocumentError {
-  match object {
+  let active_stack = object_stack.copy()
+  let resolved = match object {
     @objects.PdfObject::Ref(id) => {
       if contains_object_id(object_stack, id) {
         raise PdfDocumentError::CycleDetected(
           id, "recursive image transparency resource reference",
         )
       }
-      let next_stack = object_stack.copy()
-      next_stack.push(id)
-      materialize_nested_image_object(
-        file,
-        load_document_object(file, id),
-        next_stack,
-      )
+      active_stack.push(id)
+      resolve_indirect(file, object)
     }
+    _ => resolve_indirect(file, object)
+  }
+  match resolved {
     @objects.PdfObject::Array(values) => {
       let materialized : Array[@objects.PdfObject] = []
       for value in values {
         materialized.push(
-          materialize_nested_image_object(file, value, object_stack),
+          materialize_nested_image_object(file, value, active_stack),
         )
       }
       @objects.PdfObject::Array(materialized)
@@ -295,16 +290,16 @@ fn materialize_nested_image_object(
       let materialized : @objects.PdfDictionary = Map::new()
       for key, value in dict {
         materialized[key] = materialize_nested_image_object(
-          file, value, object_stack,
+          file, value, active_stack,
         )
       }
       @objects.PdfObject::Dictionary(materialized)
     }
     @objects.PdfObject::Stream(stream) =>
       @objects.PdfObject::Stream(
-        materialize_image_stream_resources(file, stream, object_stack),
+        materialize_image_stream_resources(file, stream, active_stack),
       )
-    _ => object
+    _ => resolved
   }
 }
 
@@ -315,27 +310,25 @@ fn materialize_nested_resource_object(
   object_stack : Array[@objects.ObjectId],
   page_id : @objects.ObjectId,
 ) -> @objects.PdfObject raise PdfDocumentError {
-  match object {
+  let active_stack = object_stack.copy()
+  let resolved = match object {
     @objects.PdfObject::Ref(id) => {
       if contains_object_id(object_stack, id) {
         raise PdfDocumentError::CycleDetected(
           id, "recursive resource reference",
         )
       }
-      let next_stack = object_stack.copy()
-      next_stack.push(id)
-      materialize_nested_resource_object(
-        file,
-        load_document_object(file, id),
-        next_stack,
-        page_id,
-      )
+      active_stack.push(id)
+      resolve_indirect(file, object)
     }
+    _ => resolve_indirect(file, object)
+  }
+  match resolved {
     @objects.PdfObject::Array(values) => {
       let materialized : Array[@objects.PdfObject] = []
       for value in values {
         materialized.push(
-          materialize_nested_resource_object(file, value, object_stack, page_id),
+          materialize_nested_resource_object(file, value, active_stack, page_id),
         )
       }
       @objects.PdfObject::Array(materialized)
@@ -344,7 +337,7 @@ fn materialize_nested_resource_object(
       let materialized : @objects.PdfDictionary = Map::new()
       for key, value in dict {
         materialized[key] = materialize_nested_resource_object(
-          file, value, object_stack, page_id,
+          file, value, active_stack, page_id,
         )
       }
       @objects.PdfObject::Dictionary(materialized)
@@ -353,12 +346,12 @@ fn materialize_nested_resource_object(
       let dict : @objects.PdfDictionary = Map::new()
       for key, value in stream.dict {
         dict[key] = materialize_nested_resource_object(
-          file, value, object_stack, page_id,
+          file, value, active_stack, page_id,
         )
       }
       @objects.PdfObject::Stream(@objects.PdfStream::{ dict, data: stream.data })
     }
-    _ => object
+    _ => resolved
   }
 }
 
@@ -370,18 +363,8 @@ fn materialize_form_stream_resources(
   page_id : @objects.ObjectId,
 ) -> @objects.PdfStream raise PdfDocumentError {
   match stream.dict.get(@objects.PdfName::new(b"Resources")) {
-    Some(@objects.PdfObject::Dictionary(resources)) => {
-      let dict = stream.dict.copy()
-      dict[@objects.PdfName::new(b"Resources")] = @objects.PdfObject::Dictionary(
-        materialize_resource_dictionary(
-          file, resources, form_stack, page_id, true,
-        ),
-      )
-      @objects.PdfStream::{ dict, data: stream.data }
-    }
-    Some(@objects.PdfObject::Ref(id)) => {
-      let loaded = load_document_object(file, id)
-      match loaded {
+    Some(raw) =>
+      match resolve_indirect(file, raw) {
         @objects.PdfObject::Dictionary(resources) => {
           let dict = stream.dict.copy()
           dict[@objects.PdfName::new(b"Resources")] = @objects.PdfObject::Dictionary(
@@ -396,8 +379,7 @@ fn materialize_form_stream_resources(
             page_id, "Form XObject Resources reference must resolve to a dictionary",
           )
       }
-    }
-    _ => stream
+    None => stream
   }
 }
 
@@ -408,29 +390,4 @@ fn xobject_subtype_is(stream : @objects.PdfStream, expected : Bytes) -> Bool {
       name == @objects.PdfName::new(expected)
     _ => false
   }
-}
-
-///|
-fn load_document_object(
-  file : PdfFile,
-  id : @objects.ObjectId,
-) -> @objects.PdfObject raise PdfDocumentError {
-  try file.load_object(id) catch {
-    error => raise PdfDocumentError::ReaderError(error)
-  } noraise {
-    object => object
-  }
-}
-
-///|
-fn contains_object_id(
-  values : Array[@objects.ObjectId],
-  id : @objects.ObjectId,
-) -> Bool {
-  for value in values {
-    if value == id {
-      return true
-    }
-  }
-  false
 }
