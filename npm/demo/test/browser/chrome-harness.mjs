@@ -16,9 +16,7 @@ export async function withDemoPage(callback) {
   const page = await browser.newPage();
   try {
     await page.navigate(demoUrl);
-    await page.waitForFunction(
-      () => document.body.textContent?.includes("Wasm module ready") ?? false
-    );
+    await waitForReady(page);
     await callback(page);
   } finally {
     await page.close();
@@ -26,54 +24,52 @@ export async function withDemoPage(callback) {
   }
 }
 
+export async function withDemoDevPage(callback) {
+  const dev = await startDevServer();
+  const browser = await startChrome();
+  const page = await browser.newPage();
+  try {
+    await page.navigate(dev.url);
+    await waitForReady(page);
+    await callback(page);
+  } finally {
+    await page.close();
+    await browser.close();
+    await dev.stop();
+  }
+}
+
+async function waitForReady(page) {
+  await page.waitForFunction(() => {
+    const el = document.querySelector("[data-pdf-status]");
+    return el?.getAttribute("data-pdf-status") === "ready";
+  });
+}
+
 export async function uploadPdf(page, filePath, fileName) {
   await page.setFileInputFiles("#pdf-file", [filePath]);
   await page.waitForFunction(
-    (name) => document.body.textContent?.includes(`Loaded ${name}`) ?? false,
+    (name) => {
+      const el = document.querySelector("[data-pdf-document-name]");
+      return el?.getAttribute("data-pdf-document-name") === name;
+    },
     fileName
   );
 }
 
 export async function scrollToPage(page, pageNumber) {
-  await page.evaluate(
-    (number) => {
-      function pageItemForNumber(pageNumber) {
-        const headings = Array.from(document.querySelectorAll(".pageList h3"));
-        const heading = headings.find(
-          (candidate) => candidate.textContent?.trim() === `Page ${pageNumber}`
-        );
-        if (!heading) {
-          throw new Error(`Page ${pageNumber} is not in the page list`);
-        }
-        const pageItem = heading.closest("li");
-        if (!pageItem) {
-          throw new Error(`Page ${pageNumber} item is missing`);
-        }
-        return pageItem;
-      }
-
-      const pageItem = pageItemForNumber(number);
-      pageItem.scrollIntoView({ block: "center", inline: "nearest" });
-    },
-    pageNumber
-  );
+  // Lazy page rendering causes the target's y-offset to drift as pages above
+  // inflate. Re-scrolling on every poll keeps the target centered until the
+  // layout stabilises.
   await page.waitForFunction(
     (number) => {
-      function pageItemForNumber(pageNumber) {
-        const headings = Array.from(document.querySelectorAll(".pageList h3"));
-        const heading = headings.find(
-          (candidate) => candidate.textContent?.trim() === `Page ${pageNumber}`
-        );
-        if (!heading) {
-          return null;
-        }
-        return heading.closest("li");
-      }
-
-      const pageItem = pageItemForNumber(number);
+      const pageItem = document.querySelector(
+        `[data-pdf-page-item][data-page-number="${number}"]`
+      );
       if (!pageItem) {
         return false;
       }
+      pageItem.scrollIntoView({ block: "center", inline: "nearest" });
       const rect = pageItem.getBoundingClientRect();
       return rect.top < window.innerHeight && rect.bottom > 0;
     },
@@ -85,6 +81,9 @@ export async function waitForVisiblePageImage(page, pageNumber) {
   return waitFor(() => page.evaluate(async (number) => {
     async function pageImageState(pageNumber) {
       const pageItem = pageItemForNumber(pageNumber);
+      // Lazy loading of pages above may shift this page out of view again.
+      // Re-scrolling on each poll keeps it centered until its SVG materialises.
+      pageItem.scrollIntoView({ block: "center", inline: "nearest" });
       const images = Array.from(
         pageItem.querySelectorAll("svg image[data-image-index]")
       );
@@ -132,16 +131,11 @@ export async function waitForVisiblePageImage(page, pageNumber) {
     }
 
     function pageItemForNumber(pageNumber) {
-      const headings = Array.from(document.querySelectorAll(".pageList h3"));
-      const heading = headings.find(
-        (candidate) => candidate.textContent?.trim() === `Page ${pageNumber}`
+      const pageItem = document.querySelector(
+        `[data-pdf-page-item][data-page-number="${pageNumber}"]`
       );
-      if (!heading) {
-        throw new Error(`Page ${pageNumber} is not in the page list`);
-      }
-      const pageItem = heading.closest("li");
       if (!pageItem) {
-        throw new Error(`Page ${pageNumber} item is missing`);
+        throw new Error(`Page ${pageNumber} is not in the page list`);
       }
       return pageItem;
     }
@@ -202,16 +196,11 @@ export async function pageImageDiagnostics(page, pageNumber) {
     }
 
     function pageItemForNumber(pageNumber) {
-      const headings = Array.from(document.querySelectorAll(".pageList h3"));
-      const heading = headings.find(
-        (candidate) => candidate.textContent?.trim() === `Page ${pageNumber}`
+      const pageItem = document.querySelector(
+        `[data-pdf-page-item][data-page-number="${pageNumber}"]`
       );
-      if (!heading) {
-        throw new Error(`Page ${pageNumber} is not in the page list`);
-      }
-      const pageItem = heading.closest("li");
       if (!pageItem) {
-        throw new Error(`Page ${pageNumber} item is missing`);
+        throw new Error(`Page ${pageNumber} is not in the page list`);
       }
       return pageItem;
     }
@@ -275,6 +264,41 @@ async function patchBuiltScripts(distDir) {
       );
     })
   );
+}
+
+async function startDevServer() {
+  const child = spawn(
+    "npm",
+    ["exec", "vite", "--", "dev", "--host", "127.0.0.1", "--port", "0"],
+    {
+      cwd: new URL("../..", import.meta.url),
+      stdio: ["ignore", "pipe", "pipe"],
+    }
+  );
+  let output = "";
+  const url = await new Promise((resolve, reject) => {
+    function onData(chunk) {
+      output += chunk.toString();
+      const match = /https?:\/\/127\.0\.0\.1:(\d+)/.exec(output);
+      if (match) {
+        child.stdout.off("data", onData);
+        child.stderr.off("data", onData);
+        resolve(`http://127.0.0.1:${match[1]}/`);
+      }
+    }
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
+    child.on("exit", (code) => {
+      reject(new Error(`vite dev exited (${code}) before printing URL:\n${output}`));
+    });
+  });
+  return {
+    url,
+    async stop() {
+      child.kill("SIGTERM");
+      await waitForProcessExit(child);
+    },
+  };
 }
 
 async function startChrome() {
@@ -352,6 +376,23 @@ class CdpPage {
     await this.connection.send("Target.closeTarget", {
       targetId: this.targetId,
     });
+  }
+
+  async screenshot({ format = "png", clip } = {}) {
+    const params = { format };
+    if (clip) {
+      // CDP requires numeric clip with explicit `scale`. Floats are fine for
+      // the dimensions but `scale` MUST be a number. Default to 1.
+      params.clip = {
+        x: clip.x,
+        y: clip.y,
+        width: clip.width,
+        height: clip.height,
+        scale: clip.scale ?? 1,
+      };
+    }
+    const result = await this.send("Page.captureScreenshot", params);
+    return Buffer.from(result.data, "base64");
   }
 
   async evaluate(pageFunction, ...args) {
