@@ -866,9 +866,12 @@ fn is_browser_compatible_color_space(
   // After prepare_render_image_stream the ColorSpace field is materialized
   // (a name reference into Resources is replaced by the resolved object),
   // so we only have to recognise the inline forms here. We accept the
-  // device colour spaces and their CIE-calibrated counterparts because
-  // browsers handle them as untagged sRGB / grayscale, which is exactly
-  // what the existing canvas-decoded path produced.
+  // device colour spaces, their CIE-calibrated counterparts, and 1- or
+  // 3-component ICCBased streams. Browsers treat all of these as untagged
+  // sRGB / grayscale, which is exactly what the wasm canvas-decoded path
+  // would produce — and skipping the wasm-side decoder is what keeps
+  // image-heavy slide PDFs (typical Canva exports use ICCBased JPEGs)
+  // from spending tens of seconds per page in the wasm-gc JPEG decoder.
   match dict.get(@objects.PdfName::new(b"ColorSpace")) {
     None => false
     Some(@objects.PdfObject::Name(name)) =>
@@ -880,14 +883,42 @@ fn is_browser_compatible_color_space(
       if values.length() >= 1 {
         match values[0] {
           @objects.PdfObject::Name(name) =>
-            name == @objects.PdfName::new(b"CalRGB") ||
-            name == @objects.PdfName::new(b"CalGray") ||
-            name == @objects.PdfName::new(b"DeviceRGB") ||
-            name == @objects.PdfName::new(b"DeviceGray")
+            if name == @objects.PdfName::new(b"CalRGB") ||
+              name == @objects.PdfName::new(b"CalGray") ||
+              name == @objects.PdfName::new(b"DeviceRGB") ||
+              name == @objects.PdfName::new(b"DeviceGray") {
+              true
+            } else if name == @objects.PdfName::new(b"ICCBased") {
+              icc_based_browser_compatible(values)
+            } else {
+              false
+            }
           _ => false
         }
       } else {
         false
+      }
+    _ => false
+  }
+}
+
+///|
+/// Reports whether a `[/ICCBased <stream>]` colour-space array can be served
+/// to the browser without converting to RGBA in wasm. ISO 32000-2 §8.6.5.5:
+/// the stream's `/N` entry gives the component count; only N=1 (grayscale)
+/// and N=3 (RGB) map onto the JPEG decoder's native output, so those are
+/// the cases where the browser will read the same pixels we would have
+/// produced. CMYK (N=4) and any other non-standard count have to go
+/// through the wasm decoder to get colour-managed correctly.
+fn icc_based_browser_compatible(values : Array[@objects.PdfObject]) -> Bool {
+  if values.length() < 2 {
+    return false
+  }
+  match values[1] {
+    @objects.PdfObject::Stream(stream) =>
+      match stream.dict.get(@objects.PdfName::new(b"N")) {
+        Some(@objects.PdfObject::Integer(n)) => n == 1L || n == 3L
+        _ => false
       }
     _ => false
   }
@@ -903,12 +934,36 @@ fn has_grayscale_color_space(dict : @objects.PdfDictionary) -> Bool {
       if values.length() >= 1 {
         match values[0] {
           @objects.PdfObject::Name(name) =>
-            name == @objects.PdfName::new(b"CalGray") ||
-            name == @objects.PdfName::new(b"DeviceGray")
+            if name == @objects.PdfName::new(b"CalGray") ||
+              name == @objects.PdfName::new(b"DeviceGray") {
+              true
+            } else if name == @objects.PdfName::new(b"ICCBased") {
+              icc_based_has_n_components(values, 1L)
+            } else {
+              false
+            }
           _ => false
         }
       } else {
         false
+      }
+    _ => false
+  }
+}
+
+///|
+fn icc_based_has_n_components(
+  values : Array[@objects.PdfObject],
+  expected : Int64,
+) -> Bool {
+  if values.length() < 2 {
+    return false
+  }
+  match values[1] {
+    @objects.PdfObject::Stream(stream) =>
+      match stream.dict.get(@objects.PdfName::new(b"N")) {
+        Some(@objects.PdfObject::Integer(n)) => n == expected
+        _ => false
       }
     _ => false
   }
