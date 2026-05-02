@@ -1,63 +1,67 @@
 ///|
-/// Zlib container metadata for FlateDecode streams used by the
-/// pdf-file-structure reader integration.
-///
-/// The filter decoder shall integrate with the existing
-/// `pdf-file-structure` reader to decode compressed streams on demand. The
-/// reader calls the filter decoder from object stream decoding and
-/// cross-reference stream decoding paths for FlateDecode-compressed object
-/// streams and xref streams, passing the stream dictionary and raw stream bytes
-/// and receiving decoded bytes or filter chain failures with the filter name
-/// and reason.
-priv struct ZlibStream {
-  deflate_data : Bytes
-  expected_adler32 : Int64
-}
-
-///|
 /// Decodes a zlib-wrapped Flate stream without DecodeParms predictors.
 pub fn decode_flate(data : Bytes) -> Bytes raise PdfFilterError {
-  let zlib_data = data
-  let decoded = decode_zlib_stream(zlib_data)
-  decoded
+  decode_zlib_stream(data)
 }
 
 ///|
-fn parse_zlib_stream(data : Bytes) -> ZlibStream raise PdfFilterError {
+/// Validates a 6+ byte zlib container, decodes the contained DEFLATE
+/// stream, then verifies the Adler-32 checksum that immediately follows
+/// the final deflate block.
+///
+/// Earlier versions assumed `[2-byte header][deflate][4-byte adler32]` was
+/// always tightly packed and read the checksum from `data.length() - 4`.
+/// That heuristic breaks on a non-trivial population of real PDFs whose
+/// stream `Length` value includes one or more trailing bytes (typically a
+/// stray `\n` left over from PDF's stream/endstream EOL convention) sitting
+/// AFTER the Adler-32. CID-font ToUnicode CMaps from several common PDF
+/// producers exhibit this: every stream carries one extra trailing byte,
+/// which made the old reader read the wrong four bytes as Adler-32 and
+/// reject the stream as corrupt — the page silently fell back to
+/// Latin-encoded glyphs and the document rendered as garbage. The fix is
+/// to ask the deflate decoder where it actually stopped and read the
+/// Adler-32 immediately after.
+fn decode_zlib_stream(data : Bytes) -> Bytes raise PdfFilterError {
   if data.length() < 7 {
     raise PdfFilterError::DecodeError("FlateDecode", "truncated zlib stream")
   }
-
   let cmf = data[0].to_int()
   let flg = data[1].to_int()
-
   if (cmf & 0x0f) != 8 {
     raise PdfFilterError::DecodeError(
       "FlateDecode", "invalid zlib compression method",
     )
   }
-
   if cmf >> 4 > 7 {
     raise PdfFilterError::DecodeError("FlateDecode", "invalid zlib window size")
   }
-
   if (cmf * 256 + flg) % 31 != 0 {
     raise PdfFilterError::DecodeError(
       "FlateDecode", "invalid zlib header check bits",
     )
   }
-
   if (flg & 0x20) != 0 {
     raise PdfFilterError::DecodeError(
       "FlateDecode", "preset dictionary streams are not supported",
     )
   }
-
-  let checksum_start = data.length() - 4
-  ZlibStream::{
-    deflate_data: data[2:checksum_start].to_bytes(),
-    expected_adler32: read_u32_be(data, checksum_start),
+  let deflate_start = 2
+  let max_deflate = data.length() - deflate_start
+  // Hand the deflate decoder the entire post-header buffer; it consumes
+  // exactly as much as the encoded blocks require and reports its stop
+  // position so we can locate the Adler-32 immediately after.
+  let deflate_view = data[deflate_start:data.length()].to_bytes()
+  let (decoded, deflate_consumed) = decode_deflate_with_position(deflate_view)
+  if deflate_consumed > max_deflate - 4 {
+    raise PdfFilterError::DecodeError(
+      "FlateDecode",
+      "deflate body extends past end of zlib stream — Adler-32 missing",
+    )
   }
+  let checksum_start = deflate_start + deflate_consumed
+  let expected = read_u32_be(data, checksum_start)
+  validate_adler32("FlateDecode", decoded, expected)
+  decoded
 }
 
 ///|

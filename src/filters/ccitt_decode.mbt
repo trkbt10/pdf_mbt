@@ -84,11 +84,16 @@ priv struct CcittParams {
 ///|
 /// Group 4 two-dimensional mode code decoded from the CCITT bit stream.
 /// Pass, Horizontal, and Vertical modes update the changing-element position
-/// against the previous reference line.
+/// against the previous reference line. ExtensionAbort represents the
+/// reserved 7-bit code `0000001` (uncompressed-mode and other T.6 extensions
+/// such as the alternate run definition); we don't implement the extension
+/// payload, but we recognise it so the row decoder can clip the trailing
+/// portion of the row to white rather than failing the whole image.
 priv enum CcittMode {
   Pass
   Horizontal
   Vertical(Int)
+  ExtensionAbort
 }
 
 ///|
@@ -103,11 +108,51 @@ priv struct CcittBitReader {
 ///|
 /// Decodes CCITTFaxDecode Group 3 1D Group 4 2D DecodeParms output format
 /// 1 bit per pixel MSB first padded at row boundaries.
+///
+/// PDF and ITU-T T.4/T.6 mandate MSB-first bit ordering inside each input
+/// byte, but a long-standing ecosystem quirk surfaces in scan-PDFs produced
+/// by EPSON Scan (and a handful of other consumer scanner drivers): the
+/// CCITT stream is written with each byte's bits in reverse order
+/// (LSB-first), without any DecodeParms entry to declare it. Acrobat,
+/// poppler and pdf.js all silently accept the LSB-first variant — they have
+/// to, because users would otherwise be left with blank scanned pages. We
+/// match that behaviour by attempting an MSB-first decode first; if it
+/// fails (either by raising a Huffman/structural error or by producing the
+/// wrong row count), we retry with each byte's bits reversed. Successful
+/// decodes therefore return the original bit order without overhead, while
+/// EPSON-style streams now decode on the second attempt instead of being
+/// reported as `InvalidImage`.
 pub fn decode_ccitt_fax(
   data : Bytes,
   params : DecodeParams,
 ) -> Bytes raise PdfFilterError {
   let config = read_ccitt_params(params)
+  let primary : Result[Bytes, PdfFilterError] = try? decode_ccitt_with_bytes(
+    data, config,
+  )
+  match primary {
+    Ok(decoded) => decoded
+    Err(primary_error) => {
+      let reversed_data = bit_reversed_bytes(data)
+      let fallback : Result[Bytes, PdfFilterError] = try? decode_ccitt_with_bytes(
+        reversed_data, config,
+      )
+      match fallback {
+        Ok(decoded) => decoded
+        // The MSB-first attempt is the spec-correct path, so if neither
+        // bit order can decode we surface the *primary* error — that's the
+        // diagnostic users want to chase first.
+        Err(_) => raise primary_error
+      }
+    }
+  }
+}
+
+///|
+fn decode_ccitt_with_bytes(
+  data : Bytes,
+  config : CcittParams,
+) -> Bytes raise PdfFilterError {
   let reader = CcittBitReader::new(data)
   let rows = if config.is_group4() {
     decode_ccitt_group4(reader, config)
@@ -117,6 +162,27 @@ pub fn decode_ccitt_fax(
     decode_ccitt_mixed(reader, config)
   }
   pack_ccitt_rows(rows, config)
+}
+
+///|
+/// Returns a copy of `data` with each byte's bits reversed (bit 0 swaps with
+/// bit 7, bit 1 with bit 6, and so on). Used to retry CCITT decoding when
+/// the input was written in LSB-first order.
+fn bit_reversed_bytes(data : Bytes) -> Bytes {
+  let out : Array[Byte] = []
+  for byte in data {
+    out.push(reverse_bits_in_byte(byte))
+  }
+  Bytes::from_array(out)
+}
+
+///|
+fn reverse_bits_in_byte(byte : Byte) -> Byte {
+  let value = byte.to_int()
+  let step1 = ((value & 0xF0) >> 4) | ((value & 0x0F) << 4)
+  let step2 = ((step1 & 0xCC) >> 2) | ((step1 & 0x33) << 2)
+  let step3 = ((step2 & 0xAA) >> 1) | ((step2 & 0x55) << 1)
+  (step3 & 0xFF).to_byte()
 }
 
 ///|
@@ -468,6 +534,15 @@ fn decode_ccitt_2d_line(
         a0 = a1
         black = !black
       }
+      ExtensionAbort => {
+        // T.6 extension code (`0000001`) marks uncompressed mode and other
+        // reserved sub-modes. We don't implement the variable-length payload;
+        // libtiff and similar decoders treat unimplemented extensions as a
+        // signal to clip the rest of the row as white and continue, which
+        // typically loses a single corrupt row rather than the whole image.
+        append_ccitt_to_position(row, false, columns, columns)
+        return row
+      }
     }
   }
   row
@@ -495,10 +570,7 @@ fn decode_ccitt_mode(reader : CcittBitReader) -> CcittMode raise PdfFilterError 
       (6, 0b000010) => return Vertical(-2)
       (7, 0b0000011) => return Vertical(3)
       (7, 0b0000010) => return Vertical(-3)
-      (7, 0b0000001) =>
-        raise PdfFilterError::DecodeError(
-          ccitt_filter_name, "Group 4 extension mode is not supported",
-        )
+      (7, 0b0000001) => return ExtensionAbort
       _ => ()
     }
     bits_read += 1
@@ -559,7 +631,15 @@ fn ccitt_next_change(
   color : Bool,
   columns : Int,
 ) -> Int {
-  let mut index = start + 1
+  // `start` is the previous changing element on the coding line; the spec
+  // initialises it to a position one column to the left of the first
+  // pixel (i.e. `-1`), and our regression-tolerant 2D decoder may leave it
+  // further negative still when an upstream code referenced a position
+  // before the row origin. Clamp to 0 before indexing so we never trap on
+  // `line[-N]`; conceptually we're starting the search at the very first
+  // column, which preserves the algorithm's intent (find the first
+  // changing element to the right of `start`).
+  let mut index = if start + 1 < 0 { 0 } else { start + 1 }
   while index < columns && line[index] == color {
     index += 1
   }
@@ -572,13 +652,31 @@ fn append_ccitt_to_position(
   black : Bool,
   position : Int,
   columns : Int,
-) -> Unit raise PdfFilterError {
-  if position < row.length() || position > columns {
-    raise PdfFilterError::DecodeError(
-      ccitt_filter_name, "CCITT run crosses the row boundary",
-    )
-  }
-  while row.length() < position {
+) -> Unit {
+  // Real-world CCITT scanner output (notably EPSON Scan) routinely emits
+  // codes whose target position falls outside the current emission window:
+  //   * Overruns past `Columns` happen when the encoder rounded the trailing
+  //     run up instead of ending the row at the exact column.
+  //   * Regressions below the current emission position happen when the
+  //     encoder's reference-line model briefly disagrees with the decoder's;
+  //     this is common around damaged or extension-coded rows.
+  // libtiff, poppler and pdf.js all tolerate both cases silently — pdf.js
+  // models the row as a list of changing-element positions so a regression
+  // simply yields a zero-length (or notionally negative-length) run, and an
+  // overrun is clamped to the row width. We mirror that lenience: clamp the
+  // target to `[row.length(), columns]` and emit only forward pixels.
+  // Importantly, even when no pixels are emitted we still let the caller
+  // update `a0` and the running color, because the algorithm relies on
+  // those state updates to find the next changing element on the reference
+  // line. The caller's loop is bounded by bit-stream consumption, not by
+  // row.length(), so failing to advance the row here cannot cause an
+  // infinite loop — it just lets the row recover when subsequent codes
+  // resync the model. Failing the whole image strands an entire scanned
+  // page as blank, which is much worse than retaining a possibly-damaged
+  // single row.
+  let clamped_high = if position > columns { columns } else { position }
+  let target = if clamped_high < row.length() { row.length() } else { clamped_high }
+  while row.length() < target {
     row.push(black)
   }
 }
@@ -589,7 +687,7 @@ fn append_ccitt_run(
   black : Bool,
   run : Int,
   columns : Int,
-) -> Unit raise PdfFilterError {
+) -> Unit {
   append_ccitt_to_position(row, black, row.length() + run, columns)
 }
 

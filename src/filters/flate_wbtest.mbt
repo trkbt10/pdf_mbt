@@ -83,18 +83,22 @@ test "decode_zlib_stored accepts non-zero unused final-byte bits after a fixed H
 }
 
 ///|
-test "decode_deflate rejects whole trailing bytes after the final fixed block" {
+test "decode_deflate ignores whole trailing bytes after the final fixed block" {
+  // Same payload as before (a fixed-Huffman 'ABC' followed by a stray byte),
+  // but the assertion is inverted: real PDF producers append padding bytes
+  // between the deflate body and the trailing zlib Adler-32, so we now
+  // mirror the zlib/poppler/pdf.js behaviour of stopping cleanly at the
+  // final block and ignoring the leftover bytes. The wrapping zlib stream
+  // decoder still verifies the Adler-32 over the decoded output, so true
+  // corruption continues to be flagged — only the meaningless
+  // trailing-byte case becomes lenient.
   let data = Bytes::from_array([
     b'\x73', b'\x74', b'\x72', b'\x06', b'\x80', b'\x00',
   ])
-
   let decoded : Result[Bytes, PdfFilterError] = try? decode_deflate(data)
   match decoded {
-    Err(DecodeError(filter_name, reason)) => {
-      assert_eq(filter_name, "FlateDecode")
-      assert_eq(reason.contains("trailing"), true)
-    }
-    _ => fail("expected trailing whole bytes to be rejected")
+    Ok(bytes) => assert_eq(bytes, Bytes::from_array([b'A', b'B', b'C']))
+    _ => fail("expected trailing whole bytes to be ignored")
   }
 }
 
@@ -210,36 +214,26 @@ test "lsb bit reader can align to the next byte boundary" {
 }
 
 ///|
-test "parse_zlib_stream accepts a minimal empty zlib stream" {
+test "decode_flate accepts a minimal empty zlib stream" {
+  // Stored block of length 0 → no decoded output, Adler-32 of empty is 1.
   let stream = Bytes::from_array([
     b'\x78', b'\x01', b'\x01', b'\x00', b'\x00', b'\xff', b'\xff', b'\x00', b'\x00',
     b'\x00', b'\x01',
   ])
-
-  let parsed : Result[ZlibStream, PdfFilterError] = try? parse_zlib_stream(
-    stream,
-  )
+  let parsed : Result[Bytes, PdfFilterError] = try? decode_flate(stream)
   match parsed {
-    Ok(zlib) => {
-      assert_eq(
-        zlib.deflate_data,
-        Bytes::from_array([b'\x01', b'\x00', b'\x00', b'\xff', b'\xff']),
-      )
-      assert_eq(zlib.expected_adler32, 1L)
-    }
-    _ => fail("expected valid zlib header and checksum layout")
+    Ok(decoded) => assert_eq(decoded.length(), 0)
+    _ => fail("expected valid empty zlib stream to decode to zero bytes")
   }
 }
 
 ///|
-test "parse_zlib_stream rejects an invalid compression method" {
+test "decode_flate rejects an invalid compression method" {
   let stream = Bytes::from_array([
     b'\x70', b'\x01', b'\x01', b'\x00', b'\x00', b'\xff', b'\xff', b'\x00', b'\x00',
     b'\x00', b'\x01',
   ])
-  let parsed : Result[ZlibStream, PdfFilterError] = try? parse_zlib_stream(
-    stream,
-  )
+  let parsed : Result[Bytes, PdfFilterError] = try? decode_flate(stream)
   match parsed {
     Err(DecodeError(filter_name, reason)) => {
       assert_eq(filter_name, "FlateDecode")
@@ -250,14 +244,12 @@ test "parse_zlib_stream rejects an invalid compression method" {
 }
 
 ///|
-test "parse_zlib_stream rejects an invalid window size" {
+test "decode_flate rejects an invalid window size" {
   let stream = Bytes::from_array([
     b'\x88', b'\x1c', b'\x01', b'\x00', b'\x00', b'\xff', b'\xff', b'\x00', b'\x00',
     b'\x00', b'\x01',
   ])
-  let parsed : Result[ZlibStream, PdfFilterError] = try? parse_zlib_stream(
-    stream,
-  )
+  let parsed : Result[Bytes, PdfFilterError] = try? decode_flate(stream)
   match parsed {
     Err(DecodeError(filter_name, reason)) => {
       assert_eq(filter_name, "FlateDecode")
@@ -268,14 +260,12 @@ test "parse_zlib_stream rejects an invalid window size" {
 }
 
 ///|
-test "parse_zlib_stream rejects invalid header check bits" {
+test "decode_flate rejects invalid header check bits" {
   let stream = Bytes::from_array([
     b'\x78', b'\x00', b'\x01', b'\x00', b'\x00', b'\xff', b'\xff', b'\x00', b'\x00',
     b'\x00', b'\x01',
   ])
-  let parsed : Result[ZlibStream, PdfFilterError] = try? parse_zlib_stream(
-    stream,
-  )
+  let parsed : Result[Bytes, PdfFilterError] = try? decode_flate(stream)
   match parsed {
     Err(DecodeError(filter_name, reason)) => {
       assert_eq(filter_name, "FlateDecode")
@@ -286,14 +276,12 @@ test "parse_zlib_stream rejects invalid header check bits" {
 }
 
 ///|
-test "parse_zlib_stream rejects preset dictionary streams" {
+test "decode_flate rejects preset dictionary streams" {
   let stream = Bytes::from_array([
     b'\x78', b'\x20', b'\x01', b'\x00', b'\x00', b'\xff', b'\xff', b'\x00', b'\x00',
     b'\x00', b'\x01',
   ])
-  let parsed : Result[ZlibStream, PdfFilterError] = try? parse_zlib_stream(
-    stream,
-  )
+  let parsed : Result[Bytes, PdfFilterError] = try? decode_flate(stream)
   match parsed {
     Err(DecodeError(filter_name, reason)) => {
       assert_eq(filter_name, "FlateDecode")
@@ -304,17 +292,35 @@ test "parse_zlib_stream rejects preset dictionary streams" {
 }
 
 ///|
-test "parse_zlib_stream rejects truncated payloads" {
+test "decode_flate rejects truncated payloads" {
   let stream = Bytes::from_array([b'\x78', b'\x01', b'\x01', b'\x00', b'\x00'])
-  let parsed : Result[ZlibStream, PdfFilterError] = try? parse_zlib_stream(
-    stream,
-  )
+  let parsed : Result[Bytes, PdfFilterError] = try? decode_flate(stream)
   match parsed {
     Err(DecodeError(filter_name, reason)) => {
       assert_eq(filter_name, "FlateDecode")
       assert_eq(reason.contains("truncated"), true)
     }
     _ => fail("expected truncated zlib payload to fail")
+  }
+}
+
+///|
+test "decode_flate tolerates trailing bytes after the Adler-32 checksum" {
+  // Same minimal stored-block stream as the first test, with one extra
+  // trailing 0x0a byte appended after the Adler-32. Real PDFs commonly
+  // embed the EOL between the deflate body and `endstream` inside the
+  // declared `/Length`, so the trailing bytes end up inside the slice the
+  // filter pipeline hands us. `decode_flate` must ignore them — failing
+  // here used to cascade through to the text decoder, which silently
+  // substituted a Latin-encoded font and rendered the page as garbage.
+  let stream = Bytes::from_array([
+    b'\x78', b'\x01', b'\x01', b'\x00', b'\x00', b'\xff', b'\xff', b'\x00', b'\x00',
+    b'\x00', b'\x01', b'\x0a',
+  ])
+  let parsed : Result[Bytes, PdfFilterError] = try? decode_flate(stream)
+  match parsed {
+    Ok(decoded) => assert_eq(decoded.length(), 0)
+    _ => fail("expected trailing-byte tolerance for real-world PDF streams")
   }
 }
 

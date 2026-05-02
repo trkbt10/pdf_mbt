@@ -104,6 +104,10 @@ fn SvgEmbeddedFont::new(ttf : @font.TTFont) -> SvgEmbeddedFont {
 }
 
 ///|
+/// Width of the *displayed* page, after applying the page's `Rotate` entry.
+/// For rotation 90 / 270 this is the original media-box height, since those
+/// rotations swap the viewport axes; rotation 0 / 180 leaves it as the
+/// original width. Rendering callers use this for the SVG viewBox.
 fn page_width(page : @reader.PdfPage) -> Double {
   let (width, height) = page_dimensions(page)
   if page_is_rotated_sideways(page) {
@@ -114,12 +118,41 @@ fn page_width(page : @reader.PdfPage) -> Double {
 }
 
 ///|
+/// Height of the *displayed* page, mirror of `page_width`.
 fn page_height(page : @reader.PdfPage) -> Double {
   let (width, height) = page_dimensions(page)
   if page_is_rotated_sideways(page) {
     width
   } else {
     height
+  }
+}
+
+///|
+/// Height of the page in its *content* (pre-rotation) coordinate system. PDF
+/// content streams emit positions in this coordinate system regardless of the
+/// `Rotate` entry, so the SVG y-flip (PDF y-up → SVG y-down) must use the
+/// content height even when the displayed viewport has been rotated.
+fn page_content_height(page : @reader.PdfPage) -> Double {
+  let (_width, height) = page_dimensions(page)
+  height
+}
+
+///|
+/// Width of the page in its content (pre-rotation) coordinate system.
+fn page_content_width(page : @reader.PdfPage) -> Double {
+  let (width, _height) = page_dimensions(page)
+  width
+}
+
+///|
+/// Returns the normalised PDF Rotate value (0, 90, 180 or 270). Defaults to 0
+/// for pages without a Rotate entry or when the value can't be resolved.
+fn page_rotation(page : @reader.PdfPage) -> Int {
+  let result : Result[Int?, @reader.PdfDocumentError] = try? page.rotate()
+  match result {
+    Ok(Some(value)) => positive_mod(value, 360)
+    _ => 0
   }
 }
 
@@ -906,11 +939,12 @@ fn write_svg_image_deferred(
 }
 
 ///|
-/// Emits SVG image elements with direct clip-path attributes. Axis-aligned
-/// images are written in page coordinates and non-axis-aligned images carry a
-/// page-space CTM matrix, so the direct `clip-path` attribute remains
-/// geometrically sound and intentionally does not use the transformed
-/// glyph/text wrapper helper.
+/// Emits SVG image elements with the appropriate clip-path application.
+/// Axis-aligned images stay in page coordinates so the direct `clip-path`
+/// attribute is geometrically sound. Non-axis-aligned images need a
+/// `transform` matrix; SVG evaluates `clip-path` in the element's local
+/// user space, so we wrap those in an untransformed `<g clip-path=...>` and
+/// keep the `<image>` itself unclipped, matching the glyph/text wrapper.
 fn write_svg_image_with_index(
   builder : StringBuilder,
   href : String,
@@ -941,12 +975,13 @@ fn write_svg_image_with_index(
       None => ()
     }
   }
+  write_svg_clip_wrapper_begin(builder, clip_id)
   builder.write_string("<image x=\"0\" y=\"0\" width=\"1\" height=\"1\"")
-  write_svg_clip_path_attribute(builder, clip_id)
   write_svg_image_href(builder, href, image_index)
   builder.write_string(" transform=\"matrix(")
   write_svg_image_matrix(builder, matrix, expand_x, expand_y, page_height)
   builder.write_string(")\"/>")
+  write_svg_clip_wrapper_end(builder, clip_id)
 }
 
 ///|
@@ -1616,6 +1651,14 @@ fn render_glyph_as_path(
   if gid == 0 && !svg_glyph_is_notdef_source(glyph) {
     return false
   }
+  // mizchi/font's CFF interpreter panics with `Array::at` out-of-bounds on
+  // malformed Type 2 CharStrings (e.g. a glyph whose body starts with vmoveto
+  // before pushing any operand). The trap aborts `pageToSvg` whole-page on
+  // wasm, so we pre-flight the CharString and fall back to text rendering for
+  // unsafe glyphs rather than calling `glyph_outline` on them.
+  if !cff_charstring_is_safe(ttf, gid) {
+    return false
+  }
   let outline : Array[@svgpath.PathCommand] = ttf.glyph_outline(gid)
   if outline.length() == 0 {
     if svg_glyph_is_spacing(glyph) {
@@ -2004,9 +2047,12 @@ fn svg_glyph_is_notdef_source(glyph : @text.TextGlyphEvent) -> Bool {
 /// Fallback for non-embedded fonts. Writes fallback SVG `<text>` when glyph
 /// outlines are unavailable after Standard 14 / system font resolution, using
 /// the mapped CSS font-family. The text element fill colour comes from the
-/// per-span nonstroking colour. High-volume text clips are wrapped in an
-/// untransformed group so rsvg does not evaluate page-space clips in
-/// text-local units; other clips keep the historical direct attribute.
+/// per-span nonstroking colour. Any non-zero clip is applied via an
+/// untransformed `<g clip-path="url(#cN)">` wrapper, never as a `clip-path`
+/// attribute on the transformed `<text>` itself: SVG evaluates `clip-path`
+/// in the element's local user space, but our clip geometry is recorded in
+/// page space, so a direct attribute would translate the clip with the text
+/// transform and silently hide otherwise-visible glyphs.
 fn page_render_text_svg(
   builder : StringBuilder,
   span : @text.TextSpan,
@@ -2023,9 +2069,7 @@ fn page_render_text_svg(
   )
   let positioned = svg_positioned_text(span, text_matrix, glyphs, page_height)
   let actual_clip_id = svg_text_clip_actual_id(clip_id)
-  if clip_id < 0 {
-    write_svg_clip_wrapper_begin(builder, actual_clip_id)
-  }
+  write_svg_clip_wrapper_begin(builder, actual_clip_id)
   builder.write_string("<text transform=\"matrix(")
   write_svg_text_matrix(builder, text_matrix)
   builder.write_string(")\" font-size=\"")
@@ -2037,9 +2081,6 @@ fn page_render_text_svg(
   builder.write_string("\" fill=\"")
   builder.write_string(fill_colour)
   builder.write_string("\"")
-  if clip_id > 0 {
-    write_svg_clip_path_attribute(builder, actual_clip_id)
-  }
   match positioned {
     Some(text) => {
       builder.write_string(">")
@@ -2055,9 +2096,7 @@ fn page_render_text_svg(
     }
   }
   builder.write_string("</text>")
-  if clip_id < 0 {
-    write_svg_clip_wrapper_end(builder, actual_clip_id)
-  }
+  write_svg_clip_wrapper_end(builder, actual_clip_id)
 }
 
 ///|

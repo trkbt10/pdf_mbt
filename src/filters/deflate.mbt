@@ -1,13 +1,33 @@
 ///|
+/// Decodes a raw DEFLATE stream and returns only the decoded bytes. Use
+/// `decode_deflate_with_position` when the caller also needs the input
+/// byte offset where decoding stopped (zlib needs that to locate the
+/// trailing Adler-32 immediately after the final block, since some
+/// producers leave padding bytes between the deflate body and the
+/// checksum).
 fn decode_deflate(data : Bytes) -> Bytes raise PdfFilterError {
+  decode_deflate_with_position(data).0
+}
+
+///|
+/// Like `decode_deflate`, but also returns the byte offset in `data` at
+/// which the decoder stopped after consuming the final block and aligning
+/// to the next byte boundary. The wrapping zlib stream parser uses this to
+/// locate the 4-byte Adler-32 checksum exactly where the encoder placed it
+/// — `data.length() - 4` is wrong whenever the producer appended extra
+/// padding bytes after the checksum (a common quirk of CID-font ToUnicode
+/// CMaps emitted by Acrobat-derived pipelines, where a stray EOL byte
+/// after the deflate body makes the trailing-4-bytes heuristic point one
+/// byte past the real Adler-32 and corrupt the entire document).
+fn decode_deflate_with_position(
+  data : Bytes,
+) -> (Bytes, Int) raise PdfFilterError {
   let reader = LsbBitReader::new(data)
   let output : Array[Byte] = []
   let mut final_block_seen = false
-
   while !final_block_seen {
     let is_final = reader.read_bits(1)
     let block_type = reader.read_bits(2)
-
     match block_type {
       0 => decode_stored_block(reader, output)
       1 => decode_fixed_huffman_block(reader, output)
@@ -17,18 +37,10 @@ fn decode_deflate(data : Bytes) -> Bytes raise PdfFilterError {
           "FlateDecode", "unsupported DEFLATE block type",
         )
     }
-
     final_block_seen = is_final == 1
   }
-
   reader.align_to_byte()
-  if reader.byte_position() != data.length() {
-    raise PdfFilterError::DecodeError(
-      "FlateDecode", "trailing data after final DEFLATE block",
-    )
-  }
-
-  Bytes::from_array(output)
+  (Bytes::from_array(output), reader.byte_position())
 }
 
 ///|
@@ -39,14 +51,6 @@ pub fn decode_flate_with_params(
 ) -> Bytes raise PdfFilterError {
   let decoded = decode_zlib_stream(data)
   apply_predictor("FlateDecode", decoded, params)
-}
-
-///|
-fn decode_zlib_stream(data : Bytes) -> Bytes raise PdfFilterError {
-  let zlib = parse_zlib_stream(data)
-  let decoded = decode_deflate(zlib.deflate_data)
-  validate_adler32("FlateDecode", decoded, zlib.expected_adler32)
-  decoded
 }
 
 ///|

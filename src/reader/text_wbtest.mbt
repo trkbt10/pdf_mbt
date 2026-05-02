@@ -47,12 +47,28 @@ test "page text program ignores broken embedded font program" {
     build_page_text_broken_font_program_fixture(),
   )
   let page = document.page(0)
-  let instructions = page.content_instructions()
-  assert_eq(instructions.length() > 0, true)
-  let resources = page.text_resources()
-  assert_eq(resources.fonts.contains(@objects.PdfName::new(b"F1")), true)
-  let program = page.text_program(TextPageOptions::default())
-  assert_eq(collect_reader_spans_text(program.spans), "AB")
+  let instructions_result : Result[Array[@content.ContentInstruction], PdfDocumentError] = try? page.content_instructions()
+  match instructions_result {
+    Ok(instructions) => assert_eq(instructions.length() > 0, true)
+    Err(error) =>
+      fail("content_instructions: " + pdf_document_error_summary(error))
+  }
+  let resources_result : Result[@text.TextResources, PdfDocumentError] = try? page.text_resources()
+  match resources_result {
+    Ok(resources) =>
+      assert_eq(resources.fonts.contains(@objects.PdfName::new(b"F1")), true)
+    Err(error) =>
+      fail("text_resources: " + pdf_document_error_summary(error))
+  }
+  let program_result : Result[@text.TextProgram, PdfDocumentError] = try? page.text_program(
+    TextPageOptions::default(),
+  )
+  match program_result {
+    Ok(program) =>
+      assert_eq(collect_reader_spans_text(program.spans), "AB")
+    Err(error) =>
+      fail("text_program: " + pdf_document_error_summary(error))
+  }
 }
 
 ///|
@@ -73,11 +89,28 @@ test "page text program keeps ToUnicode for TrueType fallback" {
 }
 
 ///|
-test "page extracted text returns empty when content parsing fails" {
+test "page extracted text raises when content parsing fails" {
+  // Per the strict-or-recover SoT: a malformed content stream is a
+  // structural error, not a "text was empty" outcome. The previous
+  // behaviour silently substituted an empty extraction and stranded the
+  // user without any signal that the document itself was corrupt — this
+  // is exactly the swallow that historically hid ToUnicode FlateDecode
+  // failures and silently dropped CID fonts back to Latin substitution
+  // glyphs. Callers that want best-effort recovery must catch the typed
+  // error explicitly.
   let document = PdfDocument::open(build_page_text_bad_content_fixture())
   let page = document.page(0)
-  let extracted = page.extracted_text(TextPageOptions::default())
-  assert_eq(extracted.spans.length(), 0)
+  let result : Result[@text.ExtractedText, PdfDocumentError] = try? page.extracted_text(
+    TextPageOptions::default(),
+  )
+  match result {
+    Err(ContentError(_)) => ()
+    Ok(_) => fail("expected bad content stream to raise ContentError")
+    Err(error) =>
+      fail(
+        "expected ContentError, got " + pdf_document_error_summary(error),
+      )
+  }
 }
 
 ///|
@@ -192,7 +225,7 @@ fn build_page_text_broken_font_program_fixture() -> Bytes {
     bytes, header_base, 5, 0, b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /FirstChar 65 /Widths [600 500] /ToUnicode 6 0 R /FontDescriptor << /MissingWidth 500 /FontFile 99 0 R >> >>",
   )
   let to_unicode = build_stream_object_body(
-    b"<< /Length 109 >>", b"1 begincodespacerange\n<00> <ff>\nendcodespacerange\n2 beginbfchar\n<41> <0041>\n<42> <0042>\nendbfchar",
+    b"<< /Length 97 >>", b"1 begincodespacerange\n<00> <ff>\nendcodespacerange\n2 beginbfchar\n<41> <0041>\n<42> <0042>\nendbfchar",
   )
   let (bytes, unicode_offset) = append_indirect_object(
     bytes, header_base, 6, 0, to_unicode,

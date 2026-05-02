@@ -49,10 +49,21 @@ pub fn resolve_named_encoding(
   } else if name == @objects.PdfName::new(b"MacExpertEncoding") {
     SimpleEncoding::from_name(MacExpertEncoding)
   } else {
-    raise PdfTextError::InvalidFont(
-      TextErrorContext::at(offset),
-      "unknown simple font encoding " + name.to_text(),
-    )
+    // ISO 32000-2 §9.6.5.4 lists exactly the four predefined encoding
+    // names above. The spec says producers SHALL use one of them, but
+    // real-world PDFs (notably OpenOffice/LibreOffice exports and a
+    // handful of academic publishing pipelines) emit non-standard
+    // identifiers like `/OpenOfficeCustomEncoding` or
+    // `/NonStandardEncoding`. Acrobat, poppler and pdf.js all silently
+    // recover by reverting to the implicit base encoding (StandardEncoding
+    // for Type 1 fonts), and the only useful diagnostic the user could
+    // produce from a hard error is "well, ignore it" — the real signal is
+    // whether `/Differences` was used to override the implicit base, and
+    // that path stays accurate either way. Mirror the spec's "implicit
+    // base encoding" wording rather than silently swallowing the failure
+    // by category.
+    let _ = offset
+    SimpleEncoding::from_name(StandardEncoding)
   }
 }
 

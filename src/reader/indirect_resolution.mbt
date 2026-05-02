@@ -37,10 +37,17 @@ fn resolve_indirect_with_seen(
         )
       }
       seen[id] = true
+      // ISO 32000-2 §7.3.10: "An indirect reference to an undefined object
+      // shall not be considered an error by a conforming reader; it shall
+      // be treated as a reference to the null object." Returning Null lets
+      // the caller's existing `Some(Null) | None => ...` arms handle the
+      // missing referent the same way they handle an absent entry — the
+      // important downstream effect is that an unresolved /FontFile or
+      // /ToUnicode reference no longer escalates into a fatal `InvalidPage`
+      // ("indirect reference is missing"), which previously masqueraded as
+      // a structural document error and broke text extraction on otherwise
+      // valid PDFs that just happened to leave a stray reference.
       let loaded = load_document_object(file, id)
-      if loaded == @objects.PdfObject::Null {
-        raise PdfDocumentError::InvalidPage(id, "indirect reference is missing")
-      }
       resolve_indirect_with_seen(file, loaded, seen, depth=depth + 1)
     }
     _ => object

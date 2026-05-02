@@ -87,8 +87,38 @@ fn extract_pdf_file_text(path : String) -> String raise {
 ///|
 fn pdf_document_error_summary(error : PdfDocumentError) -> String {
   match error {
-    TextError(text_error) => pdf_text_error_summary(text_error)
+    TextError(text_error) =>
+      "TextError(" + pdf_text_error_summary(text_error) + ")"
+    ContentError(_) => "ContentError"
+    ReaderError(reader_error) =>
+      "ReaderError(" + pdf_reader_error_summary(reader_error) + ")"
+    GraphicsError(_) => "GraphicsError"
+    InvalidPage(id, reason) =>
+      "InvalidPage " +
+      id.object_number.to_string() +
+      "/" +
+      id.generation_number.to_string() +
+      ": " +
+      reason
     _ => "non-text extraction error"
+  }
+}
+
+///|
+fn pdf_reader_error_summary(error : PdfReaderError) -> String {
+  match error {
+    InvalidHeader(_, reason) => "InvalidHeader: " + reason
+    MissingTailMarker(reason) => "MissingTailMarker: " + reason
+    InvalidXref(_, reason) => "InvalidXref: " + reason
+    InvalidTrailer(_, reason) => "InvalidTrailer: " + reason
+    InvalidObjectStream(_, reason) => "InvalidObjectStream: " + reason
+    InvalidObjectLocation(_, reason) => "InvalidObjectLocation: " + reason
+    UnsupportedFilter(_, reason) => "UnsupportedFilter: " + reason
+    DecodeStreamError(_, _) => "DecodeStreamError"
+    EncryptionError(_) => "EncryptionError"
+    PrevChainCycle(_) => "PrevChainCycle"
+    ParseObjectError(off, _inner) =>
+      "ParseObjectError @" + off.to_string()
   }
 }
 

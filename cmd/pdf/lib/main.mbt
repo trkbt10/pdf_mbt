@@ -18,6 +18,92 @@ fn print_stderr(message : String) -> Unit {
 }
 
 ///|
+/// Renders an `ObjectId` in the customary `n g R` form so error messages can
+/// reference indirect objects in the same notation users see in PDF dumps.
+fn format_object_id(id : @objects.ObjectId) -> String {
+  id.object_number.to_string() +
+  " " +
+  id.generation_number.to_string() +
+  " R"
+}
+
+///|
+/// Produces a human-readable single-line description of a runtime error
+/// raised by the PDF library. Without this, MoonBit's default `to_string`
+/// renders just the qualified variant name (e.g.
+/// `trkbt10/pdf/src/reader.PdfDocumentError.InvalidPage`) and drops every
+/// payload field, which leaves CLI users without any information about which
+/// object or content stream actually failed.
+fn format_runtime_error(err : Error) -> String {
+  match err {
+    @reader.PdfDocumentError::InvalidPage(id, reason) =>
+      "InvalidPage " + format_object_id(id) + ": " + reason
+    @reader.PdfDocumentError::InvalidPageTree(id, reason) =>
+      "InvalidPageTree " + format_object_id(id) + ": " + reason
+    @reader.PdfDocumentError::InvalidCatalog(id, reason) =>
+      "InvalidCatalog " + format_object_id(id) + ": " + reason
+    @reader.PdfDocumentError::InvalidInheritedAttribute(id, name, reason) =>
+      "InvalidInheritedAttribute " +
+      format_object_id(id) +
+      "/" +
+      name.to_text() +
+      ": " +
+      reason
+    @reader.PdfDocumentError::ContentError(inner) =>
+      "ContentError: " + format_runtime_error(inner)
+    @reader.PdfDocumentError::ReaderError(inner) =>
+      "ReaderError: " + format_runtime_error(inner)
+    @reader.PdfDocumentError::TextError(inner) =>
+      "TextError: " + format_runtime_error(inner)
+    @reader.PdfDocumentError::GraphicsError(inner) =>
+      "GraphicsError: " + format_runtime_error(inner)
+    @reader.PdfDocumentError::RenderingError(_) => err.to_string()
+    @reader.PdfDocumentError::PageIndexOutOfRange(index, count) =>
+      "PageIndexOutOfRange: page " +
+      index.to_string() +
+      " requested but document has " +
+      count.to_string() +
+      " pages"
+    @graphics.PdfGraphicsError::InvalidImage(off, reason) =>
+      "InvalidImage @" + off.to_string() + ": " + reason
+    @graphics.PdfGraphicsError::BadOperand(off, reason) =>
+      "BadOperand @" + off.to_string() + ": " + reason
+    @graphics.PdfGraphicsError::InvalidGraphicsState(off, reason) =>
+      "InvalidGraphicsState @" + off.to_string() + ": " + reason
+    @graphics.PdfGraphicsError::InvalidPathState(off, reason) =>
+      "InvalidPathState @" + off.to_string() + ": " + reason
+    @graphics.PdfGraphicsError::InvalidXObject(off, reason) =>
+      "InvalidXObject @" + off.to_string() + ": " + reason
+    @graphics.PdfGraphicsError::ResourceFailure(off, reason) =>
+      "ResourceFailure @" + off.to_string() + ": " + reason
+    @text.PdfTextError::InvalidFont(_, msg) => "InvalidFont: " + msg
+    @text.PdfTextError::InvalidCMap(_, msg) => "InvalidCMap: " + msg
+    @text.PdfTextError::InvalidTextState(_, msg) =>
+      "InvalidTextState: " + msg
+    @text.PdfTextError::MissingResource(_, msg) =>
+      "MissingResource: " + msg
+    @text.PdfTextError::BadOperand(_, msg) => "BadOperand: " + msg
+    @text.PdfTextError::UnicodeConversion(_, msg) =>
+      "UnicodeConversion: " + msg
+    @text.PdfTextError::GuardLimitExceeded(_, msg) =>
+      "GuardLimitExceeded: " + msg
+    @text.PdfTextError::ContentFailure(_, inner) =>
+      "ContentFailure: " + format_runtime_error(inner)
+    @text.PdfTextError::FilterFailure(_, inner) =>
+      "FilterFailure: " + format_runtime_error(inner)
+    @filters.PdfFilterError::DecodeError(filter, reason) =>
+      "DecodeError[" + filter + "]: " + reason
+    @filters.PdfFilterError::InvalidDecodeParms(filter, reason) =>
+      "InvalidDecodeParms[" + filter + "]: " + reason
+    @filters.PdfFilterError::UnsupportedFilter(name) =>
+      "UnsupportedFilter: " + name
+    @filters.PdfFilterError::InvalidFilterSpec(reason) =>
+      "InvalidFilterSpec: " + reason
+    _ => err.to_string()
+  }
+}
+
+///|
 /// Runs the `pdf` command-line interface. It parses the subcommand-based
 /// architecture `pdf <subcommand> [options] <input.pdf> [output]`, handles
 /// global `--help` and `--version` support from argparse, dispatches to text,
@@ -29,6 +115,50 @@ pub fn run_cli() -> Unit {
   } catch {
     CliError::Message(message) => {
       print_stderr("pdf: " + message)
+      @sys.exit(1)
+    }
+    @reader.PdfDocumentError::InvalidPage(id, reason) => {
+      print_stderr(
+        "pdf: InvalidPage " + format_object_id(id) + ": " + reason,
+      )
+      @sys.exit(1)
+    }
+    @reader.PdfDocumentError::InvalidPageTree(id, reason) => {
+      print_stderr(
+        "pdf: InvalidPageTree " + format_object_id(id) + ": " + reason,
+      )
+      @sys.exit(1)
+    }
+    @reader.PdfDocumentError::InvalidCatalog(id, reason) => {
+      print_stderr(
+        "pdf: InvalidCatalog " + format_object_id(id) + ": " + reason,
+      )
+      @sys.exit(1)
+    }
+    @reader.PdfDocumentError::ContentError(inner) => {
+      print_stderr("pdf: ContentError: " + format_runtime_error(inner))
+      @sys.exit(1)
+    }
+    @reader.PdfDocumentError::ReaderError(inner) => {
+      print_stderr("pdf: ReaderError: " + format_runtime_error(inner))
+      @sys.exit(1)
+    }
+    @reader.PdfDocumentError::TextError(inner) => {
+      print_stderr("pdf: TextError: " + format_runtime_error(inner))
+      @sys.exit(1)
+    }
+    @reader.PdfDocumentError::GraphicsError(inner) => {
+      print_stderr("pdf: GraphicsError: " + format_runtime_error(inner))
+      @sys.exit(1)
+    }
+    @graphics.PdfGraphicsError::InvalidImage(off, reason) => {
+      print_stderr(
+        "pdf: InvalidImage @" + off.to_string() + ": " + reason,
+      )
+      @sys.exit(1)
+    }
+    @graphics.PdfGraphicsError::BadOperand(off, reason) => {
+      print_stderr("pdf: BadOperand @" + off.to_string() + ": " + reason)
       @sys.exit(1)
     }
     err => {

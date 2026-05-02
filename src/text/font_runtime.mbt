@@ -22,6 +22,19 @@ priv struct RuntimeGlyph {
 }
 
 ///|
+/// PDF default DW2 vertical metrics from ISO 32000-2 §9.7.4.3: the vertical
+/// origin sits 880 design units above the horizontal baseline and the default
+/// vertical advance moves down (negative y) by 1000 design units. A future
+/// W2/DW2 parser should override these per glyph; until then they're the same
+/// defaults Acrobat applies when the font omits W2.
+const DEFAULT_VERTICAL_ORIGIN_Y : Double = 880.0
+///|
+const DEFAULT_VERTICAL_ADVANCE_Y : Double = -1000.0
+
+///|
+/// Per ISO 32000-2 §9.7.4.3, when DW2/W2 are absent the vertical origin
+/// x-offset is half the horizontal advance, so glyphs centre on the vertical
+/// writing line.
 fn GlyphMetrics::from_horizontal_width(
   width : Double,
   source : GlyphWidthSource,
@@ -29,9 +42,9 @@ fn GlyphMetrics::from_horizontal_width(
   GlyphMetrics::{
     horizontal_displacement: width,
     vertical_displacement_x: 0.0,
-    vertical_displacement_y: width,
-    vertical_origin_x: 0.0,
-    vertical_origin_y: 0.0,
+    vertical_displacement_y: DEFAULT_VERTICAL_ADVANCE_Y,
+    vertical_origin_x: width / 2.0,
+    vertical_origin_y: DEFAULT_VERTICAL_ORIGIN_Y,
     width_source: source,
   }
 }
@@ -59,15 +72,29 @@ fn GlyphMetrics::resolve_width(
 }
 
 ///|
+/// Single source of truth for resolving a `FontResourceSummary` into a
+/// fully-typed `RuntimeFont`. We deliberately do NOT swallow errors here —
+/// historically there was a `parse_runtime_font_dictionary` wrapper that
+/// returned a degenerate Simple/StandardEncoding font on any parse failure,
+/// which silently masked real bugs (e.g. a ToUnicode CMap whose
+/// FlateDecode body had a trailing pad byte: every CID was reinterpreted
+/// as Latin-1 and the page rendered as garbage). If a font can't be parsed
+/// the page-render or text-extraction caller is responsible for catching
+/// the typed error and either skipping the span or surfacing a warning —
+/// this module no longer fabricates plausible-looking but wrong fonts.
 fn load_runtime_font(
   summary : FontResourceSummary,
   offset : Int64,
   limits : TextInterpretationLimits,
-) -> RuntimeFont {
+) -> RuntimeFont raise PdfTextError {
   match summary.font_object {
     @objects.PdfObject::Dictionary(dict) =>
-      parse_runtime_font_dictionary(dict, offset, limits)
-    _ => fallback_runtime_font(Map::new(), offset, limits)
+      parse_runtime_font_dictionary_strict(dict, offset, limits)
+    _ =>
+      raise PdfTextError::InvalidFont(
+        TextErrorContext::at(offset),
+        "font resource value must be a dictionary",
+      )
   }
 }
 
@@ -84,17 +111,14 @@ fn decode_runtime_font_string(
 }
 
 ///|
-fn parse_runtime_font_dictionary(
-  dict : @objects.PdfDictionary,
-  offset : Int64,
-  limits : TextInterpretationLimits,
-) -> RuntimeFont {
-  let parsed : Result[RuntimeFont, PdfTextError] = try? parse_runtime_font_dictionary_strict(
-    dict, offset, limits,
-  )
-  match parsed {
-    Ok(font) => font
-    Err(_) => fallback_runtime_font(dict, offset, limits)
+/// Reads the active writing mode from the font's CMap. Simple fonts are
+/// always horizontal — vertical writing is only meaningful for Type 0
+/// (composite) fonts whose Encoding is a horizontal/vertical CMap pair such
+/// as `Identity-H` / `Identity-V`.
+fn RuntimeFont::writing_mode(font : RuntimeFont) -> WritingMode {
+  match font.kind {
+    Composite(cmap) => cmap.writing_mode
+    Simple(_) => WritingMode::Horizontal
   }
 }
 
@@ -144,70 +168,6 @@ fn parse_runtime_font_dictionary_strict(
         default_width_source: GlyphWidthSource::FontDescriptorMissingWidth,
       }
     }
-  }
-}
-
-///|
-fn fallback_runtime_font(
-  dict : @objects.PdfDictionary,
-  offset : Int64,
-  limits : TextInterpretationLimits,
-) -> RuntimeFont {
-  let encoding = SimpleEncoding::standard()
-  let to_unicode = fallback_to_unicode(dict, offset, limits)
-  let ttf = parse_embedded_truetype_font(dict)
-  let widths = fallback_widths(dict, offset)
-  RuntimeFont::{
-    kind: Simple(encoding),
-    to_unicode,
-    ttf,
-    widths,
-    standard_widths: standard14_simple_widths(dict, encoding, widths),
-    default_width: fallback_missing_width(dict, offset),
-    default_width_source: GlyphWidthSource::FontDescriptorMissingWidth,
-  }
-}
-
-///|
-fn fallback_to_unicode(
-  dict : @objects.PdfDictionary,
-  offset : Int64,
-  limits : TextInterpretationLimits,
-) -> ToUnicodeCMap? {
-  let parsed : Result[ToUnicodeCMap?, PdfTextError] = try? parse_optional_to_unicode(
-    dict, offset, limits,
-  )
-  match parsed {
-    Ok(to_unicode) => to_unicode
-    Err(_) => None
-  }
-}
-
-///|
-fn fallback_widths(
-  dict : @objects.PdfDictionary,
-  offset : Int64,
-) -> Map[Int, Double] {
-  let parsed : Result[Map[Int, Double], PdfTextError] = try? parse_widths(
-    dict, offset,
-  )
-  match parsed {
-    Ok(widths) => widths
-    Err(_) => Map::new()
-  }
-}
-
-///|
-fn fallback_missing_width(
-  dict : @objects.PdfDictionary,
-  offset : Int64,
-) -> Double? {
-  let parsed : Result[Double?, PdfTextError] = try? font_descriptor_missing_width(
-    dict, offset,
-  )
-  match parsed {
-    Ok(width) => width
-    Err(_) => Some(500.0)
   }
 }
 

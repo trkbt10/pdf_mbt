@@ -959,19 +959,27 @@ test "render_page_svg emits clip-path for clipped fallback text" {
 }
 
 ///|
-test "render_page_svg keeps ordinary clipped fallback text direct" {
+test "render_page_svg wraps clipped fallback text in untransformed clip group" {
+  // The clip path geometry is recorded in page space, so applying it via a
+  // direct `clip-path` attribute on a transformed `<text>` evaluates the clip
+  // in the text's local user space and silently hides every glyph that lies
+  // inside the page-space clip but outside the locally translated copy. The
+  // renderer must wrap any clipped text in an untransformed `<g
+  // clip-path="url(#cN)">` group so the clip stays in page coordinates while
+  // the text keeps its own transform.
   let document = @reader.PdfDocument::open(
     build_clipped_text_fallback_fixture(),
   )
   let svg = render_page_svg(document.page(0))
-  assert_eq(svg.contains("<text transform="), true)
+  assert_eq(svg.contains("<g clip-path=\"url(#c1)\"><text transform="), true)
   assert_eq(svg.contains("<text transform=\"matrix(1 0 0 1 12 80)"), true)
-  assert_eq(svg.contains("<g clip-path=\"url(#c1)\"><text transform="), false)
+  // The historical buggy form attached `clip-path` directly to the
+  // transformed `<text>`; that form must no longer appear.
   assert_eq(
     svg.contains(
       "<text transform=\"matrix(1 0 0 1 12 80)\" font-size=\"12\" text-rendering=\"geometricPrecision\" font-family=\"ClipFallback, sans-serif\" fill=\"#000000\" clip-path=\"url(#c1)\"",
     ),
-    true,
+    false,
   )
 }
 

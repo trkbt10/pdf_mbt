@@ -61,9 +61,24 @@ fn PdfPage::content_stream_objects(
   match self.contents() {
     None => []
     Some(@objects.PdfObject::Null) => []
-    Some(@objects.PdfObject::Array(values)) =>
-      resolve_content_stream_array(self, values)
-    Some(value) => [resolve_content_stream_object(self, value)]
+    Some(value) =>
+      // ISO 32000-2 §7.7.3.3: the Contents entry "shall be either a single
+      // stream or an array of streams", and either form may itself be an
+      // indirect reference. Several common producers emit `/Contents N 0 R`
+      // where N resolves to an *array* of stream refs rather than a
+      // stream; handling only the inline-array form silently dropped every
+      // such page.
+      match resolve_page_content_object(self.file, value) {
+        @objects.PdfObject::Null => []
+        @objects.PdfObject::Array(values) =>
+          resolve_content_stream_array(self, values)
+        @objects.PdfObject::Stream(stream) => [stream]
+        _ =>
+          raise PdfDocumentError::InvalidPage(
+            self.object_id(),
+            "Contents entry must resolve to a stream or an array of streams",
+          )
+      }
   }
 }
 

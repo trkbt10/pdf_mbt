@@ -364,6 +364,7 @@ fn TextInterpreter::show_string(
     return
   }
   let decoded = decode_runtime_font_string(font, bytes, offset)
+  let writing_mode = font.writing_mode()
   if text_interpret_diagnostics_enabled.val {
     text_interpret_glyph_decode_record(decoded.length())
     text_interpret_allocation_record(decoded.length() + 1)
@@ -372,8 +373,22 @@ fn TextInterpreter::show_string(
   let mut text = ""
   for item in decoded {
     let before = self.require_text_object(offset)
+    // Vertical writing mode positions each glyph at its `vertical origin`
+    // rather than the horizontal baseline origin. ISO 32000-2 §9.7.4.3
+    // defines the vertical origin as the horizontal origin shifted by
+    // (vox, voy) design units. To draw the glyph so its vertical origin
+    // lands on the text matrix point, we pre-translate the rendering matrix
+    // by -(vox, voy) scaled out of design space into text space.
+    let glyph_text_matrix = match writing_mode {
+      WritingMode::Vertical => {
+        let vox = item.glyph.metrics.vertical_origin_x / 1000.0 * span_font_size
+        let voy = item.glyph.metrics.vertical_origin_y / 1000.0 * span_font_size
+        before.text_matrix.translated(-vox, -voy)
+      }
+      WritingMode::Horizontal => before.text_matrix
+    }
     let rendering_matrix = TextRenderingMatrix::from_text_state(
-      before.text_matrix,
+      glyph_text_matrix,
       span_font_size,
       self.state.horizontal_scaling,
       self.state.text_rise,
@@ -401,7 +416,7 @@ fn TextInterpreter::show_string(
         }
       Unknown(_, _, _) => ()
     }
-    self.advance_after_glyph(item.glyph, offset)
+    self.advance_after_glyph(item.glyph, writing_mode, offset)
   }
   self.spans.push(TextSpan::{
     offset,
@@ -425,19 +440,38 @@ fn is_zero_width_spacing_glyph(glyph : DecodedGlyph, text : String) -> Bool {
 fn TextInterpreter::advance_after_glyph(
   self : TextInterpreter,
   glyph : DecodedGlyph,
+  writing_mode : WritingMode,
   offset : Int64,
 ) -> Unit raise PdfTextError {
   let font_size = self.current_font_size(offset)
-  let mut tx = glyph.metrics.horizontal_displacement / 1000.0 * font_size
-  tx += self.state.character_spacing
-  if glyph.word_spacing_eligible {
-    tx += self.state.word_spacing
-  }
-  tx *= self.state.horizontal_scaling
   let object_state = self.require_text_object(offset)
+  // ISO 32000-2 §9.4.4: glyph displacement vector depends on the writing
+  // mode. Horizontal mode advances along x using w0; vertical mode advances
+  // along y using w1 and ignores Tw / Th.
+  let (tx, ty) = match writing_mode {
+    WritingMode::Horizontal => {
+      let mut adv = glyph.metrics.horizontal_displacement / 1000.0 * font_size
+      adv += self.state.character_spacing
+      if glyph.word_spacing_eligible {
+        adv += self.state.word_spacing
+      }
+      adv *= self.state.horizontal_scaling
+      (adv, 0.0)
+    }
+    WritingMode::Vertical => {
+      let mut adv = glyph.metrics.vertical_displacement_y /
+        1000.0 *
+        font_size
+      adv += self.state.character_spacing
+      if glyph.word_spacing_eligible {
+        adv += self.state.word_spacing
+      }
+      (0.0, adv)
+    }
+  }
   self.object_state = Some(
     object_state.advance_text_matrix(
-      object_state.text_matrix.translated(tx, 0.0),
+      object_state.text_matrix.translated(tx, ty),
     ),
   )
 }
@@ -449,11 +483,19 @@ fn TextInterpreter::apply_tj_adjustment(
   offset : Int64,
 ) -> Unit raise PdfTextError {
   let font_size = self.current_font_size(offset)
-  let tx = -value / 1000.0 * font_size * self.state.horizontal_scaling
+  let writing_mode = self.current_font(offset).writing_mode()
+  // ISO 32000-2 §9.4.3: TJ numeric entries express the displacement in
+  // 1000 design units of the text space — subtracted from horizontal advance
+  // in horizontal mode, subtracted from vertical advance in vertical mode.
   let object_state = self.require_text_object(offset)
+  let (tx, ty) = match writing_mode {
+    WritingMode::Horizontal =>
+      (-value / 1000.0 * font_size * self.state.horizontal_scaling, 0.0)
+    WritingMode::Vertical => (0.0, -value / 1000.0 * font_size)
+  }
   self.object_state = Some(
     object_state.advance_text_matrix(
-      object_state.text_matrix.translated(tx, 0.0),
+      object_state.text_matrix.translated(tx, ty),
     ),
   )
 }

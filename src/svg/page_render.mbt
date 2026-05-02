@@ -113,35 +113,92 @@ fn render_page_svg_impl(
   page : @reader.PdfPage,
   deferred_images : Array[SvgImageEntry]?,
 ) -> String {
-  let width = page_width(page)
-  let height = page_height(page)
+  // The viewport reflects the *displayed* page (post-rotation). All graphics
+  // and text events from the content stream are emitted in the page's
+  // *content* coordinate system, so the y-flip continues to use the
+  // pre-rotation page height; we then wrap the rendered content in a single
+  // rotation transform that maps content space → displayed space.
+  let viewport_width = page_width(page)
+  let viewport_height = page_height(page)
+  let content_height = page_content_height(page)
+  let content_width = page_content_width(page)
+  let rotation = page_rotation(page)
   let graphics_events = page_svg_graphics_events(page)
-  let clip_registry = build_svg_clip_registry(graphics_events, height)
-  let text_info = page_svg_text_render_info(page, clip_registry, height)
+  let clip_registry = build_svg_clip_registry(graphics_events, content_height)
+  let text_info = page_svg_text_render_info(page, clip_registry, content_height)
   let builder = StringBuilder::new()
   builder.write_string(
     "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ",
   )
-  builder.write_string(format_svg_number(width))
+  builder.write_string(format_svg_number(viewport_width))
   builder.write_string(" ")
-  builder.write_string(format_svg_number(height))
+  builder.write_string(format_svg_number(viewport_height))
   builder.write_string("\" width=\"")
-  builder.write_string(format_svg_number(width))
+  builder.write_string(format_svg_number(viewport_width))
   builder.write_string("\" height=\"")
-  builder.write_string(format_svg_number(height))
+  builder.write_string(format_svg_number(viewport_height))
   builder.write_string("\">")
   builder.write_string("<rect x=\"0\" y=\"0\" width=\"")
-  builder.write_string(format_svg_number(width + 1.0))
+  builder.write_string(format_svg_number(viewport_width + 1.0))
   builder.write_string("\" height=\"")
-  builder.write_string(format_svg_number(height + 1.0))
+  builder.write_string(format_svg_number(viewport_height + 1.0))
   builder.write_string("\" fill=\"#ffffff\"/>")
-  write_svg_clip_defs(builder, clip_registry, height)
+  let needs_rotation_wrapper = rotation != 0
+  if needs_rotation_wrapper {
+    builder.write_string("<g transform=\"")
+    write_page_rotation_transform(
+      builder, rotation, content_width, content_height,
+    )
+    builder.write_string("\">")
+  }
+  write_svg_clip_defs(builder, clip_registry, content_height)
   page_render_graphics_svg(
-    builder, page, height, deferred_images, graphics_events, clip_registry,
+    builder, page, content_height, deferred_images, graphics_events,
+    clip_registry,
   )
-  page_render_texts_svg(builder, page, height, text_info)
+  page_render_texts_svg(builder, page, content_height, text_info)
+  if needs_rotation_wrapper {
+    builder.write_string("</g>")
+  }
   builder.write_string("</svg>")
   builder.to_string()
+}
+
+///|
+/// Writes the SVG `transform` attribute body that maps a page's content
+/// coordinate system (a `content_width × content_height` rectangle anchored at
+/// the SVG origin) onto the post-rotation viewport. PDF `Rotate` measures the
+/// clockwise rotation needed when displaying the page; SVG `rotate(θ)` is
+/// also clockwise (the y-axis points down), so we feed the same angle and add
+/// a translate that keeps the rotated rectangle inside the viewport's
+/// non-negative quadrant.
+fn write_page_rotation_transform(
+  builder : StringBuilder,
+  rotation : Int,
+  content_width : Double,
+  content_height : Double,
+) -> Unit {
+  let _ = content_width
+  match rotation {
+    90 => {
+      builder.write_string("translate(")
+      builder.write_string(format_svg_number(content_height))
+      builder.write_string(",0) rotate(90)")
+    }
+    180 => {
+      builder.write_string("translate(")
+      builder.write_string(format_svg_number(content_width))
+      builder.write_string(",")
+      builder.write_string(format_svg_number(content_height))
+      builder.write_string(") rotate(180)")
+    }
+    270 => {
+      builder.write_string("translate(0,")
+      builder.write_string(format_svg_number(content_width))
+      builder.write_string(") rotate(270)")
+    }
+    _ => ()
+  }
 }
 
 ///|

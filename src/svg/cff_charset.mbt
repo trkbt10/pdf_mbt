@@ -212,7 +212,8 @@ fn cff_ascii_string(data : Bytes, start : Int, end : Int) -> String {
 /// or the Top DICT cannot be parsed.
 pub fn cff_charset_offset(data : Bytes) -> Int {
   match cff_top_dict_entry_bounds(data) {
-    Some((offset, length)) => cff_dict_find_operator(data, offset, length, 15)
+    Some((start, end)) =>
+      cff_dict_find_operator(data, start, end - start, 15)
     None => -1
   }
 }
@@ -221,11 +222,23 @@ pub fn cff_charset_offset(data : Bytes) -> Int {
 /// Detects CID-keyed CFF fonts by scanning the TopDICT for the ROS operator
 /// or CIDCount operator. CIDFontType0C streams use ROS to identify the CID
 /// system and their charset entries are CIDs rather than Type1C SIDs.
+///
+/// `cff_top_dict_entry_bounds` returns `(start, end)` — the absolute byte
+/// range of the TopDICT entry inside `data`. Earlier versions destructured
+/// the tuple as `(offset, length)` and forwarded `end` as a length to
+/// `cff_dict_has_operator`, which then computed `pos < offset + end` and
+/// happily walked past the buffer until `data[pos]` panicked with an
+/// out-of-bounds load (SIGABRT on native, `RuntimeError: unreachable` on
+/// wasm). The bug only surfaced once strict resource materialization
+/// stopped short-circuiting on missing FontFile3 references and let the
+/// CFF wrapper actually run on real CID-keyed font streams.
 pub fn is_cid_keyed_cff(data : Bytes) -> Bool {
   match cff_top_dict_entry_bounds(data) {
-    Some((offset, length)) =>
-      cff_dict_has_operator(data, offset, length, cff_ros_operator) ||
-      cff_dict_has_operator(data, offset, length, cff_cid_count_operator)
+    Some((start, end)) => {
+      let length = end - start
+      cff_dict_has_operator(data, start, length, cff_ros_operator) ||
+      cff_dict_has_operator(data, start, length, cff_cid_count_operator)
+    }
     None => false
   }
 }
@@ -235,9 +248,9 @@ pub fn is_cid_keyed_cff(data : Bytes) -> Bool {
 /// when CIDCount is absent or the TopDICT cannot be parsed.
 pub fn cff_cid_count(data : Bytes) -> Int {
   match cff_top_dict_entry_bounds(data) {
-    Some((offset, length)) => {
+    Some((start, end)) => {
       let count = cff_dict_find_operator(
-        data, offset, length, cff_cid_count_operator,
+        data, start, end - start, cff_cid_count_operator,
       )
       if count > 0 {
         count
@@ -342,6 +355,11 @@ fn cff_cid_to_glyph_id_array(data : Bytes, num_glyphs : Int) -> Array[Int]? {
 }
 
 ///|
+/// Returns the absolute byte range `(start, end)` of the first Top DICT
+/// entry inside `data`. The tuple is **end-exclusive bounds**, not
+/// `(offset, length)` — callers passing it directly to a `(data, offset,
+/// length)` consumer must compute `end - start` first or they will walk
+/// past the buffer end. This convention matches `cff_index_entry_bounds`.
 fn cff_top_dict_entry_bounds(data : Bytes) -> (Int, Int)? {
   if data.length() < 5 {
     return None
