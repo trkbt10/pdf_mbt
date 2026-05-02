@@ -161,13 +161,27 @@ test "render_page_svg uses nonstroking colour for text fallback" {
 }
 
 ///|
-test "render_page_svg keeps text colour when unresolved XObject graphics fail" {
+test "render_page_svg surfaces unresolved-XObject graphics errors" {
+  // Per the strict-or-recover SoT: a Form XObject whose content stream
+  // raises a typed graphics error during interpretation propagates as a
+  // typed `PdfDocumentError::GraphicsError`. The previous behaviour
+  // silently swallowed the error and emitted a partial SVG with only the
+  // text spans, which masked real producer bugs (and any future regression
+  // in our XObject content interpreter) behind an apparently successful
+  // render. Callers that need best-effort recovery must catch the typed
+  // error explicitly and decide whether to fall back to a text-only render.
   let document = @reader.PdfDocument::open(
     build_coloured_text_with_bad_xobject_fixture(),
   )
-  let svg = render_page_svg(document.page(0))
-  assert_eq(svg.contains("<text"), true)
-  assert_eq(svg.contains("fill=\"#FF0000\""), true)
+  let result : Result[String, @reader.PdfDocumentError] = try? render_page_svg(
+    document.page(0),
+  )
+  match result {
+    Err(@reader.PdfDocumentError::GraphicsError(_)) => ()
+    Err(_) => fail("expected GraphicsError, got a different document error")
+    Ok(_) =>
+      fail("expected the broken XObject to surface a GraphicsError")
+  }
 }
 
 ///|
@@ -602,11 +616,25 @@ test "render_page_svg uses sampled Separation colour space tint transform" {
 }
 
 ///|
-test "render_page_svg skips unsupported encoded image data without crashing" {
+test "render_page_svg surfaces unsupported encoded image data" {
+  // Per the strict-or-recover SoT: a JPXDecode (or any other) image whose
+  // payload cannot be decoded surfaces as a typed
+  // `PdfDocumentError::GraphicsError`. The earlier "without crashing"
+  // contract silently dropped the image and produced an SVG that *looked*
+  // valid but lost the only piece of content the page had — the exact
+  // failure mode that motivated retiring localised swallows here.
   let document = @reader.PdfDocument::open(build_encoded_image_fixture())
-  let svg = render_page_svg(document.page(0))
-  assert_eq(svg.has_prefix("<svg"), true)
-  assert_eq(svg.contains("</svg>"), true)
+  let result : Result[String, @reader.PdfDocumentError] = try? render_page_svg(
+    document.page(0),
+  )
+  match result {
+    Err(@reader.PdfDocumentError::GraphicsError(_)) => ()
+    Err(_) => fail("expected GraphicsError, got a different document error")
+    Ok(_) =>
+      fail(
+        "expected the unsupported encoded image to surface a GraphicsError",
+      )
+  }
 }
 
 ///|

@@ -120,7 +120,23 @@ pub fn pdf_page_text_positions_json(handle : Int, page : Int) -> String {
 ///|
 pub fn pdf_page_to_svg(handle : Int, page : Int) -> String {
   match get_page(handle, page) {
-    Some(pdf_page) => @svg.render_page_svg(pdf_page.reader_page())
+    Some(pdf_page) => {
+      let svg_result : Result[String, @reader.PdfDocumentError] = try? @svg.render_page_svg(
+        pdf_page.reader_page(),
+      )
+      match svg_result {
+        Ok(svg) => svg
+        // The SVG renderer now propagates typed errors instead of
+        // silently emitting an empty page; on the wasm boundary we
+        // surface the failure as a JSON-shaped error string so the
+        // JS caller can detect it without breaking existing
+        // string-returning callers.
+        Err(error) =>
+          "{\"error\":\"render_page_svg failed: " +
+          json_safe_error_message(error) +
+          "\"}"
+      }
+    }
     None => ""
   }
 }
@@ -130,12 +146,44 @@ pub fn pdf_page_to_svg_deferred(handle : Int, page : Int) -> String {
   match get_page(handle, page) {
     Some(pdf_page) => {
       remove_deferred_images_for_page(handle, page)
-      let result = @svg.render_page_svg_deferred(pdf_page.reader_page())
-      let svg = result.svg
-      deferred_svg_pages[deferred_page_key(handle, page)] = result
-      svg
+      let render_result : Result[
+        @svg.SvgDeferredResult,
+        @reader.PdfDocumentError,
+      ] = try? @svg.render_page_svg_deferred(pdf_page.reader_page())
+      match render_result {
+        Ok(result) => {
+          let svg = result.svg
+          deferred_svg_pages[deferred_page_key(handle, page)] = result
+          svg
+        }
+        Err(error) =>
+          "{\"error\":\"render_page_svg_deferred failed: " +
+          json_safe_error_message(error) +
+          "\"}"
+      }
     }
     None => ""
+  }
+}
+
+///|
+fn json_safe_error_message(error : @reader.PdfDocumentError) -> String {
+  // Categorise the typed error into a JSON-safe label rather than
+  // serialising the bare suberror name, which could in theory contain
+  // characters that need to be escaped. The label is enough for the
+  // wasm host to surface a meaningful "this page could not be rendered"
+  // message without paying for full structured-error marshaling.
+  match error {
+    ReaderError(_) => "ReaderError"
+    InvalidCatalog(_, _) => "InvalidCatalog"
+    InvalidPageTree(_, _) => "InvalidPageTree"
+    InvalidPage(_, _) => "InvalidPage"
+    InvalidInheritedAttribute(_, _, _) => "InvalidInheritedAttribute"
+    ContentError(_) => "ContentError"
+    GraphicsError(_) => "GraphicsError"
+    TextError(_) => "TextError"
+    RenderingError(_) => "RenderingError"
+    _ => "DocumentError"
   }
 }
 

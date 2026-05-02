@@ -20,7 +20,9 @@
 /// Renders a PDF page as SVG. Text colour is taken from the graphics state's
 /// current nonstroking colour, so both fallback `<text>` and embedded glyph
 /// paths use the same fill colour that PDF text painting operators use.
-pub fn render_page_svg(page : @reader.PdfPage) -> String {
+pub fn render_page_svg(
+  page : @reader.PdfPage,
+) -> String raise @reader.PdfDocumentError {
   render_page_svg_impl(page, None)
 }
 
@@ -48,7 +50,9 @@ pub(all) struct SvgDeferredResult {
 /// Renders a PDF page as SVG using image placeholders. Each image element in
 /// the SVG has an empty href and a data-image-index attribute pointing into
 /// the returned image collection.
-pub fn render_page_svg_deferred(page : @reader.PdfPage) -> SvgDeferredResult {
+pub fn render_page_svg_deferred(
+  page : @reader.PdfPage,
+) -> SvgDeferredResult raise @reader.PdfDocumentError {
   let images : Array[SvgImageEntry] = []
   let svg = render_page_svg_impl(page, Some(images))
   SvgDeferredResult::{ svg, images }
@@ -112,7 +116,7 @@ pub fn font_descriptor_lookup_order_alignment() -> Unit {
 fn render_page_svg_impl(
   page : @reader.PdfPage,
   deferred_images : Array[SvgImageEntry]?,
-) -> String {
+) -> String raise @reader.PdfDocumentError {
   // The viewport reflects the *displayed* page (post-rotation). All graphics
   // and text events from the content stream are emitted in the page's
   // *content* coordinate system, so the y-flip continues to use the
@@ -202,14 +206,20 @@ fn write_page_rotation_transform(
 }
 
 ///|
+/// Returns the graphics events for a page. Errors propagate so the SVG
+/// renderer's caller can decide how to surface or recover from them — we
+/// no longer silently substitute an empty event list, because that
+/// previously turned a real interpreter bug (e.g. an over-strict object
+/// context state machine that aborted the moment a producer interleaved a
+/// graphics-state operator with a path) into an apparently successful
+/// render whose only output was the page background. The user could not
+/// tell whether the page was empty, the renderer was broken, or the PDF
+/// was corrupt; the answer was always "renderer was broken" but the
+/// fallback hid it.
 fn page_svg_graphics_events(
   page : @reader.PdfPage,
-) -> Array[@graphics.GraphicsEvent] {
-  let result : Result[Array[@graphics.GraphicsEvent], @reader.PdfDocumentError] = try? page.graphics_events(
+) -> Array[@graphics.GraphicsEvent] raise @reader.PdfDocumentError {
+  page.graphics_events(
     @reader.GraphicsPageOptions::with_materialized_xobjects(None),
   )
-  match result {
-    Ok(events) => events
-    Err(_) => []
-  }
 }

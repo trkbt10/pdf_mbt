@@ -3296,6 +3296,18 @@ fn write_xml_escaped(builder : StringBuilder, value : String) -> Unit {
 }
 
 ///|
+/// Writes a single character to the SVG output, escaping the five XML
+/// metacharacters and dropping anything that the W3C XML 1.0 grammar does
+/// not classify as `Char`. The forbidden code points (C0 controls except
+/// `\t` / `\n` / `\r`, DEL and the C1 control range, the surrogates, and
+/// `U+FFFE` / `U+FFFF`) most often arrive from embedded subset fonts
+/// whose ToUnicode CMap was either absent or mapped a CID to a low byte
+/// such as `0x01`; if we wrote that byte verbatim, every browser would
+/// reject the resulting `<svg>` with "PCDATA invalid Char value 1" and
+/// the entire page would render as blank — which is exactly the symptom
+/// reported on Canva-produced PDFs that pad their subset fonts with such
+/// CIDs. Silently dropping the offending characters keeps the surrounding
+/// glyphs intact while preventing the whole page from being thrown away.
 fn write_xml_escaped_char(builder : StringBuilder, char : Char) -> Unit {
   match char {
     '&' => builder.write_string("&amp;")
@@ -3303,6 +3315,32 @@ fn write_xml_escaped_char(builder : StringBuilder, char : Char) -> Unit {
     '>' => builder.write_string("&gt;")
     '"' => builder.write_string("&quot;")
     '\'' => builder.write_string("&apos;")
-    _ => builder.write_char(char)
+    _ =>
+      if is_xml_legal_char(char) {
+        builder.write_char(char)
+      }
   }
+}
+
+///|
+/// Reports whether `char` matches the XML 1.0 production
+///   Char ::= #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD]
+///         | [#x10000-#x10FFFF]
+/// Surrogates (#xD800..#xDFFF) cannot appear because `Char` is already a
+/// scalar value. The C1 control range (#x80..#x9F) IS permitted by the
+/// 1.0 grammar, so we keep it — Canva-style subset fonts only emit
+/// problematic *C0* codes (#x00..#x1F, with #x09/#x0A/#x0D excepted), and
+/// browsers accept C1 inside `#PCDATA` even when they reject C0.
+fn is_xml_legal_char(char : Char) -> Bool {
+  let code = char.to_int()
+  if code == 0x09 || code == 0x0A || code == 0x0D {
+    return true
+  }
+  if code < 0x20 {
+    return false
+  }
+  if code == 0xFFFE || code == 0xFFFF {
+    return false
+  }
+  true
 }

@@ -50,19 +50,52 @@ fn GraphicsObjectContext::accept_content_level(
 }
 
 ///|
+/// ISO 32000-2 §8.2 says a path object only permits path-construction,
+/// clipping, and path-painting operators, but real producers (Canva,
+/// Microsoft Office, several scanner exporters and PDF/UA tagging
+/// pipelines) routinely interleave the path with graphics-state changes,
+/// colour selectors and marked-content tags before the eventual paint —
+/// a typical Canva idiom is `re /gs3 gs f` to set an alpha-0 ExtGState
+/// between the rectangle and the fill so the rectangle becomes an
+/// invisible structure marker. Acrobat, poppler and pdf.js all tolerate
+/// this; rejecting strictly aborted the whole graphics walk on the first
+/// such operator and returned an empty event list, which the SVG
+/// renderer then surfaced as a page where every shape was missing.
+///
+/// We continue to forbid the genuinely incompatible operations: a text
+/// object cannot start (`BT`), nor can `ET` close one that is not open,
+/// nor can the special `XObject Do` / `inline image` painters intrude
+/// into a half-built path. Everything else is treated as a state
+/// modification that does not break the pending path.
 fn GraphicsObjectContext::accept_path_object(
   self : GraphicsObjectContext,
   operator : @content.StandardContentOperator,
   offset : Int64,
 ) -> Unit raise PdfGraphicsError {
   if is_path_construction_operator(operator) || is_clipping_operator(operator) {
-    ()
-  } else if is_path_painting_operator(operator) {
+    return
+  }
+  if is_path_painting_operator(operator) {
     self.level = GraphicsObjectLevel::ContentStreamLevel
-  } else {
-    raise PdfGraphicsError::InvalidObjectContext(
-      offset, "path object permits path construction, clipping, and path-painting operators only",
-    )
+    return
+  }
+  match operator {
+    BeginText =>
+      raise PdfGraphicsError::InvalidObjectContext(
+        offset, "BT cannot start a text object inside a pending path",
+      )
+    EndText =>
+      raise PdfGraphicsError::InvalidObjectContext(
+        offset, "ET cannot appear inside a pending path",
+      )
+    InvokeXObject | BeginInlineImage =>
+      raise PdfGraphicsError::InvalidObjectContext(
+        offset, "XObject Do and inline-image painters cannot intrude on a pending path",
+      )
+    _ =>
+      // graphics state, colour, marked-content, save/restore, deferred —
+      // tolerated mid-path to match real-world producer behaviour.
+      ()
   }
 }
 

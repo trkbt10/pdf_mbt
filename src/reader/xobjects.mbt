@@ -365,25 +365,61 @@ fn materialize_form_stream_resources(
   form_stack : Array[@objects.ObjectId],
   page_id : @objects.ObjectId,
 ) -> @objects.PdfStream raise PdfDocumentError {
-  match stream.dict.get(@objects.PdfName::new(b"Resources")) {
+  let dict = stream.dict.copy()
+  match dict.get(@objects.PdfName::new(b"Resources")) {
     Some(raw) =>
       match resolve_indirect(file, raw) {
-        @objects.PdfObject::Dictionary(resources) => {
-          let dict = stream.dict.copy()
+        @objects.PdfObject::Dictionary(resources) =>
           dict[@objects.PdfName::new(b"Resources")] = @objects.PdfObject::Dictionary(
             materialize_resource_dictionary(
               file, resources, form_stack, page_id, true,
             ),
           )
-          @objects.PdfStream::{ dict, data: stream.data }
-        }
         _ =>
           raise PdfDocumentError::InvalidPage(
             page_id, "Form XObject Resources reference must resolve to a dictionary",
           )
       }
-    None => stream
+    None => ()
   }
+  // ISO 32000-2 §8.10.3: the Form XObject `Group` entry refers to a
+  // group attributes dictionary. Producers (notably Canva slide exporters)
+  // routinely point that entry at an indirect object so the same group
+  // attributes can be shared across many forms; the graphics interpreter
+  // expects a direct dictionary at that point, so resolve the reference
+  // here. Without this materialisation the strict graphics walk aborts
+  // with "Group must be a dictionary, got ref" the moment the first such
+  // form is encountered, and every subsequent shape on the page is lost.
+  materialize_form_stream_entry(file, dict, b"Group", page_id, "Form Group")
+  @objects.PdfStream::{ dict, data: stream.data }
+}
+
+///|
+/// Resolves an optional indirect-reference entry on a Form XObject
+/// stream dict so the graphics interpreter sees a direct value. Errors
+/// propagate; the caller decides whether the missing/broken reference is
+/// recoverable. We do NOT silently swallow resolution failures — letting
+/// them surface is what allows producer or cross-reference bugs to be
+/// diagnosed instead of being hidden behind "shapes mysteriously
+/// disappeared from the page" symptoms.
+fn materialize_form_stream_entry(
+  file : PdfFile,
+  dict : @objects.PdfDictionary,
+  key_bytes : Bytes,
+  page_id : @objects.ObjectId,
+  label : String,
+) -> Unit raise PdfDocumentError {
+  let key = @objects.PdfName::new(key_bytes)
+  match dict.get(key) {
+    Some(value) =>
+      match resolve_indirect(file, value) {
+        @objects.PdfObject::Null => dict.remove(key)
+        resolved => dict[key] = resolved
+      }
+    None => ()
+  }
+  let _ = page_id
+  let _ = label
 }
 
 ///|
