@@ -887,10 +887,9 @@ pub fn svg_image_high_precision_alignment() -> Unit {
 /// High-precision image transform formatting. The SVG renderer formats image
 /// transform="matrix(a b c d e f)" values and axis-aligned image x, y, width,
 /// height attributes with format_svg_number_precise, 6-decimal precision,
-/// instead of format_svg_number, 3-decimal precision. This precision upgrade
-/// is the acceptance path for <local-fixture> page 6 and page 7
-/// pixelmatch diff below 5.0% while preserving existing visual tests such as
-/// simple-1, utf8-1, and calrgb-1.
+/// instead of format_svg_number, 3-decimal precision. The bundled
+/// simple-1, utf8-1, and calrgb-1 visual tests continue to pass at this
+/// precision level.
 ///
 /// Emits SVG image coordinates with 6-decimal precision. Axis-aligned
 /// images use x, y, width, and height attributes; other images use the
@@ -1151,9 +1150,9 @@ fn svg_image_pixel_expansion(
 }
 
 ///|
-/// Acceptance criteria: <local-fixture> page 6 and page 7 pixelmatch
-/// diff must be less than 5.0% at 72 DPI, while existing visual tests
-/// simple-1, utf8-1, and calrgb-1 continue without regression.
+/// Acceptance criteria: pixelmatch diff stays under 5.0% at 72 DPI while
+/// the bundled simple-1, utf8-1, and calrgb-1 visual tests continue
+/// without regression.
 pub fn svg_image_precision_acceptance_alignment() -> Unit {
   let page6_limit = 5.0
   let page7_limit = 5.0
