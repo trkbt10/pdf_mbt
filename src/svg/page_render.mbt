@@ -126,10 +126,11 @@ fn render_page_svg_impl(
   let viewport_height = page_height(page)
   let content_height = page_content_height(page)
   let content_width = page_content_width(page)
+  let view = page_view(page)
   let rotation = page_rotation(page)
   let graphics_events = page_svg_graphics_events(page)
-  let clip_registry = build_svg_clip_registry(graphics_events, content_height)
-  let text_info = page_svg_text_render_info(page, clip_registry, content_height)
+  let clip_registry = build_svg_clip_registry(graphics_events, view)
+  let text_info = page_svg_text_render_info(page, clip_registry, view)
   let builder = StringBuilder::new()
   builder.write_string(
     "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ",
@@ -155,12 +156,12 @@ fn render_page_svg_impl(
     )
     builder.write_string("\">")
   }
-  write_svg_clip_defs(builder, clip_registry, content_height)
+  write_svg_clip_defs(builder, clip_registry, view)
   page_render_graphics_svg(
-    builder, page, content_height, deferred_images, graphics_events,
+    builder, page, view, deferred_images, graphics_events,
     clip_registry,
   )
-  page_render_texts_svg(builder, page, content_height, text_info)
+  page_render_texts_svg(builder, page, view, text_info)
   if needs_rotation_wrapper {
     builder.write_string("</g>")
   }

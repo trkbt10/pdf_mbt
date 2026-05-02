@@ -51,6 +51,30 @@ priv struct SvgEmbeddedFont {
 }
 
 ///|
+/// Coordinate translation between the PDF MediaBox's user-space rectangle and
+/// the SVG viewport's [0,width] × [0,height] rectangle. The MediaBox lower-left
+/// corner (`origin_x`, MediaBox.bottom) maps to SVG (0, height); the upper-left
+/// corner (`origin_x`, `y_flip_origin`) maps to SVG (0, 0). Concretely:
+///
+///   svg_x = pdf_x - origin_x
+///   svg_y = y_flip_origin - pdf_y
+///
+/// PDF defines MediaBox as `[lower_x lower_y upper_x upper_y]` and content
+/// streams emit positions in PDF user space — they do NOT pre-translate by the
+/// MediaBox lower-left. Treating `page_height` (= upper_y − lower_y) as the
+/// y-flip origin only happens to be correct when `lower_y == 0`; for pages with
+/// a non-zero MediaBox lower-Y (some Canva exports use `[0 7.92 1440 817.92]`),
+/// the y-flip silently shifts every glyph and rectangle up by `lower_y`,
+/// producing the "text floats above its background row" misalignment seen on
+/// table-heavy slides. Carrying the explicit MediaBox-derived origin keeps both
+/// axes correct regardless of the lower-left offset.
+priv struct SvgPageView {
+  origin_x : Double
+  y_flip_origin : Double
+  content_height : Double
+} derive(Eq, Debug)
+
+///|
 /// Shared sentinel for raw RGBA deferred image payloads. The wasm API surface
 /// reports image/x-rgba8 so the JS consumer can choose OffscreenCanvas canvas
 /// decoding instead of direct Blob creation.
@@ -143,6 +167,38 @@ fn page_content_height(page : @reader.PdfPage) -> Double {
 fn page_content_width(page : @reader.PdfPage) -> Double {
   let (width, _height) = page_dimensions(page)
   width
+}
+
+///|
+/// PDF MediaBox-derived view used to translate content-stream user-space
+/// coordinates into the SVG viewport. See `SvgPageView` for the formula.
+fn page_view(page : @reader.PdfPage) -> SvgPageView {
+  let result : Result[@reader.PdfRectangle?, @reader.PdfDocumentError] = try? page.media_box()
+  match result {
+    Ok(Some(rect)) => {
+      // Real producers occasionally emit MediaBox with swapped corners — ISO
+      // 32000-2 §14.11.2 Table 158 calls those non-conformant — so normalise
+      // to (lower_x, lower_y, upper_y) before deriving the view. The upper-x
+      // is implied by the SVG viewBox and isn't needed for coordinate flips.
+      let lower_x = if rect.left <= rect.right { rect.left } else { rect.right }
+      let lower_y = if rect.bottom <= rect.top {
+        rect.bottom
+      } else {
+        rect.top
+      }
+      let upper_y = if rect.bottom <= rect.top {
+        rect.top
+      } else {
+        rect.bottom
+      }
+      SvgPageView::{
+        origin_x: lower_x,
+        y_flip_origin: upper_y,
+        content_height: upper_y - lower_y,
+      }
+    }
+    _ => SvgPageView::{ origin_x: 0.0, y_flip_origin: 0.0, content_height: 0.0 }
+  }
 }
 
 ///|
@@ -279,7 +335,7 @@ fn trim_trailing_zeros(s : String) -> String {
 /// same clip-path attribute id.
 fn svg_clip_signature(
   state : @graphics.GraphicsState,
-  page_height : Double,
+  view : SvgPageView,
 ) -> String {
   let clips = state.clipping_path.clips
   if clips.length() == 0 {
@@ -287,7 +343,7 @@ fn svg_clip_signature(
   }
   let builder = StringBuilder::new()
   for entry in clips {
-    svg_write_clip_entry_signature(builder, entry, page_height)
+    svg_write_clip_entry_signature(builder, entry, view)
   }
   builder.to_string()
 }
@@ -296,14 +352,14 @@ fn svg_clip_signature(
 fn svg_write_clip_entry_signature(
   builder : StringBuilder,
   entry : @graphics.ClipEntry,
-  page_height : Double,
+  view : SvgPageView,
 ) -> Unit {
   match entry.rule {
     @graphics.FillRule::EvenOdd => builder.write_string("E:")
     @graphics.FillRule::NonZero => builder.write_string("N:")
   }
   builder.write_string(
-    svg_path_data(entry.path, @graphics.GraphicsMatrix::identity(), page_height),
+    svg_path_data(entry.path, @graphics.GraphicsMatrix::identity(), view),
   )
   builder.write_string("|")
 }
@@ -315,9 +371,9 @@ fn svg_write_clip_entry_signature(
 fn svg_register_clip(
   registry : SvgClipRegistry,
   state : @graphics.GraphicsState,
-  page_height : Double,
+  view : SvgPageView,
 ) -> Int {
-  let signature = svg_clip_signature(state, page_height)
+  let signature = svg_clip_signature(state, view)
   if signature.length() == 0 {
     return 0
   }
@@ -327,7 +383,7 @@ fn svg_register_clip(
       let mut parent_id : Int? = None
       let prefix = StringBuilder::new()
       for entry in state.clipping_path.clips {
-        svg_write_clip_entry_signature(prefix, entry, page_height)
+        svg_write_clip_entry_signature(prefix, entry, view)
         let prefix_signature = prefix.to_string()
         match registry.id_by_signature.get(prefix_signature) {
           Some(id) => parent_id = Some(id)
@@ -352,9 +408,9 @@ fn svg_register_clip(
 fn svg_clip_id_for_state(
   registry : SvgClipRegistry,
   state : @graphics.GraphicsState,
-  page_height : Double,
+  view : SvgPageView,
 ) -> Int {
-  let signature = svg_clip_signature(state, page_height)
+  let signature = svg_clip_signature(state, view)
   if signature.length() == 0 {
     return 0
   }
@@ -370,7 +426,7 @@ fn svg_clip_id_for_state(
 /// images all carry a GraphicsState snapshot with the accumulated clips.
 fn build_svg_clip_registry(
   events : Array[@graphics.GraphicsEvent],
-  page_height : Double,
+  view : SvgPageView,
 ) -> SvgClipRegistry {
   let registry = SvgClipRegistry::new()
   for event in events {
@@ -378,7 +434,7 @@ fn build_svg_clip_registry(
       @graphics.GraphicsEvent::PathPainted(_, _, _, state)
       | @graphics.GraphicsEvent::ImagePainted(_, _, state)
       | @graphics.GraphicsEvent::InlineImagePainted(_, _, state) =>
-        svg_register_clip(registry, state, page_height) |> ignore
+        svg_register_clip(registry, state, view) |> ignore
       _ => ()
     }
   }
@@ -393,7 +449,7 @@ fn build_svg_clip_registry(
 fn write_svg_clip_defs(
   builder : StringBuilder,
   registry : SvgClipRegistry,
-  page_height : Double,
+  view : SvgPageView,
 ) -> Unit {
   if registry.clips.length() == 0 {
     return
@@ -418,7 +474,7 @@ fn write_svg_clip_defs(
         svg_path_data(
           entry.path,
           @graphics.GraphicsMatrix::identity(),
-          page_height,
+          view,
         ),
       )
       builder.write_string("\"")
@@ -446,7 +502,7 @@ fn write_svg_clip_rule(
 fn page_render_graphics_svg(
   builder : StringBuilder,
   page : @reader.PdfPage,
-  page_height : Double,
+  view : SvgPageView,
   deferred_images : Array[SvgImageEntry]?,
   events : Array[@graphics.GraphicsEvent],
   registry : SvgClipRegistry,
@@ -459,8 +515,8 @@ fn page_render_graphics_svg(
           operation,
           path,
           state,
-          page_height,
-          svg_clip_id_for_state(registry, state, page_height),
+          view,
+          svg_clip_id_for_state(registry, state, view),
         )
       @graphics.GraphicsEvent::ImagePainted(_, descriptor, state) =>
         page_render_image_svg(
@@ -468,8 +524,8 @@ fn page_render_graphics_svg(
           page,
           descriptor,
           state,
-          page_height,
-          svg_clip_id_for_state(registry, state, page_height),
+          view,
+          svg_clip_id_for_state(registry, state, view),
           deferred_images,
         )
       _ => ()
@@ -490,10 +546,10 @@ fn page_render_path_svg(
   operation : @graphics.PathPaintOperation,
   path : @graphics.GraphicsPath,
   state : @graphics.GraphicsState,
-  page_height : Double,
+  view : SvgPageView,
   clip_id : Int,
 ) -> Unit {
-  let d = svg_path_data(path, state.ctm, page_height)
+  let d = svg_path_data(path, state.ctm, view)
   if d.length() == 0 {
     return
   }
@@ -732,13 +788,13 @@ fn write_svg_fill_rule(
 fn svg_path_data(
   path : @graphics.GraphicsPath,
   ctm : @graphics.GraphicsMatrix,
-  page_height : Double,
+  view : SvgPageView,
 ) -> String {
   let builder = StringBuilder::new()
   for subpath in path.subpaths {
     let start = svg_graphics_point(
       ctm.transform_point(subpath.start),
-      page_height,
+      view,
     )
     builder.write_string("M ")
     builder.write_string(format_svg_number(start.x))
@@ -747,7 +803,7 @@ fn svg_path_data(
     for segment in subpath.segments {
       match segment {
         @graphics.PathSegment::LineTo(point) => {
-          let p = svg_graphics_point(ctm.transform_point(point), page_height)
+          let p = svg_graphics_point(ctm.transform_point(point), view)
           builder.write_string(" L ")
           builder.write_string(format_svg_number(p.x))
           builder.write_string(" ")
@@ -756,15 +812,15 @@ fn svg_path_data(
         @graphics.PathSegment::CurveTo(control1, control2, end_point) => {
           let p1 = svg_graphics_point(
             ctm.transform_point(control1),
-            page_height,
+            view,
           )
           let p2 = svg_graphics_point(
             ctm.transform_point(control2),
-            page_height,
+            view,
           )
           let p3 = svg_graphics_point(
             ctm.transform_point(end_point),
-            page_height,
+            view,
           )
           builder.write_string(" C ")
           builder.write_string(format_svg_number(p1.x))
@@ -790,9 +846,12 @@ fn svg_path_data(
 ///|
 fn svg_graphics_point(
   point : @graphics.GraphicsPoint,
-  page_height : Double,
+  view : SvgPageView,
 ) -> @graphics.GraphicsPoint {
-  @graphics.GraphicsPoint::{ x: point.x, y: page_height - point.y }
+  @graphics.GraphicsPoint::{
+    x: point.x - view.origin_x,
+    y: view.y_flip_origin - point.y,
+  }
 }
 
 ///|
@@ -804,7 +863,7 @@ fn page_render_image_svg(
   page : @reader.PdfPage,
   descriptor : @graphics.ImageDescriptor,
   state : @graphics.GraphicsState,
-  page_height : Double,
+  view : SvgPageView,
   clip_id : Int,
   deferred_images : Array[SvgImageEntry]?,
 ) -> Unit {
@@ -813,7 +872,7 @@ fn page_render_image_svg(
       match page_image_entry_by_name(page, name) {
         Some(entry) =>
           page_render_image_entry_svg(
-            builder, entry, descriptor, state, page_height, clip_id, deferred_images,
+            builder, entry, descriptor, state, view, clip_id, deferred_images,
           )
         None => ()
       }
@@ -827,7 +886,7 @@ fn page_render_image_entry_svg(
   entry : PageImageEntry,
   descriptor : @graphics.ImageDescriptor,
   state : @graphics.GraphicsState,
-  page_height : Double,
+  view : SvgPageView,
   clip_id : Int,
   deferred_images : Array[SvgImageEntry]?,
 ) -> Unit {
@@ -844,7 +903,7 @@ fn page_render_image_entry_svg(
             state.ctm,
             expand_x,
             expand_y,
-            page_height,
+            view,
             clip_id,
           )
         }
@@ -859,7 +918,7 @@ fn page_render_image_entry_svg(
           state.ctm,
           expand_x,
           expand_y,
-          page_height,
+          view,
           clip_id,
         )
       }
@@ -900,7 +959,7 @@ fn write_svg_image(
   matrix : @graphics.GraphicsMatrix,
   expand_x : Bool,
   expand_y : Bool,
-  page_height : Double,
+  view : SvgPageView,
   clip_id : Int,
 ) -> Unit {
   write_svg_image_with_index(
@@ -910,7 +969,7 @@ fn write_svg_image(
     matrix,
     expand_x,
     expand_y,
-    page_height,
+    view,
     clip_id,
   )
 }
@@ -922,7 +981,7 @@ fn write_svg_image_deferred(
   matrix : @graphics.GraphicsMatrix,
   expand_x : Bool,
   expand_y : Bool,
-  page_height : Double,
+  view : SvgPageView,
   clip_id : Int,
 ) -> Unit {
   write_svg_image_with_index(
@@ -932,7 +991,7 @@ fn write_svg_image_deferred(
     matrix,
     expand_x,
     expand_y,
-    page_height,
+    view,
     clip_id,
   )
 }
@@ -951,11 +1010,11 @@ fn write_svg_image_with_index(
   matrix : @graphics.GraphicsMatrix,
   expand_x : Bool,
   expand_y : Bool,
-  page_height : Double,
+  view : SvgPageView,
   clip_id : Int,
 ) -> Unit {
   if !expand_x && !expand_y {
-    match svg_axis_aligned_image_rect(matrix, page_height) {
+    match svg_axis_aligned_image_rect(matrix, view) {
       Some((x, y, width, height)) => {
         builder.write_string("<image x=\"")
         builder.write_string(format_svg_number_precise(x))
@@ -978,7 +1037,7 @@ fn write_svg_image_with_index(
   builder.write_string("<image x=\"0\" y=\"0\" width=\"1\" height=\"1\"")
   write_svg_image_href(builder, href, image_index)
   builder.write_string(" transform=\"matrix(")
-  write_svg_image_matrix(builder, matrix, expand_x, expand_y, page_height)
+  write_svg_image_matrix(builder, matrix, expand_x, expand_y, view)
   builder.write_string(")\"/>")
   write_svg_clip_wrapper_end(builder, clip_id)
 }
@@ -1074,7 +1133,7 @@ pub fn svg_axis_aligned_image_bounds_alignment() -> Unit {
 /// threshold for near-axis-aligned images unchanged.
 fn svg_axis_aligned_image_rect(
   matrix : @graphics.GraphicsMatrix,
-  page_height : Double,
+  view : SvgPageView,
 ) -> (Double, Double, Double, Double)? {
   if abs_double(matrix.b) > 0.001 || abs_double(matrix.c) > 0.001 {
     return None
@@ -1082,7 +1141,12 @@ fn svg_axis_aligned_image_rect(
   if matrix.a <= 0.0 || matrix.d <= 0.0 {
     return None
   }
-  Some((matrix.e, page_height - matrix.f - matrix.d, matrix.a, matrix.d))
+  Some((
+    matrix.e - view.origin_x,
+    view.y_flip_origin - matrix.f - matrix.d,
+    matrix.a,
+    matrix.d,
+  ))
 }
 
 ///|
@@ -1117,7 +1181,7 @@ fn write_svg_image_matrix(
   matrix : @graphics.GraphicsMatrix,
   expand_x : Bool,
   expand_y : Bool,
-  page_height : Double,
+  view : SvgPageView,
 ) -> Unit {
   let (x_scale, y_scale) = svg_image_axis_scales(matrix, expand_x, expand_y)
   builder.write_string(format_svg_number_precise(matrix.a * x_scale))
@@ -1128,10 +1192,10 @@ fn write_svg_image_matrix(
   builder.write_string(" ")
   builder.write_string(format_svg_number_precise(matrix.d * y_scale))
   builder.write_string(" ")
-  builder.write_string(format_svg_number_precise(matrix.e + matrix.c))
+  builder.write_string(format_svg_number_precise(matrix.e + matrix.c - view.origin_x))
   builder.write_string(" ")
   builder.write_string(
-    format_svg_number_precise(page_height - matrix.f - matrix.d),
+    format_svg_number_precise(view.y_flip_origin - matrix.f - matrix.d),
   )
 }
 
@@ -1208,7 +1272,7 @@ fn svg_image_axis_length(x : Double, y : Double) -> Double {
 fn page_render_texts_svg(
   builder : StringBuilder,
   page : @reader.PdfPage,
-  page_height : Double,
+  view : SvgPageView,
   info : SvgTextRenderInfo?,
 ) -> Unit {
   match info {
@@ -1231,7 +1295,7 @@ fn page_render_texts_svg(
                   span,
                   glyphs,
                   ttf,
-                  page_height,
+                  view,
                   fill_colour,
                   svg_text_clip_actual_id(clip_id),
                 ) {
@@ -1242,7 +1306,7 @@ fn page_render_texts_svg(
                   span,
                   glyphs,
                   span_svg_font_family(font_families, span),
-                  page_height,
+                  view,
                   fill_colour,
                   clip_id,
                 )
@@ -1255,7 +1319,7 @@ fn page_render_texts_svg(
                   span,
                   glyphs,
                   span_svg_font_family(font_families, span),
-                  page_height,
+                  view,
                   fill_colour,
                   clip_id,
                 )
@@ -1272,7 +1336,7 @@ fn page_render_texts_svg(
 fn page_svg_text_render_info(
   page : @reader.PdfPage,
   registry : SvgClipRegistry,
-  page_height : Double,
+  view : SvgPageView,
 ) -> SvgTextRenderInfo? {
   let result : Result[@text.TextProgram, @reader.PdfDocumentError] = try? page.text_program(
     @reader.TextPageOptions::default(),
@@ -1282,7 +1346,7 @@ fn page_svg_text_render_info(
       Some(SvgTextRenderInfo::{
         program,
         fill_colours: page_svg_text_fill_colours(page, program),
-        clip_ids: page_svg_text_clip_ids(page, program, registry, page_height),
+        clip_ids: page_svg_text_clip_ids(page, program, registry, view),
       })
     Err(_) => None
   }
@@ -1348,7 +1412,7 @@ fn page_svg_text_clip_ids(
   page : @reader.PdfPage,
   program : @text.TextProgram,
   registry : SvgClipRegistry,
-  page_height : Double,
+  view : SvgPageView,
 ) -> Array[Int] {
   let clip_ids : Array[Int] = []
   let group_candidates : Map[Int, Bool] = Map::new()
@@ -1393,8 +1457,8 @@ fn page_svg_text_clip_ids(
     }
     match current_state {
       Some(state) => {
-        let clip_id = svg_register_clip(registry, state, page_height)
-        if clip_id > 0 && svg_text_clip_is_column_clip(state, page_height) {
+        let clip_id = svg_register_clip(registry, state, view)
+        if clip_id > 0 && svg_text_clip_is_column_clip(state, view) {
           group_candidates[clip_id] = true
         }
         clip_ids.push(clip_id)
@@ -1509,17 +1573,21 @@ fn svg_mark_high_volume_text_clip_groups(
 ///|
 fn svg_text_clip_is_column_clip(
   state : @graphics.GraphicsState,
-  page_height : Double,
+  view : SvgPageView,
 ) -> Bool {
   let clips = state.clipping_path.clips
-  if clips.length() == 0 || page_height <= 0.0 {
+  // Column-clip detection compares the clip's vertical span against the page's
+  // *content* height (MediaBox upper_y - lower_y), not the absolute y-flip
+  // origin: a page with MediaBox `[0 7.92 1440 817.92]` has content height 810,
+  // and we should detect a clip that covers ≥75 % of that, not 75 % of 817.92.
+  if clips.length() == 0 || view.content_height <= 0.0 {
     return false
   }
   match svg_graphics_path_bounds(clips[clips.length() - 1].path) {
     Some(bounds) => {
       let width = abs_double(bounds.right - bounds.left)
       let height = abs_double(bounds.top - bounds.bottom)
-      width >= 200.0 && width <= 400.0 && height >= page_height * 0.75
+      width >= 200.0 && width <= 400.0 && height >= view.content_height * 0.75
     }
     None => false
   }
@@ -1591,7 +1659,7 @@ fn page_render_text_span_as_paths(
   span : @text.TextSpan,
   glyphs : Array[@text.TextGlyphEvent],
   embedded_font : SvgEmbeddedFont,
-  page_height : Double,
+  view : SvgPageView,
   fill_colour : String,
   clip_id : Int,
 ) -> Bool {
@@ -1604,7 +1672,7 @@ fn page_render_text_span_as_paths(
   let mut ok = true
   for glyph in glyphs {
     if !render_glyph_as_path(
-        builder, glyph, embedded_font, units_per_em, page_height, fill_colour, glyph_clip_id,
+        builder, glyph, embedded_font, units_per_em, view, fill_colour, glyph_clip_id,
       ) {
       ok = false
       break
@@ -1626,7 +1694,7 @@ fn render_glyph_as_path(
   glyph : @text.TextGlyphEvent,
   embedded_font : SvgEmbeddedFont,
   units_per_em : Int,
-  page_height : Double,
+  view : SvgPageView,
   fill_colour : String,
   clip_id : Int,
 ) -> Bool {
@@ -1662,7 +1730,7 @@ fn render_glyph_as_path(
   if outline.length() == 0 {
     if svg_glyph_is_spacing(glyph) {
       write_svg_spacing_glyph_path(
-        builder, glyph, units_per_em, page_height, clip_id,
+        builder, glyph, units_per_em, view, clip_id,
       )
       return true
     }
@@ -1679,7 +1747,7 @@ fn render_glyph_as_path(
     builder,
     glyph.rendering_matrix.matrix,
     units_per_em,
-    page_height,
+    view,
   )
   builder.write_string(")\" fill=\"")
   builder.write_string(fill_colour)
@@ -1694,7 +1762,7 @@ fn write_svg_spacing_glyph_path(
   builder : StringBuilder,
   glyph : @text.TextGlyphEvent,
   units_per_em : Int,
-  page_height : Double,
+  view : SvgPageView,
   clip_id : Int,
 ) -> Unit {
   builder.write_string("<path d=\"M 0 0\" transform=\"matrix(")
@@ -1702,7 +1770,7 @@ fn write_svg_spacing_glyph_path(
     builder,
     glyph.rendering_matrix.matrix,
     units_per_em,
-    page_height,
+    view,
   )
   builder.write_string(")\" fill=\"none\"")
   write_svg_clip_path_attribute(builder, clip_id)
@@ -1996,7 +2064,7 @@ fn write_svg_glyph_path_matrix(
   builder : StringBuilder,
   matrix : @text.TextMatrix,
   units_per_em : Int,
-  page_height : Double,
+  view : SvgPageView,
 ) -> Unit {
   let scale = 1.0 / units_per_em.to_double()
   builder.write_string(format_svg_number_precise(matrix.a * scale))
@@ -2007,9 +2075,9 @@ fn write_svg_glyph_path_matrix(
   builder.write_string(" ")
   builder.write_string(format_svg_number_precise((0.0 - matrix.d) * scale))
   builder.write_string(" ")
-  builder.write_string(format_svg_number_precise(matrix.e))
+  builder.write_string(format_svg_number_precise(matrix.e - view.origin_x))
   builder.write_string(" ")
-  builder.write_string(format_svg_number_precise(page_height - matrix.f))
+  builder.write_string(format_svg_number_precise(view.y_flip_origin - matrix.f))
 }
 
 ///|
@@ -2057,16 +2125,16 @@ fn page_render_text_svg(
   span : @text.TextSpan,
   glyphs : Array[@text.TextGlyphEvent],
   font_family : String,
-  page_height : Double,
+  view : SvgPageView,
   fill_colour : String,
   clip_id : Int,
 ) -> Unit {
   let matrix = span_rendering_matrix(span, glyphs)
   let font_size = svg_extract_font_size(matrix)
   let text_matrix = svg_text_transform_without_fontsize(
-    matrix, font_size, page_height,
+    matrix, font_size, view,
   )
-  let positioned = svg_positioned_text(span, text_matrix, glyphs, page_height)
+  let positioned = svg_positioned_text(span, text_matrix, glyphs, view)
   let actual_clip_id = svg_text_clip_actual_id(clip_id)
   write_svg_clip_wrapper_begin(builder, actual_clip_id)
   builder.write_string("<text transform=\"matrix(")
@@ -2103,7 +2171,7 @@ fn svg_positioned_text(
   span : @text.TextSpan,
   parent : @text.TextMatrix,
   glyphs : Array[@text.TextGlyphEvent],
-  page_height : Double,
+  view : SvgPageView,
 ) -> SvgPositionedText? {
   if glyphs.length() == 0 {
     return None
@@ -2122,7 +2190,7 @@ fn svg_positioned_text(
         }
         let glyph_matrix = svg_text_matrix(
           glyph.rendering_matrix.matrix,
-          page_height,
+          view,
         )
         let (x, y) = svg_matrix_local_point(
           parent,
@@ -2192,7 +2260,7 @@ fn svg_extract_font_size(matrix : @text.TextMatrix) -> Double {
 fn svg_text_transform_without_fontsize(
   matrix : @text.TextMatrix,
   font_size : Double,
-  page_height : Double,
+  view : SvgPageView,
 ) -> @text.TextMatrix {
   // SVG <text> renders glyphs along its own y-axis (downward) using font-size
   // as the unit. The PDF text matrix encodes scale in d; when divided by
@@ -2211,23 +2279,23 @@ fn svg_text_transform_without_fontsize(
     (0.0 - matrix.b) / scale,
     (0.0 - matrix.c) / scale,
     matrix.d / scale,
-    matrix.e,
-    page_height - matrix.f,
+    matrix.e - view.origin_x,
+    view.y_flip_origin - matrix.f,
   )
 }
 
 ///|
 fn svg_text_matrix(
   matrix : @text.TextMatrix,
-  page_height : Double,
+  view : SvgPageView,
 ) -> @text.TextMatrix {
   @text.TextMatrix::from_six(
     matrix.a,
     0.0 - matrix.b,
     0.0 - matrix.c,
     matrix.d,
-    matrix.e,
-    page_height - matrix.f,
+    matrix.e - view.origin_x,
+    view.y_flip_origin - matrix.f,
   )
 }
 

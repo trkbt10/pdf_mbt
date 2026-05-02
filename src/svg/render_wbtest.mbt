@@ -36,7 +36,12 @@ test "write_svg_text_matrix writes factored text matrix in SVG coordinates" {
       @text.TextMatrix::identity(),
     ).matrix
   let font_size = svg_extract_font_size(matrix)
-  let svg_matrix = svg_text_transform_without_fontsize(matrix, font_size, 100.0)
+  let view = SvgPageView::{
+    origin_x: 0.0,
+    y_flip_origin: 100.0,
+    content_height: 100.0,
+  }
+  let svg_matrix = svg_text_transform_without_fontsize(matrix, font_size, view)
   write_svg_text_matrix(builder, svg_matrix)
   assert_eq(builder.to_string(), "1 0 0 1 10 80")
 }
@@ -56,7 +61,12 @@ test "svg_extract_font_size uses first axis length for rotated text" {
 ///|
 test "svg_text_transform_without_fontsize preserves rotation and translation" {
   let matrix = @text.TextMatrix::from_six(0.0, 14.0, -14.0, 0.0, 10.0, 20.0)
-  let svg_matrix = svg_text_transform_without_fontsize(matrix, 14.0, 100.0)
+  let view = SvgPageView::{
+    origin_x: 0.0,
+    y_flip_origin: 100.0,
+    content_height: 100.0,
+  }
+  let svg_matrix = svg_text_transform_without_fontsize(matrix, 14.0, view)
   assert_eq(svg_matrix.a, 0.0)
   assert_eq(svg_matrix.b, -1.0)
   assert_eq(svg_matrix.c, 1.0)
@@ -541,13 +551,18 @@ test "render_page_svg positions UTF-8 text with text matrix path" {
 ///|
 test "write_svg_image uses unit image with CTM transform" {
   let builder = StringBuilder::new()
+  let view = SvgPageView::{
+    origin_x: 0.0,
+    y_flip_origin: 396.0,
+    content_height: 396.0,
+  }
   write_svg_image(
     builder,
     "data:image/png;base64,AA==",
     @graphics.GraphicsMatrix::from_six(100.0, 0.0, 0.0, 100.0, 72.0, 172.0),
     true,
     true,
-    396.0,
+    view,
     0,
   )
   assert_eq(
@@ -559,13 +574,18 @@ test "write_svg_image uses unit image with CTM transform" {
 ///|
 test "write_svg_image does not expand multi-pixel image CTM" {
   let builder = StringBuilder::new()
+  let view = SvgPageView::{
+    origin_x: 0.0,
+    y_flip_origin: 841.92,
+    content_height: 841.92,
+  }
   write_svg_image(
     builder,
     "data:image/png;base64,AA==",
     @graphics.GraphicsMatrix::from_six(175.7, 0.0, 0.0, 87.85, 72.0, 590.0),
     false,
     false,
-    841.92,
+    view,
     0,
   )
   assert_eq(
@@ -603,6 +623,42 @@ test "render_page_svg writes transformed path coordinates in SVG space" {
   assert_eq(svg.contains("<path"), true)
   assert_eq(svg.contains("d=\"M 12 76 L 16 72 "), true)
   assert_eq(svg.contains("fill=\"none\" stroke=\"#000000\""), true)
+}
+
+///|
+test "render_page_svg accounts for non-zero MediaBox lower-left when flipping y" {
+  // PDF user space puts the origin at (0, 0) regardless of MediaBox; the
+  // MediaBox just selects the visible window. A page like
+  // `[10 7.92 110 117.92]` is 100 × 110 in displayed size, but a stroke at
+  // PDF coordinate (10, 7.92) sits at the *bottom-left* of the visible area —
+  // in SVG that should map to (0, 110), not (0, 102.08).
+  //
+  // The earlier renderer subtracted point.y from `MediaBox.height` instead of
+  // `MediaBox.upper_y`, so any page whose MediaBox lower-Y was non-zero (a
+  // common idiom in slide-deck exporters that shrink the visible region by
+  // 8 pt on every side) had its content silently shifted up by `lower_y`,
+  // making table text float above its background row. Symmetrically, content
+  // streams targeting a non-zero MediaBox lower-X must subtract that offset
+  // from the SVG x coordinate, otherwise the same shift appears horizontally.
+  let document = @reader.PdfDocument::open(build_offset_media_box_fixture())
+  let svg = render_page_svg(document.page(0))
+  // The stroke goes from PDF (10, 7.92) → SVG (0, 110)
+  //                   to PDF (110, 117.92) → SVG (100, 0).
+  assert_eq(svg.contains("d=\"M 0 110 L 100 0 "), true)
+}
+
+///|
+fn build_offset_media_box_fixture() -> Bytes {
+  // MediaBox shifted to lower-left (10, 7.92) so neither origin axis is zero.
+  // The content stream emits a stroked diagonal from the box's lower-left
+  // (10, 7.92) to its upper-right (110, 117.92); a correctly-flipped renderer
+  // collapses both onto the SVG viewport corners.
+  let content = b"10 7.92 m 110 117.92 l S"
+  build_single_page_pdf(
+    b"<< /Type /Page /Parent 2 0 R /MediaBox [10 7.92 110 117.92] /Contents 4 0 R >>",
+    content,
+    [],
+  )
 }
 
 ///|
@@ -859,7 +915,7 @@ fn count_rendered_non_source_notdef_paths(page : @reader.PdfPage) -> Int {
                 count += count_span_rendered_non_source_notdef_paths(
                   span_glyphs(glyph_groups, index),
                   ttf,
-                  page_height(page),
+                  page_view(page),
                 )
               None => ()
             }
@@ -876,7 +932,7 @@ fn count_rendered_non_source_notdef_paths(page : @reader.PdfPage) -> Int {
 fn count_span_rendered_non_source_notdef_paths(
   glyphs : Array[@text.TextGlyphEvent],
   font : SvgEmbeddedFont,
-  page_height : Double,
+  view : SvgPageView,
 ) -> Int {
   let mut count = 0
   let units_per_em = svg_font_units_per_em(font.ttf)
@@ -885,7 +941,7 @@ fn count_span_rendered_non_source_notdef_paths(
     if gid == 0 && !svg_glyph_is_notdef_source(glyph) {
       let builder = StringBuilder::new()
       if render_glyph_as_path(
-          builder, glyph, font, units_per_em, page_height, "#000000", 0,
+          builder, glyph, font, units_per_em, view, "#000000", 0,
         ) &&
         builder.to_string().contains("<path") {
         count += 1
