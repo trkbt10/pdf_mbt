@@ -33,39 +33,12 @@ fn create_page_pdf(content : Bytes, compress_streams~ : Bool) -> Bytes {
 }
 
 ///|
-fn serialize_object_body(
-  prefix : Bytes,
-  header_base : Int64,
-  objects : Array[@objects.IndirectObject],
-) -> (Bytes, Array[PdfXrefEntry]) {
-  let mut bytes = prefix
-  let entries : Array[PdfXrefEntry] = []
-  for object in objects {
-    let offset = bytes.length().to_int64() - header_base
-    entries.push(PdfXrefEntry::new(object.id, offset))
-    bytes = bytes + serialize_indirect_object(object)
-  }
-  (bytes, entries)
-}
-
-///|
 fn helvetica_font_dictionary() -> @objects.PdfDictionary {
   let dict : @objects.PdfDictionary = Map::new()
   dict[pdf_key(b"Type")] = Name(pdf_key(b"Font"))
   dict[pdf_key(b"Subtype")] = Name(pdf_key(b"Type1"))
   dict[pdf_key(b"BaseFont")] = Name(pdf_key(b"Helvetica"))
   dict
-}
-
-///|
-fn max_object_number(objects : Array[@objects.IndirectObject]) -> Int {
-  let mut max_number = 0
-  for object in objects {
-    if object.id.object_number > max_number {
-      max_number = object.id.object_number
-    }
-  }
-  max_number
 }
 
 ///|

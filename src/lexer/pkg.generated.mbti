@@ -7,9 +7,23 @@ import {
 }
 
 // Values
+pub fn all_digits_from(Bytes, Int) -> Bool
+
+pub fn byte_to_text(Byte) -> String
+
+pub fn bytes_to_text(Bytes) -> String
+
 pub fn classify_byte(Byte) -> CharClass
 
 pub fn is_delimiter(Byte) -> Bool
+
+pub fn is_digit(Byte) -> Bool
+
+pub fn is_integer_lexeme(Bytes) -> Bool
+
+pub fn is_numeric_like(Bytes) -> Bool
+
+pub fn is_real_lexeme(Bytes) -> Bool
 
 pub fn is_white_space(Byte) -> Bool
 
@@ -18,6 +32,8 @@ pub fn read_hex_string(ByteCursor) -> Bytes raise @objects.PdfParseError
 pub fn read_literal_string(ByteCursor) -> Bytes raise @objects.PdfParseError
 
 pub fn read_name(ByteCursor) -> @objects.PdfName raise @objects.PdfParseError
+
+pub fn sign_prefix_length(Bytes) -> Int
 
 // Errors
 

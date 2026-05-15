@@ -48,6 +48,8 @@ pub fn interpret_form_xobject(FormXObject, @content.ContentResources, GraphicsSt
 
 pub fn lab_d50_to_srgb(Double, Double, Double) -> DeviceRgbColour
 
+pub fn min3(Double, Double, Double) -> Double
+
 pub fn optional_content_configuration_vocabulary() -> OptionalContentConfigurationVocabulary
 
 pub fn optional_content_graphical_vocabulary() -> OptionalContentGraphicalVocabulary

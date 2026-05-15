@@ -254,14 +254,6 @@ fn icc_range_number(
 }
 
 ///|
-fn read_u32_be(data : Bytes, start : Int) -> Int64 {
-  (data[start].to_int64() << 24) |
-  (data[start + 1].to_int64() << 16) |
-  (data[start + 2].to_int64() << 8) |
-  data[start + 3].to_int64()
-}
-
-///|
 fn read_signature(data : Bytes, start : Int) -> Bytes {
   Bytes::from_array([
     data[start],
@@ -276,7 +268,7 @@ fn read_u32_be_or(data : Bytes, start : Int, fallback : Int64) -> Int64 {
   if start < 0 || start + 4 > data.length() {
     fallback
   } else {
-    read_u32_be(data, start)
+    @filters.read_u32_be(data, start)
   }
 }
 
@@ -374,7 +366,7 @@ pub fn parse_icc_profile_header(
       offset, "ICC profile stream must contain at least a 128-byte header",
     )
   }
-  let declared_size = read_u32_be(decoded, 0)
+  let declared_size = @filters.read_u32_be(decoded, 0)
   if declared_size <= 0L || declared_size > decoded.length().to_int64() {
     raise PdfGraphicsError::InvalidGraphicsState(
       offset, "ICC profile declared size exceeds decoded stream length",
@@ -395,7 +387,7 @@ pub fn parse_icc_profile_header(
     device_class: @objects.PdfName::new(device_class),
     data_colour_space: @objects.PdfName::new(signature),
     profile_connection_space: @objects.PdfName::new(read_signature(decoded, 20)),
-    rendering_intent: icc_rendering_intent(read_u32_be(decoded, 64), offset),
+    rendering_intent: icc_rendering_intent(@filters.read_u32_be(decoded, 64), offset),
     component_count,
   }
 }

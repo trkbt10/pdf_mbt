@@ -88,10 +88,10 @@ fn document_info_string(doc : PdfDocument, key : Bytes) -> String? {
   match result {
     Ok(Some(info)) =>
       match key {
-        b"Title" => info.title.map(bytes_to_text)
-        b"Author" => info.author.map(bytes_to_text)
-        b"Subject" => info.subject.map(bytes_to_text)
-        b"Creator" => info.creator.map(bytes_to_text)
+        b"Title" => info.title.map(@lexer.bytes_to_text)
+        b"Author" => info.author.map(@lexer.bytes_to_text)
+        b"Subject" => info.subject.map(@lexer.bytes_to_text)
+        b"Creator" => info.creator.map(@lexer.bytes_to_text)
         _ => None
       }
     _ => None
@@ -139,11 +139,3 @@ fn abs_double(value : Double) -> Double {
   }
 }
 
-///|
-fn bytes_to_text(bytes : Bytes) -> String {
-  let chars : Array[Char] = []
-  for byte in bytes {
-    chars.push(byte.to_char())
-  }
-  String::from_array(chars)
-}

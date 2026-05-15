@@ -8,7 +8,13 @@ import {
 }
 
 // Values
+pub fn append_incremental_update(Bytes, Array[@objects.IndirectObject]) -> Bytes raise PdfContextError
+
 pub fn serialize_indirect_object(@objects.IndirectObject) -> Bytes
+
+pub fn serialize_literal_string(Bytes) -> Bytes
+
+pub fn serialize_name(@objects.PdfName) -> Bytes
 
 pub fn serialize_object(@objects.PdfObject) -> Bytes
 

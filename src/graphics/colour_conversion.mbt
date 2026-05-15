@@ -493,7 +493,10 @@ pub fn ColourTransformFunction::apply(
 }
 
 ///|
-fn min3(a : Double, b : Double, c : Double) -> Double {
+/// Returns the minimum of three Double values without short-circuiting on NaN.
+/// Used by colour conversion (e.g. RGB→CMYK black-component derivation) where
+/// callers expect a deterministic numerical minimum.
+pub fn min3(a : Double, b : Double, c : Double) -> Double {
   let ab = if a < b { a } else { b }
   if ab < c {
     ab

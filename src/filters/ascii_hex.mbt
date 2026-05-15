@@ -37,7 +37,10 @@ fn decode_ascii_hex(data : Bytes) -> Bytes raise PdfFilterError {
 }
 
 ///|
-fn hex_digit_value(byte : Byte) -> Int? {
+/// Returns the integer value 0-15 of an ASCII hex digit byte (0-9, A-F, a-f),
+/// or `None` if the byte is not a valid hex digit. Used both by the
+/// ASCIIHexDecode filter and by PDF Unicode CMap parsing.
+pub fn hex_digit_value(byte : Byte) -> Int? {
   if byte >= b'0' && byte <= b'9' {
     Some(byte.to_int() - b'0'.to_int())
   } else if byte >= b'A' && byte <= b'F' {

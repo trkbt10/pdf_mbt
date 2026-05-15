@@ -16,6 +16,8 @@ pub fn glyph_name_to_unicode(@objects.PdfName) -> String?
 
 pub fn interpret_text(@content.ContentStream, TextResources, TextInitialState) -> TextProgram raise PdfTextError
 
+pub fn is_subset_font_tag_prefix(Bytes) -> Bool
+
 pub fn map_glyph_name_to_unicode(Bytes, GlyphIdentifier, GlyphFallback) -> UnicodeMapping
 
 pub fn parse_cmap_stream(@objects.PdfStream, Int64, TextInterpretationLimits) -> CMap raise PdfTextError
@@ -27,6 +29,126 @@ pub fn parse_decoded_to_unicode_cmap(Bytes, Int64, TextInterpretationLimits) -> 
 pub fn parse_simple_encoding(@objects.PdfObject?, Int64) -> SimpleEncoding raise PdfTextError
 
 pub fn parse_to_unicode_stream(@objects.PdfStream, Int64, TextInterpretationLimits) -> ToUnicodeCMap raise PdfTextError
+
+pub fn predefined_cmap_83pv_rksj_h() -> Bytes
+
+pub fn predefined_cmap_90ms_rksj_h() -> Bytes
+
+pub fn predefined_cmap_90ms_rksj_v() -> Bytes
+
+pub fn predefined_cmap_90msp_rksj_h() -> Bytes
+
+pub fn predefined_cmap_90msp_rksj_v() -> Bytes
+
+pub fn predefined_cmap_90pv_rksj_h() -> Bytes
+
+pub fn predefined_cmap_add_rksj_h() -> Bytes
+
+pub fn predefined_cmap_add_rksj_v() -> Bytes
+
+pub fn predefined_cmap_b5pc_h() -> Bytes
+
+pub fn predefined_cmap_b5pc_v() -> Bytes
+
+pub fn predefined_cmap_cns_euc_h() -> Bytes
+
+pub fn predefined_cmap_cns_euc_v() -> Bytes
+
+pub fn predefined_cmap_eten_b5_h() -> Bytes
+
+pub fn predefined_cmap_eten_b5_v() -> Bytes
+
+pub fn predefined_cmap_etenms_b5_h() -> Bytes
+
+pub fn predefined_cmap_etenms_b5_v() -> Bytes
+
+pub fn predefined_cmap_euc_h() -> Bytes
+
+pub fn predefined_cmap_euc_v() -> Bytes
+
+pub fn predefined_cmap_ext_rksj_h() -> Bytes
+
+pub fn predefined_cmap_ext_rksj_v() -> Bytes
+
+pub fn predefined_cmap_gb_euc_h() -> Bytes
+
+pub fn predefined_cmap_gb_euc_v() -> Bytes
+
+pub fn predefined_cmap_gbk2k_h() -> Bytes
+
+pub fn predefined_cmap_gbk2k_v() -> Bytes
+
+pub fn predefined_cmap_gbk_euc_h() -> Bytes
+
+pub fn predefined_cmap_gbk_euc_v() -> Bytes
+
+pub fn predefined_cmap_gbkp_euc_h() -> Bytes
+
+pub fn predefined_cmap_gbkp_euc_v() -> Bytes
+
+pub fn predefined_cmap_gbpc_euc_h() -> Bytes
+
+pub fn predefined_cmap_gbpc_euc_v() -> Bytes
+
+pub fn predefined_cmap_h() -> Bytes
+
+pub fn predefined_cmap_hkscs_b5_h() -> Bytes
+
+pub fn predefined_cmap_hkscs_b5_v() -> Bytes
+
+pub fn predefined_cmap_ksc_euc_h() -> Bytes
+
+pub fn predefined_cmap_ksc_euc_v() -> Bytes
+
+pub fn predefined_cmap_kscms_uhc_h() -> Bytes
+
+pub fn predefined_cmap_kscms_uhc_hw_h() -> Bytes
+
+pub fn predefined_cmap_kscms_uhc_hw_v() -> Bytes
+
+pub fn predefined_cmap_kscms_uhc_v() -> Bytes
+
+pub fn predefined_cmap_kscpc_euc_h() -> Bytes
+
+pub fn predefined_cmap_lookup(String) -> Bytes?
+
+pub fn predefined_cmap_unicns_ucs2_h() -> Bytes
+
+pub fn predefined_cmap_unicns_ucs2_v() -> Bytes
+
+pub fn predefined_cmap_unicns_utf16_h() -> Bytes
+
+pub fn predefined_cmap_unicns_utf16_v() -> Bytes
+
+pub fn predefined_cmap_unigb_ucs2_h() -> Bytes
+
+pub fn predefined_cmap_unigb_ucs2_v() -> Bytes
+
+pub fn predefined_cmap_unigb_utf16_h() -> Bytes
+
+pub fn predefined_cmap_unigb_utf16_v() -> Bytes
+
+pub fn predefined_cmap_unijis_ucs2_h() -> Bytes
+
+pub fn predefined_cmap_unijis_ucs2_hw_h() -> Bytes
+
+pub fn predefined_cmap_unijis_ucs2_hw_v() -> Bytes
+
+pub fn predefined_cmap_unijis_ucs2_v() -> Bytes
+
+pub fn predefined_cmap_unijis_utf16_h() -> Bytes
+
+pub fn predefined_cmap_unijis_utf16_v() -> Bytes
+
+pub fn predefined_cmap_uniks_ucs2_h() -> Bytes
+
+pub fn predefined_cmap_uniks_ucs2_v() -> Bytes
+
+pub fn predefined_cmap_uniks_utf16_h() -> Bytes
+
+pub fn predefined_cmap_uniks_utf16_v() -> Bytes
+
+pub fn predefined_cmap_v() -> Bytes
 
 pub fn resolve_named_encoding(@objects.PdfName, Int64) -> SimpleEncoding raise PdfTextError
 

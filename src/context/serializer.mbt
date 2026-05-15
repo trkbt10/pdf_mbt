@@ -79,6 +79,44 @@ pub fn serialize_indirect_object(object : @objects.IndirectObject) -> Bytes {
 }
 
 ///|
+/// Appends modified indirect objects to an existing PDF as an incremental
+/// update. Preserves the original bytes verbatim and writes a new xref section
+/// plus trailer whose /Prev points to the previous startxref.
+pub fn append_incremental_update(
+  original : Bytes,
+  objects : Array[@objects.IndirectObject],
+) -> Bytes raise PdfContextError {
+  let file = try @reader.PdfFile::open(original) catch {
+    error => raise PdfContextError::ReaderError(error)
+  } noraise {
+    file => file
+  }
+  let previous_trailer = file.trailer()
+  let header_base = find_header_base(original)
+  let previous_xref = find_latest_startxref(original)
+  let prefix = original + b"\r\n"
+  let (body, xref_entries) = serialize_object_body(
+    prefix,
+    header_base,
+    objects,
+    compress_streams=false,
+  )
+  let xref_offset = body.length().to_int64() - header_base
+  let trailer = SerializationBuilderTrailerSpec::new(
+    max_int(previous_trailer.size, max_object_number(objects) + 1),
+    file.root_ref(),
+    Some(previous_xref),
+    previous_trailer.info,
+    context_file_id(previous_trailer.id),
+  )
+  body +
+  serialize_xref_section(xref_entries, trailer) +
+  b"startxref\r\n" +
+  decimal_bytes(xref_offset) +
+  b"\r\n%%EOF\r\n"
+}
+
+///|
 fn PdfContext::indirect_objects(
   self : PdfContext,
   dirty_only~ : Bool,
@@ -163,7 +201,9 @@ fn serialize_object_with_options(
 }
 
 ///|
-fn serialize_literal_string(bytes : Bytes) -> Bytes {
+/// Encodes a PDF literal string by parenthesizing and escaping the input bytes
+/// per ISO 32000 7.3.4.2 (parentheses, backslashes, and ASCII control bytes).
+pub fn serialize_literal_string(bytes : Bytes) -> Bytes {
   let out : Array[Byte] = []
   out.push(b'(')
   for byte in bytes {
@@ -271,7 +311,9 @@ fn stream_dictionary_with_length(
 }
 
 ///|
-fn serialize_name(name : @objects.PdfName) -> Bytes {
+/// Encodes a PDF name object by prefixing `/` and hex-escaping bytes outside
+/// the regular name character class per ISO 32000 7.3.5.
+pub fn serialize_name(name : @objects.PdfName) -> Bytes {
   let out : Array[Byte] = []
   out.push(b'/')
   for byte in name.bytes {

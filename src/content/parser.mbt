@@ -129,7 +129,7 @@ pub fn ContentStreamParser::parse_next(
             if self.compatibility.is_active() {
               self.operands.clear()
             } else {
-              raise UnknownOperator(offset, bytes_to_text(keyword))
+              raise UnknownOperator(offset, @lexer.bytes_to_text(keyword))
             }
         }
       EndOfInput(offset) => {

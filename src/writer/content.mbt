@@ -28,7 +28,7 @@ fn PdfContentBuilder::set_font(
   size : Double,
 ) -> Unit {
   self.operations.push(
-    serialize_name(name) + b" " + number_bytes(size) + b" Tf\n",
+    @context.serialize_name(name) + b" " + number_bytes(size) + b" Tf\n",
   )
 }
 
@@ -46,7 +46,7 @@ fn PdfContentBuilder::show_text(
   self : PdfContentBuilder,
   bytes : Bytes,
 ) -> Unit {
-  self.operations.push(serialize_literal_string(bytes) + b" Tj\n")
+  self.operations.push(@context.serialize_literal_string(bytes) + b" Tj\n")
 }
 
 ///|
@@ -174,5 +174,5 @@ fn PdfContentBuilder::operator0(
 
 ///|
 fn number_bytes(value : Double) -> Bytes {
-  serialize_object(Real(value))
+  @context.serialize_object(Real(value))
 }

@@ -247,23 +247,10 @@ fn parse_hex_codepoint(bytes : Bytes, start : Int, length : Int) -> Int? {
   }
   let mut value = 0
   for index in start..<(start + length) {
-    match hex_digit_value(bytes[index]) {
+    match @filters.hex_digit_value(bytes[index]) {
       Some(digit) => value = value * 16 + digit
       None => return None
     }
   }
   Some(value)
-}
-
-///|
-fn hex_digit_value(byte : Byte) -> Int? {
-  if byte >= b'0' && byte <= b'9' {
-    Some(byte.to_int() - b'0'.to_int())
-  } else if byte >= b'A' && byte <= b'F' {
-    Some(byte.to_int() - b'A'.to_int() + 10)
-  } else if byte >= b'a' && byte <= b'f' {
-    Some(byte.to_int() - b'a'.to_int() + 10)
-  } else {
-    None
-  }
 }

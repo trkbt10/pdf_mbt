@@ -200,6 +200,21 @@ fn is_pdf_string_space(byte : Byte) -> Bool {
 }
 
 ///|
-fn byte_to_text(byte : Byte) -> String {
+/// Builds a diagnostic single-character String from a raw PDF byte by treating
+/// the byte value as a Unicode code point. Suitable for error messages and
+/// lossy textual rendering of arbitrary PDF byte sequences.
+pub fn byte_to_text(byte : Byte) -> String {
   String::from_array([byte.to_char()])
+}
+
+///|
+/// Builds a diagnostic String from raw PDF bytes by mapping each byte to its
+/// code-point character. Suitable for error messages and lossy textual
+/// rendering of arbitrary PDF byte sequences.
+pub fn bytes_to_text(bytes : Bytes) -> String {
+  let chars : Array[Char] = []
+  for byte in bytes {
+    chars.push(byte.to_char())
+  }
+  String::from_array(chars)
 }

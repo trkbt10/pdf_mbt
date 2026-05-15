@@ -100,7 +100,7 @@ pub fn convert_device_rgb_to_device_cmyk(
   let c = 1.0 - colour_component(rgb.red)
   let m = 1.0 - colour_component(rgb.green)
   let y = 1.0 - colour_component(rgb.blue)
-  let k = min3(c, m, y)
+  let k = @graphics.min3(c, m, y)
   let ucr = try undercolour_removal.apply_scalar(k, offset~) catch {
     _ =>
       raise PdfRenderingError::ProviderFailure(
@@ -390,12 +390,3 @@ fn colour_component(value : Double) -> Double {
   }
 }
 
-///|
-fn min3(a : Double, b : Double, c : Double) -> Double {
-  let ab = if a < b { a } else { b }
-  if ab < c {
-    ab
-  } else {
-    c
-  }
-}

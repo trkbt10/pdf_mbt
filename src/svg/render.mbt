@@ -2758,7 +2758,9 @@ fn svg_font_family_for_base_font(base_font : @objects.PdfName) -> String {
 ///|
 fn strip_subset_font_tag(name : @objects.PdfName) -> @objects.PdfName {
   let bytes = name.bytes
-  if bytes.length() > 7 && bytes[6] == b'+' && is_subset_font_tag_prefix(bytes) {
+  if bytes.length() > 7 &&
+    bytes[6] == b'+' &&
+    @text.is_subset_font_tag_prefix(bytes) {
     let out : Array[Byte] = []
     for index in 7..<bytes.length() {
       out.push(bytes[index])
@@ -2767,18 +2769,6 @@ fn strip_subset_font_tag(name : @objects.PdfName) -> @objects.PdfName {
   } else {
     name
   }
-}
-
-///|
-fn is_subset_font_tag_prefix(bytes : Bytes) -> Bool {
-  let mut ok = true
-  for index in 0..<6 {
-    let byte = bytes[index]
-    if byte < b'A' || byte > b'Z' {
-      ok = false
-    }
-  }
-  ok
 }
 
 ///|

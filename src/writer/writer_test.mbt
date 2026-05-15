@@ -15,7 +15,7 @@ test "writer serializes every object shape to parseable PDF syntax" {
     Null,
     Ref(@objects.ObjectId::{ object_number: 9, generation_number: 2 }),
   ])
-  let reparsed = @parser.parse_object(@writer.serialize_object(object))
+  let reparsed = @parser.parse_object(@context.serialize_object(object))
   assert_eq(reparsed == object, true)
   let stream_dict : @objects.PdfDictionary = Map::new()
   let stream = @objects.PdfObject::Stream(@objects.PdfStream::{
@@ -23,7 +23,7 @@ test "writer serializes every object shape to parseable PDF syntax" {
     data: b"abc",
   })
   let indirect = @parser.parse_indirect_object(
-    @writer.serialize_indirect_object(@objects.IndirectObject::{
+    @context.serialize_indirect_object(@objects.IndirectObject::{
       id: @objects.ObjectId::{ object_number: 10, generation_number: 0 },
       value: stream,
       start_offset: 0L,
@@ -40,7 +40,7 @@ test "writer serializes every object shape to parseable PDF syntax" {
     }
     _ => fail("expected parsed stream")
   }
-  assert_eq(@writer.serialize_object(String(b"\x00\xff")), b"(\x00\xff)")
+  assert_eq(@context.serialize_object(String(b"\x00\xff")), b"(\x00\xff)")
 }
 
 ///|

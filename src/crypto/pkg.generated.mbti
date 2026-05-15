@@ -20,6 +20,8 @@ pub fn be_u32_bytes(Int64) -> Bytes
 
 pub fn be_u64_bytes(UInt64) -> Bytes
 
+pub fn bytes_slice(Bytes, Int, Int) -> Bytes
+
 pub fn bytes_xor(Bytes, Bytes) -> Bytes raise PdfCryptoError
 
 pub fn le_u32_bytes(Int64) -> Bytes

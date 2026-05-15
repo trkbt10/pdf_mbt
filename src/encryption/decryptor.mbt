@@ -111,8 +111,8 @@ fn decrypt_aes_payload(
       label, "AES encrypted payload must include a 16-byte IV",
     )
   }
-  let iv = bytes_slice(encrypted_bytes, 0, 16)
-  let ciphertext = bytes_slice(encrypted_bytes, 16, encrypted_bytes.length())
+  let iv = @crypto.bytes_slice(encrypted_bytes, 0, 16)
+  let ciphertext = @crypto.bytes_slice(encrypted_bytes, 16, encrypted_bytes.length())
   crypto_aes_cbc_decrypt(object_key, iv, ciphertext, @crypto.PaddingMode::PKCS7)
 }
 
@@ -134,7 +134,7 @@ fn derive_object_key(
   } else {
     file_key.length() + 5
   }
-  bytes_slice(digest, 0, key_length)
+  @crypto.bytes_slice(digest, 0, key_length)
 }
 
 ///|

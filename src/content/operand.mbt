@@ -129,11 +129,11 @@ fn ContentOperandReader::classify_regular_token(
     b"false" => Operand(@objects.PdfObject::Boolean(false))
     b"null" => Operand(@objects.PdfObject::Null)
     _ =>
-      if is_integer_lexeme(lexeme) {
+      if @lexer.is_integer_lexeme(lexeme) {
         Operand(@objects.PdfObject::Integer(parse_int64_lexeme(lexeme, offset)))
-      } else if is_real_lexeme(lexeme) {
+      } else if @lexer.is_real_lexeme(lexeme) {
         Operand(@objects.PdfObject::Real(parse_double_lexeme(lexeme, offset)))
-      } else if is_numeric_like(lexeme) {
+      } else if @lexer.is_numeric_like(lexeme) {
         // Producer-quirk recovery: some PDF generators (Marp, certain
         // PowerPoint exports, etc.) emit two numbers run together when the
         // second is signed, e.g. `0.00-50` instead of `0.00 -50`. ISO 32000
@@ -186,8 +186,8 @@ fn split_concatenated_numeric(lexeme : Bytes) -> (Int, Int)? {
     if byte == b'+' || byte == b'-' {
       let first = bytes_slice(lexeme, 0, split_at)
       let rest = bytes_slice(lexeme, split_at, lexeme.length() - split_at)
-      let first_ok = is_integer_lexeme(first) || is_real_lexeme(first)
-      let rest_ok = is_integer_lexeme(rest) || is_real_lexeme(rest)
+      let first_ok = @lexer.is_integer_lexeme(first) || @lexer.is_real_lexeme(first)
+      let rest_ok = @lexer.is_integer_lexeme(rest) || @lexer.is_real_lexeme(rest)
       if first_ok && rest_ok {
         return Some((split_at, split_at))
       }
@@ -291,7 +291,7 @@ fn ContentOperandReader::consume_array_start(
     Some(byte) =>
       raise MalformedSyntax(
         offset,
-        "array must start with [ but found " + byte_to_text(byte),
+        "array must start with [ but found " + @lexer.byte_to_text(byte),
       )
     None => raise MalformedSyntax(offset, "unterminated array")
   }
@@ -389,72 +389,13 @@ fn is_stream_like_keyword(lexeme : Bytes) -> Bool {
   }
 }
 
-///|
-fn is_integer_lexeme(lexeme : Bytes) -> Bool {
-  let start = sign_prefix_length(lexeme)
-  start < lexeme.length() && all_digits_from(lexeme, start)
-}
-
-///|
-fn is_real_lexeme(lexeme : Bytes) -> Bool {
-  let start = sign_prefix_length(lexeme)
-  let mut period_count = 0
-  let mut digit_count = 0
-  let mut valid = start < lexeme.length()
-  for i in start..<lexeme.length() {
-    let byte = lexeme[i]
-    if byte == b'.' {
-      period_count += 1
-    } else if is_digit(byte) {
-      digit_count += 1
-    } else {
-      valid = false
-    }
-  }
-  valid && period_count == 1 && digit_count > 0
-}
-
-///|
-fn is_numeric_like(lexeme : Bytes) -> Bool {
-  if lexeme.length() == 0 {
-    false
-  } else {
-    let first = lexeme[0]
-    is_digit(first) || first == b'+' || first == b'-' || first == b'.'
-  }
-}
-
-///|
-fn sign_prefix_length(lexeme : Bytes) -> Int {
-  if lexeme.length() > 0 && (lexeme[0] == b'+' || lexeme[0] == b'-') {
-    1
-  } else {
-    0
-  }
-}
-
-///|
-fn all_digits_from(lexeme : Bytes, start : Int) -> Bool {
-  let mut valid = true
-  for i in start..<lexeme.length() {
-    if !is_digit(lexeme[i]) {
-      valid = false
-    }
-  }
-  valid
-}
-
-///|
-fn is_digit(byte : Byte) -> Bool {
-  byte >= b'0' && byte <= b'9'
-}
 
 ///|
 fn parse_int64_lexeme(
   lexeme : Bytes,
   offset : Int64,
 ) -> Int64 raise PdfContentError {
-  @string.parse_int64(bytes_to_text(lexeme).to_string_view()) catch {
+  @string.parse_int64(@lexer.bytes_to_text(lexeme).to_string_view()) catch {
     _ => raise MalformedSyntax(offset, "invalid number")
   }
 }
@@ -464,21 +405,8 @@ fn parse_double_lexeme(
   lexeme : Bytes,
   offset : Int64,
 ) -> Double raise PdfContentError {
-  @string.parse_double(bytes_to_text(lexeme).to_string_view()) catch {
+  @string.parse_double(@lexer.bytes_to_text(lexeme).to_string_view()) catch {
     _ => raise MalformedSyntax(offset, "invalid number")
   }
 }
 
-///|
-fn byte_to_text(byte : Byte) -> String {
-  String::from_array([byte.to_char()])
-}
-
-///|
-fn bytes_to_text(bytes : Bytes) -> String {
-  let chars : Array[Char] = []
-  for byte in bytes {
-    chars.push(byte.to_char())
-  }
-  String::from_array(chars)
-}

@@ -61,7 +61,7 @@ fn ObjectParser::read_indirect_object_number(
 ) -> Int raise @objects.PdfParseError {
   let token = self.lexer.next_token()
   match token {
-    Regular(lexeme, _) if is_integer_lexeme(lexeme) => {
+    Regular(lexeme, _) if @lexer.is_integer_lexeme(lexeme) => {
       let object_number = parse_int64_lexeme(lexeme, token_offset(token))
       if object_number <= 0L {
         raise @objects.PdfParseError::InvalidIndirectObject(
@@ -90,7 +90,7 @@ fn ObjectParser::read_indirect_generation_number(
 ) -> Int raise @objects.PdfParseError {
   let token = self.lexer.next_token()
   match token {
-    Regular(lexeme, _) if is_integer_lexeme(lexeme) => {
+    Regular(lexeme, _) if @lexer.is_integer_lexeme(lexeme) => {
       let generation_number = parse_int64_lexeme(lexeme, token_offset(token))
       if generation_number < 0L {
         raise @objects.PdfParseError::InvalidIndirectObject(

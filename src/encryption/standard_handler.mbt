@@ -255,10 +255,10 @@ fn derive_legacy_file_key(
   let mut digest = crypto_md5(input)
   if parsed.revision >= 3 {
     for _ in 0..<50 {
-      digest = crypto_md5(bytes_slice(digest, 0, parsed.key_length_bytes))
+      digest = crypto_md5(@crypto.bytes_slice(digest, 0, parsed.key_length_bytes))
     }
   }
-  bytes_slice(digest, 0, parsed.key_length_bytes)
+  @crypto.bytes_slice(digest, 0, parsed.key_length_bytes)
 }
 
 ///|
@@ -294,7 +294,7 @@ pub fn compute_legacy_user_entry(
     for round in 1..<20 {
       value = crypto_rc4(xor_key_with_round(file_key, round), value)
     }
-    value + bytes_slice(standard_password_padding, 0, 16)
+    value + @crypto.bytes_slice(standard_password_padding, 0, 16)
   }
 }
 
@@ -309,7 +309,7 @@ fn recover_legacy_owner_user_password(
       key = crypto_md5(key)
     }
   }
-  key = bytes_slice(key, 0, parsed.key_length_bytes)
+  key = @crypto.bytes_slice(key, 0, parsed.key_length_bytes)
   if parsed.revision == 2 {
     crypto_rc4(key, parsed.owner_entry)
   } else {
@@ -346,7 +346,7 @@ pub fn compute_legacy_owner_entry(
       key = crypto_md5(key)
     }
   }
-  key = bytes_slice(key, 0, key_length_bytes)
+  key = @crypto.bytes_slice(key, 0, key_length_bytes)
   let mut value = pad_password_legacy(user_password)
   if revision == 2 {
     crypto_rc4(key, value)
@@ -367,13 +367,13 @@ pub fn verify_aes256_user_password(
   parsed : StandardEncryptionDictionary,
   password : Bytes,
 ) -> Bytes? raise PdfEncryptionError {
-  let validation_salt = bytes_slice(parsed.user_entry, 32, 40)
-  let expected = bytes_slice(parsed.user_entry, 0, 32)
+  let validation_salt = @crypto.bytes_slice(parsed.user_entry, 32, 40)
+  let expected = @crypto.bytes_slice(parsed.user_entry, 0, 32)
   let actual = aes256_hash(parsed.revision, password, validation_salt, None)
   if actual != expected {
     return None
   }
-  let key_salt = bytes_slice(parsed.user_entry, 40, 48)
+  let key_salt = @crypto.bytes_slice(parsed.user_entry, 40, 48)
   let wrapping_key = aes256_hash(parsed.revision, password, key_salt, None)
   match parsed.user_encrypted_file_key {
     Some(encrypted_key) =>
@@ -392,8 +392,8 @@ pub fn verify_aes256_owner_password(
   parsed : StandardEncryptionDictionary,
   password : Bytes,
 ) -> Bytes? raise PdfEncryptionError {
-  let validation_salt = bytes_slice(parsed.owner_entry, 32, 40)
-  let expected = bytes_slice(parsed.owner_entry, 0, 32)
+  let validation_salt = @crypto.bytes_slice(parsed.owner_entry, 32, 40)
+  let expected = @crypto.bytes_slice(parsed.owner_entry, 0, 32)
   let user_entry = parsed.user_entry
   let actual = aes256_hash(
     parsed.revision,
@@ -404,7 +404,7 @@ pub fn verify_aes256_owner_password(
   if actual != expected {
     return None
   }
-  let key_salt = bytes_slice(parsed.owner_entry, 40, 48)
+  let key_salt = @crypto.bytes_slice(parsed.owner_entry, 40, 48)
   let wrapping_key = aes256_hash(
     parsed.revision,
     password,
@@ -510,8 +510,8 @@ fn aes256_revision6_hash(
     let seed = password + key + user_bytes
     let repeated = repeat_bytes(seed, 64)
     encrypted = crypto_aes_cbc_encrypt(
-      bytes_slice(key, 0, 16),
-      bytes_slice(key, 16, 32),
+      @crypto.bytes_slice(key, 0, 16),
+      @crypto.bytes_slice(key, 16, 32),
       repeated,
       @crypto.PaddingMode::NoPadding,
     )
@@ -522,7 +522,7 @@ fn aes256_revision6_hash(
     }
     round += 1
   }
-  bytes_slice(key, 0, 32)
+  @crypto.bytes_slice(key, 0, 32)
 }
 
 ///|
@@ -884,7 +884,7 @@ pub fn truncate_password_127(password : Bytes) -> Bytes {
   if password.length() <= 127 {
     password
   } else {
-    bytes_slice(password, 0, 127)
+    @crypto.bytes_slice(password, 0, 127)
   }
 }
 
@@ -943,10 +943,6 @@ fn bytes_concat(chunks : Array[Bytes]) -> Bytes {
   Bytes::from_array(out)
 }
 
-///|
-fn bytes_slice(data : Bytes, start : Int, end : Int) -> Bytes {
-  Bytes::from_array(data.view(start~, end~).to_array().view())
-}
 
 ///|
 fn crypto_md5(input : Bytes) -> Bytes raise PdfEncryptionError {

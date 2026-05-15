@@ -64,7 +64,7 @@ fn ObjectParser::parse_ordinary_object(
 ) -> @objects.PdfObject raise @objects.PdfParseError {
   match self.lexer.next_token() {
     Regular(lexeme, offset) =>
-      if is_integer_lexeme(lexeme) {
+      if @lexer.is_integer_lexeme(lexeme) {
         self.parse_integer_or_reference(lexeme, offset)
       } else {
         parse_regular_object(lexeme, offset)
@@ -168,7 +168,7 @@ fn ObjectParser::parse_integer_or_reference(
   }
   let second_token = self.lexer.next_token()
   match second_token {
-    Regular(second_lexeme, _) if is_integer_lexeme(second_lexeme) => {
+    Regular(second_lexeme, _) if @lexer.is_integer_lexeme(second_lexeme) => {
       if !self.next_token_can_be_regular() {
         self.lexer.push_back(second_token)
         return @objects.PdfObject::Integer(first)
@@ -246,17 +246,17 @@ fn parse_regular_object(
     b"false" => @objects.PdfObject::Boolean(false)
     b"null" => @objects.PdfObject::Null
     _ =>
-      if is_integer_lexeme(lexeme) {
+      if @lexer.is_integer_lexeme(lexeme) {
         @objects.PdfObject::Integer(parse_int64_lexeme(lexeme, offset))
-      } else if is_real_lexeme(lexeme) {
+      } else if @lexer.is_real_lexeme(lexeme) {
         @objects.PdfObject::Real(parse_double_lexeme(lexeme, offset))
-      } else if is_numeric_like(lexeme) {
+      } else if @lexer.is_numeric_like(lexeme) {
         raise @objects.PdfParseError::InvalidNumber(offset, lexeme)
       } else {
         raise @objects.PdfParseError::UnexpectedToken(
           offset,
           "object",
-          bytes_to_text(lexeme),
+          @lexer.bytes_to_text(lexeme),
         )
       }
   }
@@ -268,7 +268,7 @@ fn parse_int64_lexeme(
   lexeme : Bytes,
   offset : Int64,
 ) -> Int64 raise @objects.PdfParseError {
-  @string.parse_int64(bytes_to_text(lexeme).to_string_view()) catch {
+  @string.parse_int64(@lexer.bytes_to_text(lexeme).to_string_view()) catch {
     _ => raise @objects.PdfParseError::NumericOverflow(offset, lexeme)
   }
 }
@@ -280,79 +280,11 @@ fn parse_double_lexeme(
   lexeme : Bytes,
   offset : Int64,
 ) -> Double raise @objects.PdfParseError {
-  @string.parse_double(bytes_to_text(lexeme).to_string_view()) catch {
+  @string.parse_double(@lexer.bytes_to_text(lexeme).to_string_view()) catch {
     _ => raise @objects.PdfParseError::InvalidNumber(offset, lexeme)
   }
 }
 
-///|
-/// Recognizes a signed decimal integer token with no PERIOD.
-fn is_integer_lexeme(lexeme : Bytes) -> Bool {
-  let start = sign_prefix_length(lexeme)
-  start < lexeme.length() && all_digits_from(lexeme, start)
-}
-
-///|
-/// Recognizes a Real object token containing exactly one PERIOD as the
-/// decimal point.
-fn is_real_lexeme(lexeme : Bytes) -> Bool {
-  let start = sign_prefix_length(lexeme)
-  let mut period_count = 0
-  let mut digit_count = 0
-  let mut valid = start < lexeme.length()
-  for i in start..<lexeme.length() {
-    let byte = lexeme[i]
-    if byte == b'.' {
-      period_count += 1
-    } else if is_digit(byte) {
-      digit_count += 1
-    } else {
-      valid = false
-    }
-  }
-  valid && period_count == 1 && digit_count > 0
-}
-
-///|
-/// Recognizes malformed numeric-looking lexemes for ISO 32000-2 section 7.3.3
-/// rejection.
-fn is_numeric_like(lexeme : Bytes) -> Bool {
-  if lexeme.length() == 0 {
-    false
-  } else {
-    let first = lexeme[0]
-    is_digit(first) || first == b'+' || first == b'-' || first == b'.'
-  }
-}
-
-///|
-/// Returns the optional sign prefix length for signed decimal integer and
-/// real-number parsing.
-fn sign_prefix_length(lexeme : Bytes) -> Int {
-  if lexeme.length() > 0 && (lexeme[0] == b'+' || lexeme[0] == b'-') {
-    1
-  } else {
-    0
-  }
-}
-
-///|
-/// Checks that all bytes from start are decimal digits.
-fn all_digits_from(lexeme : Bytes, start : Int) -> Bool {
-  let mut valid = true
-  for i in start..<lexeme.length() {
-    if !is_digit(lexeme[i]) {
-      valid = false
-    }
-  }
-  valid
-}
-
-///|
-/// Returns true for one decimal digit.
-fn is_digit(byte : Byte) -> Bool {
-  byte >= b'0' && byte <= b'9'
-}
 
 ///|
 fn token_offset(token : @lexer.PdfToken) -> Int64 {
@@ -370,7 +302,7 @@ fn token_offset(token : @lexer.PdfToken) -> Int64 {
 ///|
 fn token_kind(token : @lexer.PdfToken) -> String {
   match token {
-    Regular(bytes, _) => bytes_to_text(bytes)
+    Regular(bytes, _) => @lexer.bytes_to_text(bytes)
     Delimiter(byte, _) => String::from_array([byte.to_char()])
     DictStart(_) => "<<"
     DictEnd(_) => ">>"
@@ -380,11 +312,3 @@ fn token_kind(token : @lexer.PdfToken) -> String {
   }
 }
 
-///|
-fn bytes_to_text(bytes : Bytes) -> String {
-  let chars : Array[Char] = []
-  for byte in bytes {
-    chars.push(byte.to_char())
-  }
-  String::from_array(chars)
-}

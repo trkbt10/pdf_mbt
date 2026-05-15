@@ -555,7 +555,10 @@ fn strip_subset_font_tag(name : @objects.PdfName) -> @objects.PdfName {
 }
 
 ///|
-fn is_subset_font_tag_prefix(bytes : Bytes) -> Bool {
+/// Tests whether the first 6 bytes of `bytes` form a subset font tag prefix
+/// as defined in ISO 32000-1 §9.6.4 (six uppercase ASCII letters followed by
+/// "+"). The caller is responsible for ensuring `bytes` has length ≥ 6.
+pub fn is_subset_font_tag_prefix(bytes : Bytes) -> Bool {
   let mut ok = true
   for index in 0..<6 {
     let byte = bytes[index]

@@ -57,7 +57,7 @@ fn InlineImageReader::read_dictionary_until_id(
         raise InlineImageFailure(
           offset,
           "expected inline image dictionary key or ID but found " +
-          bytes_to_text(keyword),
+          @lexer.bytes_to_text(keyword),
         )
       Operand(Name(key)) => {
         let value = self.reader.read_direct_operand()

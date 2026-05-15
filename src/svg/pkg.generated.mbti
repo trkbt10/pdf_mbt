@@ -2,6 +2,7 @@
 package "trkbt10/pdf/src/svg"
 
 import {
+  "mizchi/font",
   "moonbitlang/core/debug",
   "trkbt10/pdf/src/reader",
 }
@@ -12,6 +13,8 @@ pub fn adobe_standard_string(Int) -> String?
 pub fn apply_clip_path_to_rendered_elements_alignment() -> Unit
 
 pub fn cff_charset_offset(Bytes) -> Int
+
+pub fn cff_charstring_is_safe(@font.TTFont, Int) -> Bool
 
 pub fn cff_cid_count(Bytes) -> Int
 
@@ -55,17 +58,25 @@ pub fn is_cid_keyed_cff(Bytes) -> Bool
 
 pub fn keep_diagnostic_tests_alignment() -> Unit
 
+pub fn lint_and_ci_gate_alignment() -> Unit
+
 pub fn parse_cff_charset(Bytes, Int) -> Array[Int]?
 
 pub fn parse_cff_cid_charset(Bytes, Int) -> Array[Int]?
 
 pub fn path_and_shape_rendering_alignment() -> Unit
 
+pub let pdf_flate_gray_image_mime : String
+
+pub let pdf_flate_rgb_image_mime : String
+
+pub let pdf_jpeg_with_smask_image_mime : String
+
 pub let raw_rgba_image_mime : String
 
-pub fn render_page_svg(@reader.PdfPage) -> String
+pub fn render_page_svg(@reader.PdfPage) -> String raise @reader.PdfDocumentError
 
-pub fn render_page_svg_deferred(@reader.PdfPage) -> SvgDeferredResult
+pub fn render_page_svg_deferred(@reader.PdfPage) -> SvgDeferredResult raise @reader.PdfDocumentError
 
 pub fn svg_axis_aligned_image_bounds_alignment() -> Unit
 

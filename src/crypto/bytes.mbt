@@ -92,6 +92,10 @@ fn write_be_u64_words(words : Array[UInt64], count : Int) -> Bytes {
 }
 
 ///|
-fn bytes_slice(data : Bytes, start : Int, end : Int) -> Bytes {
+/// Returns a new Bytes value containing data[start, end). Used by crypto/
+/// encryption byte algorithms where MoonBit's view-based slicing is
+/// inconvenient because the consumer requires an owned `Bytes` value rather
+/// than a borrowed view.
+pub fn bytes_slice(data : Bytes, start : Int, end : Int) -> Bytes {
   Bytes::from_array(data.view(start~, end~).to_array().view())
 }

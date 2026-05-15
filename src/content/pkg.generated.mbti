@@ -56,6 +56,7 @@ pub(all) enum ContentInstruction {
 pub(all) struct ContentOperandReader {
   cursor : @lexer.ByteCursor
   lexer : @lexer.Lexer
+  mut pending : (Bytes, Int64)?
 }
 pub fn ContentOperandReader::new(Bytes) -> Self
 pub fn ContentOperandReader::read_next(Self) -> OperandReadResult raise PdfContentError

@@ -33,7 +33,7 @@ fn flatten_outline_items(
 ) -> Unit raise @reader.PdfDocumentError {
   for item in source {
     out.push(OutlineItem::{
-      title: bytes_to_text(item.title),
+      title: @lexer.bytes_to_text(item.title),
       destination_page_index: outline_destination_page_index(document, item),
       level,
     })

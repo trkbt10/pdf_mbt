@@ -93,7 +93,10 @@ fn validate_adler32(
 }
 
 ///|
-fn read_u32_be(data : Bytes, start : Int) -> Int64 {
+/// Reads a big-endian unsigned 32-bit integer from `data` starting at `start`.
+/// The caller is responsible for bounds checking; values outside [0, 2^32-1]
+/// cannot be produced because each byte contributes at most 8 bits.
+pub fn read_u32_be(data : Bytes, start : Int) -> Int64 {
   (data[start].to_int64() << 24) |
   (data[start + 1].to_int64() << 16) |
   (data[start + 2].to_int64() << 8) |
